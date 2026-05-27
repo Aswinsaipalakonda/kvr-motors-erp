@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -138,6 +139,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Custom configurations
 AUTH_USER_MODEL = 'users.User'
@@ -157,4 +161,79 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# Jazzmin Dashboard Customization to match the exact premium mockup
+JAZZMIN_SETTINGS = {
+    "site_title": "KVR Motors Admin",
+    "site_header": "KVR Motors",
+    "site_brand": "KVR Motors",
+    "site_logo": "logo.png",
+    "login_logo": "logo.png",
+    "site_logo_classes": "img-circle",
+    "site_icon": "logo.png",
+    "welcome_sign": "Welcome to the KVR Motors ERP",
+    "copyright": "KVR Motors ERP Ltd",
+    "search_model": ["users.User"],
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"model": "users.User"},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": ["users", "branches", "vehicles"],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.Group": "fas fa-users",
+        "users.User": "fas fa-user-tie",
+        "branches.Branch": "fas fa-building",
+        "branches.Showroom": "fas fa-store",
+        "branches.InventoryLocation": "fas fa-map-marker-alt",
+        "vehicles.VehicleBrand": "fas fa-copyright",
+        "vehicles.VehicleModel": "fas fa-car",
+        "vehicles.VehicleUnit": "fas fa-barcode",
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": True,
+    "custom_css": None,
+    "custom_js": None,
+    "use_google_fonts_cdn": True,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs"},
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark bg-navy",
+    "no_navbar_border": True,
+    "navbar_fixed": True,
+    "layout_options": ["sidebar-mini"],
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "slate",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
+}
+
 
