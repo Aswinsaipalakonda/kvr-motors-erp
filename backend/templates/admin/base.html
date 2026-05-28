@@ -1,0 +1,1598 @@
+{% load i18n static %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE|default:'en-us' }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
+<head>
+<title>{% block title %}{% endblock %} | KVR Motors ERP</title>
+<link rel="icon" href="{% static 'logo.png' %}" type="image/png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet">
+<style>
+    /* Senior Frontend Developer Custom Reset & KVR Green/Red Brand Color Tokens */
+    :root {
+        --brand-color: #04a700; /* KVR Brand Green */
+        --brand-hover: #038b00;
+        --brand-light: #eafaf1; /* Premium Mint Green Background */
+        --brand-danger: #d71d22; /* KVR Brand Red */
+        --brand-danger-light: #fdf2f2;
+        --bg-bezel: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-mute: #64748b;
+        --border-color: #e2e8f0;
+    }
+
+    body, input, button, select, textarea {
+        font-family: 'Satoshi', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-bezel) !important;
+        overflow: hidden !important;
+        color: var(--text-main);
+        font-size: 17px !important; /* Increased text size globally to 17px */
+        line-height: 1.6;
+    }
+
+    /* Complete Full Width and Full Height Bezel-less Dashboard Frame */
+    #container {
+        width: 100vw !important;
+        height: 100vh !important;
+        background: #ffffff !important;
+        border-radius: 0px !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+        display: flex !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: relative;
+        box-sizing: border-box;
+    }
+
+    .dashboard-wrapper {
+        display: flex;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Sidebar Layout - Mockup Customization */
+    .sidebar {
+        width: 280px;
+        background: #09090b !important; /* Premium deep black background */
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 32px 24px;
+        box-sizing: border-box;
+        height: 100%;
+        flex-shrink: 0;
+    }
+
+    .brand-header {
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center the brand logo */
+        margin-bottom: 34px;
+        padding: 0;
+        width: 100%;
+    }
+
+    .brand-logo-box {
+        width: 100px; /* Centered wider premium card size */
+        height: 40px; /* Modern glassmorphism background */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .brand-logo-box:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .brand-logo-box img {
+        width: auto;
+        height: 70px; /* Nicely sized logo image */
+        object-fit: contain;
+    }
+
+    .menu-section {
+        margin-bottom: 28px;
+    }
+
+    .menu-section-header {
+        font-size: 12px;
+        font-weight: 800;
+        color: #4b5563 !important; /* Sleek dark muted header */
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: block;
+        margin-bottom: 14px;
+        padding-left: 8px;
+    }
+
+    .nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 12px 18px;
+        border-radius: 9999px !important; /* Premium Pill button styling */
+        font-size: 15px !important; /* Increased navigation text size */
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #94a3b8 !important; /* Muted item links */
+        box-sizing: border-box;
+        text-decoration: none;
+        margin-bottom: 4px;
+    }
+
+    .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #ffffff !important;
+    }
+
+    .nav-btn.active {
+        background: rgba(215, 29, 34, 0.15) !important; /* Glowing semi-transparent KVR Red */
+        border: 1px solid rgba(215, 29, 34, 0.3) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(215, 29, 34, 0.1) !important;
+    }
+
+    .nav-btn-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .nav-btn i {
+        font-size: 16px;
+        width: 22px;
+        text-align: center;
+    }
+
+    .nav-badge {
+        font-size: 11px;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 9999px;
+    }
+
+    .nav-badge.danger {
+        background: rgba(215, 29, 34, 0.15) !important;
+        color: #f87171 !important;
+    }
+
+    .nav-badge.active-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+    }
+
+    .sidebar-footer-group {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: auto;
+    }
+
+    .logout-box {
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .logout-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 18px;
+        border: none;
+        border-radius: 9999px !important; /* Pill shape */
+        font-size: 14.5px;
+        font-weight: 700;
+        background: rgba(215, 29, 34, 0.15) !important;
+        color: #f87171 !important;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .logout-btn:hover {
+        background: rgba(215, 29, 34, 0.25) !important;
+    }
+
+    /* Main Panel Content Pane */
+    .main-content {
+        flex: 1;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    /* Header topbar navigation */
+    .topbar {
+        height: 80px;
+        border-bottom: 1px solid var(--border-color);
+        background: #ffffff;
+        padding: 0 32px;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }
+
+    .topbar-title-group {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+        gap: 2px;
+    }
+
+    .topbar-title {
+        font-size: 26px !important;
+        font-weight: 850 !important;
+        color: var(--text-main);
+        margin: 0;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+    }
+
+    .topbar-subtitle {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--text-mute);
+        letter-spacing: -0.01em;
+    }
+
+    .notification-badge-dot {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        width: 8px;
+        height: 8px;
+        background: #f43f5e;
+        border-radius: 9999px;
+        border: 2px solid #ffffff;
+    }
+
+    .topbar-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important; /* Slightly tighter gap to align icons beautifully */
+    }
+
+    .search-box {
+        position: relative;
+        width: 320px;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .search-box input,
+    .search-box input[type="text"],
+    body #container .main-content .topbar .search-box input[type="text"] {
+        width: 100%;
+        background: #ffffff !important; /* Standard White background */
+        border: 1px solid #cbd5e1 !important; /* Premium light border */
+        border-radius: 9999px !important; /* Pill style */
+        padding: 12px 24px 12px 52px !important; /* Left padding for icon spacing */
+        font-size: 14.5px;
+        font-weight: 500;
+        color: var(--text-main) !important;
+        outline: none;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+        height: 44px !important;
+        line-height: normal !important;
+        text-indent: 0px !important;
+    }
+
+    .search-box input:focus {
+        background: #ffffff !important;
+        border-color: var(--brand-color) !important;
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.1) !important;
+    }
+
+    /* Topbar search placeholder - soft readable grey on white background */
+    .search-box input::placeholder { color: #94a3b8 !important; opacity: 1 !important; }
+    .search-box input::-webkit-input-placeholder { color: #94a3b8 !important; }
+    .search-box input:-moz-placeholder { color: #94a3b8 !important; opacity: 1 !important; }
+    .search-box input::-moz-placeholder { color: #94a3b8 !important; opacity: 1 !important; }
+    .search-box input:-ms-input-placeholder { color: #94a3b8 !important; }
+
+    .search-box i {
+        position: absolute;
+        left: 18px !important; /* Aligned search icon */
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-mute);
+        font-size: 15px !important;
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    .search-shortcut {
+        position: absolute;
+        right: 18px !important; /* Aligned shortcut icon */
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        font-weight: 700;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: var(--text-mute);
+        z-index: 5;
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 9999px !important; /* Pill/Circle */
+        border: 1px solid var(--border-color);
+        background: #ffffff;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 17px;
+        transition: all 0.2s ease;
+        margin: 0;
+    }
+
+    .icon-btn:hover {
+        background: #f1f5f9;
+        color: var(--text-main);
+        border-color: #cbd5e1;
+    }
+
+    .profile-card {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px;
+        border-left: 1px solid var(--border-color);
+        padding-left: 20px;
+        cursor: pointer;
+        height: 44px;
+    }
+
+    .profile-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 9999px;
+        background: #f43f5e !important; /* Premium pink/coral initials avatar */
+        border: none !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 16px;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(244, 63, 94, 0.2) !important;
+    }
+
+    .profile-info {
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+    }
+
+    .profile-name {
+        font-size: 14.5px;
+        font-weight: 800; /* Extra bold */
+        color: var(--text-main);
+        line-height: 1.2;
+        text-transform: uppercase; /* Uppercase username as in mockup */
+        letter-spacing: -0.01em;
+    }
+
+    .profile-role {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: var(--text-mute) !important;
+        letter-spacing: 0.05em !important;
+        text-transform: uppercase !important;
+        margin-top: 1px;
+    }
+
+    /* Scrollable Workspace Panel */
+    .workspace {
+        flex: 1;
+        overflow-y: auto;
+        padding: 32px;
+        box-sizing: border-box;
+    }
+
+    /* Override standard Django layouts cleanly to match mockup */
+    #content {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+
+    .module {
+        background: #ffffff !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 20px !important;
+        padding: 0 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01) !important;
+        overflow: hidden !important;
+        margin-bottom: 28px !important;
+    }
+
+    .module h2, .module caption, .inline-group h2 {
+        background: #f8fafc !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        color: var(--text-main) !important;
+        font-weight: 800 !important;
+        font-size: 16px !important;
+        padding: 18px 24px !important;
+        margin: 0 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+
+    /* Premium SaaS Stacked Form Override */
+    .aligned {
+        max-width: 960px !important;
+        margin: 0 auto !important;
+        background: #ffffff !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 20px !important;
+        padding: 24px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+    }
+
+    .form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 20px 24px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        align-items: flex-start !important;
+        box-sizing: border-box !important;
+    }
+
+    .form-row label {
+        font-weight: 700 !important;
+        color: var(--text-main) !important;
+        font-size: 15.5px !important; /* Scaled up label size */
+        margin-bottom: 4px !important;
+        width: auto !important;
+        float: none !important;
+        display: block !important;
+    }
+
+    /* Checkbox aligned beautifully on the left side - perfectly aligned with brand green checkmark */
+    .form-row:has(input[type=checkbox]),
+    .checkbox-row,
+    .form-row.field-is_active {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        padding: 16px 24px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        cursor: pointer !important;
+    }
+
+    .form-row:has(input[type=checkbox]) label,
+    .checkbox-row label,
+    .form-row.field-is_active label {
+        display: inline-block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 15.5px !important;
+        font-weight: 700 !important;
+        color: var(--text-main) !important;
+        width: auto !important;
+        float: none !important;
+        cursor: pointer !important;
+        order: 2 !important; /* Label on the right */
+    }
+
+    .form-row:has(input[type=checkbox]) input[type=checkbox],
+    .checkbox-row input[type=checkbox],
+    .form-row.field-is_active input[type=checkbox] {
+        order: 1 !important; /* Checkbox on the left */
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        width: 22px !important;
+        height: 22px !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 6px !important;
+        background-color: #ffffff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease-in-out !important;
+        outline: none !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+
+    .form-row:has(input[type=checkbox]) input[type=checkbox]:checked,
+    .checkbox-row input[type=checkbox]:checked,
+    .form-row.field-is_active input[type=checkbox]:checked {
+        background-color: #04a700 !important; /* Brand Green */
+        border-color: #04a700 !important;
+    }
+
+    /* FontAwesome Checkmark inside custom checkbox when checked */
+    .form-row:has(input[type=checkbox]) input[type=checkbox]:checked::after,
+    .checkbox-row input[type=checkbox]:checked::after,
+    .form-row.field-is_active input[type=checkbox]:checked::after {
+        content: "\f00c" !important;
+        font-family: "Font Awesome 6 Free" !important;
+        font-weight: 900 !important;
+        font-size: 12px !important;
+        color: #ffffff !important;
+        display: block !important;
+    }
+
+    .form-row:has(input[type=checkbox]) input[type=checkbox]:focus,
+    .checkbox-row input[type=checkbox]:focus,
+    .form-row.field-is_active input[type=checkbox]:focus {
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.1) !important;
+        border-color: #04a700 !important;
+    }
+
+    /* Robust input styling covering ALL text/number/date fields, select dropdowns and textareas */
+    input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=image]), 
+    select, 
+    textarea {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 9999px !important; /* Premium Pill input style override */
+        padding: 12px 24px !important;
+        font-size: 15px !important; /* Larger text inside input fields */
+        color: var(--text-main) !important;
+        outline: none !important;
+        transition: all 0.2s ease !important;
+        width: 100% !important;
+        max-width: 640px !important;
+        box-sizing: border-box !important;
+        min-width: unset !important;
+        height: 46px !important;
+    }
+
+    /* Custom dropdown styling with beautifully centered chevron arrow */
+    select {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        background: #ffffff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 24px center / 16px !important;
+        padding-right: 48px !important; /* Ensure content doesn't hit the chevron */
+    }
+
+    textarea {
+        border-radius: 16px !important; /* Textareas are card-rounded instead of circular pill */
+        height: auto !important;
+    }
+
+    input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=image]):focus, 
+    select:focus, 
+    textarea:focus {
+        border-color: var(--brand-color) !important;
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.1) !important;
+    }
+
+    /* Styled buttons / Actions Submit Row */
+    .submit-row {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 24px 32px !important;
+        background: #f8fafc !important;
+        border-top: 1px solid var(--border-color) !important;
+        border-radius: 0 0 20px 20px !important;
+        max-width: 960px !important;
+        margin: 24px auto 0 auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .submit-row input, .submit-row a, .object-tools a, input[type=submit] {
+        background: var(--brand-color) !important;
+        border: none !important;
+        border-radius: 9999px !important; /* Premium Pill shaped buttons */
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 14.5px !important;
+        padding: 12px 28px !important;
+        cursor: pointer !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 4px rgba(4, 167, 0, 0.1) !important;
+        margin: 0 !important;
+    }
+
+    .submit-row input:hover, .submit-row a:hover, .object-tools a:hover, input[type=submit]:hover {
+        background: var(--brand-hover) !important;
+        box-shadow: 0 4px 12px rgba(4, 167, 0, 0.2) !important;
+    }
+
+    .submit-row a.deletelink {
+        background: var(--brand-danger-light) !important;
+        color: var(--brand-danger) !important;
+        box-shadow: 0 2px 4px rgba(215, 29, 34, 0.1) !important;
+        margin-right: auto !important; /* Pushes the delete action to the far left! */
+        border: 1px solid #fee2e2 !important;
+    }
+
+    .submit-row a.deletelink:hover {
+        background: #fee2e2 !important;
+        color: var(--brand-danger) !important;
+        box-shadow: 0 4px 12px rgba(215, 29, 34, 0.2) !important;
+    }
+
+    /* Beautiful Alert Banners Overrides */
+    ul.messagelist {
+        padding: 0 !important;
+        margin: 0 auto 24px auto !important;
+        list-style: none !important;
+        max-width: 960px !important;
+    }
+
+    ul.messagelist li {
+        padding: 16px 24px !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        margin-bottom: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01) !important;
+        border: 1px solid transparent !important;
+    }
+
+    ul.messagelist li.success {
+        background: var(--brand-light) !important;
+        color: var(--brand-color) !important;
+        border-color: #a7f3d0 !important;
+    }
+
+    ul.messagelist li.warning {
+        background: #fffbeb !important;
+        color: #d97706 !important;
+        border-color: #fef3c7 !important;
+    }
+
+    ul.messagelist li.error {
+        background: var(--brand-danger-light) !important;
+        color: var(--brand-danger) !important;
+        border-color: #fecaca !important;
+    }
+
+    /* Django lists override */
+    #changelist-form table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    #changelist-form table thead th {
+        background: #f8fafc !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        padding: 18px 24px !important;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+
+    #changelist-form table tbody td, #changelist-form table tbody th {
+        padding: 18px 24px !important;
+        font-size: 15px !important; /* Larger table cell text */
+        border-bottom: 1px solid var(--border-color) !important;
+        color: #334155 !important;
+    }
+
+    #changelist-form table tbody tr:hover {
+        background-color: #f8fafc !important;
+    }
+
+    #changelist-filter {
+        background: #ffffff !important;
+        border-left: 1px solid var(--border-color) !important;
+        width: 260px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #changelist-filter h2 {
+        background: #f8fafc !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        padding: 18px 24px !important;
+        font-size: 14px !important;
+        font-weight: 800 !important;
+        color: var(--text-main) !important;
+        text-transform: uppercase !important;
+    }
+
+    #changelist-filter ul {
+        padding: 12px 24px !important;
+        margin: 0 !important;
+    }
+
+    #changelist-filter li {
+        list-style-type: none !important;
+        margin-bottom: 8px !important;
+    }
+
+    #changelist-filter li a {
+        color: #64748b !important;
+        font-size: 14px !important;
+        text-decoration: none !important;
+        transition: color 0.2s ease;
+    }
+
+    #changelist-filter li a:hover {
+        color: var(--brand-color) !important;
+    }
+
+    #changelist-filter li.selected a {
+        color: var(--brand-color) !important;
+        font-weight: 750 !important;
+    }
+
+    /* Slide-Over Drawer Styles */
+    .saas-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 99999;
+        visibility: hidden;
+        transition: visibility 0.3s ease;
+    }
+
+    .saas-drawer.active {
+        visibility: visible;
+    }
+
+    .saas-drawer-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.45);
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        backdrop-filter: blur(4px);
+    }
+
+    .saas-drawer.active .saas-drawer-overlay {
+        opacity: 1;
+    }
+
+    .saas-drawer-content {
+        position: absolute;
+        top: 0;
+        right: -600px;
+        width: 100%;
+        max-width: 600px;
+        height: 100%;
+        background: #ffffff;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        box-sizing: border-box;
+    }
+
+    .saas-drawer.active .saas-drawer-content {
+        right: 0;
+    }
+
+    .saas-drawer-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .saas-drawer-header h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--text-main);
+    }
+
+    .saas-drawer-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        color: var(--text-mute);
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        transition: color 0.2s ease;
+    }
+
+    .saas-drawer-close:hover {
+        color: var(--text-main);
+    }
+
+    .saas-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 32px;
+        box-sizing: border-box;
+    }
+
+    .saas-drawer-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        height: 100%;
+        font-size: 16px;
+        color: var(--text-mute);
+        font-weight: 600;
+    }
+
+    /* Override forms loaded inside the drawer */
+    .saas-drawer-body form {
+        width: 100% !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .saas-drawer-body .aligned {
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+    }
+
+    .saas-drawer-body .form-row {
+        padding: 16px 0 !important;
+    }
+
+    .saas-drawer-body .form-row input[type=text],
+    .saas-drawer-body .form-row input[type=password],
+    .saas-drawer-body .form-row select,
+    .saas-drawer-body .form-row textarea {
+        background: #ffffff !important; /* Pure white background by default */
+        border: 1px solid #cbd5e1 !important; /* Premium light border */
+        max-width: 100% !important;
+    }
+
+    .saas-drawer-body .form-row input[type=text]:focus,
+    .saas-drawer-body .form-row input[type=password]:focus,
+    .saas-drawer-body .form-row select:focus,
+    .saas-drawer-body .form-row textarea:focus {
+        background: #ffffff !important;
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.15) !important;
+        border: 1px solid var(--brand-color) !important;
+    }
+
+    .saas-drawer-body .submit-row {
+        padding: 24px 0 0 0 !important;
+        margin-top: 16px !important;
+        background: #ffffff !important;
+        border-top: 1px solid var(--border-color) !important;
+        max-width: 100% !important;
+    }
+
+    /* Guaranteed Search Box Input Override to keep a perfect gap between text/placeholder and search icon */
+    .search-box input,
+    .search-box input[type="text"],
+    body #container .main-content .topbar .search-box input,
+    body #container .main-content .topbar .search-box input[type="text"] {
+        padding-left: 58px !important;
+        padding-right: 24px !important;
+        text-indent: 0px !important;
+    }
+
+    /* Globally Remove default Django Filters sidebar and expand tables to 100% full width */
+    #changelist-filter {
+        display: none !important;
+    }
+    
+    .change-list .filtered {
+        min-width: 100% !important;
+    }
+    
+    #changelist #changelist-form {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    /* Right-align all top-level object action tools (+ Add button) */
+    .object-tools {
+        display: flex !important;
+        justify-content: flex-end !important;
+        margin: 0 0 24px 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+        gap: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .object-tools li {
+        list-style-type: none !important;
+        margin: 0 !important;
+    }
+
+    /* Elegant KVR Green styling for the action buttons */
+    .object-tools a, .action-add-btn {
+        background: var(--brand-color) !important;
+        color: #ffffff !important;
+        border-radius: 9999px !important; /* Perfect Pill */
+        font-weight: 700 !important;
+        font-size: 14.5px !important;
+        padding: 12px 28px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 4px 12px rgba(4, 167, 0, 0.15) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+    }
+
+    .object-tools a:hover, .action-add-btn:hover {
+        background: var(--brand-hover) !important;
+        box-shadow: 0 6px 16px rgba(4, 167, 0, 0.25) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* SaaS List Dashboard Overrides - Hide blocky headers, clean search and minimal footer paginator */
+    #toolbar h2, #toolbar .card-header, #toolbar > h3,
+    #changelist-search > h2, #changelist-search > h3,
+    .paginator h2, .paginator .card-header, .paginator > h3 {
+        display: none !important;
+    }
+
+    #toolbar {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 0 24px 0 !important;
+        width: 100% !important;
+    }
+
+    #changelist-search {
+        background: #ffffff !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 20px !important;
+        padding: 20px 24px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 16px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+
+    #changelist-search #searchbar {
+        background: #ffffff !important; /* White background matching standard inputs */
+        border: 1px solid #cbd5e1 !important; /* Premium light border matching standard */
+        border-radius: 9999px !important; /* Perfect Pill */
+        padding: 10px 24px 10px 48px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: var(--text-main) !important;
+        height: 44px !important;
+        min-width: 320px !important;
+        max-width: 480px !important;
+        outline: none !important;
+        transition: all 0.2s ease !important;
+        box-sizing: border-box !important;
+    }
+
+    #changelist-search #searchbar::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+    }
+
+    #changelist-search #searchbar:focus {
+        background: #ffffff !important;
+        border-color: var(--brand-color) !important;
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.1) !important;
+    }
+
+    #changelist-search input[type="submit"] {
+        background: var(--brand-color) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 9999px !important; /* Pill shape */
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        padding: 10px 26px !important;
+        cursor: pointer !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 4px 12px rgba(4, 167, 0, 0.15) !important;
+        height: 44px !important;
+        margin: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    #changelist-search input[type="submit"]:hover {
+        background: var(--brand-hover) !important;
+        box-shadow: 0 6px 16px rgba(4, 167, 0, 0.25) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .paginator {
+        background: #ffffff !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 20px !important;
+        padding: 20px 24px !important;
+        margin: 24px 0 0 0 !important;
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        color: var(--text-mute) !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    /* Drawer Form Submit Row overrides to display ALL buttons beautifully in narrow drawers */
+    .saas-drawer-body .submit-row {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important; /* Force wrap to prevent offscreen push clipping */
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 24px 0 0 0 !important;
+        margin-top: 16px !important;
+        background: #ffffff !important;
+        border-top: 1px solid var(--border-color) !important;
+        max-width: 100% !important;
+    }
+
+    .saas-drawer-body .submit-row input,
+    .saas-drawer-body .submit-row a,
+    .saas-drawer-body .submit-row input[type="submit"] {
+        padding: 10px 18px !important; /* Slightly tighter padding in drawer to guarantee fit */
+        font-size: 13px !important; /* Crisp, legible typography */
+        height: 40px !important;
+        border-radius: 9999px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Save Button - High Emphasis Primary Action */
+    .saas-drawer-body .submit-row input[name="_save"] {
+        background: var(--brand-color) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(4, 167, 0, 0.15) !important;
+        border: none !important;
+    }
+
+    .saas-drawer-body .submit-row input[name="_save"]:hover {
+        background: var(--brand-hover) !important;
+        box-shadow: 0 6px 16px rgba(4, 167, 0, 0.25) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Save and Add Another Button - Medium Emphasis Secondary Action */
+    .saas-drawer-body .submit-row input[name="_addanother"] {
+        background: rgba(4, 167, 0, 0.08) !important;
+        color: var(--brand-color) !important;
+        border: 1px solid rgba(4, 167, 0, 0.25) !important;
+        box-shadow: none !important;
+    }
+
+    .saas-drawer-body .submit-row input[name="_addanother"]:hover {
+        background: rgba(4, 167, 0, 0.15) !important;
+        border-color: rgba(4, 167, 0, 0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Save and Continue Editing Button - Low Emphasis Tertiary Action */
+    .saas-drawer-body .submit-row input[name="_continue"] {
+        background: rgba(4, 167, 0, 0.03) !important;
+        color: var(--brand-color) !important;
+        border: 1px solid rgba(4, 167, 0, 0.15) !important;
+        box-shadow: none !important;
+    }
+
+    .saas-drawer-body .submit-row input[name="_continue"]:hover {
+        background: rgba(4, 167, 0, 0.08) !important;
+        border-color: rgba(4, 167, 0, 0.3) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Same-line Searchbar and Search Button Alignment Override */
+    #changelist-search form {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #changelist-search div,
+    #changelist-search form div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 12px !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    #changelist-search #searchbar {
+        background: #ffffff !important; /* Standard White background */
+        color: var(--text-main) !important; /* Dark slate text color */
+        border: 1px solid #cbd5e1 !important; /* Premium light border */
+    }
+
+    #changelist-search #searchbar:focus {
+        background: #ffffff !important;
+        border-color: var(--brand-color) !important;
+        box-shadow: 0 0 0 3px rgba(4, 167, 0, 0.1) !important;
+    }
+
+    /* Soft grey placeholder text for the white searchbar */
+    #changelist-search #searchbar::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+    }
+    #changelist-search #searchbar::-webkit-input-placeholder { color: #94a3b8 !important; }
+    #changelist-search #searchbar:-moz-placeholder { color: #94a3b8 !important; }
+    #changelist-search #searchbar::-moz-placeholder { color: #94a3b8 !important; }
+    #changelist-search #searchbar:-ms-input-placeholder { color: #94a3b8 !important; }
+
+    /* Clean, highly readable placeholder colors for standard light/white input fields */
+    input::placeholder,
+    textarea::placeholder {
+        color: #94a3b8 !important; /* Soft elegant grey for standard white inputs */
+        opacity: 1 !important;
+    }
+    input::-webkit-input-placeholder, textarea::-webkit-input-placeholder { color: #94a3b8 !important; }
+    input:-moz-placeholder, textarea:-moz-placeholder { color: #94a3b8 !important; opacity: 1 !important; }
+    input::-moz-placeholder, textarea::-moz-placeholder { color: #94a3b8 !important; opacity: 1 !important; }
+    input:-ms-input-placeholder, textarea:-ms-input-placeholder { color: #94a3b8 !important; }
+
+    /* SaaS-Grade ForeignKey Dropdown Actions with perfect vertical centering and spacing */
+    .related-widget-wrapper {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+        max-width: 640px !important;
+        box-sizing: border-box !important;
+    }
+
+    .related-widget-wrapper select {
+        flex: 1 !important;
+        width: auto !important;
+        margin: 0 !important;
+        height: 46px !important;
+    }
+
+    /* Hide default related action emojis/images */
+    .related-widget-wrapper-link img {
+        display: none !important;
+    }
+
+    /* Keep ONLY the first related action button next to the dropdown, hide all subsequent sibling buttons */
+    .related-widget-wrapper a + a {
+        display: none !important;
+    }
+
+    /* Style the single remaining action button as a premium green outline circle */
+    .related-widget-wrapper-link,
+    .related-widget-wrapper a.related-lookup,
+    .related-widget-wrapper a.add-related,
+    .related-widget-wrapper a.change-related,
+    .related-widget-wrapper a.delete-related {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
+        background: var(--brand-light) !important;
+        color: var(--brand-color) !important;
+        border: 1px solid rgba(4, 167, 0, 0.15) !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        float: none !important;
+        vertical-align: middle !important;
+    }
+
+    .related-widget-wrapper-link:hover,
+    .related-widget-wrapper a.related-lookup:hover,
+    .related-widget-wrapper a.add-related:hover,
+    .related-widget-wrapper a.change-related:hover,
+    .related-widget-wrapper a.delete-related:hover {
+        background: var(--brand-color) !important;
+        color: #ffffff !important;
+        border-color: var(--brand-hover) !important;
+        box-shadow: 0 4px 8px rgba(4, 167, 0, 0.15) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Custom CSS-drawn SaaS vector icons using Font-Awesome mappings */
+    .related-widget-wrapper a.add-related::before {
+        content: "+" !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        display: block !important;
+    }
+
+    .related-widget-wrapper a.change-related::before {
+        content: "\f303" !important; /* Font-Awesome Pencil unicode */
+        font-family: "Font Awesome 6 Free" !important;
+        font-weight: 900 !important;
+        font-size: 12px !important;
+        display: block !important;
+    }
+
+    .related-widget-wrapper a.related-lookup::before {
+        content: "\f06e" !important; /* Font-Awesome Eye unicode */
+        font-family: "Font Awesome 6 Free" !important;
+        font-weight: 900 !important;
+        font-size: 12px !important;
+        display: block !important;
+    }
+
+    /* Hide raw emoji text characters to prevent duplicate overlapping visual shapes */
+    .related-widget-wrapper a.add-related,
+    .related-widget-wrapper a.change-related,
+    .related-widget-wrapper a.related-lookup {
+        color: transparent !important; /* Hide original emoji characters safely */
+        text-shadow: none !important;
+    }
+
+    /* Ensure white color overrides on hover states */
+    .related-widget-wrapper a.add-related:hover::before,
+    .related-widget-wrapper a.change-related:hover::before,
+    .related-widget-wrapper a.related-lookup:hover::before {
+        color: #ffffff !important;
+    }
+
+    .related-widget-wrapper a.add-related::before,
+    .related-widget-wrapper a.change-related::before,
+    .related-widget-wrapper a.related-lookup::before {
+        color: var(--brand-color) !important;
+    }
+</style>
+{% block extrahead %}{% endblock %}
+{% block extrastyle %}{% endblock %}
+</head>
+<body>
+
+<!-- Full-Width Page Workspace -->
+<div id="container">
+    <div class="dashboard-wrapper">
+        
+        <!-- Left Sidebar - Single Master Sidebar for the entire app -->
+        <aside class="sidebar">
+            <div>
+                <div class="brand-header">
+                    <div class="brand-logo-box">
+                        <img src="{% static 'logo.png' %}" alt="KVR Motors Logo">
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <span class="menu-section-header">Menu</span>
+                    <a href="/admin/" class="nav-btn {% if request.path == '/admin/' %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </div>
+                    </a>
+                    <a href="/admin/users/user/" class="nav-btn {% if '/users/user/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-users-cog"></i>
+                            <span>Users & Roles</span>
+                        </div>
+                        <span class="nav-badge danger">20</span>
+                    </a>
+                    <a href="/admin/branches/branch/" class="nav-btn {% if '/branches/branch/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-building"></i>
+                            <span>Branches</span>
+                        </div>
+                    </a>
+                    <a href="/admin/branches/showroom/" class="nav-btn {% if '/branches/showroom/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-store"></i>
+                            <span>Showrooms</span>
+                        </div>
+                    </a>
+                    <a href="/admin/vehicles/vehicleunit/" class="nav-btn {% if '/vehicles/vehicleunit/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-car"></i>
+                            <span>Vehicle Stock</span>
+                        </div>
+                        <span class="nav-badge danger">99+</span>
+                    </a>
+                </div>
+
+                <div class="menu-section">
+                    <span class="menu-section-header">Modules</span>
+                    <a href="/admin/branches/inventorylocation/" class="nav-btn {% if '/inventorylocation/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Inventory Locations</span>
+                        </div>
+                    </a>
+                    <a href="/admin/vehicles/vehiclebrand/" class="nav-btn {% if '/vehiclebrand/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-copyright"></i>
+                            <span>Vehicle Brands</span>
+                        </div>
+                    </a>
+                    <a href="/admin/vehicles/vehiclemodel/" class="nav-btn {% if '/vehiclemodel/' in request.path %}active{% endif %}">
+                        <div class="nav-btn-left">
+                            <i class="fas fa-barcode"></i>
+                            <span>Vehicle Models</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-footer-group">
+                <div class="logout-box">
+                    <a href="/admin/logout/" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Log out</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-title-group">
+                    <h2 class="topbar-title">{% block content_title %}{% endblock %}</h2>
+                    <span class="topbar-subtitle" id="topbar-dynamic-subtitle">Manage your dealership data, workflows, and administrative records.</span>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search record...">
+                    </div>
+
+                    <!-- Launcher Grid / Sparkles Action Icons -->
+                    <button class="icon-btn" title="App Launcher"><i class="fas fa-th-large"></i></button>
+                    <button class="icon-btn" title="Quick Actions"><i class="fas fa-compass"></i></button>
+                    <button class="icon-btn" title="Notifications" style="position: relative;">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge-dot"></span>
+                    </button>
+
+                    <div class="profile-card">
+                        <div class="profile-avatar" id="profile-initials-badge">AU</div>
+                        <div class="profile-info">
+                            <span class="profile-name">{{ user.username }}</span>
+                            <span class="profile-role">{% if user.is_superuser %}ADMINISTRATOR{% else %}STAFF MEMBER{% endif %}</span>
+                        </div>
+                        <i class="fas fa-chevron-down" style="font-size: 10px; color: #94a3b8; margin-left: 4px;"></i>
+                    </div>
+                </div>
+            </header>
+
+            <div class="workspace">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Slide-Over Drawer for SaaS Form CRUD Add/Edit -->
+<div id="saas-drawer" class="saas-drawer">
+    <div class="saas-drawer-overlay" onclick="closeSaasDrawer()"></div>
+    <div class="saas-drawer-content">
+        <div class="saas-drawer-header">
+            <h3 id="saas-drawer-title">Add Record</h3>
+            <button class="saas-drawer-close" onclick="closeSaasDrawer()">&times;</button>
+        </div>
+        <div class="saas-drawer-body" id="saas-drawer-body">
+            <div class="saas-drawer-spinner">
+                <i class="fas fa-circle-notch fa-spin"></i> Loading...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Dynamically add descriptive placeholders to form inputs based on their labels
+    function initDynamicPlaceholders(container) {
+        const root = container || document;
+        const formRows = root.querySelectorAll('.form-row');
+        formRows.forEach(row => {
+            const label = row.querySelector('label');
+            const input = row.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]), textarea, select');
+            if (label && input && !input.getAttribute('placeholder')) {
+                let labelText = label.textContent.replace(/:/g, '').replace(/\*/g, '').trim();
+                if (input.tagName.toLowerCase() === 'select') {
+                    const firstOpt = input.querySelector('option[value=""]');
+                    if (firstOpt && (firstOpt.textContent === '---------' || firstOpt.textContent.trim() === '')) {
+                        firstOpt.textContent = `Select ${labelText}...`;
+                    }
+                } else {
+                    input.setAttribute('placeholder', `Enter ${labelText.toLowerCase()}...`);
+                }
+            }
+        });
+    }
+
+    // Slide-Over Drawer Form Loader via AJAX
+    function openSaasDrawer(url, title) {
+        const drawer = document.getElementById('saas-drawer');
+        const drawerTitle = document.getElementById('saas-drawer-title');
+        const drawerBody = document.getElementById('saas-drawer-body');
+        
+        drawerTitle.textContent = title || 'Add Record';
+        drawerBody.innerHTML = '<div class="saas-drawer-spinner"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>';
+        
+        drawer.classList.add('active');
+        
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const formContainer = doc.querySelector('#content') || doc.querySelector('form');
+                
+                if (formContainer) {
+                    // Strip headers & breadcrumbs from the loaded form
+                    const breadcrumbs = formContainer.querySelector('.breadcrumbs');
+                    if (breadcrumbs) breadcrumbs.remove();
+                    const titleHeader = formContainer.querySelector('h1');
+                    if (titleHeader) titleHeader.remove();
+                    
+                    drawerBody.innerHTML = '';
+                    drawerBody.appendChild(formContainer);
+                    
+                    // Style the form submit row inside the drawer
+                    const submitRow = drawerBody.querySelector('.submit-row');
+                    if (submitRow) {
+                        submitRow.classList.add('drawer-submit-row');
+                    }
+                    
+                    // Bind inner form submit to handle redirection cleanly
+                    const innerForm = drawerBody.querySelector('form');
+                    if (innerForm) {
+                        if (!innerForm.getAttribute('action')) {
+                            innerForm.setAttribute('action', url);
+                        }
+                    }
+                    
+                    // Initialize dynamic placeholders for the freshly loaded drawer form
+                    initDynamicPlaceholders(drawerBody);
+                } else {
+                    drawerBody.innerHTML = '<div class="saas-drawer-spinner" style="color: var(--brand-danger);">Failed to load form.</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading form:', error);
+                drawerBody.innerHTML = '<div class="saas-drawer-spinner" style="color: var(--brand-danger);">Error loading form.</div>';
+            });
+    }
+
+    function closeSaasDrawer() {
+        document.getElementById('saas-drawer').classList.remove('active');
+    }
+
+    // Intercept clicks on Add links globally
+    document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('click', function(e) {
+            const addLink = e.target.closest('.addlink') || e.target.closest('.action-add-btn') || e.target.closest('.object-tools a');
+            
+            if (addLink && addLink.getAttribute('href') && !addLink.getAttribute('href').startsWith('javascript:')) {
+                const url = addLink.getAttribute('href');
+                let title = addLink.textContent.trim();
+                
+                // Format title cleanly
+                if (title.toLowerCase().startsWith('add ')) {
+                    title = title;
+                } else {
+                    title = 'Add New ' + title;
+                }
+                
+                e.preventDefault();
+                openSaasDrawer(url, title);
+            }
+        });
+
+        // Initialize dynamic placeholders on DOM Content Loaded
+        initDynamicPlaceholders(document);
+
+        // Set placeholder dynamically for the list searchbar
+        const searchbar = document.getElementById('searchbar');
+        if (searchbar && !searchbar.getAttribute('placeholder')) {
+            searchbar.setAttribute('placeholder', 'Search records...');
+        }
+
+        // Dynamic descriptive sub-headers based on page URL path
+        const path = window.location.pathname;
+        const dynamicSub = document.getElementById('topbar-dynamic-subtitle');
+        if (dynamicSub) {
+            if (path === '/admin/' || path === '/admin') {
+                dynamicSub.textContent = "Understand your dealership, analyze sales performance, and view stock levels.";
+            } else if (path.includes('/users/user/')) {
+                dynamicSub.textContent = "Manage administrative accounts, permission matrices, and operational roles.";
+            } else if (path.includes('/branches/branch/') || path.includes('/branches/showroom/')) {
+                dynamicSub.textContent = "Configure regional branch directories, contact points, and showroom locations.";
+            } else if (path.includes('/vehicles/')) {
+                dynamicSub.textContent = "Monitor real-time vehicle inventories, stock items, and pricing catalogs.";
+            } else if (path.includes('/inventorylocation/')) {
+                dynamicSub.textContent = "Track physical vehicle stock yards, warehouses, and storage depots.";
+            } else {
+                dynamicSub.textContent = "Search, filter, view, and maintain your dealership database records.";
+            }
+        }
+
+        // Dynamic profile initials badge based on username
+        const username = "{{ user.username }}";
+        const initialsBadge = document.getElementById('profile-initials-badge');
+        if (initialsBadge && username) {
+            const initials = username.trim().substring(0, 2).toUpperCase();
+            initialsBadge.textContent = initials;
+        }
+    });
+</script>
+
+</body>
+</html>
+
