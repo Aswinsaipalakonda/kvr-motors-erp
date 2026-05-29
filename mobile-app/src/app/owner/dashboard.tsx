@@ -223,11 +223,11 @@ export default function OwnerDashboard({
 
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: headerHeight + 10 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
           showsVerticalScrollIndicator={false}
         >
           {/* Dynamic Dark Premium Header Section */}
-          <View style={styles.darkHeaderInner}>
+          <View style={[styles.darkHeaderInner, { paddingTop: headerHeight + 10 }]}>
 
             <View style={styles.titleWrapper}>
               <ThemedText style={styles.mainTitle}>Let's Manage Your</ThemedText>
