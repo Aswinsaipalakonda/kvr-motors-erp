@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
 import { getLeads, createLead, updateLead } from "../services/leads";
+import { createBooking } from "../services/bookings";
+import { createSalesInvoice } from "../services/sales";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -74,6 +76,19 @@ export default function SalesDashboard() {
   const [leadContactNumber, setLeadContactNumber] = useState("");
   const [leadVehicleModel, setLeadVehicleModel] = useState<string>("");
   const [leadSource, setLeadSource] = useState("walk_in");
+
+  // Advance Booking form bindings
+  const [bookingCustomerName, setBookingCustomerName] = useState("");
+  const [bookingContactNumber, setBookingContactNumber] = useState("");
+  const [bookingVehicleModel, setBookingVehicleModel] = useState("");
+  const [bookingAdvanceAmount, setBookingAdvanceAmount] = useState("");
+  const [bookingExpiryDate, setBookingExpiryDate] = useState("");
+
+  // Sales Checkout form bindings
+  const [checkoutCustomerName, setCheckoutCustomerName] = useState("");
+  const [checkoutContactNumber, setCheckoutContactNumber] = useState("");
+  const [checkoutPaymentMode, setCheckoutPaymentMode] = useState("SBI Finance");
+  const [checkoutInsurancePartner, setCheckoutInsurancePartner] = useState("Chola MS - Comprehensive 1+5 Yr");
 
   const loadLeadsData = async () => {
     try {
@@ -225,6 +240,8 @@ export default function SalesDashboard() {
       
       // Map Django REST keys to frontend UI visual keys
       setAutoFillResult({
+        id: data.id,
+        branchId: data.branch,
         vin: data.vin_number,
         motor: data.motor_number,
         chassis: data.chassis_number,
@@ -549,17 +566,37 @@ export default function SalesDashboard() {
                   </button>
                 </div>
 
-                <form className="space-y-4 text-xs font-semibold text-slate-600" onSubmit={(e) => { e.preventDefault(); alert("Sale Booking Registered Successfully!"); }}>
+                <form className="space-y-4 text-xs font-semibold text-slate-600" onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!autoFillResult?.id) { alert("Please use the Auto-fill tool to select a vehicle unit first."); return; }
+                  const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
+                  try {
+                    await createSalesInvoice({
+                      customer_name: checkoutCustomerName.trim(),
+                      customer_contact: checkoutContactNumber.trim(),
+                      vehicle_unit: autoFillResult.id,
+                      assigned_battery: batteryObj?.id || null,
+                      sale_price: autoFillResult.price ? parseFloat(autoFillResult.price.replace(/[₹,\s]/g, '')) : 0,
+                      payment_mode: checkoutPaymentMode,
+                      insurance_partner: checkoutInsurancePartner,
+                      delivery_status: "processing",
+                      branch: autoFillResult.branchId || 1
+                    });
+                    alert("Sale Invoice Created Successfully in PostgreSQL!");
+                    setCheckoutCustomerName(""); setCheckoutContactNumber("");
+                    setAutoFillResult(null); setVinQuery(""); setSelectedBattery("");
+                  } catch (err) { console.error("Failed to create sale invoice:", err); alert("Failed to create sale invoice."); }
+                }}>
                   
                   {/* Customer details */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-                      <input type="text" placeholder="e.g. Ramesh Naidu" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
+                      <input type="text" placeholder="e.g. Ramesh Naidu" value={checkoutCustomerName} onChange={(e) => setCheckoutCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-                      <input type="text" placeholder="e.g. 9876543210" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
+                      <input type="text" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
                     </div>
                   </div>
 
@@ -567,7 +604,7 @@ export default function SalesDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Financier Partner</label>
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
+                      <select value={checkoutPaymentMode} onChange={(e) => setCheckoutPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
                         <option>SBI Finance</option>
                         <option>HDFC Bank Loan</option>
                         <option>L&T Finance</option>
@@ -576,7 +613,7 @@ export default function SalesDashboard() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Insurance Partner Scheme</label>
-                      <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
+                      <select value={checkoutInsurancePartner} onChange={(e) => setCheckoutInsurancePartner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
                         <option>Chola MS - Comprehensive 1+5 Yr</option>
                         <option>ICICI Lombard - Zero Dep</option>
                         <option>Digit Insurance - Third Party Only</option>

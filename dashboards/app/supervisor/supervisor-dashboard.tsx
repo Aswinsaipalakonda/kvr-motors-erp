@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { getFifoOverrides, updateFifoOverride } from "../services/batteries";
 import { getLeads, updateLead } from "../services/leads";
+import { getBookings, updateBooking } from "../services/bookings";
+import { getSalesInvoices } from "../services/sales";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -62,6 +64,12 @@ export default function SupervisorDashboard() {
   const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
 
+  const [liveBookingsList, setLiveBookingsList] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+
+  const [liveSalesList, setLiveSalesList] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(true);
+
   const loadLeadsData = async () => {
     try {
       setLeadsLoading(true);
@@ -97,6 +105,39 @@ export default function SupervisorDashboard() {
     }
   };
 
+  const loadBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      const data = await getBookings();
+      setLiveBookingsList(data);
+    } catch (e) {
+      console.error("Failed to load bookings:", e);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const loadSalesInvoices = async () => {
+    try {
+      setSalesLoading(true);
+      const data = await getSalesInvoices();
+      setLiveSalesList(data);
+    } catch (e) {
+      console.error("Failed to load sales invoices:", e);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  const handleApproveBookingLive = async (id: number, action: "confirmed" | "cancelled") => {
+    try {
+      await updateBooking(id, { status: action });
+      loadBookings();
+    } catch (e) {
+      console.error("Failed to update booking:", e);
+    }
+  };
+
   const handleAssignLead = async (leadId: number, execName: string) => {
     try {
       // Anil Kumar is sandbox executive (ID 3 in DB seeder setup)
@@ -115,9 +156,13 @@ export default function SupervisorDashboard() {
     setIsMounted(true);
     loadOverrides();
     loadLeadsData();
+    loadBookings();
+    loadSalesInvoices();
     const interval = setInterval(() => {
       loadOverrides();
       loadLeadsData();
+      loadBookings();
+      loadSalesInvoices();
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -128,11 +173,7 @@ export default function SupervisorDashboard() {
     { ref: "TR-2026-904", from: "Vizag Showroom", to: "Srikakulam Showroom", model: "Dynamo Pro", qty: 2, status: "Pending Approval", requestedBy: "Prasad", priority: "Urgent" }
   ]);
 
-  const [bookings, setBookings] = useState([
-    { id: "BK-8012", customer: "A. Srinivas", model: "Watts 100", amount: "₹ 25,000", date: "10 May 2024", status: "Pending Approval", financier: "SBI Finance", comment: "Awaiting final PDI clearance." },
-    { id: "BK-8021", customer: "S. Venkat", model: "Dynamo Pro", amount: "₹ 10,000", date: "11 May 2024", status: "Approved", financier: "Self-Finance", comment: "PDI Passed. Approved." },
-    { id: "BK-8028", customer: "D. Prasad", model: "Kinetic Green E-Luna", amount: "₹ 5,000", date: "15 May 2024", status: "Pending Approval", financier: "L&T Finance", comment: "Awaiting finance lock confirmation." }
-  ]);
+
 
   const [leadAssignments, setLeadAssignments] = useState([
     { id: "LD-9901", customer: "Ramana Reddy", vehicle: "Dynamo Pro", source: "Website", exec: "Unassigned", enquiryDate: "12 May 2024", contactStatus: "Awaiting Callback" },
@@ -187,9 +228,7 @@ export default function SupervisorDashboard() {
     setTransfers(transfers.map(tr => tr.ref === ref ? { ...tr, status: "Approved" } : tr));
   };
 
-  const handleApproveBooking = (id: string) => {
-    setBookings(bookings.map(bk => bk.id === id ? { ...bk, status: "Approved" } : bk));
-  };
+
 
 
   if (!isMounted) {
@@ -491,31 +530,44 @@ export default function SupervisorDashboard() {
           {activeTab === "sales" && (
             <div className="space-y-6">
               
-              <Table title="Showroom Daily Sales Monitoring Ledger" headers={["Invoice Ref", "Customer Name", "Model Description", "Sales Executive", "Payment Status", "PDI Certified", "Delivery Status", "Actions"]}>
-                <tr className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3.5 px-5 font-mono font-bold text-slate-700">INV-2024-0789</td>
-                  <td className="py-3.5 px-5 font-bold text-slate-800">Ramesh Naidu</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">Dynamo Pro</td>
-                  <td className="py-3.5 px-5 text-slate-600">Anil Kumar</td>
-                  <td className="py-3.5 px-5 text-slate-550 font-bold">Full Paid</td>
-                  <td className="py-3.5 px-5">
-                    <span className="inline-flex px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">Certified</span>
-                  </td>
-                  <td className="py-3.5 px-5"><span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">Delivered</span></td>
-                  <td className="py-3.5 px-5"><button className="text-xs text-emerald-600 font-bold cursor-pointer">Print PDF</button></td>
-                </tr>
-                <tr className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3.5 px-5 font-mono font-bold text-slate-700">INV-2024-0790</td>
-                  <td className="py-3.5 px-5 font-bold text-slate-800">K. Satish</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">Kinetic Green E-Luna</td>
-                  <td className="py-3.5 px-5 text-slate-600">Anil Kumar</td>
-                  <td className="py-3.5 px-5 text-slate-550 font-bold">Finance Pending</td>
-                  <td className="py-3.5 px-5">
-                    <span className="inline-flex px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">Certified</span>
-                  </td>
-                  <td className="py-3.5 px-5"><span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold">Dispatched</span></td>
-                  <td className="py-3.5 px-5"><button className="text-xs text-emerald-600 font-bold cursor-pointer">Print PDF</button></td>
-                </tr>
+              <Table title="Showroom Daily Sales Monitoring Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Sale Price", "Payment Mode", "Insurance", "Delivery Status", "Actions"]}>
+                {salesLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                        <span>Loading sales invoices from PostgreSQL...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : liveSalesList.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center">
+                      <EmptyState title="No Sales Invoices" description="No invoices have been created yet." />
+                    </td>
+                  </tr>
+                ) : (
+                  liveSalesList.map((inv) => (
+                    <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">{inv.invoice_number || `INV-${inv.id}`}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{inv.customer_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.customer_contact}</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-600">₹ {parseFloat(inv.sale_price).toLocaleString("en-IN")}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurance_partner || "—"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                          inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          inv.delivery_status === "dispatched" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {inv.delivery_status ? inv.delivery_status.charAt(0).toUpperCase() + inv.delivery_status.slice(1) : "Processing"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5"><button className="text-xs text-emerald-600 font-bold cursor-pointer">Print PDF</button></td>
+                    </tr>
+                  ))
+                )}
               </Table>
 
             </div>
@@ -592,40 +644,74 @@ export default function SupervisorDashboard() {
           {activeTab === "bookings" && (
             <div className="space-y-6">
               
-              <Table title="Pending Booking Commitments Approval Queue" headers={["Booking ID", "Customer Details", "Vehicle Reserved", "Advance Payment", "Booking Date", "Financier Partner", "Supervisor Comment", "Approval State", "Actions"]}>
-                {bookings.map((bk, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{bk.id}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{bk.customer}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.model}</td>
-                    <td className="py-3.5 px-5 font-bold text-emerald-600">{bk.amount}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-medium">{bk.date}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{bk.financier}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{bk.comment}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        bk.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {bk.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      {bk.status === "Pending Approval" ? (
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleApproveBooking(bk.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3.5 py-1 rounded cursor-pointer"
-                          >
-                            Approve Lock
-                          </button>
-                          <button className="text-xs text-rose-600 font-bold cursor-pointer">Cancel</button>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-400">Locked & Active</span>
-                      )}
+              <Table title="Pending Booking Commitments Approval Queue" headers={["Booking ID", "Customer Details", "Contact", "Advance Payment", "Booking Date", "Expiry Date", "PDI Status", "Approval State", "Actions"]}>
+                {bookingsLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                        <span>Loading bookings from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : liveBookingsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center">
+                      <EmptyState title="No Bookings Found" description="No advance bookings have been recorded yet." />
+                    </td>
+                  </tr>
+                ) : (
+                  liveBookingsList.map((bk) => (
+                    <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">{bk.booking_id}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{bk.customer_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.contact_number}</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-600">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-medium">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          bk.pdi_verified === "yes" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          bk.pdi_verified === "no" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {bk.pdi_verified === "yes" ? "PDI Passed" : bk.pdi_verified === "no" ? "PDI Failed" : "PDI Pending"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {bk.status === "pending" ? "Pending Approval" : bk.status.charAt(0).toUpperCase() + bk.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        {bk.status === "pending" ? (
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleApproveBookingLive(bk.id, "confirmed")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3.5 py-1 rounded cursor-pointer"
+                            >
+                              Approve Lock
+                            </button>
+                            <button 
+                              onClick={() => handleApproveBookingLive(bk.id, "cancelled")}
+                              className="text-xs text-rose-600 font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {bk.status === "confirmed" ? "Locked & Active" : bk.status === "cancelled" ? "Cancelled" : bk.status}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
 
             </div>
