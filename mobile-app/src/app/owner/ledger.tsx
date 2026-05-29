@@ -15,17 +15,54 @@ interface Transaction {
   details: string;
 }
 
+import { useState, useEffect } from 'react';
+import { ActivityIndicator } from 'react-native';
+import api from '@/services/api';
+
 export default function OwnerLedger() {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
 
-  const transactions: Transaction[] = [
-    { id: 'TX-20894', type: 'Income', category: 'Sales Income', amount: '₹1,45,000', date: '28 May 2026', details: 'Kinetic Green Zoom Delivery - Customer: S. Ravi' },
-    { id: 'TX-20893', type: 'Expense', category: 'Purchase Expense', amount: '₹8,50,000', date: '27 May 2026', details: 'Vehicle batch intake - Supplier: Kinetic Green Ltd' },
-    { id: 'TX-20892', type: 'Income', category: 'Sales Income', amount: '₹95,000', date: '26 May 2026', details: 'Dynamo EV sale - Customer: K. Srinivas' },
-    { id: 'TX-20891', type: 'Expense', category: 'Salary Expense', amount: '₹3,40,000', date: '25 May 2026', details: 'Staff monthly salaries payout - Vizag KVR' },
-    { id: 'TX-20890', type: 'Expense', category: 'Operational Expense', amount: '₹45,000', date: '24 May 2026', details: 'Electricity & godown maintenance - Pendurthi' },
-  ];
+  const [isLoading, setIsLoading] = useState(true);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/ledger-entries/');
+      setLedgerEntries(res.data);
+    } catch (e) {
+      console.error('Failed to load ledger entries:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const totalIncome = ledgerEntries.reduce((sum, entry) => sum + parseFloat(entry.income || 0), 0);
+  const totalExpense = ledgerEntries.reduce((sum, entry) => sum + parseFloat(entry.expense || 0), 0);
+  const netProfit = totalIncome - totalExpense;
+  const marginIndex = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 85.0;
+
+  const transactions: Transaction[] = ledgerEntries.map((entry, idx) => {
+    const isInc = parseFloat(entry.income) > 0;
+    return {
+      id: entry.transaction_id || `TX-${entry.id || idx}`,
+      type: isInc ? 'Income' : 'Expense',
+      category: entry.ledger_type_display || entry.ledger_type,
+      amount: `₹ ${parseFloat(isInc ? entry.income : entry.expense).toLocaleString('en-IN')}`,
+      date: entry.created_at,
+      details: entry.detail,
+    };
+  });
+
+  const formattedIncome = totalIncome >= 100000 ? `₹ ${(totalIncome / 100000).toFixed(1)} Lakhs` : `₹ ${totalIncome.toLocaleString('en-IN')}`;
+  const formattedExpense = totalExpense >= 100000 ? `₹ ${(totalExpense / 100000).toFixed(1)} Lakhs` : `₹ ${totalExpense.toLocaleString('en-IN')}`;
+  const formattedNetProfit = netProfit >= 100000 ? `₹ ${(netProfit / 100000).toFixed(1)}L` : `₹ ${netProfit.toLocaleString('en-IN')}`;
+  const formattedMargin = `${marginIndex.toFixed(1)}%`;
 
   return (
     <FadeScaleTransition>
@@ -53,61 +90,69 @@ export default function OwnerLedger() {
             {/* Top Quick Metrics */}
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
-                <ThemedText style={styles.qVal}>₹82.2L</ThemedText>
+                <ThemedText style={styles.qVal}>{formattedNetProfit}</ThemedText>
                 <ThemedText style={styles.qLbl}>Net Profits MTD</ThemedText>
               </View>
               <View style={styles.qDivider} />
               <View style={styles.quickMetricBox}>
-                <ThemedText style={styles.qVal}>87.2%</ThemedText>
+                <ThemedText style={styles.qVal}>{formattedMargin}</ThemedText>
                 <ThemedText style={styles.qLbl}>Margin Index</ThemedText>
               </View>
             </View>
           </View>
 
-          {/* Ledger Sections List on light canvas */}
-          <View style={styles.contentSection}>
-            {/* Ledger Overview Cards */}
-            <View style={styles.financeGrid}>
-              <View style={styles.financeCard}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: '#e8fdf0' }]}>
-                    <ArrowDownLeft size={20} color="#04a700" />
-                  </View>
-                  <ThemedText style={styles.financeLabel}>Total Income</ThemedText>
-                </View>
-                <ThemedText style={[styles.financeValue, { color: '#04a700' }]}>₹94.6 Lakhs</ThemedText>
-              </View>
-
-              <View style={styles.financeCard}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: '#fef2f2' }]}>
-                    <ArrowUpRight size={20} color="#d71d22" />
-                  </View>
-                  <ThemedText style={styles.financeLabel}>Total Expense</ThemedText>
-                </View>
-                <ThemedText style={[styles.financeValue, { color: '#d71d22' }]}>₹12.4 Lakhs</ThemedText>
-              </View>
+          {isLoading ? (
+            <View style={{ paddingVertical: 80, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#04a700" />
+              <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
+                Fetching ledger transactions...
+              </ThemedText>
             </View>
+          ) : (
+            /* Ledger Sections List on light canvas */
+            <View style={styles.contentSection}>
+              {/* Ledger Overview Cards */}
+              <View style={styles.financeGrid}>
+                <View style={styles.financeCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.iconBox, { backgroundColor: '#e8fdf0' }]}>
+                      <ArrowDownLeft size={20} color="#04a700" />
+                    </View>
+                    <ThemedText style={styles.financeLabel}>Total Income</ThemedText>
+                  </View>
+                  <ThemedText style={[styles.financeValue, { color: '#04a700' }]}>{formattedIncome}</ThemedText>
+                </View>
 
-            {/* Profitability Index card */}
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>Profitability Analysis</ThemedText>
-              
-              <View style={styles.barSplitContainer}>
-                <View style={styles.barLabelRow}>
-                  <ThemedText style={styles.splitName}>Net Margin</ThemedText>
-                  <ThemedText style={styles.splitValue}>87.2%</ThemedText>
+                <View style={styles.financeCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.iconBox, { backgroundColor: '#fef2f2' }]}>
+                      <ArrowUpRight size={20} color="#d71d22" />
+                    </View>
+                    <ThemedText style={styles.financeLabel}>Total Expense</ThemedText>
+                  </View>
+                  <ThemedText style={[styles.financeValue, { color: '#d71d22' }]}>{formattedExpense}</ThemedText>
                 </View>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: '87.2%', backgroundColor: '#04a700' }]} />
-                </View>
-                <ThemedText style={styles.splitDesc}>Net profits from branches collections subtract operational expenditures.</ThemedText>
               </View>
-            </View>
 
-            {/* Recent Transaction Log */}
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>Recent Entries Log</ThemedText>
+              {/* Profitability Index card */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Profitability Analysis</ThemedText>
+                
+                <View style={styles.barSplitContainer}>
+                  <View style={styles.barLabelRow}>
+                    <ThemedText style={styles.splitName}>Net Margin</ThemedText>
+                    <ThemedText style={styles.splitValue}>{formattedMargin}</ThemedText>
+                  </View>
+                  <View style={styles.barTrack}>
+                    <View style={[styles.barFill, { width: `${Math.min(100, Math.max(0, marginIndex))}%`, backgroundColor: '#04a700' }]} />
+                  </View>
+                  <ThemedText style={styles.splitDesc}>Net profits from branches collections subtract operational expenditures.</ThemedText>
+                </View>
+              </View>
+
+              {/* Recent Transaction Log */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Recent Entries Log</ThemedText>
               
               <View style={styles.listContainer}>
                 {transactions.map((tx, idx) => {
@@ -138,6 +183,7 @@ export default function OwnerLedger() {
               </View>
             </View>
           </View>
+          )}
         </ScrollView>
       </View>
     </FadeScaleTransition>

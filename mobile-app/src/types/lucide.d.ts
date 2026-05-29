@@ -54,4 +54,23 @@ declare module 'lucide-react-native' {
   export const X: LucideIcon;
   export const Layers: LucideIcon;
   export const ShoppingBag: LucideIcon;
+  export const ArrowLeft: LucideIcon;
+  export const Clock: LucideIcon;
+  export const XCircle: LucideIcon;
+  export const Plus: LucideIcon;
+  export const CheckCircle2: LucideIcon;
+  export const Shield: LucideIcon;
+  export const CreditCard: LucideIcon;
+  export const Phone: LucideIcon;
+  export const Tag: LucideIcon;
+  export const Save: LucideIcon;
+  export const Edit: LucideIcon;
+  export const ClipboardCheck: LucideIcon;
+  export const Boxes: LucideIcon;
+  export const LogOut: LucideIcon;
+  export const BadgeCheck: LucideIcon;
+  export const BarChart: LucideIcon;
+  export const UserX: LucideIcon;
+  export const Compass: LucideIcon;
+  export const Info: LucideIcon;
 }

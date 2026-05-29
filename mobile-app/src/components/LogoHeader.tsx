@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: 12,
-    color: '#60646C',
+    color: '#94a3b8',
     fontWeight: '500',
   },
 });

@@ -3,18 +3,29 @@ import { StyleSheet, ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/themed-view';
 import { LogoHeader } from '@/components/LogoHeader';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EntryPoint() {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    // Elegant redirect to unified login page on launch
-    const timer = setTimeout(() => {
-      router.replace('/login');
-    }, 1500);
+    if (isLoading) return;
 
-    return () => clearTimeout(timer);
-  }, []);
+    if (user) {
+      if (user.role === 'owner') {
+        router.replace('/owner/dashboard');
+      } else if (user.role === 'sales') {
+        router.replace('/sales/dashboard');
+      } else if (user.role === 'supervisor') {
+        router.replace('/supervisor/dashboard');
+      } else {
+        router.replace('/login');
+      }
+    } else {
+      router.replace('/login');
+    }
+  }, [user, isLoading]);
 
   return (
     <ThemedView style={styles.container}>
@@ -29,7 +40,7 @@ export default function EntryPoint() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#090d16',
     justifyContent: 'center',
     alignItems: 'center',
   },

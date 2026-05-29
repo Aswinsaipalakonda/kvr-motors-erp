@@ -8,16 +8,18 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import { Eye, EyeOff, Lock, User, CheckSquare, Square } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert('Missing Fields', 'Please enter your username and password.');
       return;
@@ -25,22 +27,15 @@ export default function LoginScreen() {
 
     setIsLoading(true);
 
-    // Mock Authentication Logic based on credentials role redirection
-    setTimeout(() => {
+    try {
+      await login(username.trim(), password);
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data?.detail || err.message || 'Please check your credentials and server connection.';
+      Alert.alert('Login Failed', errMsg);
+    } finally {
       setIsLoading(false);
-      const user = username.toLowerCase().trim();
-      
-      if (user.includes('owner')) {
-        // Successful redirect to owner dashboard
-        router.replace('/owner/dashboard');
-      } else if (user.includes('supervisor')) {
-        // Redirection would go to supervisor app screens
-        Alert.alert('Supervisor Login Success', 'Redirecting to Supervisor Portal...');
-      } else {
-        // Fallback standard redirect to Owner Dashboard for presentation/testing
-        router.replace('/owner/dashboard');
-      }
-    }, 1200);
+    }
   };
 
   return (
@@ -60,7 +55,7 @@ export default function LoginScreen() {
                   <View style={styles.inputGroup}>
                     <ThemedText style={styles.label}>USERNAME OR EMAIL</ThemedText>
                     <View style={styles.inputWrapper}>
-                      <User size={18} color="#60646C" style={styles.inputIcon} />
+                      <User size={18} color="#94a3b8" style={styles.inputIcon} />
                       <TextInput
                         style={styles.input}
                         placeholder="Enter your username..."
@@ -82,7 +77,7 @@ export default function LoginScreen() {
                       </Pressable>
                     </View>
                     <View style={styles.inputWrapper}>
-                      <Lock size={18} color="#60646C" style={styles.inputIcon} />
+                      <Lock size={18} color="#94a3b8" style={styles.inputIcon} />
                       <TextInput
                         style={styles.input}
                         placeholder="Enter your password..."
@@ -95,9 +90,9 @@ export default function LoginScreen() {
                       />
                       <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                         {showPassword ? (
-                          <EyeOff size={18} color="#60646C" />
+                          <EyeOff size={18} color="#94a3b8" />
                         ) : (
-                          <Eye size={18} color="#60646C" />
+                          <Eye size={18} color="#94a3b8" />
                         )}
                       </Pressable>
                     </View>
@@ -109,7 +104,7 @@ export default function LoginScreen() {
                       {rememberMe ? (
                         <CheckSquare size={20} color="#04a700" />
                       ) : (
-                        <Square size={20} color="#60646C" />
+                        <Square size={20} color="#94a3b8" />
                       )}
                     </View>
                     <ThemedText style={styles.rememberMeLabel}>Remember me</ThemedText>
@@ -148,7 +143,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#090d16',
   },
   safeArea: {
     flex: 1,
@@ -162,14 +157,14 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#121824',
     borderRadius: 24,
     padding: Spacing.four,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
+    borderColor: 'rgba(4, 167, 0, 0.2)', // brand green glow border
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
@@ -188,7 +183,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#60646C',
+    color: '#94a3b8',
     letterSpacing: 0.5,
   },
   forgotText: {
@@ -199,9 +194,9 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#334155',
     borderRadius: 9999, // Pill shape (ROUND_FULL)
     height: 52,
     paddingHorizontal: 16,
@@ -211,7 +206,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#0f172a',
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '500',
     height: '100%',
@@ -229,7 +224,7 @@ const styles = StyleSheet.create({
   },
   rememberMeLabel: {
     fontSize: 14,
-    color: '#4b5563',
+    color: '#cbd5e1',
     fontWeight: '500',
   },
   loginButton: {
@@ -250,7 +245,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   loginButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: 'rgba(4, 167, 0, 0.4)',
   },
   loginButtonText: {
     color: '#ffffff',
@@ -261,7 +256,7 @@ const styles = StyleSheet.create({
   supportHint: {
     textAlign: 'center',
     fontSize: 13,
-    color: '#64748b',
+    color: '#94a3b8',
     marginTop: 8,
   },
   supportLink: {

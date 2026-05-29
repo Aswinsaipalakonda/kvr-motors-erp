@@ -1,11 +1,47 @@
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const { user, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'owner' || segments[0] === 'sales' || segments[0] === 'supervisor';
+
+    if (!user && inAuthGroup) {
+      // Redirect to the login screen if trying to access secure screens and not logged in
+      router.replace('/login');
+    } else if (user && !inAuthGroup) {
+      // Redirect to appropriate dashboard if already logged in
+      if (user.role === 'owner') {
+        router.replace('/owner/dashboard');
+      } else if (user.role === 'sales') {
+        router.replace('/sales/dashboard');
+      } else if (user.role === 'supervisor') {
+        router.replace('/supervisor/dashboard');
+      }
+    }
+  }, [user, isLoading, segments]);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login/index" />
-      <Stack.Screen name="owner/_layout" />
+      <Stack.Screen name="owner" />
+      <Stack.Screen name="sales" />
+      <Stack.Screen name="supervisor" />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
   );
 }
