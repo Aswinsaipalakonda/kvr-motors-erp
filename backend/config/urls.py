@@ -12,6 +12,7 @@ from sales.views import SalesInvoiceViewSet
 from purchases.views import PurchaseOrderViewSet
 from ledger.views import LedgerEntryViewSet
 from inventory.views import StockTransferViewSet
+from users.views import UserViewSet
 
 router = DefaultRouter()
 router.register(r'branches', BranchViewSet, basename='branch')
@@ -28,6 +29,7 @@ router.register(r'sales-invoices', SalesInvoiceViewSet, basename='salesinvoice')
 router.register(r'purchase-orders', PurchaseOrderViewSet, basename='purchaseorder')
 router.register(r'ledger-entries', LedgerEntryViewSet, basename='ledgerentry')
 router.register(r'stock-transfers', StockTransferViewSet, basename='stocktransfer')
+router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, FlatList, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import { UserCheck, ArrowLeft, Plus, X, ChevronDown, Check } from 'lucide-react-native';
+import api from '@/services/api';
 
 interface StaffUser {
+  id?: number;
   name: string;
   role: string;
   userType: string;
@@ -20,14 +22,9 @@ export default function OwnerUsers() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [users, setUsers] = useState<StaffUser[]>([
-    { name: 'Ravi Varma', role: 'Owner', userType: 'Admin', branch: 'KVR Motors - Vizag', status: 'Active', lastLogin: '13 May 2024 09:30 AM' },
-    { name: 'Suresh Babu', role: 'Supervisor', userType: 'Staff', branch: 'KVR Motors - Vizag', status: 'Active', lastLogin: '13 May 2024 08:15 AM' },
-    { name: 'Anil Kumar', role: 'Sales Executive', userType: 'Staff', branch: 'KVR Motors - Vizag', status: 'Active', lastLogin: '13 May 2024 09:10 AM' },
-    { name: 'Venkatesh', role: 'Sales Staff', userType: 'Staff', branch: 'Future Ride - Vizag', status: 'Active', lastLogin: '13 May 2024 07:45 AM' },
-    { name: 'Prasad', role: 'Sales Executive', userType: 'Staff', branch: 'KVR Motors - Srikakulam', status: 'Active', lastLogin: '12 May 2024 05:20 PM' },
-    { name: 'Mahesh', role: 'Sales Staff', userType: 'Staff', branch: 'KVR Motors - Kakinada', status: 'Inactive', lastLogin: '10 May 2024 04:35 PM' },
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [users, setUsers] = useState<StaffUser[]>([]);
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,30 +44,80 @@ export default function OwnerUsers() {
     'KVR Motors - Kakinada'
   ];
 
-  const handleAddUserSubmit = () => {
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/users/');
+      const mapped: StaffUser[] = res.data.map((u: any) => {
+        let displayRole = 'Sales Staff';
+        if (u.role === 'owner') displayRole = 'Owner';
+        else if (u.role === 'supervisor') displayRole = 'Supervisor';
+        else if (u.role === 'sales_executive') displayRole = 'Sales Executive';
+        else if (u.role === 'admin') displayRole = 'Admin';
+
+        return {
+          id: u.id,
+          name: u.full_name || u.username,
+          role: displayRole,
+          userType: (u.role === 'owner' || u.role === 'admin') ? 'Admin' : 'Staff',
+          branch: u.branch || u.showroom || 'KVR Motors - Vizag',
+          status: u.is_active ? 'Active' : 'Inactive',
+          lastLogin: 'Active Session',
+        };
+      });
+      setUsers(mapped);
+    } catch (e) {
+      console.error('Failed to load staff users:', e);
+      Alert.alert('Load Error', 'Failed to retrieve staff directory.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleAddUserSubmit = async () => {
     if (!fullName.trim() || !email.trim()) {
       Alert.alert('Missing Fields', 'Please fill in the full name and email address.');
       return;
     }
 
-    const newUser: StaffUser = {
-      name: fullName.trim(),
-      role: role,
-      userType: role === 'Owner' ? 'Admin' : 'Staff',
-      branch: branch,
-      status: 'Active',
-      lastLogin: 'Not yet logged in',
-    };
+    let backendRole = 'sales';
+    if (role === 'Owner') backendRole = 'owner';
+    else if (role === 'Supervisor') backendRole = 'supervisor';
+    else if (role === 'Sales Executive') backendRole = 'sales_executive';
 
-    setUsers([newUser, ...users]);
-    Alert.alert('Success', 'New user account created successfully.');
-    
-    // Reset form
-    setFullName('');
-    setEmail('');
-    setRole('Sales Executive');
-    setBranch('KVR Motors - Vizag');
-    setIsModalOpen(false);
+    const username = fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '') + Math.floor(100 + Math.random() * 900);
+
+    setIsSubmitting(true);
+    try {
+      await api.post('/users/', {
+        username: username,
+        email: email.trim(),
+        full_name: fullName.trim(),
+        role: backendRole,
+        branch: branch,
+        password: 'Welcome@123',
+      });
+
+      Alert.alert('Success', 'New user account created successfully.');
+      
+      // Reset form
+      setFullName('');
+      setEmail('');
+      setRole('Sales Executive');
+      setBranch('KVR Motors - Vizag');
+      setIsModalOpen(false);
+      
+      loadUsers();
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      Alert.alert('Error', 'Failed to register new staff account in database.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -108,6 +155,14 @@ export default function OwnerUsers() {
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} 
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={loadUsers}
+              colors={['#04a700']}
+              tintColor="#04a700"
+            />
+          }
         >
           <View style={styles.contentSection}>
             {users.map((user, idx) => {
@@ -117,7 +172,7 @@ export default function OwnerUsers() {
                   <View style={styles.cardHeader}>
                     <View style={styles.avatar}>
                       <ThemedText style={styles.avatarText}>
-                        {user.name.split(' ').map(n => n[0]).join('')}
+                        {(user.name.split(' ').filter(Boolean).map(n => n[0]).join('') || 'U').substring(0, 2).toUpperCase()}
                       </ThemedText>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>

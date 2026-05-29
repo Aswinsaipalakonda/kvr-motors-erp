@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import { Wallet, ArrowDownLeft, ArrowUpRight, Award, CirclePercent, CheckCircle } from 'lucide-react-native';
+import api from '@/services/api';
 
 interface Transaction {
   id: string;
@@ -15,16 +16,13 @@ interface Transaction {
   details: string;
 }
 
-import { useState, useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
-import api from '@/services/api';
-
 export default function OwnerLedger() {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
 
   const [isLoading, setIsLoading] = useState(true);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<'all' | 'today' | '7d' | 'mtd' | 'ytd'>('all');
 
   const loadData = async () => {
     try {
@@ -42,26 +40,72 @@ export default function OwnerLedger() {
     loadData();
   }, []);
 
-  const totalIncome = ledgerEntries.reduce((sum, entry) => sum + parseFloat(entry.income || 0), 0);
-  const totalExpense = ledgerEntries.reduce((sum, entry) => sum + parseFloat(entry.expense || 0), 0);
-  const netProfit = totalIncome - totalExpense;
-  const marginIndex = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 85.0;
+  const filterEntriesByPeriod = (entries: any[]) => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return entries.filter(entry => {
+      if (selectedPeriod === 'all') return true;
+      
+      const entryDate = new Date(entry.created_at || entry.date || now);
+      
+      if (selectedPeriod === 'today') {
+        return entryDate >= startOfDay;
+      }
+      
+      if (selectedPeriod === '7d') {
+        const sevenDaysAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return entryDate >= sevenDaysAgo;
+      }
+      
+      if (selectedPeriod === 'mtd') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return entryDate >= startOfMonth;
+      }
+      
+      if (selectedPeriod === 'ytd') {
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        return entryDate >= startOfYear;
+      }
+      
+      return true;
+    });
+  };
 
-  const transactions: Transaction[] = ledgerEntries.map((entry, idx) => {
-    const isInc = parseFloat(entry.income) > 0;
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const filteredEntries = filterEntriesByPeriod(ledgerEntries);
+
+  const totalIncome = filteredEntries.reduce((sum, entry) => sum + parseFloat(entry.income || 0), 0);
+  const totalExpense = filteredEntries.reduce((sum, entry) => sum + parseFloat(entry.expense || 0), 0);
+  const netProfit = totalIncome - totalExpense;
+  const marginIndex = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0.0;
+
+  const transactions: Transaction[] = filteredEntries.map((entry, idx) => {
+    const isInc = parseFloat(entry.income || 0) > 0;
     return {
       id: entry.transaction_id || `TX-${entry.id || idx}`,
       type: isInc ? 'Income' : 'Expense',
       category: entry.ledger_type_display || entry.ledger_type,
       amount: `₹ ${parseFloat(isInc ? entry.income : entry.expense).toLocaleString('en-IN')}`,
-      date: entry.created_at,
+      date: formatDate(entry.created_at),
       details: entry.detail,
     };
   });
 
   const formattedIncome = totalIncome >= 100000 ? `₹ ${(totalIncome / 100000).toFixed(1)} Lakhs` : `₹ ${totalIncome.toLocaleString('en-IN')}`;
   const formattedExpense = totalExpense >= 100000 ? `₹ ${(totalExpense / 100000).toFixed(1)} Lakhs` : `₹ ${totalExpense.toLocaleString('en-IN')}`;
-  const formattedNetProfit = netProfit >= 100000 ? `₹ ${(netProfit / 100000).toFixed(1)}L` : `₹ ${netProfit.toLocaleString('en-IN')}`;
+  const formattedNetProfit = netProfit >= 0
+    ? (netProfit >= 100000 ? `₹ ${(netProfit / 100000).toFixed(1)}L` : `₹ ${netProfit.toLocaleString('en-IN')}`)
+    : (Math.abs(netProfit) >= 100000 ? `-₹ ${(Math.abs(netProfit) / 100000).toFixed(1)}L` : `-₹ ${Math.abs(netProfit).toLocaleString('en-IN')}`);
   const formattedMargin = `${marginIndex.toFixed(1)}%`;
 
   return (
@@ -71,6 +115,14 @@ export default function OwnerLedger() {
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={loadData}
+              colors={['#04a700']}
+              tintColor="#04a700"
+            />
+          }
         >
           {/* Dynamic Dark Premium Header Section matching the dashboard */}
           <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
@@ -91,7 +143,7 @@ export default function OwnerLedger() {
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
                 <ThemedText style={styles.qVal}>{formattedNetProfit}</ThemedText>
-                <ThemedText style={styles.qLbl}>Net Profits MTD</ThemedText>
+                <ThemedText style={styles.qLbl}>Net Profits</ThemedText>
               </View>
               <View style={styles.qDivider} />
               <View style={styles.quickMetricBox}>
@@ -99,6 +151,40 @@ export default function OwnerLedger() {
                 <ThemedText style={styles.qLbl}>Margin Index</ThemedText>
               </View>
             </View>
+
+            {/* Premium Sliding Time Filter pills */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.periodFilterScroll}
+            >
+              {[
+                { id: 'all', label: 'All Time' },
+                { id: 'today', label: 'Today' },
+                { id: '7d', label: '7 Days' },
+                { id: 'mtd', label: 'MTD' },
+                { id: 'ytd', label: 'YTD' },
+              ].map((p) => {
+                const isActive = selectedPeriod === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setSelectedPeriod(p.id as any)}
+                    style={[
+                      styles.periodPill,
+                      isActive && styles.periodPillActive
+                    ]}
+                  >
+                    <ThemedText style={[
+                      styles.periodPillText,
+                      isActive && styles.periodPillTextActive
+                    ]}>
+                      {p.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {isLoading ? (
@@ -426,5 +512,36 @@ const styles = StyleSheet.create({
   txAmount: {
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  periodFilterScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 18,
+    paddingBottom: 2,
+  },
+  periodPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  periodPillActive: {
+    backgroundColor: '#04a700',
+    borderColor: '#04a700',
+    shadowColor: '#04a700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  periodPillText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  periodPillTextActive: {
+    color: '#ffffff',
   },
 });
