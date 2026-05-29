@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { lookupVehicleUnit } from "../services/vehicles";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -51,6 +52,7 @@ export default function SalesDashboard() {
   const [vinQuery, setVinQuery] = useState("");
   const [autoFillResult, setAutoFillResult] = useState<any>(null);
   const [vinSearchError, setVinSearchError] = useState("");
+  const [vinSearchLoading, setVinSearchLoading] = useState(false);
 
   // FIFO WARNING STATE
   const [selectedBattery, setSelectedBattery] = useState("");
@@ -94,14 +96,36 @@ export default function SalesDashboard() {
   ];
 
   // Executing VIN auto-fill query
-  const handleVinSearch = () => {
+  const handleVinSearch = async () => {
     setVinSearchError("");
-    const unit = mockVehiclesDb.find(v => v.vin.toUpperCase() === vinQuery.toUpperCase() || v.motor.toUpperCase() === vinQuery.toUpperCase() || v.chassis.toUpperCase() === vinQuery.toUpperCase());
-    if (unit) {
-      setAutoFillResult(unit);
-    } else {
-      setAutoFillResult(null);
-      setVinSearchError("No vehicle matches this VIN, Motor, or Chassis number.");
+    setAutoFillResult(null);
+    const query = vinQuery.trim();
+    if (!query) {
+      setVinSearchError("Please enter a VIN, Motor, or Chassis number.");
+      return;
+    }
+    
+    try {
+      setVinSearchLoading(true);
+      const data = await lookupVehicleUnit(query);
+      
+      // Map Django REST keys to frontend UI visual keys
+      setAutoFillResult({
+        vin: data.vin_number,
+        motor: data.motor_number,
+        chassis: data.chassis_number,
+        model: data.model_name || "Kinetic Green E-Luna",
+        color: data.color || "Green",
+        price: data.base_price ? `₹ ${parseFloat(data.base_price).toLocaleString('en-IN')}` : "₹ 74,999",
+        branch: data.branch_name || "Vizag Showroom",
+        status: data.stock_status.charAt(0).toUpperCase() + data.stock_status.slice(1),
+        battery: data.assigned_battery || "BATT-00874 (Oldest)"
+      });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || "No matching vehicle unit found.";
+      setVinSearchError(errorMsg);
+    } finally {
+      setVinSearchLoading(false);
     }
   };
 
@@ -508,9 +532,10 @@ export default function SalesDashboard() {
                   </div>
                   <button 
                     onClick={handleVinSearch}
-                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    disabled={vinSearchLoading}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer disabled:bg-slate-400 flex items-center justify-center gap-1.5"
                   >
-                    Fetch Vehicle Details
+                    {vinSearchLoading ? "Fetching..." : "Fetch Vehicle Details"}
                   </button>
                 </div>
 

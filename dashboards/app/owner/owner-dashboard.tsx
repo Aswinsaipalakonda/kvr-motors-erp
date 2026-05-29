@@ -8,6 +8,7 @@ import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import { getBranches, createBranch } from "../services/branches";
+import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel } from "../services/vehicles";
 import {
   TrendingUp,
   Percent,
@@ -60,6 +61,38 @@ export default function OwnerDashboard() {
   const [branchAddress, setBranchAddress] = useState("");
   const [branchPhone, setBranchPhone] = useState("");
 
+  // Real database vehicles states
+  const [vehicleBrandsList, setVehicleBrandsList] = useState<any[]>([]);
+  const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
+  const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+
+  // New Vehicle Model form state
+  const [newModelBrand, setNewModelBrand] = useState<string>("");
+  const [newModelName, setNewModelName] = useState("");
+  const [newModelPrice, setNewModelPrice] = useState("");
+  const [newModelBattery, setNewModelBattery] = useState("");
+  const [newModelColors, setNewModelColors] = useState("");
+  const [newModelStatus, setNewModelStatus] = useState<"active" | "inactive">("active");
+
+  const loadVehicles = async () => {
+    try {
+      setVehiclesLoading(true);
+      const [brands, models, units] = await Promise.all([
+        getVehicleBrands(),
+        getVehicleModels(),
+        getVehicleUnits()
+      ]);
+      setVehicleBrandsList(brands);
+      setVehicleModelsList(models);
+      setVehicleUnitsList(units);
+    } catch (e) {
+      console.error("Failed to load vehicle catalog from Django REST API:", e);
+    } finally {
+      setVehiclesLoading(false);
+    }
+  };
+
   const loadBranches = async () => {
     try {
       setBranchesLoading(true);
@@ -92,9 +125,36 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleAddModelSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModelBrand || !newModelName.trim() || !newModelPrice) return;
+    try {
+      const colorVariants = newModelColors.split(",").map(c => c.trim()).filter(Boolean);
+      await createVehicleModel({
+        brand: parseInt(newModelBrand),
+        model_name: newModelName.trim(),
+        base_price: parseFloat(newModelPrice),
+        color_variants: colorVariants,
+        battery_compatibility: newModelBattery.trim(),
+        status: newModelStatus
+      });
+      setNewModelBrand("");
+      setNewModelName("");
+      setNewModelPrice("");
+      setNewModelBattery("");
+      setNewModelColors("");
+      setNewModelStatus("active");
+      setIsAddVehicleOpen(false);
+      loadVehicles();
+    } catch (err) {
+      console.error("Failed to add vehicle model to Django backend:", err);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
+    loadVehicles();
   }, []);
   const systemUsers = [
     { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
@@ -502,26 +562,45 @@ export default function OwnerDashboard() {
                   </button>
                 }
               >
-                {vehicleModels.map((model, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{model.name}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{model.brand}</td>
-                    <td className="py-3.5 px-5 text-slate-600">{model.category}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{model.price}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-medium">{model.colors}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{model.battery}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{model.warranty}</td>
-                    <td className="py-3.5 px-5 font-bold text-emerald-700">{model.range}</td>
-                    <td className="py-3.5 px-5">
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {model.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit Model</button>
+                {vehiclesLoading ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
+                        <span>Loading model catalog from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : vehicleModelsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center">
+                      <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
+                    </td>
+                  </tr>
+                ) : (
+                  vehicleModelsList.map((model, idx) => (
+                    <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{model.brand_name || "Kinetic"}</td>
+                      <td className="py-3.5 px-5 text-slate-605">Electric</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Green"}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{model.battery_compatibility || "1.2 kWh"}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">3 Yrs / 40K km</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-700">140 km</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                          model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                        }`}>
+                          {model.status === "active" ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit Model</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
               {/* Physical Stock Units tracking */}
               <Table 
@@ -536,36 +615,51 @@ export default function OwnerDashboard() {
                   </button>
                 }
               >
-                {vehicleStockUnits.map((unit, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin}</td>
-                    <td className="py-3.5 px-5 font-mono text-slate-500">{unit.motor}</td>
-                    <td className="py-3.5 px-5 font-mono text-slate-500">{unit.chassis}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model}</td>
-                    <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-medium">{unit.location}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.battery}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        unit.pdi === "Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {unit.pdi}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5 font-bold text-slate-650">{unit.ageInStock}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        unit.status === "Available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                        unit.status === "Booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        unit.status === "Reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                        "bg-slate-100 text-slate-500"
-                      }`}>
-                        {unit.status}
-                      </span>
+                {vehiclesLoading ? (
+                  <tr>
+                    <td colSpan={12} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
+                        <span>Loading physical units registry...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : vehicleUnitsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="py-8 text-center">
+                      <EmptyState title="No Stock Units Found" description="No physical stock units registered." />
+                    </td>
+                  </tr>
+                ) : (
+                  vehicleUnitsList.map((unit, idx) => (
+                    <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Vizag"}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-medium">{unit.location_name || "Warehouse"}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Passed
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 font-bold text-slate-650">5 days</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                          "bg-slate-100 text-slate-505 border border-slate-205"
+                        }`}>
+                          {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -1231,26 +1325,71 @@ export default function OwnerDashboard() {
       </Modal>
       {/* 2. Add Vehicle Model */}
       <Modal isOpen={isAddVehicleOpen} onClose={() => setIsAddVehicleOpen(false)} title="Add Vehicle Model to Catalog">
-        <form onSubmit={(e) => { e.preventDefault(); setIsAddVehicleOpen(false); }} className="space-y-4 text-left">
+        <form onSubmit={handleAddModelSubmit} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Model Name</label>
-              <input type="text" placeholder="e.g. E-Luna Pro" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+              <input 
+                type="text" 
+                placeholder="e.g. Dynamo Pro" 
+                value={newModelName}
+                onChange={(e) => setNewModelName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Brand</label>
-              <input type="text" placeholder="e.g. Kinetic" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+              <select 
+                value={newModelBrand}
+                onChange={(e) => setNewModelBrand(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2.5 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required
+              >
+                <option value="">-- Select Brand --</option>
+                {vehicleBrandsList.map((brand) => (
+                  <option key={brand.id} value={brand.id}>{brand.name}</option>
+                ))}
+                {vehicleBrandsList.length === 0 && (
+                  <option value="1">Kinetic Green</option>
+                )}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
-              <input type="text" placeholder="e.g. 78000" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price (INR)</label>
+              <input 
+                type="number" 
+                placeholder="e.g. 98500" 
+                value={newModelPrice}
+                onChange={(e) => setNewModelPrice(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Compatibility</label>
-              <input type="text" placeholder="e.g. 1.2 kWh Swappable" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+              <input 
+                type="text" 
+                placeholder="e.g. 2.0 kWh Swappable" 
+                value={newModelBattery}
+                onChange={(e) => setNewModelBattery(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variants (comma-separated)</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Red, Blue, Matte Black" 
+              value={newModelColors}
+              onChange={(e) => setNewModelColors(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+              required 
+            />
           </div>
           <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
             Add Model
