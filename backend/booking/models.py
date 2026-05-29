@@ -1,3 +1,43 @@
 from django.db import models
+from django.conf import settings
+from vehicles.models import VehicleModel, VehicleUnit
 
-# Create your models here.
+class AdvanceBooking(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending Approval'),
+        ('confirmed', 'Confirmed'),
+        ('converted', 'Converted to Sale'),
+        ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),
+    )
+
+    booking_id = models.CharField(max_length=50, unique=True)
+    customer_name = models.CharField(max_length=255)
+    contact_number = models.CharField(max_length=15)
+    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE)
+    vehicle_unit = models.ForeignKey(
+        VehicleUnit, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="bookings"
+    )
+    advance_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    booking_date = models.DateField(auto_now_add=True)
+    expiry_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    assigned_executive = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="assigned_bookings"
+    )
+    pdi_verified = models.CharField(
+        max_length=20, 
+        choices=(('yes', 'Yes'), ('pending', 'Pending'), ('no', 'No')), 
+        default='pending'
+    )
+
+    def __str__(self):
+        return f"{self.booking_id} - {self.customer_name} ({self.get_status_display()})"

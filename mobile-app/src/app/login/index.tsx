@@ -1,0 +1,271 @@
+import React, { useState } from 'react';
+import { View, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LogoHeader } from '@/components/LogoHeader';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
+import FadeScaleTransition from '@/components/FadeScaleTransition';
+import { Eye, EyeOff, Lock, User, CheckSquare, Square } from 'lucide-react-native';
+
+export default function LoginScreen() {
+  const router = useRouter();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Missing Fields', 'Please enter your username and password.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Mock Authentication Logic based on credentials role redirection
+    setTimeout(() => {
+      setIsLoading(false);
+      const user = username.toLowerCase().trim();
+      
+      if (user.includes('owner')) {
+        // Successful redirect to owner dashboard
+        router.replace('/owner/dashboard');
+      } else if (user.includes('supervisor')) {
+        // Redirection would go to supervisor app screens
+        Alert.alert('Supervisor Login Success', 'Redirecting to Supervisor Portal...');
+      } else {
+        // Fallback standard redirect to Owner Dashboard for presentation/testing
+        router.replace('/owner/dashboard');
+      }
+    }, 1200);
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <FadeScaleTransition>
+              <View style={styles.card}>
+                <LogoHeader scale={1.1} />
+
+                <View style={styles.formContainer}>
+                  {/* Username Field */}
+                  <View style={styles.inputGroup}>
+                    <ThemedText style={styles.label}>USERNAME OR EMAIL</ThemedText>
+                    <View style={styles.inputWrapper}>
+                      <User size={18} color="#60646C" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your username..."
+                        placeholderTextColor="#94a3b8"
+                        value={username}
+                        onChangeText={setUsername}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Password Field */}
+                  <View style={styles.inputGroup}>
+                    <View style={styles.labelRow}>
+                      <ThemedText style={styles.label}>PASSWORD</ThemedText>
+                      <Pressable onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
+                        <ThemedText style={styles.forgotText}>Forgot password?</ThemedText>
+                      </Pressable>
+                    </View>
+                    <View style={styles.inputWrapper}>
+                      <Lock size={18} color="#60646C" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your password..."
+                        placeholderTextColor="#94a3b8"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                        {showPassword ? (
+                          <EyeOff size={18} color="#60646C" />
+                        ) : (
+                          <Eye size={18} color="#60646C" />
+                        )}
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Remember Me Toggle */}
+                  <Pressable onPress={() => setRememberMe(!rememberMe)} style={styles.rememberMeContainer}>
+                    <View style={styles.checkboxWrapper}>
+                      {rememberMe ? (
+                        <CheckSquare size={20} color="#04a700" />
+                      ) : (
+                        <Square size={20} color="#60646C" />
+                      )}
+                    </View>
+                    <ThemedText style={styles.rememberMeLabel}>Remember me</ThemedText>
+                  </Pressable>
+
+                  {/* Submit Button */}
+                  <Pressable
+                    onPress={handleLogin}
+                    style={({ pressed }) => [
+                      styles.loginButton,
+                      pressed && styles.loginButtonPressed,
+                      isLoading && styles.loginButtonDisabled,
+                    ]}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <ThemedText style={styles.loginButtonText}>LOG IN</ThemedText>
+                    )}
+                  </Pressable>
+
+                  <ThemedText style={styles.supportHint}>
+                    Need help? <ThemedText style={styles.supportLink} onPress={() => Alert.alert('Contact Support', 'Email support at support@kvrmotors.com')}>Contact Support</ThemedText>
+                  </ThemedText>
+                </View>
+              </View>
+            </FadeScaleTransition>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: Spacing.four,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  formContainer: {
+    marginTop: 16,
+    gap: 20,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#60646C',
+    letterSpacing: 0.5,
+  },
+  forgotText: {
+    fontSize: 12,
+    color: '#04a700',
+    fontWeight: '600',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 9999, // Pill shape (ROUND_FULL)
+    height: 52,
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '500',
+    height: '100%',
+  },
+  eyeBtn: {
+    padding: 6,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  checkboxWrapper: {
+    marginRight: 8,
+  },
+  rememberMeLabel: {
+    fontSize: 14,
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: '#04a700', // Brand Green
+    borderRadius: 9999, // ROUND_FULL
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#04a700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    marginTop: 10,
+  },
+  loginButtonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#93c5fd',
+  },
+  loginButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  supportHint: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 8,
+  },
+  supportLink: {
+    color: '#04a700',
+    fontWeight: '600',
+  },
+});
