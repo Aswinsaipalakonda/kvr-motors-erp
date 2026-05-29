@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 import { 
   Search, 
   Bell, 
@@ -21,6 +22,7 @@ interface NavbarProps {
 
 export default function Navbar({ title, role }: NavbarProps) {
   const router = useRouter();
+  const { logout } = useAuth();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -192,7 +194,7 @@ export default function Navbar({ title, role }: NavbarProps) {
                       key={item.id}
                       onClick={() => {
                         if (item.id === "logout") {
-                          router.push("/");
+                          logout();
                         } else {
                           setShowProfileDropdown(false);
                         }
