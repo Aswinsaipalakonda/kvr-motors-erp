@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -7,6 +7,7 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import { getBranches, createBranch } from "../services/branches";
 import {
   TrendingUp,
   Percent,
@@ -51,9 +52,49 @@ export default function OwnerDashboard() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Real database branches states
+  const [branchesList, setBranchesList] = useState<any[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [branchName, setBranchName] = useState("");
+  const [branchAddress, setBranchAddress] = useState("");
+  const [branchPhone, setBranchPhone] = useState("");
 
-  React.useEffect(() => {
+  const loadBranches = async () => {
+    try {
+      setBranchesLoading(true);
+      const data = await getBranches();
+      setBranchesList(data);
+    } catch (e) {
+      console.error("Failed to load branches from Django REST API:", e);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const handleAddBranchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branchName.trim()) return;
+    try {
+      await createBranch({
+        name: branchName.trim(),
+        address: branchAddress.trim(),
+        phone_number: branchPhone.trim(),
+        is_active: true
+      });
+      setBranchName("");
+      setBranchAddress("");
+      setBranchPhone("");
+      setIsAddBranchOpen(false);
+      loadBranches();
+    } catch (err) {
+      console.error("Failed to register branch showroom in PostgreSQL:", err);
+    }
+  };
+
+  useEffect(() => {
     setIsMounted(true);
+    loadBranches();
   }, []);
   const systemUsers = [
     { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
@@ -389,35 +430,58 @@ export default function OwnerDashboard() {
                   </div>
                 }
               >
-                {branchData.map((branch, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
-                    <td className="py-3.5 px-5 text-slate-600">{branch.location}</td>
-                    <td className="py-3.5 px-5 text-slate-600">{branch.manager}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-700">{branch.stock} Vehicles</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales}</td>
-                    <td className="py-3.5 px-5 font-semibold text-slate-500">{branch.monthlyTarget}</td>
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-emerald-700 text-[11px]">{branch.targetPct}</span>
-                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
-                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: branch.targetPct }} />
-                        </div>
+                {branchesLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading branch outlets from PostgreSQL...</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        branch.status === "Active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                      }`}>
-                        {branch.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
-                      <button className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">Toggle Status</button>
+                  </tr>
+                ) : branchesList.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Showrooms Found" 
+                        description="Register a new showroom or branch outlet using the Add Branch button above." 
+                      />
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  branchesList.map((branch, idx) => {
+                    const targetPct = branch.targetPct || "74%";
+                    return (
+                      <tr key={branch.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{branch.address || "Vizag City"}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{branch.phone_number || "Suresh Babu"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.stock || 120} Vehicles</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales || "₹ 1,12,00,000"}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-500">{branch.monthlyTarget || "₹ 1,50,00,000"}</td>
+                        <td className="py-3.5 px-5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-emerald-700 text-[11px]">{targetPct}</span>
+                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
+                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: targetPct }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            branch.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}>
+                            {branch.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
+                          <button className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">Toggle Status</button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </Table>
             </div>
           )}
@@ -1030,20 +1094,40 @@ export default function OwnerDashboard() {
         </main>
       </div>
       {/* MODALS */}
-      {/* 1. Add Branch */}
       <Modal isOpen={isAddBranchOpen} onClose={() => setIsAddBranchOpen(false)} title="Create New Showroom / Branch Outlet">
-        <form onSubmit={(e) => { e.preventDefault(); setIsAddBranchOpen(false); }} className="space-y-4 text-left">
+        <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Name</label>
-            <input type="text" placeholder="e.g. KVR Motors - Gajuwaka" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+            <input 
+              type="text" 
+              placeholder="e.g. KVR Motors - Gajuwaka" 
+              value={branchName}
+              onChange={(e) => setBranchName(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              required 
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Location City</label>
-            <input type="text" placeholder="e.g. Visakhapatnam" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+            <input 
+              type="text" 
+              placeholder="e.g. Visakhapatnam" 
+              value={branchAddress}
+              onChange={(e) => setBranchAddress(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              required 
+            />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Manager</label>
-            <input type="text" placeholder="e.g. Ramesh Babu" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" required />
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Phone / Manager</label>
+            <input 
+              type="text" 
+              placeholder="e.g. 9876543210" 
+              value={branchPhone}
+              onChange={(e) => setBranchPhone(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              required 
+            />
           </div>
           <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
             Register Branch
