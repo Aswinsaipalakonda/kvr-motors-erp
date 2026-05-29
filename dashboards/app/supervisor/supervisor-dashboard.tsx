@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { getFifoOverrides, updateFifoOverride } from "../services/batteries";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -49,11 +50,43 @@ export default function SupervisorDashboard() {
   
   // Local state alerts
   const [alerts, setAlerts] = useState([
-    { id: 1, type: "FIFO Override Request", details: "Executive Anil Kumar requests BATT-00890 (Newer) over BATT-00874 (Oldest) for INV-2024-0792", active: true },
     { id: 2, type: "Expiring Insurance Soon", details: "Vehicle KVRVIN2026X112 insurance expires in 8 days (Vizag Showroom)", active: true },
     { id: 3, type: "RC Expiring Soon", details: "Vehicle KVRVIN2026X105 registration certificate expires in 5 days", active: true },
     { id: 4, type: "Pending PDI", details: "Pre-delivery inspection pending for booking BK-8012 (Customer: A. Srinivas)", active: true }
   ]);
+
+  const [liveOverridesList, setLiveOverridesList] = useState<any[]>([]);
+  const [liveOverridesLoading, setLiveOverridesLoading] = useState(true);
+
+  const loadOverrides = async () => {
+    try {
+      const data = await getFifoOverrides();
+      setLiveOverridesList(data);
+    } catch (e) {
+      console.error("Failed to load FIFO overrides:", e);
+    } finally {
+      setLiveOverridesLoading(false);
+    }
+  };
+
+  const handleApproveOverrideRequest = async (id: number, status: "approved" | "rejected") => {
+    try {
+      await updateFifoOverride(id, {
+        status: status,
+        reviewed_by: "Suresh Babu"
+      });
+      loadOverrides();
+    } catch (e) {
+      console.error("Failed to process override request:", e);
+    }
+  };
+
+  React.useEffect(() => {
+    setIsMounted(true);
+    loadOverrides();
+    const interval = setInterval(loadOverrides, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [transfers, setTransfers] = useState([
     { ref: "TR-2026-902", from: "Pendurthi Godown", to: "Vizag Showroom", model: "Kinetic Green E-Luna", qty: 8, status: "Pending Approval", requestedBy: "Anil Kumar", priority: "High" },
@@ -194,47 +227,76 @@ export default function SupervisorDashboard() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-left">
-                    {alerts.filter(a => a.active).length === 0 ? (
-                      <EmptyState title="All clear!" description="No pending alerts or override approvals at this time." />
-                    ) : (
-                      alerts.filter(a => a.active).map((alert) => (
-                        <div key={alert.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 relative">
-                          <div className="flex items-center justify-between">
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                              <AlertTriangle className="h-3 w-3" /> {alert.type}
-                            </span>
-                          </div>
-                          <p className="text-[11px] font-semibold text-slate-600 leading-snug">{alert.details}</p>
-                          
-                          {alert.type === "FIFO Override Request" && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
-                              <button 
-                                onClick={() => handleApproveAlert(alert.id)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] px-3 py-1 rounded cursor-pointer transition-colors"
-                              >
-                                Approve Override
-                              </button>
-                              <button 
-                                onClick={() => handleApproveAlert(alert.id)}
-                                className="bg-slate-200 hover:bg-slate-350 text-slate-600 font-bold text-[9px] px-2 py-1 rounded cursor-pointer transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          )}
-
-                          {alert.type === "Pending PDI" && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
-                              <button 
-                                onClick={() => handleApproveAlert(alert.id)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] px-3 py-1 rounded cursor-pointer transition-colors"
-                              >
-                                Mark PDI Passed
-                              </button>
-                            </div>
-                          )}
+                    {/* Render live pending override requests */}
+                    {liveOverridesList.filter(o => o.status === "pending").map((override) => (
+                      <div key={`live-${override.id}`} className="p-3 bg-rose-50/40 border border-rose-100 rounded-xl space-y-2 relative">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-105 text-rose-705 border border-rose-205">
+                            <AlertTriangle className="h-3 w-3 animate-pulse" /> FIFO Override Request
+                          </span>
                         </div>
-                      ))
+                        <p className="text-[11px] font-bold text-slate-700 leading-snug">
+                          Executive {override.sales_executive} requests battery {override.battery_serial} ({override.battery_capacity}) for invoice ref {override.invoice_reference}
+                        </p>
+                        <div className="flex items-center gap-2 pt-1 border-t border-rose-200/50 mt-1">
+                          <button 
+                            onClick={() => handleApproveOverrideRequest(override.id, "approved")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] px-3 py-1 rounded cursor-pointer transition-colors shadow-sm"
+                          >
+                            Approve Override
+                          </button>
+                          <button 
+                            onClick={() => handleApproveOverrideRequest(override.id, "rejected")}
+                            className="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold text-[9px] px-2 py-1 rounded cursor-pointer transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Render other static supervisor alerts */}
+                    {alerts.filter(a => a.active).map((alert) => (
+                      <div key={alert.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 relative">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                            <AlertTriangle className="h-3 w-3" /> {alert.type}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-600 leading-snug">{alert.details}</p>
+                        
+                        {alert.type === "FIFO Override Request" && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
+                            <button 
+                              onClick={() => handleApproveAlert(alert.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] px-3 py-1 rounded cursor-pointer transition-colors"
+                            >
+                              Approve Override
+                            </button>
+                            <button 
+                              onClick={() => handleApproveAlert(alert.id)}
+                              className="bg-slate-200 hover:bg-slate-350 text-slate-600 font-bold text-[9px] px-2 py-1 rounded cursor-pointer transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+
+                        {alert.type === "Pending PDI" && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
+                            <button 
+                              onClick={() => handleApproveAlert(alert.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] px-3 py-1 rounded cursor-pointer transition-colors"
+                            >
+                              Mark PDI Passed
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {liveOverridesList.filter(o => o.status === "pending").length === 0 && alerts.filter(a => a.active).length === 0 && (
+                      <EmptyState title="All clear!" description="No pending alerts or override approvals at this time." />
                     )}
                   </div>
                 </div>

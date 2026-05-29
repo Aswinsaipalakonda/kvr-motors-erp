@@ -24,3 +24,20 @@ class Battery(models.Model):
 
     def __str__(self):
         return f"{self.serial_number} ({self.capacity}) - {self.get_status_display()}"
+
+class FifoOverride(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    battery = models.ForeignKey(Battery, on_delete=models.CASCADE, related_name="overrides")
+    sales_executive = models.CharField(max_length=150)
+    invoice_reference = models.CharField(max_length=100)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.CharField(max_length=150, blank=True, null=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Override request for {self.battery.serial_number} - {self.status}"

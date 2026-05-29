@@ -5,7 +5,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 from branches.views import BranchViewSet, ShowroomViewSet, InventoryLocationViewSet
 from vehicles.views import VehicleBrandViewSet, VehicleModelViewSet, VehicleUnitViewSet
-from battery.views import BatteryViewSet
+from battery.views import BatteryViewSet, FifoOverrideViewSet
 from leads.views import LeadViewSet
 from booking.views import AdvanceBookingViewSet
 from sales.views import SalesInvoiceViewSet
@@ -21,6 +21,7 @@ router.register(r'vehicle-brands', VehicleBrandViewSet, basename='vehiclebrand')
 router.register(r'vehicle-models', VehicleModelViewSet, basename='vehiclemodel')
 router.register(r'vehicle-units', VehicleUnitViewSet, basename='vehicleunit')
 router.register(r'batteries', BatteryViewSet, basename='battery')
+router.register(r'fifo-overrides', FifoOverrideViewSet, basename='fifooverride')
 router.register(r'leads', LeadViewSet, basename='lead')
 router.register(r'bookings', AdvanceBookingViewSet, basename='booking')
 router.register(r'sales-invoices', SalesInvoiceViewSet, basename='salesinvoice')

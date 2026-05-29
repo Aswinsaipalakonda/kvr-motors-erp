@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { lookupVehicleUnit } from "../services/vehicles";
+import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -58,6 +59,50 @@ export default function SalesDashboard() {
   const [selectedBattery, setSelectedBattery] = useState("");
   const [fifoWarning, setFifoWarning] = useState(false);
   const [overrideRequested, setOverrideRequested] = useState(false);
+  const [batteriesList, setBatteriesList] = useState<any[]>([]);
+  const [activeOverrideRequest, setActiveOverrideRequest] = useState<any>(null);
+  const [oldestBatteryInStock, setOldestBatteryInStock] = useState<string>("BATT-00874");
+
+  const loadBatteries = async () => {
+    try {
+      const data = await getBatteries();
+      setBatteriesList(data);
+    } catch (e) {
+      console.error("Failed to load batteries:", e);
+    }
+  };
+
+  React.useEffect(() => {
+    setIsMounted(true);
+    loadBatteries();
+  }, []);
+
+  React.useEffect(() => {
+    if (!overrideRequested || !activeOverrideRequest) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const overrides = await getFifoOverrides();
+        const activeReq = overrides.find((o: any) => o.id === activeOverrideRequest.id);
+        if (activeReq && activeReq.status === "approved") {
+          setFifoWarning(false);
+          setOverrideRequested(false);
+          setActiveOverrideRequest(null);
+          alert("FIFO Override Request APPROVED by Supervisor! Form unlocked.");
+          clearInterval(interval);
+        } else if (activeReq && activeReq.status === "rejected") {
+          setActiveOverrideRequest(null);
+          setOverrideRequested(false);
+          alert("FIFO Override Request REJECTED by Supervisor. Please select a FIFO-compliant battery pack.");
+          clearInterval(interval);
+        }
+      } catch (e) {
+        console.error("Failed to poll override request status:", e);
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [overrideRequested, activeOverrideRequest]);
 
   // MOCK INVENTORY UNIT REGISTER (FOR AUTO-FILL SIMULATION)
   const mockVehiclesDb = [
@@ -130,14 +175,44 @@ export default function SalesDashboard() {
   };
 
   // Battery Selection and FIFO Validation check
-  const handleBatterySelect = (serial: string) => {
+  const handleBatterySelect = async (serial: string) => {
     setSelectedBattery(serial);
-    // BATT-00890 is the newer battery in our static DB (oldest is BATT-00874)
-    if (serial === "BATT-00890") {
-      setFifoWarning(true);
-    } else {
+    if (!serial) {
       setFifoWarning(false);
       setOverrideRequested(false);
+      return;
+    }
+    
+    try {
+      const checkRes = await checkFifo(serial);
+      if (checkRes.is_oldest === false && checkRes.warning) {
+        setFifoWarning(true);
+        setOldestBatteryInStock(checkRes.oldest_serial_number || "BATT-00874");
+      } else {
+        setFifoWarning(false);
+        setOverrideRequested(false);
+      }
+    } catch (e) {
+      console.error("Failed to validate battery FIFO status:", e);
+      setFifoWarning(false);
+    }
+  };
+
+  const handleRequestOverride = async () => {
+    if (!selectedBattery) return;
+    try {
+      const targetBattery = batteriesList.find(b => b.serial_number === selectedBattery);
+      if (!targetBattery) return;
+      
+      const newOverride = await createFifoOverride({
+        battery: targetBattery.id,
+        sales_executive: "Anil Kumar",
+        invoice_reference: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`
+      });
+      setActiveOverrideRequest(newOverride);
+      setOverrideRequested(true);
+    } catch (e) {
+      console.error("Failed to submit supervisor override request:", e);
     }
   };
 
@@ -460,9 +535,18 @@ export default function SalesDashboard() {
                       required
                     >
                       <option value="">-- Choose Battery pack --</option>
-                      <option value="BATT-00874">BATT-00874 (2.0 kWh - Purchase Date: 10 Jan 2024) [Oldest Stock]</option>
-                      <option value="BATT-00982">BATT-00982 (1.2 kWh - Purchase Date: 02 Mar 2024)</option>
-                      <option value="BATT-00890">BATT-00890 (2.0 kWh - Purchase Date: 12 May 2026) [Newer Stock]</option>
+                      {batteriesList.filter(b => b.status === "available").map((b) => (
+                        <option key={b.id} value={b.serial_number}>
+                          {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date}) {b.serial_number === "BATT-00874" ? "[Oldest Stock]" : ""}
+                        </option>
+                      ))}
+                      {batteriesList.length === 0 && (
+                        <>
+                          <option value="BATT-00874">BATT-00874 (2.0 kWh - Purchase Date: 10 Jan 2024) [Oldest Stock]</option>
+                          <option value="BATT-00982">BATT-00982 (1.2 kWh - Purchase Date: 02 Mar 2024)</option>
+                          <option value="BATT-00890">BATT-00890 (2.0 kWh - Purchase Date: 12 May 2026) [Newer Stock]</option>
+                        </>
+                      )}
                     </select>
 
                     {/* FIFO Warning Indicator */}
@@ -473,7 +557,7 @@ export default function SalesDashboard() {
                           <div>
                             <h4 className="text-xs font-bold text-amber-800">FIFO Stock Restriction Triggered</h4>
                             <p className="text-[11px] text-amber-600 font-semibold mt-1">
-                              Selected battery pack (BATT-00890) is newer than the oldest available battery in stock (BATT-00874). 
+                              Selected battery pack ({selectedBattery}) is newer than the oldest available battery in stock ({oldestBatteryInStock}). 
                               Delivery requires an overriding approval code from a Branch Supervisor.
                             </p>
                           </div>
@@ -488,7 +572,7 @@ export default function SalesDashboard() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => setOverrideRequested(true)}
+                              onClick={handleRequestOverride}
                               className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm shadow-amber-600/10"
                             >
                               Request Supervisor Override
