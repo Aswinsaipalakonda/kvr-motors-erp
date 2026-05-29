@@ -9,6 +9,7 @@ export interface UserProfile {
   full_name: string;
   role: 'owner' | 'supervisor' | 'sales' | string;
   branch: number | null;
+  branch_name?: string;
   showroom: number | null;
   phone_number: string;
   is_active: boolean;

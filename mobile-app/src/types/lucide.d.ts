@@ -73,4 +73,8 @@ declare module 'lucide-react-native' {
   export const UserX: LucideIcon;
   export const Compass: LucideIcon;
   export const Info: LucideIcon;
+  export const Menu: LucideIcon;
+  export const Mail: LucideIcon;
+  export const Building: LucideIcon;
+  export const Settings2: LucideIcon;
 }
