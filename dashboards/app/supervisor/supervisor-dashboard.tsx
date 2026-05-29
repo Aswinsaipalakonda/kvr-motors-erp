@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { getFifoOverrides, updateFifoOverride } from "../services/batteries";
+import { getLeads, updateLead } from "../services/leads";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -58,6 +59,21 @@ export default function SupervisorDashboard() {
   const [liveOverridesList, setLiveOverridesList] = useState<any[]>([]);
   const [liveOverridesLoading, setLiveOverridesLoading] = useState(true);
 
+  const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+
+  const loadLeadsData = async () => {
+    try {
+      setLeadsLoading(true);
+      const data = await getLeads();
+      setLiveLeadsList(data);
+    } catch (e) {
+      console.error("Failed to load leads:", e);
+    } finally {
+      setLeadsLoading(false);
+    }
+  };
+
   const loadOverrides = async () => {
     try {
       const data = await getFifoOverrides();
@@ -81,10 +97,28 @@ export default function SupervisorDashboard() {
     }
   };
 
+  const handleAssignLead = async (leadId: number, execName: string) => {
+    try {
+      // Anil Kumar is sandbox executive (ID 3 in DB seeder setup)
+      const assignedId = execName === "Unassigned" ? null : 3; 
+      await updateLead(leadId, {
+        assigned_executive: assignedId,
+        status: assignedId ? "new_lead" : "enquiry"
+      });
+      loadLeadsData();
+    } catch (e) {
+      console.error("Failed to assign lead:", e);
+    }
+  };
+
   React.useEffect(() => {
     setIsMounted(true);
     loadOverrides();
-    const interval = setInterval(loadOverrides, 4000);
+    loadLeadsData();
+    const interval = setInterval(() => {
+      loadOverrides();
+      loadLeadsData();
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -157,9 +191,6 @@ export default function SupervisorDashboard() {
     setBookings(bookings.map(bk => bk.id === id ? { ...bk, status: "Approved" } : bk));
   };
 
-  const handleAssignLead = (id: string, execName: string) => {
-    setLeadAssignments(leadAssignments.map(ld => ld.id === id ? { ...ld, exec: execName } : ld));
-  };
 
   if (!isMounted) {
     return (
@@ -495,46 +526,63 @@ export default function SupervisorDashboard() {
             <div className="space-y-6">
               
               <Table title="Inquiry Lead Assignment Directory" headers={["Lead ID", "Customer Name", "Model Interest", "Inflow Source", "Enquiry Date", "Contact Status", "Executive Assigned", "Actions"]}>
-                {leadAssignments.map((ld, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">{ld.id}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{ld.customer}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{ld.vehicle}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-medium">{ld.source}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{ld.enquiryDate}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        ld.contactStatus === "Connected" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {ld.contactStatus}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5 text-slate-700 font-bold">
-                      {ld.exec === "Unassigned" ? (
-                        <span className="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[9px]">Unassigned</span>
-                      ) : (
-                        <span>{ld.exec}</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-5">
-                      {ld.exec === "Unassigned" ? (
-                        <button 
-                          onClick={() => handleAssignLead(ld.id, "Anil Kumar")}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg cursor-pointer shadow-sm transition-colors"
-                        >
-                          Assign to Anil
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleAssignLead(ld.id, "Unassigned")}
-                          className="text-xs text-slate-400 hover:text-rose-600 font-bold cursor-pointer"
-                        >
-                          Deassign
-                        </button>
-                      )}
+                {leadsLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                        <span>Loading assignments from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : liveLeadsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center">
+                      <EmptyState title="No Leads Found" description="Enquiries pipeline is empty at this time." />
+                    </td>
+                  </tr>
+                ) : (
+                  liveLeadsList.map((ld, idx) => (
+                    <tr key={ld.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">LD-{ld.id}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{ld.customer_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{ld.model_name || "Kinetic Green E-Luna"}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-medium">{ld.lead_source.replace("_", " ")}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{new Date(ld.created_at).toLocaleDateString()}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          ld.status !== "enquiry" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {ld.status !== "enquiry" ? "Connected" : "Awaiting Call"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-slate-700 font-bold">
+                        {!ld.assigned_executive ? (
+                          <span className="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[9px]">Unassigned</span>
+                        ) : (
+                          <span>Anil Kumar</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-5">
+                        {!ld.assigned_executive ? (
+                          <button 
+                            onClick={() => handleAssignLead(ld.id, "Anil Kumar")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg cursor-pointer shadow-sm transition-colors"
+                          >
+                            Assign to Anil
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleAssignLead(ld.id, "Unassigned")}
+                            className="text-xs text-slate-400 hover:text-rose-600 font-bold cursor-pointer"
+                          >
+                            Deassign
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
 
             </div>

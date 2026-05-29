@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { lookupVehicleUnit } from "../services/vehicles";
+import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
+import { getLeads, createLead, updateLead } from "../services/leads";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -63,6 +64,33 @@ export default function SalesDashboard() {
   const [activeOverrideRequest, setActiveOverrideRequest] = useState<any>(null);
   const [oldestBatteryInStock, setOldestBatteryInStock] = useState<string>("BATT-00874");
 
+  // Real database leads states
+  const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
+  const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+
+  // Add Lead form bindings
+  const [leadCustomerName, setLeadCustomerName] = useState("");
+  const [leadContactNumber, setLeadContactNumber] = useState("");
+  const [leadVehicleModel, setLeadVehicleModel] = useState<string>("");
+  const [leadSource, setLeadSource] = useState("walk_in");
+
+  const loadLeadsData = async () => {
+    try {
+      setLeadsLoading(true);
+      const [leadsData, modelsData] = await Promise.all([
+        getLeads(),
+        getVehicleModels()
+      ]);
+      setLiveLeadsList(leadsData);
+      setVehicleModelsList(modelsData);
+    } catch (e) {
+      console.error("Failed to load leads or models:", e);
+    } finally {
+      setLeadsLoading(false);
+    }
+  };
+
   const loadBatteries = async () => {
     try {
       const data = await getBatteries();
@@ -75,6 +103,7 @@ export default function SalesDashboard() {
   React.useEffect(() => {
     setIsMounted(true);
     loadBatteries();
+    loadLeadsData();
   }, []);
 
   React.useEffect(() => {
@@ -110,6 +139,46 @@ export default function SalesDashboard() {
     { vin: "KVRVIN2026X104", motor: "MTR-90812", chassis: "CHS-88915", model: "Watts 100", color: "Red", price: "₹ 1,45,000", branch: "Vizag Showroom", status: "Available", battery: "BATT-00511" },
     { vin: "KVRVIN2026X115", motor: "MTR-90820", chassis: "CHS-88930", model: "Dynamo Pro", color: "Gray", price: "₹ 98,500", branch: "Vizag Showroom", status: "Available", battery: "BATT-00890 (Newer Stock)" }
   ];
+
+  const handleAddLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadCustomerName.trim() || !leadContactNumber.trim() || !leadVehicleModel) return;
+    try {
+      await createLead({
+        customer_name: leadCustomerName.trim(),
+        contact_number: leadContactNumber.trim(),
+        interested_vehicle: parseInt(leadVehicleModel),
+        lead_source: leadSource,
+        status: "new_lead"
+      });
+      setLeadCustomerName("");
+      setLeadContactNumber("");
+      setLeadVehicleModel("");
+      setLeadSource("walk_in");
+      setIsAddLeadOpen(false);
+      loadLeadsData();
+    } catch (err) {
+      console.error("Failed to register lead enquiry:", err);
+    }
+  };
+
+  const handleAdvanceLeadStage = async (leadId: number, currentStatus: string) => {
+    const statusCycle: Record<string, string> = {
+      "new_lead": "contacted",
+      "contacted": "follow_up",
+      "follow_up": "negotiation",
+      "negotiation": "won",
+      "won": "won",
+      "lost": "lost"
+    };
+    const nextStatus = statusCycle[currentStatus] || "new_lead";
+    try {
+      await updateLead(leadId, { status: nextStatus });
+      loadLeadsData();
+    } catch (e) {
+      console.error("Failed to update lead status:", e);
+    }
+  };
 
   // Lead Status donut data
   const leadStatusData = [
@@ -376,31 +445,52 @@ export default function SalesDashboard() {
                   </button>
                 }
               >
-                {recentLeads.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-blue-600">{row.id}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{row.name}</td>
-                    <td className="py-3.5 px-5 font-mono text-slate-500">{row.mobile}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{row.source}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.model}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-semibold">{row.date}</td>
-                    <td className="py-3.5 px-5 font-semibold text-slate-500">{row.nextFollowup}</td>
-                    <td className="py-3.5 px-5 text-slate-500">{row.lastNote}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        row.status === "New" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        row.status === "Contacted" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <button className="text-xs text-emerald-600 hover:text-emerald-800 font-bold mr-3 cursor-pointer">Update Stage</button>
-                      <button className="text-xs text-slate-400 font-bold cursor-pointer">Add Notes</button>
+                {leadsLoading ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                        <span>Loading leads registry from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : liveLeadsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center">
+                      <EmptyState title="No Leads Found" description="Click Add Lead Enquiry to register a customer lead." />
+                    </td>
+                  </tr>
+                ) : (
+                  liveLeadsList.map((row, idx) => (
+                    <tr key={row.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-blue-600">LD-{row.id}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{row.customer_name}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-500">{row.contact_number}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{row.lead_source.replace("_", " ")}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.model_name || "Kinetic Green E-Luna"}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-semibold">{new Date(row.created_at).toLocaleDateString()}</td>
+                      <td className="py-3.5 px-5 font-semibold text-slate-500">{row.follow_up_date || "Awaiting call"}</td>
+                      <td className="py-3.5 px-5 text-slate-500">{row.notes || "No log notes added"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                          row.status === "new_lead" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          row.status === "contacted" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {row.status.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <button 
+                          onClick={() => handleAdvanceLeadStage(row.id, row.status)}
+                          className="text-xs text-emerald-600 hover:text-emerald-800 font-bold mr-3 cursor-pointer"
+                        >
+                          Update Stage
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
 
             </div>
@@ -752,29 +842,59 @@ export default function SalesDashboard() {
       {/* MODALS */}
       {/* 1. Add Lead Form */}
       <Modal isOpen={isAddLeadOpen} onClose={() => setIsAddLeadOpen(false)} title="Register Customer Lead Enquiry">
-        <form onSubmit={(e) => { e.preventDefault(); setIsAddLeadOpen(false); }} className="space-y-4 text-left">
+        <form onSubmit={handleAddLeadSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-            <input type="text" placeholder="e.g. S. Sita Kumari" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+            <input 
+              type="text" 
+              placeholder="e.g. S. Sita Kumari" 
+              value={leadCustomerName}
+              onChange={(e) => setLeadCustomerName(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-emerald-500" 
+              required 
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Mobile</label>
-            <input type="text" placeholder="e.g. 9900112233" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+            <input 
+              type="text" 
+              placeholder="e.g. 9900112233" 
+              value={leadContactNumber}
+              onChange={(e) => setLeadContactNumber(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-emerald-500" 
+              required 
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
-            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-650 font-bold outline-none focus:border-blue-500" required>
+            <select 
+              value={leadVehicleModel}
+              onChange={(e) => setLeadVehicleModel(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold" 
+              required
+            >
               <option value="">Select vehicle...</option>
-              <option value="e-luna">Kinetic Green E-Luna</option>
-              <option value="dynamo">Dynamo Pro</option>
-              <option value="frankly">Frankly 79</option>
-              <option value="watts">Watts 100</option>
+              {vehicleModelsList.map((model) => (
+                <option key={model.id} value={model.id}>{model.model_name}</option>
+              ))}
+              {vehicleModelsList.length === 0 && (
+                <>
+                  <option value="1">Kinetic Green E-Luna</option>
+                  <option value="2">Dynamo Pro</option>
+                  <option value="3">Watts 100</option>
+                </>
+              )}
             </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Lead Source</label>
-            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-650 font-bold outline-none focus:border-blue-500" required>
-              <option value="walkin">Walk-in Inquiry</option>
+            <select 
+              value={leadSource}
+              onChange={(e) => setLeadSource(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold" 
+              required
+            >
+              <option value="walk_in">Walk-in Inquiry</option>
               <option value="website">Website Portal</option>
               <option value="reference">Customer Reference</option>
               <option value="social">Social Media Ads</option>

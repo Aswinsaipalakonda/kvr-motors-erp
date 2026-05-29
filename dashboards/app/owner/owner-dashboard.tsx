@@ -9,6 +9,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import { getBranches, createBranch } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel } from "../services/vehicles";
+import { getLeads } from "../services/leads";
 import {
   TrendingUp,
   Percent,
@@ -66,6 +67,10 @@ export default function OwnerDashboard() {
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
   const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+
+  // Real database leads states
+  const [leadsList, setLeadsList] = useState<any[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
 
   // New Vehicle Model form state
   const [newModelBrand, setNewModelBrand] = useState<string>("");
@@ -151,10 +156,23 @@ export default function OwnerDashboard() {
     }
   };
 
+  const loadLeads = async () => {
+    try {
+      setLeadsLoading(true);
+      const data = await getLeads();
+      setLeadsList(data);
+    } catch (e) {
+      console.error("Failed to load leads from Django REST API:", e);
+    } finally {
+      setLeadsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
     loadVehicles();
+    loadLeads();
   }, []);
   const systemUsers = [
     { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
@@ -201,11 +219,16 @@ export default function OwnerDashboard() {
     { name: "In Transit", value: 32, color: "#f59e0b" }, // Amber
     { name: "Sold", value: 49, color: "#64748b" },      // Slate
   ];
+  const enquiryCount = leadsList.filter(l => l.status === "enquiry").length;
+  const leadCount = leadsList.filter(l => l.status === "new_lead" || l.status === "contacted" || l.status === "follow_up").length;
+  const negoCount = leadsList.filter(l => l.status === "negotiation").length;
+  const wonCount = leadsList.filter(l => l.status === "won").length;
+
   const leadsFunnelData = [
-    { name: "Enquiries", count: 256, color: "#3b82f6" },
-    { name: "Leads", count: 158, color: "#6366f1" },
-    { name: "Negotiation", count: 64, color: "#f59e0b" },
-    { name: "Won", count: 28, color: "#10b981" },
+    { name: "Enquiries", count: enquiryCount, color: "#3b82f6" },
+    { name: "Leads", count: leadCount, color: "#6366f1" },
+    { name: "Negotiation", count: negoCount, color: "#f59e0b" },
+    { name: "Won", count: wonCount, color: "#10b981" },
   ];
   const recentActivities = [
     { id: 1, action: "Vehicle Stock In", ref: "GRN-2024-0512", location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
@@ -266,13 +289,6 @@ export default function OwnerDashboard() {
     { id: "TXN-7100", type: "Salary Expense", branch: "Srikakulam", detail: "May Staff Salaries", income: "—", expense: "₹ 1,80,000", date: "10 May 2024", paymentMode: "Bank Transfer", approvedBy: "Suresh Babu" },
     { id: "TXN-7101", type: "Booking Amount", branch: "Kakinada", detail: "Advance Lock payment (BK-8025)", income: "₹ 15,000", expense: "—", date: "14 May 2024", paymentMode: "UPI / Cash", approvedBy: "Ravi Varma" },
   ];
-  // Leads pipeline data
-  const leadsPipeline = [
-    { id: "LD-890", name: "K. Ranga", contact: "9867543210", vehicle: "Kinetic Green E-Luna", source: "Walk-in", executive: "Anil Kumar", status: "Enquiry" },
-    { id: "LD-891", name: "S. N. Murthy", contact: "9123456789", vehicle: "Dynamo Pro", source: "Website", executive: "Prasad", status: "New Lead" },
-    { id: "LD-892", name: "G. Sandhya", contact: "8899776655", vehicle: "Frankly 79", source: "Walk-in", executive: "Anil Kumar", status: "Negotiation" },
-    { id: "LD-893", name: "V. Ramarao", contact: "9440556677", vehicle: "Watts 100", source: "Reference", executive: "Prasad", status: "Won" },
-  ];
 
   if (!isMounted) {
     return (
@@ -316,7 +332,7 @@ export default function OwnerDashboard() {
                 <DashboardCard title="Total Sales" value="₹ 2,45,80,000" trend="↑ 12.8%" trendType="success" description="12.8% vs last month" icon={DollarSign} color="emerald" />
                 <DashboardCard title="Total Purchases" value="₹ 1,65,40,000" trend="↓ 6.2%" trendType="danger" description="6.2% vs last month" icon={ShoppingBag} color="rose" />
                 <DashboardCard title="Vehicles in Stock" value="312 Units" trend="↑ 8.4%" trendType="success" description="8.4% vs last month" icon={Car} color="blue" />
-                <DashboardCard title="Total Leads" value="256 Leads" trend="↑ 15.3%" trendType="success" description="15.3% vs last month" icon={Compass} color="amber" />
+                <DashboardCard title="Total Leads" value={`${leadsLoading ? "..." : leadsList.length} Leads`} trend="↑ 15.3%" trendType="success" description="15.3% vs last month" icon={Compass} color="amber" />
                 <DashboardCard title="Receivables" value="₹ 68,75,000" trend="↓ 3.7%" trendType="danger" description="3.7% vs last month" icon={Briefcase} color="purple" />
               </div>
               {/* Charts Section */}
@@ -824,40 +840,53 @@ export default function OwnerDashboard() {
                   <Plus className="h-4 w-4" /> Add Lead
                 </button>
               </div>
-              {/* Kanban layout */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {["Enquiry", "New Lead", "Negotiation", "Won"].map((colStatus) => {
-                  const filteredLeads = leadsPipeline.filter(lead => lead.status === colStatus);
-                  return (
-                    <div key={colStatus} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col min-h-75">
-                      <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
-                        <span className="text-xs font-bold text-slate-700 uppercase">{colStatus}</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
-                      </div>
-                      
-                      <div className="flex-1 space-y-3">
-                        {filteredLeads.length === 0 ? (
-                           <div className="text-[10px] font-semibold text-slate-400 text-center py-8">No leads in stage</div>
-                        ) : (
-                          filteredLeads.map((lead) => (
-                            <div key={lead.id} className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm hover:shadow transition-shadow space-y-2 text-left relative group">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-indigo-600 font-mono">{lead.id}</span>
-                                <span className="text-[9px] font-bold text-slate-400">{lead.source}</span>
+              {leadsLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                  <span className="text-xs font-semibold text-slate-500">Loading leads conversion pipeline from PostgreSQL...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  {["Enquiry", "New Lead", "Negotiation", "Won"].map((colStatus) => {
+                    const filteredLeads = leadsList.filter((lead) => {
+                      const status = lead.status;
+                      if (colStatus === "Enquiry") return status === "enquiry";
+                      if (colStatus === "New Lead") return status === "new_lead" || status === "contacted" || status === "follow_up";
+                      if (colStatus === "Negotiation") return status === "negotiation";
+                      if (colStatus === "Won") return status === "won";
+                      return false;
+                    });
+                    return (
+                      <div key={colStatus} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col min-h-75">
+                        <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
+                          <span className="text-xs font-bold text-slate-700 uppercase">{colStatus}</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
+                        </div>
+                        
+                        <div className="flex-1 space-y-3">
+                          {filteredLeads.length === 0 ? (
+                             <div className="text-[10px] font-semibold text-slate-400 text-center py-8">No leads in stage</div>
+                          ) : (
+                            filteredLeads.map((lead) => (
+                              <div key={lead.id} className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm hover:shadow transition-shadow space-y-2 text-left relative group">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-indigo-600 font-mono">LD-{lead.id}</span>
+                                  <span className="text-[9px] font-bold text-slate-400">{lead.source_display || lead.lead_source?.replace("_", " ")}</span>
+                                </div>
+                                <h4 className="text-xs font-bold text-slate-800">{lead.customer_name}</h4>
+                                <p className="text-[10px] text-slate-500 font-semibold">{lead.contact_number} • {lead.interested_vehicle_name || "Kinetic Green E-Luna"}</p>
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400 font-bold">
+                                  <span>Owner: {lead.executive_name || "Unassigned"}</span>
+                                </div>
                               </div>
-                              <h4 className="text-xs font-bold text-slate-800">{lead.name}</h4>
-                              <p className="text-[10px] text-slate-500 font-semibold">{lead.contact} • {lead.vehicle}</p>
-                              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400 font-bold">
-                                <span>Owner: {lead.executive}</span>
-                              </div>
-                            </div>
-                          ))
-                        )}
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           {/* TAB 8: ADVANCE BOOKINGS */}
