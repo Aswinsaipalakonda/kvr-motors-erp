@@ -186,42 +186,48 @@ export default function OwnerDashboard({
     return matchesBrand && matchesSearch;
   });
 
+  const headerHeight = insets.top + 54;
+
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
+        {/* Pinned Constant Top Navigation Bar */}
+        <View style={[styles.fixedHeader, { paddingTop: insets.top + 10, height: headerHeight }]}>
+          <View style={styles.headerRow}>
+            <Pressable 
+              onPress={openDrawer}
+              style={({ pressed }) => [
+                styles.hamburgerBtn,
+                pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
+              ]}
+            >
+              <Menu size={22} color="#04a700" />
+            </Pressable>
+            
+            <Pressable 
+              style={styles.locationSelector}
+              onPress={() => setIsBranchModalVisible(true)}
+            >
+              <MapPin size={15} color="#04a700" />
+              <ThemedText style={styles.locationText} numberOfLines={1}>
+                {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
+              </ThemedText>
+              <ChevronDown size={13} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+
+            <Pressable style={styles.moreButton} onPress={() => loadData()}>
+              <MoreVertical size={20} color="#ffffff" />
+            </Pressable>
+          </View>
+        </View>
+
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: headerHeight + 10 }]} 
           showsVerticalScrollIndicator={false}
         >
           {/* Dynamic Dark Premium Header Section */}
-          <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
-            <View style={styles.headerRow}>
-              <Pressable 
-                onPress={openDrawer}
-                style={({ pressed }) => [
-                  styles.hamburgerBtn,
-                  pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
-                ]}
-              >
-                <Menu size={22} color="#04a700" />
-              </Pressable>
-              
-              <Pressable 
-                style={styles.locationSelector}
-                onPress={() => setIsBranchModalVisible(true)}
-              >
-                <MapPin size={15} color="#04a700" />
-                <ThemedText style={styles.locationText} numberOfLines={1}>
-                  {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
-                </ThemedText>
-                <ChevronDown size={13} color="rgba(255,255,255,0.7)" />
-              </Pressable>
-
-              <Pressable style={styles.moreButton} onPress={() => loadData()}>
-                <MoreVertical size={20} color="#ffffff" />
-              </Pressable>
-            </View>
+          <View style={styles.darkHeaderInner}>
 
             <View style={styles.titleWrapper}>
               <ThemedText style={styles.mainTitle}>Let's Manage Your</ThemedText>
@@ -567,12 +573,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  darkHeader: {
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#090d16',
+    zIndex: 100,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: 10,
+    justifyContent: 'center',
+  },
+  darkHeaderInner: {
     backgroundColor: '#090d16', // Obsidian/dark slate header container
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     paddingHorizontal: Spacing.four,
     paddingBottom: 26,
+    paddingTop: 10,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.22,
@@ -583,7 +601,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    width: '100%',
   },
   profileWrapper: {
     width: 38,
