@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Wallet, ArrowDownLeft, ArrowUpRight, ShieldCheck, ChevronRight } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
-import { Wallet, ArrowDownLeft, ArrowUpRight, Award, CirclePercent, CheckCircle } from 'lucide-react-native';
 import api from '@/services/api';
 
 interface Transaction {
@@ -89,6 +89,20 @@ export default function OwnerLedger() {
   const netProfit = totalIncome - totalExpense;
   const marginIndex = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0.0;
 
+  // Category percentage calculation for custom distribution level bars
+  const totalOutflows = totalExpense || 1;
+  const salariesTotal = filteredEntries
+    .filter(entry => entry.ledger_type?.toLowerCase().includes('salary'))
+    .reduce((sum, entry) => sum + parseFloat(entry.expense || 0), 0);
+  const purchasesTotal = filteredEntries
+    .filter(entry => entry.ledger_type?.toLowerCase().includes('purchase'))
+    .reduce((sum, entry) => sum + parseFloat(entry.expense || 0), 0);
+  const operatingTotal = totalExpense - salariesTotal - purchasesTotal;
+
+  const salariesPercentage = Math.round((salariesTotal / totalOutflows) * 100);
+  const purchasesPercentage = Math.round((purchasesTotal / totalOutflows) * 100);
+  const operatingPercentage = Math.round((Math.max(0, operatingTotal) / totalOutflows) * 100);
+
   const transactions: Transaction[] = filteredEntries.map((entry, idx) => {
     const isInc = parseFloat(entry.income || 0) > 0;
     return {
@@ -97,23 +111,40 @@ export default function OwnerLedger() {
       category: entry.ledger_type_display || entry.ledger_type,
       amount: `₹ ${parseFloat(isInc ? entry.income : entry.expense).toLocaleString('en-IN')}`,
       date: formatDate(entry.created_at),
-      details: entry.detail,
+      details: entry.detail || 'Journal Ledger Entry',
     };
   });
 
-  const formattedIncome = totalIncome >= 100000 ? `₹ ${(totalIncome / 100000).toFixed(1)} Lakhs` : `₹ ${totalIncome.toLocaleString('en-IN')}`;
-  const formattedExpense = totalExpense >= 100000 ? `₹ ${(totalExpense / 100000).toFixed(1)} Lakhs` : `₹ ${totalExpense.toLocaleString('en-IN')}`;
+  const formattedIncome = totalIncome >= 100000 ? `₹ ${(totalIncome / 100000).toFixed(2)}L` : `₹ ${totalIncome.toLocaleString('en-IN')}`;
+  const formattedExpense = totalExpense >= 100000 ? `₹ ${(totalExpense / 100000).toFixed(2)}L` : `₹ ${totalExpense.toLocaleString('en-IN')}`;
+  
   const formattedNetProfit = netProfit >= 0
-    ? (netProfit >= 100000 ? `₹ ${(netProfit / 100000).toFixed(1)}L` : `₹ ${netProfit.toLocaleString('en-IN')}`)
-    : (Math.abs(netProfit) >= 100000 ? `-₹ ${(Math.abs(netProfit) / 100000).toFixed(1)}L` : `-₹ ${Math.abs(netProfit).toLocaleString('en-IN')}`);
+    ? (netProfit >= 100000 ? `₹ ${(netProfit / 100000).toFixed(2)} Lakhs` : `₹ ${netProfit.toLocaleString('en-IN')}`)
+    : (Math.abs(netProfit) >= 100000 ? `-₹ ${(Math.abs(netProfit) / 100000).toFixed(2)} Lakhs` : `-₹ ${Math.abs(netProfit).toLocaleString('en-IN')}`);
   const formattedMargin = `${marginIndex.toFixed(1)}%`;
 
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
+        {/* Crisp Flat Auditing Vault Top Header */}
+        <View style={[styles.flatVaultBar, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.flatVaultRow}>
+            <View style={styles.flatLogoBadge}>
+              <View style={styles.activeDot} />
+              <ThemedText style={styles.flatBadgeText}>KVR AUDIT VAULT</ThemedText>
+            </View>
+            <ShieldCheck size={18} color="#04a700" />
+          </View>
+          
+          <View style={styles.flatTitleWrapper}>
+            <ThemedText style={styles.flatTitleLabel}>CAPITAL DISPATCH JOURNAL</ThemedText>
+            <ThemedText style={styles.flatTitleMain}>Financial Ledger</ThemedText>
+          </View>
+        </View>
+
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} 
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -124,40 +155,34 @@ export default function OwnerLedger() {
             />
           }
         >
-          {/* Dynamic Dark Premium Header Section matching the dashboard */}
-          <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
-            <View style={styles.headerRow}>
-              <View style={styles.badgeWrapper}>
-                <Wallet size={18} color="#04a700" />
-                <ThemedText style={styles.badgeText}>FINANCIAL LEDGER REGISTRY</ThemedText>
+          {/* Double-Decker Premium Balance Card */}
+          <View style={styles.vaultBalanceCard}>
+            <View style={styles.balanceTopRow}>
+              <View>
+                <ThemedText style={styles.balanceLabel}>NET EARNINGS</ThemedText>
+                <ThemedText style={styles.balanceValue}>{formattedNetProfit}</ThemedText>
+              </View>
+              <View style={styles.marginGlowBox}>
+                <ThemedText style={styles.marginGlowText}>{formattedMargin}</ThemedText>
+                <ThemedText style={styles.marginGlowLabel}>MARGIN INDEX</ThemedText>
               </View>
             </View>
-
-            {/* Editorial Title */}
-            <View style={styles.titleWrapper}>
-              <ThemedText style={styles.mainTitle}>Financial Ledger</ThemedText>
-              <ThemedText style={styles.accentTitle}>Audit Registry.</ThemedText>
-            </View>
-
-            {/* Top Quick Metrics */}
-            <View style={styles.quickMetricsRow}>
-              <View style={styles.quickMetricBox}>
-                <ThemedText style={styles.qVal}>{formattedNetProfit}</ThemedText>
-                <ThemedText style={styles.qLbl}>Net Profits</ThemedText>
+            <View style={styles.balanceDivider} />
+            <View style={styles.balanceBottomRow}>
+              <View style={styles.cashFlowCol}>
+                <View style={[styles.flowDot, { backgroundColor: '#04a700' }]} />
+                <ThemedText style={styles.flowLabel}>Inflow: {formattedIncome}</ThemedText>
               </View>
-              <View style={styles.qDivider} />
-              <View style={styles.quickMetricBox}>
-                <ThemedText style={styles.qVal}>{formattedMargin}</ThemedText>
-                <ThemedText style={styles.qLbl}>Margin Index</ThemedText>
+              <View style={styles.cashFlowCol}>
+                <View style={[styles.flowDot, { backgroundColor: '#64748b' }]} />
+                <ThemedText style={styles.flowLabel}>Outflow: {formattedExpense}</ThemedText>
               </View>
             </View>
+          </View>
 
-            {/* Premium Sliding Time Filter pills */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.periodFilterScroll}
-            >
+          {/* Premium Horizontal sliding filters */}
+          <View style={styles.filterSection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodFilterScroll}>
               {[
                 { id: 'all', label: 'All Time' },
                 { id: 'today', label: 'Today' },
@@ -188,87 +213,89 @@ export default function OwnerLedger() {
           </View>
 
           {isLoading ? (
-            <View style={{ paddingVertical: 80, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#04a700" />
-              <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
-                Fetching ledger transactions...
-              </ThemedText>
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="small" color="#04a700" />
+              <ThemedText style={styles.loaderText}>Auditing transaction channels...</ThemedText>
             </View>
           ) : (
-            /* Ledger Sections List on light canvas */
             <View style={styles.contentSection}>
-              {/* Ledger Overview Cards */}
-              <View style={styles.financeGrid}>
-                <View style={styles.financeCard}>
-                  <View style={styles.cardHeader}>
-                    <View style={[styles.iconBox, { backgroundColor: '#e8fdf0' }]}>
-                      <ArrowDownLeft size={20} color="#04a700" />
-                    </View>
-                    <ThemedText style={styles.financeLabel}>Total Income</ThemedText>
-                  </View>
-                  <ThemedText style={[styles.financeValue, { color: '#04a700' }]}>{formattedIncome}</ThemedText>
-                </View>
-
-                <View style={styles.financeCard}>
-                  <View style={styles.cardHeader}>
-                    <View style={[styles.iconBox, { backgroundColor: '#fef2f2' }]}>
-                      <ArrowUpRight size={20} color="#d71d22" />
-                    </View>
-                    <ThemedText style={styles.financeLabel}>Total Expense</ThemedText>
-                  </View>
-                  <ThemedText style={[styles.financeValue, { color: '#d71d22' }]}>{formattedExpense}</ThemedText>
-                </View>
-              </View>
-
-              {/* Profitability Index card */}
-              <View style={styles.sectionCard}>
-                <ThemedText style={styles.sectionTitle}>Profitability Analysis</ThemedText>
+              {/* Distribution Level Meters Block */}
+              <View style={styles.distributionContainer}>
+                <ThemedText style={styles.sectionTitle}>Expenditure Channel Allocation</ThemedText>
                 
-                <View style={styles.barSplitContainer}>
-                  <View style={styles.barLabelRow}>
-                    <ThemedText style={styles.splitName}>Net Margin</ThemedText>
-                    <ThemedText style={styles.splitValue}>{formattedMargin}</ThemedText>
+                {/* Meter 1: Purchases */}
+                <View style={styles.meterBlock}>
+                  <View style={styles.meterInfo}>
+                    <ThemedText style={styles.meterName}>Procurement & Stock Intake</ThemedText>
+                    <ThemedText style={styles.meterPct}>{purchasesPercentage}%</ThemedText>
                   </View>
-                  <View style={styles.barTrack}>
-                    <View style={[styles.barFill, { width: `${Math.min(100, Math.max(0, marginIndex))}%`, backgroundColor: '#04a700' }]} />
+                  <View style={styles.meterTrack}>
+                    <View style={[styles.meterFill, { width: `${purchasesPercentage}%` }]} />
                   </View>
-                  <ThemedText style={styles.splitDesc}>Net profits from branches collections subtract operational expenditures.</ThemedText>
+                </View>
+
+                {/* Meter 2: Salaries */}
+                <View style={styles.meterBlock}>
+                  <View style={styles.meterInfo}>
+                    <ThemedText style={styles.meterName}>Showroom Salary Expense</ThemedText>
+                    <ThemedText style={styles.meterPct}>{salariesPercentage}%</ThemedText>
+                  </View>
+                  <View style={styles.meterTrack}>
+                    <View style={[styles.meterFill, { width: `${salariesPercentage}%` }]} />
+                  </View>
+                </View>
+
+                {/* Meter 3: Operational */}
+                <View style={styles.meterBlock}>
+                  <View style={styles.meterInfo}>
+                    <ThemedText style={styles.meterName}>Operating & Utility Expenditures</ThemedText>
+                    <ThemedText style={styles.meterPct}>{operatingPercentage}%</ThemedText>
+                  </View>
+                  <View style={styles.meterTrack}>
+                    <View style={[styles.meterFill, { width: `${operatingPercentage}%` }]} />
+                  </View>
                 </View>
               </View>
 
-              {/* Recent Transaction Log */}
-              <View style={styles.sectionCard}>
-                <ThemedText style={styles.sectionTitle}>Recent Entries Log</ThemedText>
-              
-              <View style={styles.listContainer}>
-                {transactions.map((tx, idx) => {
-                  const isInc = tx.type === 'Income';
+              {/* Transactions List */}
+              <View style={styles.transactionsContainer}>
+                <View style={styles.listHeader}>
+                  <ThemedText style={styles.sectionTitle}>Transaction Log Journal</ThemedText>
+                  <ThemedText style={styles.txCountText}>{transactions.length} entries</ThemedText>
+                </View>
 
-                  return (
-                    <View key={idx} style={[styles.listItem, idx === transactions.length - 1 && styles.lastItem]}>
-                      <View style={styles.listItemLeft}>
-                        <View style={[styles.arrowCircle, { backgroundColor: isInc ? '#e8fdf0' : '#fef2f2' }]}>
-                          {isInc ? (
-                            <ArrowDownLeft size={16} color="#04a700" />
-                          ) : (
-                            <ArrowUpRight size={16} color="#d71d22" />
-                          )}
+                {transactions.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={styles.emptyText}>No matching transaction entries logged</ThemedText>
+                  </View>
+                ) : (
+                  transactions.map((tx, idx) => {
+                    const isInc = tx.type === 'Income';
+                    return (
+                      <View key={tx.id || idx} style={styles.txRow}>
+                        <View style={styles.txLeft}>
+                          <View style={[styles.txIndicatorCircle, { borderColor: isInc ? '#04a700' : '#1e293b' }]}>
+                            {isInc ? (
+                              <ArrowDownLeft size={13} color="#04a700" />
+                            ) : (
+                              <ArrowUpRight size={13} color="#64748b" />
+                            )}
+                          </View>
+                          <View style={styles.txMeta}>
+                            <ThemedText style={styles.txCategoryText}>{tx.category}</ThemedText>
+                            <ThemedText style={styles.txDesc} numberOfLines={1}>{tx.details}</ThemedText>
+                            <ThemedText style={styles.txDateText}>{tx.date} • {tx.id}</ThemedText>
+                          </View>
                         </View>
-                        <View style={styles.detailsCol}>
-                          <ThemedText style={styles.txCategory}>{tx.category}</ThemedText>
-                          <ThemedText style={styles.txDetails} numberOfLines={1}>{tx.details}</ThemedText>
-                          <ThemedText style={styles.txDate}>{tx.date} • ID: {tx.id}</ThemedText>
-                        </View>
+                        <ThemedText style={[styles.txValue, { color: isInc ? '#04a700' : '#ffffff' }]}>
+                          {isInc ? '+' : '-'}{tx.amount}
+                        </ThemedText>
                       </View>
-                      <ThemedText style={[styles.txAmount, { color: isInc ? '#04a700' : '#d71d22' }]}>
-                        {isInc ? '+' : '-'}{tx.amount}
-                      </ThemedText>
-                    </View>
-                  );
-                })}
+                    );
+                  })
+                )}
               </View>
             </View>
-          </View>
           )}
         </ScrollView>
       </View>
@@ -279,7 +306,59 @@ export default function OwnerLedger() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#05070c',
+  },
+  flatVaultBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    backgroundColor: '#05070c',
+    borderBottomWidth: 1,
+    borderColor: '#141a29',
+  },
+  flatVaultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  flatLogoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#141a29',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#04a700',
+  },
+  flatBadgeText: {
+    color: '#04a700',
+    fontSize: 9.5,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
+  flatTitleWrapper: {
+    marginTop: 4,
+    gap: 2,
+  },
+  flatTitleLabel: {
+    fontSize: 8.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 1.2,
+  },
+  flatTitleMain: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: -0.5,
   },
   scrollView: {
     flex: 1,
@@ -287,261 +366,237 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  darkHeader: {
-    backgroundColor: '#090d16', // Obsidian/dark slate header container
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: 26,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    elevation: 12,
+  vaultBalanceCard: {
+    marginHorizontal: 24,
+    backgroundColor: '#141a29',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
+    padding: 20,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#04a700',
   },
-  headerRow: {
-    marginBottom: 16,
-  },
-  badgeWrapper: {
+  balanceTopRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
   },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 10,
+  balanceLabel: {
+    fontSize: 9,
     fontWeight: 'bold',
+    color: '#64748b',
     letterSpacing: 0.8,
   },
-  titleWrapper: {
-    marginBottom: 20,
-    gap: 2,
-  },
-  mainTitle: {
-    fontSize: 26,
-    fontWeight: '400',
+  balanceValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
     color: '#ffffff',
-    letterSpacing: -0.5,
+    marginTop: 2,
   },
-  accentTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#04a700', // Brand green highlight
-    letterSpacing: -0.5,
-  },
-  quickMetricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 4,
-  },
-  quickMetricBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  qVal: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  qLbl: {
-    color: '#64748b',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  qDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  contentSection: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: 24,
-    gap: 16,
-  },
-  financeGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  financeCard: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 16,
+  marginGlowBox: {
+    alignItems: 'flex-end',
+    backgroundColor: '#05070c',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
-    gap: 8,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 3,
+    borderColor: '#1e293b',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  financeLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: 'bold',
-  },
-  financeValue: {
-    fontSize: 18.5,
-    fontWeight: 'bold',
-  },
-  sectionCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 15.5,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginBottom: 16,
-  },
-  barSplitContainer: {
-    gap: 8,
-  },
-  barLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  splitName: {
-    fontSize: 14.5,
-    fontWeight: 'bold',
-    color: '#334155',
-  },
-  splitValue: {
-    fontSize: 15.5,
+  marginGlowText: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#04a700',
   },
-  barTrack: {
-    height: 10,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 5,
-  },
-  splitDesc: {
-    fontSize: 11.5,
-    color: '#94a3b8',
-    fontWeight: '500',
-    marginTop: 4,
-    lineHeight: 15,
-  },
-  listContainer: {
-    gap: 14,
-  },
-  listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    paddingBottom: 12,
-  },
-  lastItem: {
-    borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  listItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  arrowCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailsCol: {
-    gap: 2,
-    flex: 1,
-    paddingRight: 10,
-  },
-  txCategory: {
-    fontSize: 13.5,
+  marginGlowLabel: {
+    fontSize: 7,
     fontWeight: 'bold',
-    color: '#334155',
-  },
-  txDetails: {
-    fontSize: 11.5,
     color: '#64748b',
-    fontWeight: '500',
+    marginTop: 1,
   },
-  txDate: {
-    fontSize: 10.5,
-    color: '#94a3b8',
-    fontWeight: '500',
+  balanceDivider: {
+    height: 1,
+    backgroundColor: '#1e293b',
+    marginVertical: 16,
   },
-  txAmount: {
-    fontSize: 14.5,
-    fontWeight: 'bold',
+  balanceBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 24,
+  },
+  cashFlowCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  flowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  flowLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  filterSection: {
+    paddingHorizontal: 24,
+    marginTop: 16,
   },
   periodFilterScroll: {
-    flexDirection: 'row',
     gap: 8,
-    marginTop: 18,
-    paddingBottom: 2,
   },
   periodPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#141a29',
+    borderWidth: 1,
+    borderColor: '#1e293b',
   },
   periodPillActive: {
     backgroundColor: '#04a700',
     borderColor: '#04a700',
-    shadowColor: '#04a700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
   },
   periodPillText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 12,
+    color: '#64748b',
+    fontSize: 11,
     fontWeight: 'bold',
   },
   periodPillTextActive: {
     color: '#ffffff',
+  },
+  loaderContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loaderText: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  contentSection: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    gap: 20,
+  },
+  distributionContainer: {
+    backgroundColor: '#141a29',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 18,
+    gap: 14,
+  },
+  sectionTitle: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: 0.3,
+  },
+  meterBlock: {
+    gap: 6,
+  },
+  meterInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  meterName: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  meterPct: {
+    fontSize: 11,
+    color: '#04a700',
+    fontWeight: 'bold',
+  },
+  meterTrack: {
+    height: 6,
+    backgroundColor: '#05070c',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: '100%',
+    backgroundColor: '#04a700',
+    borderRadius: 3,
+  },
+  transactionsContainer: {
+    backgroundColor: '#141a29',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 18,
+    gap: 16,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  txCountText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  txRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#1e293b',
+    paddingBottom: 14,
+  },
+  txLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  txIndicatorCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#05070c',
+  },
+  txMeta: {
+    gap: 1,
+    flex: 1,
+    paddingRight: 8,
+  },
+  txCategoryText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  txDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  txDateText: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  txValue: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
   },
 });

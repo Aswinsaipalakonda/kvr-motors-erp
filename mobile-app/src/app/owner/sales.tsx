@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Layers, ArrowLeft, CheckCircle, Clock, ChevronDown, Eye } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
-import { Layers, ArrowLeft, CheckCircle, Clock } from 'lucide-react-native';
 
 interface SalesInvoice {
   id: number;
@@ -32,6 +32,7 @@ export default function OwnerSales() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<number | null>(null);
 
   const loadInvoices = async () => {
     try {
@@ -40,7 +41,7 @@ export default function OwnerSales() {
       setInvoices(res.data);
     } catch (e) {
       console.error('Failed to load sales invoices:', e);
-      Alert.alert('Load Error', 'Failed to retrieve sales invoices from database.');
+      Alert.alert('Load Error', 'Failed to retrieve sales invoices.');
     } finally {
       setIsLoading(false);
     }
@@ -50,113 +51,146 @@ export default function OwnerSales() {
     loadInvoices();
   }, []);
 
-  const getDeliveryStyle = (status: string) => {
+  const getDeliveryColor = (status: string) => {
     switch (status) {
       case 'delivered':
-        return { bg: '#e8fdf0', text: '#04a700', label: 'Delivered' };
+        return '#04a700'; // brand green
       default:
-        return { bg: '#fffbeb', text: '#d97706', label: 'Out for Delivery' };
+        return '#d97706'; // warning/pending
     }
   };
+
+  // Run-rate Calculations: Current Month Sales Targets (Target: 30 units)
+  const salesCount = invoices.length;
+  const targetUnits = 30;
+  const salesRunRatePct = Math.min(100, Math.round((salesCount / targetUnits) * 100));
 
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        {/* Dark Premium Header Section */}
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
+        {/* Flat Visual Journal Header */}
+        <View style={[styles.journalHeaderBar, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <ArrowLeft size={20} color="#ffffff" />
+              <ArrowLeft size={18} color="#ffffff" />
             </Pressable>
-            <View style={styles.badgeWrapper}>
-              <Layers size={18} color="#04a700" />
-              <ThemedText style={styles.badgeText}>CUSTOMER INVOICING JOURNAL</ThemedText>
+            <View style={styles.logoBadge}>
+              <Layers size={14} color="#04a700" />
+              <ThemedText style={styles.logoBadgeText}>TRANSACTION STREAM</ThemedText>
             </View>
           </View>
 
-          {/* Editorial Title */}
-          <View style={styles.titleWrapper}>
-            <ThemedText style={styles.mainTitle}>Sales Invoices</ThemedText>
-            <ThemedText style={styles.accentTitle}>Enterprise Journal.</ThemedText>
+          {/* Sales Target Run-rate Gauge */}
+          <View style={styles.gaugeContainer}>
+            <View style={styles.gaugeLabelRow}>
+              <ThemedText style={styles.gaugeTitle}>MONTHLY TARGET RUN-RATE</ThemedText>
+              <ThemedText style={styles.gaugeValue}>{salesCount} / {targetUnits} EVs</ThemedText>
+            </View>
+            <View style={styles.gaugeBarTrack}>
+              <View style={[styles.gaugeBarFill, { width: `${salesRunRatePct}%` }]} />
+            </View>
+            <View style={styles.gaugeFooter}>
+              <ThemedText style={styles.gaugeDesc}>Progress index to sales milestones</ThemedText>
+              <ThemedText style={styles.gaugePctText}>{salesRunRatePct}%</ThemedText>
+            </View>
           </View>
         </View>
 
         {isLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#04a700" />
-            <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
-              Fetching sales invoices from database...
-            </ThemedText>
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="small" color="#04a700" />
+            <ThemedText style={styles.loaderText}>Auditing transaction journal streams...</ThemedText>
           </View>
         ) : (
           <ScrollView 
             style={styles.scrollView}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} 
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={loadInvoices}
+                colors={['#04a700']}
+                tintColor="#04a700"
+              />
+            }
           >
             <View style={styles.contentSection}>
               {invoices.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Layers size={36} color="#94a3b8" />
-                  <ThemedText style={styles.emptyText}>No customer sales invoices registered yet</ThemedText>
+                  <ThemedText style={styles.emptyText}>No sales invoices recorded in journal</ThemedText>
                 </View>
               ) : (
                 invoices.map((inv, idx) => {
-                  const deliveryStyle = getDeliveryStyle(inv.delivery_status);
+                  const deliveryColor = getDeliveryColor(inv.delivery_status);
+                  const isExpanded = expandedInvoiceId === inv.id;
+                  
                   return (
                     <View key={inv.id || idx} style={styles.invoiceCard}>
-                      <View style={styles.cardHeader}>
-                        <View>
-                          <ThemedText style={styles.invoiceNumber}>{inv.invoice_number}</ThemedText>
+                      <Pressable 
+                        onPress={() => setExpandedInvoiceId(isExpanded ? null : inv.id)}
+                        style={styles.cardHeaderPressable}
+                      >
+                        <View style={styles.headerLeft}>
+                          <ThemedText style={styles.invoiceNumText}>{inv.invoice_number}</ThemedText>
                           <ThemedText style={styles.customerName}>{inv.customer_name}</ThemedText>
                           <ThemedText style={styles.customerContact}>{inv.customer_contact}</ThemedText>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: deliveryStyle.bg }]}>
-                          <ThemedText style={[styles.statusText, { color: deliveryStyle.text }]}>
-                            {deliveryStyle.label}
-                          </ThemedText>
+                        <View style={styles.headerRight}>
+                          <View style={[styles.channelBadge, { borderColor: '#04a700' }]}>
+                            <ThemedText style={styles.channelText}>
+                              {(inv.payment_mode || 'CASH').toUpperCase()}
+                            </ThemedText>
+                          </View>
+                          <ChevronDown size={14} color="#64748b" style={isExpanded && { transform: [{ rotate: '180deg' }] }} />
                         </View>
-                      </View>
+                      </Pressable>
 
-                      <View style={styles.detailsRow}>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>VEHICLE MODEL</ThemedText>
-                          <ThemedText style={styles.detailVal}>{inv.model_name}</ThemedText>
+                      {/* Technical Grid: Essential metrics */}
+                      <View style={styles.techGrid}>
+                        <View style={styles.gridCell}>
+                          <ThemedText style={styles.cellLabel}>EV MODEL DISPATCH</ThemedText>
+                          <ThemedText style={styles.cellValue}>{inv.model_name}</ThemedText>
                         </View>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>SALE PRICE</ThemedText>
+                        <View style={styles.gridCell}>
+                          <ThemedText style={styles.cellLabel}>NET INVOICE COST</ThemedText>
                           <ThemedText style={styles.priceVal}>₹ {parseFloat(inv.sale_price).toLocaleString('en-IN')}</ThemedText>
                         </View>
                       </View>
 
-                      <View style={styles.detailsRow}>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>VIN SERIAL</ThemedText>
-                          <ThemedText style={styles.vinVal}>{inv.vin_number}</ThemedText>
-                        </View>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>BATTERY SERIAL</ThemedText>
-                          <ThemedText style={styles.detailVal}>{inv.battery_serial || 'N/A'}</ThemedText>
-                        </View>
-                      </View>
+                      {/* Expandable Details Container */}
+                      {isExpanded && (
+                        <FadeScaleTransition>
+                          <View style={styles.expandedVault}>
+                            <View style={styles.vaultRow}>
+                              <ThemedText style={styles.vaultLabel}>VIN SERIAL REFERENCE</ThemedText>
+                              <ThemedText style={styles.vaultValMonospaced}>{inv.vin_number}</ThemedText>
+                            </View>
+                            <View style={styles.vaultRow}>
+                              <ThemedText style={styles.vaultLabel}>BATTERY BATCH CODE</ThemedText>
+                              <ThemedText style={styles.vaultVal}>{inv.battery_serial || 'N/A'}</ThemedText>
+                            </View>
+                            <View style={styles.vaultRow}>
+                              <ThemedText style={styles.vaultLabel}>DELIVERY LOG</ThemedText>
+                              <ThemedText style={[styles.vaultVal, { color: deliveryColor, fontWeight: 'bold' }]}>
+                                {inv.delivery_status.toUpperCase()}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.vaultRow}>
+                              <ThemedText style={styles.vaultLabel}>SALES REPRESENTATIVE</ThemedText>
+                              <ThemedText style={styles.vaultVal}>{inv.executive_name || 'Unassigned'}</ThemedText>
+                            </View>
+                          </View>
+                        </FadeScaleTransition>
+                      )}
 
-                      <View style={styles.detailsRow}>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>PAYMENT MODE</ThemedText>
-                          <ThemedText style={styles.detailVal}>{inv.payment_mode}</ThemedText>
-                        </View>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>SALES PERSON</ThemedText>
-                          <ThemedText style={styles.detailVal}>{inv.executive_name || 'Unassigned'}</ThemedText>
-                        </View>
-                      </View>
-
+                      {/* Card Divider & Date stamp */}
                       <View style={styles.cardDivider} />
                       <View style={styles.cardFooter}>
-                        <ThemedText style={styles.dateText}>Invoiced on: {inv.sale_date}</ThemedText>
-                        <View style={styles.auditIndicator}>
-                          <CheckCircle size={13} color="#04a700" />
-                          <ThemedText style={styles.auditText}>Journal Clear</ThemedText>
+                        <ThemedText style={styles.dateText}>Journalized on: {inv.sale_date}</ThemedText>
+                        <View style={styles.journalClearRow}>
+                          <CheckCircle size={11} color="#04a700" />
+                          <ThemedText style={styles.journalClearText}>JOURNAL CLEAR</ThemedText>
                         </View>
                       </View>
                     </View>
@@ -174,7 +208,97 @@ export default function OwnerSales() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#05070c',
+  },
+  journalHeaderBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    backgroundColor: '#05070c',
+    borderBottomWidth: 1,
+    borderColor: '#141a29',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 18,
+  },
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#141a29',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#141a29',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  logoBadgeText: {
+    color: '#04a700',
+    fontSize: 9.5,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
+  gaugeContainer: {
+    backgroundColor: '#141a29',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    gap: 10,
+  },
+  gaugeLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gaugeTitle: {
+    fontSize: 8.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  gaugeValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  gaugeBarTrack: {
+    height: 6,
+    backgroundColor: '#05070c',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  gaugeBarFill: {
+    height: '100%',
+    backgroundColor: '#04a700',
+    borderRadius: 3,
+  },
+  gaugeFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gaugeDesc: {
+    fontSize: 9,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  gaugePctText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#04a700',
   },
   scrollView: {
     flex: 1,
@@ -182,162 +306,147 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  darkHeader: {
-    backgroundColor: '#090d16',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
+  loaderContainer: {
+    paddingVertical: 80,
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
+    gap: 10,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 10,
+  loaderText: {
+    fontSize: 11.5,
+    color: '#64748b',
     fontWeight: 'bold',
-    letterSpacing: 0.8,
-  },
-  titleWrapper: {
-    marginBottom: 10,
-    gap: 2,
-  },
-  mainTitle: {
-    fontSize: 26,
-    fontWeight: '400',
-    color: '#ffffff',
-    letterSpacing: -0.5,
-  },
-  accentTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#04a700',
-    letterSpacing: -0.5,
   },
   contentSection: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: 24,
-    gap: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    gap: 14,
   },
   emptyContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#141a29',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
-    borderRadius: 22,
+    borderColor: '#1e293b',
     paddingVertical: 60,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
   },
   emptyText: {
-    fontSize: 13.5,
-    color: '#94a3b8',
-    fontWeight: '500',
-    textAlign: 'center',
-    paddingHorizontal: 30,
-  },
-  invoiceCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  invoiceNumber: {
-    fontSize: 13.5,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  customerName: {
-    fontSize: 16.5,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  customerContact: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  invoiceCard: {
+    backgroundColor: '#141a29',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 18,
+    gap: 14,
   },
-  statusText: {
-    fontSize: 10.5,
-    fontWeight: 'bold',
-  },
-  detailsRow: {
+  cardHeaderPressable: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 16,
+    alignItems: 'flex-start',
   },
-  detailCol: {
+  headerLeft: {
+    gap: 1,
+    flex: 1,
+  },
+  invoiceNumText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    fontFamily: 'monospace',
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: 2,
+  },
+  customerContact: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  channelBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  channelText: {
+    fontSize: 8.5,
+    color: '#04a700',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  techGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    backgroundColor: '#05070c',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  gridCell: {
     flex: 1,
     gap: 2,
   },
-  detailLabel: {
-    fontSize: 9,
+  cellLabel: {
+    fontSize: 8,
     fontWeight: 'bold',
-    color: '#94a3b8',
+    color: '#64748b',
     letterSpacing: 0.5,
   },
-  detailVal: {
-    fontSize: 13,
+  cellValue: {
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#475569',
+    color: '#ffffff',
   },
   priceVal: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#ffffff',
   },
-  vinVal: {
-    fontSize: 13,
+  expandedVault: {
+    backgroundColor: '#05070c',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    gap: 10,
+  },
+  vaultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  vaultLabel: {
+    fontSize: 8.5,
     fontWeight: 'bold',
-    color: '#475569',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  vaultVal: {
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  vaultValMonospaced: {
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
     fontFamily: 'monospace',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#1e293b',
   },
   cardFooter: {
     flexDirection: 'row',
@@ -345,17 +454,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateText: {
-    fontSize: 11.5,
-    color: '#94a3b8',
+    fontSize: 11,
+    color: '#64748b',
     fontWeight: '500',
   },
-  auditIndicator: {
+  journalClearRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  auditText: {
-    fontSize: 11.5,
+  journalClearText: {
+    fontSize: 10.5,
     fontWeight: 'bold',
     color: '#04a700',
   },
