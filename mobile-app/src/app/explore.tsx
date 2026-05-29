@@ -50,7 +50,7 @@ export default function TabTwoScreen() {
                 <ThemedText type="link">Expo documentation</ThemedText>
                 <SymbolView
                   tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
+                  name="arrow.up.right.square"
                   size={12}
                 />
               </ThemedView>
@@ -89,11 +89,9 @@ export default function TabTwoScreen() {
 
           <Collapsible title="Images">
             <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
+              For static images, you can use standard image components and assets:
             </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
+            <Image source={require('@/assets/images/logo.png')} style={styles.imageReact} contentFit="contain" />
             <ExternalLink href="https://reactnative.dev/docs/images">
               <ThemedText type="linkPrimary">Learn more</ThemedText>
             </ExternalLink>

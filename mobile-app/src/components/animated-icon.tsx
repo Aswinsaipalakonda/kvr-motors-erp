@@ -89,7 +89,7 @@ export function AnimatedIcon() {
 
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+        <Image style={styles.image} source={require('@/assets/images/logo.png')} contentFit="contain" />
       </Animated.View>
     </View>
   );
@@ -114,12 +114,12 @@ const styles = StyleSheet.create({
   },
   image: {
     position: 'absolute',
-    width: 76,
-    height: 71,
+    width: 80,
+    height: 80,
   },
   background: {
     borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    experimental_backgroundImage: `linear-gradient(180deg, #34d399, #04a700)`,
     width: 128,
     height: 128,
     position: 'absolute',
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#04a700',
     zIndex: 1000,
   },
 });

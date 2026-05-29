@@ -10,6 +10,10 @@ import EmptyState from "../components/EmptyState";
 import { getBranches, createBranch } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel } from "../services/vehicles";
 import { getLeads } from "../services/leads";
+import { getBookings } from "../services/bookings";
+import { getSalesInvoices } from "../services/sales";
+import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
+import { getLedgerEntries } from "../services/ledger";
 import {
   TrendingUp,
   Percent,
@@ -71,6 +75,27 @@ export default function OwnerDashboard() {
   // Real database leads states
   const [leadsList, setLeadsList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
+
+  // Real database bookings, sales, purchases, and ledger states
+  const [advanceBookings, setAdvanceBookings] = useState<any[]>([]);
+  const [advanceBookingsLoading, setAdvanceBookingsLoading] = useState(true);
+
+  const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
+  const [salesInvoicesLoading, setSalesInvoicesLoading] = useState(true);
+
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(true);
+
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  const [ledgerEntriesLoading, setLedgerEntriesLoading] = useState(true);
+
+  // New PO form state
+  const [newPOSupplier, setNewPOSupplier] = useState("");
+  const [newPOModel, setNewPOModel] = useState("");
+  const [newPOQty, setNewPOQty] = useState("");
+  const [newPOPrice, setNewPOPrice] = useState("");
+  const [newPOPaymentTerms, setNewPOPaymentTerms] = useState("");
+  const [newPOEstDelivery, setNewPOEstDelivery] = useState("");
 
   // New Vehicle Model form state
   const [newModelBrand, setNewModelBrand] = useState<string>("");
@@ -168,11 +193,99 @@ export default function OwnerDashboard() {
     }
   };
 
+  const loadBookings = async () => {
+    try {
+      setAdvanceBookingsLoading(true);
+      const data = await getBookings();
+      setAdvanceBookings(data);
+    } catch (e) {
+      console.error("Failed to load bookings from Django REST API:", e);
+    } finally {
+      setAdvanceBookingsLoading(false);
+    }
+  };
+
+  const loadSales = async () => {
+    try {
+      setSalesInvoicesLoading(true);
+      const data = await getSalesInvoices();
+      setSalesInvoices(data);
+    } catch (e) {
+      console.error("Failed to load sales from Django REST API:", e);
+    } finally {
+      setSalesInvoicesLoading(false);
+    }
+  };
+
+  const loadPurchases = async () => {
+    try {
+      setPurchaseOrdersLoading(true);
+      const data = await getPurchaseOrders();
+      setPurchaseOrders(data);
+    } catch (e) {
+      console.error("Failed to load purchases from Django REST API:", e);
+    } finally {
+      setPurchaseOrdersLoading(false);
+    }
+  };
+
+  const loadLedger = async () => {
+    try {
+      setLedgerEntriesLoading(true);
+      const data = await getLedgerEntries();
+      setLedgerEntries(data);
+    } catch (e) {
+      console.error("Failed to load ledger from Django REST API:", e);
+    } finally {
+      setLedgerEntriesLoading(false);
+    }
+  };
+
+  const handleApprovePO = async (id: number) => {
+    try {
+      await updatePurchaseOrderStatus(id, "approved");
+      loadPurchases();
+      loadLedger();
+    } catch (err) {
+      console.error("Failed to approve purchase order:", err);
+    }
+  };
+
+  const handleCreatePOSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPOSupplier.trim() || !newPOModel || !newPOQty || !newPOPrice || !newPOPaymentTerms.trim()) return;
+    try {
+      await createPurchaseOrder({
+        supplier_name: newPOSupplier.trim(),
+        vehicle_model: parseInt(newPOModel),
+        quantity: parseInt(newPOQty),
+        unit_price: parseFloat(newPOPrice),
+        payment_terms: newPOPaymentTerms.trim(),
+        estimated_delivery: newPOEstDelivery || undefined
+      });
+      setNewPOSupplier("");
+      setNewPOModel("");
+      setNewPOQty("");
+      setNewPOPrice("");
+      setNewPOPaymentTerms("");
+      setNewPOEstDelivery("");
+      setIsAddPOOpen(false);
+      loadPurchases();
+      loadLedger();
+    } catch (err) {
+      console.error("Failed to create purchase order:", err);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
     loadVehicles();
     loadLeads();
+    loadBookings();
+    loadSales();
+    loadPurchases();
+    loadLedger();
   }, []);
   const systemUsers = [
     { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
@@ -262,32 +375,12 @@ export default function OwnerDashboard() {
     { vin: "KVRVIN2026X103", motor: "MTR-90807", chassis: "CHS-88908", model: "Frankly 79", color: "Yellow", branch: "Srikakulam", location: "Srikakulam Showroom", date: "15 May 2024", status: "Available", battery: "BATT-00621", booking: "N/A", pdi: "Passed", ageInStock: "3 days" },
     { vin: "KVRVIN2026X104", motor: "MTR-90812", chassis: "CHS-88915", model: "Watts 100", color: "Red", branch: "Vizag", location: "Pendurthi Godown", date: "02 May 2024", status: "Reserved", battery: "BATT-00511", booking: "BK-8012", pdi: "Pending", ageInStock: "26 days" },
   ];
-  const purchaseOrders = [
-    { poNum: "PO-2026-001", supplier: "Dynamo EV Manufacturers", item: "Dynamo Pro (30 Units)", qty: 30, price: "₹ 23,40,000", date: "05 May 2024", status: "Approved", paymentTerms: "Net 30", estDelivery: "20 May 2026" },
-    { poNum: "PO-2026-002", supplier: "Kinetic Green Corp", item: "E-Luna Moped (50 Units)", qty: 50, price: "₹ 29,50,000", date: "10 May 2024", status: "Received", paymentTerms: "50% Advance", estDelivery: "15 May 2026" },
-    { poNum: "PO-2026-003", supplier: "Future Batteries Ltd", item: "Li-ion Pack 2.0 (100 Units)", qty: 100, price: "₹ 18,00,000", date: "14 May 2024", status: "Pending Approval", paymentTerms: "Net 45", estDelivery: "28 May 2026" },
-  ];
-  const salesInvoices = [
-    { invNum: "INV-2024-0789", customer: "Ramesh Naidu", contact: "9876543210", model: "Dynamo Pro", battery: "BATT-00874", price: "₹ 98,500", date: "13 May 2024", status: "Delivered", exec: "Anil Kumar", paymentMode: "SBI Finance", insurancePartner: "Chola MS" },
-    { invNum: "INV-2024-0790", customer: "K. Satish", contact: "9988776655", model: "Kinetic Green E-Luna", battery: "BATT-00982", price: "₹ 74,999", date: "13 May 2024", status: "Processing", exec: "Anil Kumar", paymentMode: "SBI Finance", insurancePartner: "ICICI Lombard" },
-    { invNum: "INV-2024-0791", customer: "P. Lakshmi", contact: "8877665544", model: "Frankly 79", battery: "BATT-00621", price: "₹ 1,15,000", date: "12 May 2024", status: "Delivered", exec: "Prasad", paymentMode: "HDFC Loan", insurancePartner: "Chola MS" },
-  ];
-  const advanceBookings = [
-    { bookingId: "BK-8021", customer: "S. Venkat", contact: "7788990011", model: "Dynamo Pro", amount: "₹ 10,000", date: "11 May 2024", expiry: "26 May 2024", status: "Confirmed", assignedExec: "Anil Kumar", pdiVerified: "Yes" },
-    { bookingId: "BK-8012", customer: "A. Srinivas", contact: "9900112233", model: "Watts 100", amount: "₹ 25,000", date: "10 May 2024", expiry: "25 May 2024", status: "Pending Approval", assignedExec: "Prasad", pdiVerified: "Pending" },
-    { bookingId: "BK-8025", customer: "B. Kiran", contact: "8899001122", model: "Frankly 79", amount: "₹ 15,000", date: "14 May 2024", expiry: "29 May 2024", status: "Converted", assignedExec: "Anil Kumar", pdiVerified: "Yes" },
-  ];
+  // Loaded dynamically via useEffect hooks and Django REST API endpoints
   const batteriesStock = [
     { serial: "BATT-00982", capacity: "1.2 kWh", purDate: "02 Mar 2024", status: "Assigned", vehicle: "KVRVIN2026X101", location: "Pendurthi Godown", supplier: "Ampere Cells", warrantyYears: "3 Years" },
     { serial: "BATT-00874", capacity: "2.0 kWh", purDate: "10 Jan 2024", status: "Sold", vehicle: "KVRVIN2026X102", location: "Vizag Showroom", supplier: "Future Batteries Ltd", warrantyYears: "3 Years" },
     { serial: "BATT-00621", capacity: "2.4 kWh", purDate: "15 Apr 2024", status: "Available", vehicle: "N/A", location: "Srikakulam Showroom", supplier: "Tesla Tech Pack", warrantyYears: "5 Years" },
     { serial: "BATT-00511", capacity: "3.2 kWh", purDate: "01 May 2024", status: "Assigned", vehicle: "KVRVIN2026X104", location: "Pendurthi Godown", supplier: "Tesla Tech Pack", warrantyYears: "5 Years" },
-  ];
-  const ledgerEntries = [
-    { id: "TXN-7098", type: "Sales Income", branch: "Vizag", detail: "Vehicle Sale (INV-2024-0789)", income: "₹ 98,500", expense: "—", date: "13 May 2024", paymentMode: "Cheque #9082", approvedBy: "Ravi Varma" },
-    { id: "TXN-7099", type: "Purchase Expense", branch: "Vizag", detail: "Supplier Battery Payment", income: "—", expense: "₹ 4,50,000", date: "12 May 2024", paymentMode: "Bank Transfer", approvedBy: "Ravi Varma" },
-    { id: "TXN-7100", type: "Salary Expense", branch: "Srikakulam", detail: "May Staff Salaries", income: "—", expense: "₹ 1,80,000", date: "10 May 2024", paymentMode: "Bank Transfer", approvedBy: "Suresh Babu" },
-    { id: "TXN-7101", type: "Booking Amount", branch: "Kakinada", detail: "Advance Lock payment (BK-8025)", income: "₹ 15,000", expense: "—", date: "14 May 2024", paymentMode: "UPI / Cash", approvedBy: "Ravi Varma" },
   ];
 
   if (!isMounted) {
@@ -768,33 +861,58 @@ export default function OwnerDashboard() {
                   </button>
                 }
               >
-                {purchaseOrders.map((po, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-indigo-600">{po.poNum}</td>
-                    <td className="py-3.5 px-5 text-slate-700 font-semibold">{po.supplier}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-medium">{po.item}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-700">{po.qty} units</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{po.price}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-medium">{po.date}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{po.paymentTerms}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{po.estDelivery}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        po.status === "Approved" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                        po.status === "Received" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {po.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">View Details</button>
-                      {po.status === "Pending Approval" && (
-                        <button className="text-xs text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer">Approve</button>
-                      )}
+                {purchaseOrdersLoading ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading purchase orders from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : purchaseOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Purchase Orders Registered" 
+                        description="Stock purchase orders will display here dynamically." 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  purchaseOrders.map((po, idx) => (
+                    <tr key={po.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-indigo-600">{po.po_number}</td>
+                      <td className="py-3.5 px-5 text-slate-700 font-semibold">{po.supplier_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-medium">{po.vehicle_model_name}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-700">{po.quantity} units</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(po.total_price || 0).toLocaleString('en-IN')}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-medium">{po.order_date}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{po.payment_terms}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{po.estimated_delivery || "N/A"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          po.status === "approved" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          po.status === "received" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          po.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {po.status_display || po.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        {po.status === "pending" && (
+                          <button 
+                            onClick={() => handleApprovePO(po.id)}
+                            className="text-xs text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -803,27 +921,47 @@ export default function OwnerDashboard() {
             <div className="space-y-6">
               
               <Table title="Invoiced Sales Records" headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status"]}>
-                {salesInvoices.map((inv, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{inv.invNum}</td>
-                    <td className="py-3.5 px-5 text-slate-800 font-bold">{inv.customer}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-mono">{inv.contact}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.model}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery}</td>
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{inv.price}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.date}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.paymentMode}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurancePartner}</td>
-                    <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.exec}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        inv.status === "Delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {inv.status}
-                      </span>
+                {salesInvoicesLoading ? (
+                  <tr>
+                    <td colSpan={11} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : salesInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Sales Invoices Registered" 
+                        description="Finalized customer sales invoices will display here dynamically." 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  salesInvoices.map((inv, idx) => (
+                    <tr key={inv.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{inv.invoice_number}</td>
+                      <td className="py-3.5 px-5 text-slate-800 font-bold">{inv.customer_name}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-mono">{inv.customer_contact}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.model_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery_serial || "N/A"}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(inv.sale_price || 0).toLocaleString('en-IN')}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.sale_date}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurance_partner || "N/A"}</td>
+                      <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.executive_name || "Unassigned"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {inv.delivery_status_display || inv.delivery_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -905,39 +1043,57 @@ export default function OwnerDashboard() {
                   </button>
                 }
               >
-                {advanceBookings.map((bk, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{bk.bookingId}</td>
-                    <td className="py-3.5 px-5 text-slate-800"><div className="font-bold">{bk.customer}</div><div className="text-[10px] text-slate-400">{bk.contact}</div></td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.model}</td>
-                    <td className="py-3.5 px-5 font-bold text-emerald-600">{bk.amount}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-medium">{bk.date}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-mono font-semibold">{bk.expiry}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{bk.assignedExec}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        bk.pdiVerified === "Yes" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {bk.pdiVerified}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                        bk.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        bk.status === "Converted" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                        "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {bk.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      {bk.status === "Confirmed" && (
-                        <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Convert to Sale</button>
-                      )}
-                      <button className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                {advanceBookingsLoading ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading advance bookings from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : advanceBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Bookings Registered" 
+                        description="Customer bookings recorded by sales executives will display here dynamically." 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  advanceBookings.map((bk, idx) => (
+                    <tr key={bk.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{bk.booking_id}</td>
+                      <td className="py-3.5 px-5 text-slate-800"><div className="font-bold">{bk.customer_name}</div><div className="text-[10px] text-slate-400">{bk.contact_number}</div></td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.vehicle_model_name}</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-600">₹ {parseFloat(bk.advance_amount).toLocaleString('en-IN')}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-medium">{bk.booking_date}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-mono font-semibold">{bk.expiry_date}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{bk.executive_name || "Unassigned"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          bk.pdi_verified === "yes" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {bk.pdi_verified === "yes" ? "Yes" : bk.pdi_verified === "no" ? "No" : "Pending"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                          bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          bk.status === "converted" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {bk.status_display || bk.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5">
+                        <button className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -1001,35 +1157,65 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Ledger Income</span>
-                  <span className="text-xl font-bold text-slate-800">₹ 2,46,45,000</span>
+                  <span className="text-xl font-bold text-slate-800">
+                    ₹ {ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0), 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Purchase Cost</span>
-                  <span className="text-xl font-bold text-slate-800">₹ 1,65,40,000</span>
+                  <span className="text-xl font-bold text-slate-800">
+                    ₹ {ledgerEntries.filter(row => row.ledger_type === "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Operating Expense</span>
-                  <span className="text-xl font-bold text-slate-800">₹ 18,20,000</span>
+                  <span className="text-xl font-bold text-slate-800">
+                    ₹ {ledgerEntries.filter(row => row.ledger_type !== "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Net Cashflow</span>
-                  <span className="text-xl font-bold text-emerald-600">₹ +62,85,000</span>
+                  <span className={`text-xl font-bold ${
+                    ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+                  }`}>
+                    ₹ {ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
-              <Table title="General Ledger Entries List" headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Booking Date"]}>
-                {ledgerEntries.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{row.id}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.type}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.branch}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-medium">{row.detail}</td>
-                    <td className="py-3.5 px-5 font-bold text-emerald-600">{row.income}</td>
-                    <td className="py-3.5 px-5 font-bold text-rose-600">{row.expense}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{row.paymentMode}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-bold">{row.approvedBy}</td>
-                    <td className="py-3.5 px-5 text-slate-450 font-medium">{row.date}</td>
+              <Table title="General Ledger Entries List" headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Entry Date"]}>
+                {ledgerEntriesLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading ledger transaction records from PostgreSQL...</span>
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                ) : ledgerEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Transactions Logged" 
+                        description="Financial activities across branches will register on this ledger automatically." 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  ledgerEntries.map((row, idx) => (
+                    <tr key={row.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{row.transaction_id}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.ledger_type_display || row.ledger_type}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.branch_name}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-medium">{row.detail}</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-600">{parseFloat(row.income) > 0 ? "₹ " + parseFloat(row.income).toLocaleString('en-IN') : "—"}</td>
+                      <td className="py-3.5 px-5 font-bold text-rose-600">{parseFloat(row.expense) > 0 ? "₹ " + parseFloat(row.expense).toLocaleString('en-IN') : "—"}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{row.payment_mode}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-bold">{row.approver_name || "System"}</td>
+                      <td className="py-3.5 px-5 text-slate-450 font-medium">{row.created_at}</td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -1444,6 +1630,85 @@ export default function OwnerDashboard() {
           </div>
           <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
             Log Stock Unit
+          </button>
+        </form>
+      </Modal>
+      {/* 4. Create Purchase Order */}
+      <Modal isOpen={isAddPOOpen} onClose={() => setIsAddPOOpen(false)} title="Create Supplier Purchase Order">
+        <form onSubmit={handleCreatePOSubmit} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier Entity Name</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Dynamo EV Manufacturers" 
+              value={newPOSupplier}
+              onChange={(e) => setNewPOSupplier(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+              required 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
+              <select 
+                value={newPOModel}
+                onChange={(e) => setNewPOModel(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2.5 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required
+              >
+                <option value="">-- Select Model --</option>
+                {vehicleModelsList.map((model) => (
+                  <option key={model.id} value={model.id}>{model.model_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Quantity</label>
+              <input 
+                type="number" 
+                placeholder="e.g. 30" 
+                value={newPOQty}
+                onChange={(e) => setNewPOQty(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Price (INR)</label>
+              <input 
+                type="number" 
+                placeholder="e.g. 78000" 
+                value={newPOPrice}
+                onChange={(e) => setNewPOPrice(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Terms</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Net 30" 
+                value={newPOPaymentTerms}
+                onChange={(e) => setNewPOPaymentTerms(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                required 
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Estimated Delivery Date</label>
+            <input 
+              type="date" 
+              value={newPOEstDelivery}
+              onChange={(e) => setNewPOEstDelivery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+            />
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
+            Create Purchase Order
           </button>
         </form>
       </Modal>
