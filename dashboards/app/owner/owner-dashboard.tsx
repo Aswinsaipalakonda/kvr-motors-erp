@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
@@ -401,7 +402,7 @@ export default function OwnerDashboard() {
         {/* Navbar */}
         <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
         {/* Dashboard Views */}
-        <main className={`flex-1 p-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 h-[calc(100vh-80px)] bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -429,7 +430,7 @@ export default function OwnerDashboard() {
                 <DashboardCard title="Receivables" value="₹ 68,75,000" trend="↓ 3.7%" trendType="danger" description="3.7% vs last month" icon={Briefcase} color="purple" />
               </div>
               {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[460px]">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[460px]">
                 
                 {/* Sales Overview Chart (Line) */}
                 <div className="lg:col-span-2 bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col justify-between h-full min-h-[440px]">
@@ -503,7 +504,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               {/* Lower Section Charts & Lists */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-80">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-80">
                 
                 {/* Leads Funnel representation */}
                 <div className="bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col h-full justify-between">
@@ -1402,6 +1403,8 @@ export default function OwnerDashboard() {
           )}
         </main>
       </div>
+      {/* Mobile bottom navigation */}
+      <BottomNav role="owner" activeTab={activeTab} />
       {/* MODALS */}
       <Modal isOpen={isAddBranchOpen} onClose={() => setIsAddBranchOpen(false)} title="Create New Showroom / Branch Outlet">
         <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">

@@ -167,7 +167,7 @@ export default function OwnerLayout() {
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <OwnerDashboard branch={branch} setBranch={setBranch} />;
+        return <OwnerDashboard branch={branch} setBranch={setBranch} openBranchModal={() => setIsBranchModalVisible(true)} />;
       case 'inventory':
         return <OwnerInventory branch={branch} />;
       case 'sales':
@@ -177,7 +177,7 @@ export default function OwnerLayout() {
       case 'profile':
         return <OwnerProfile />;
       default:
-        return <OwnerDashboard branch={branch} setBranch={setBranch} />;
+        return <OwnerDashboard branch={branch} setBranch={setBranch} openBranchModal={() => setIsBranchModalVisible(true)} />;
     }
   };
 
@@ -344,8 +344,14 @@ export default function OwnerLayout() {
                 <ChevronDown size={13} color="#94a3b8" />
               </Pressable>
 
-              <Pressable style={styles.moreButton}>
-                <MoreVertical size={20} color="#94a3b8" />
+              <Pressable 
+                style={styles.moreButton}
+                onPress={() => {
+                  setActiveTab('profile');
+                  router.push('/owner/profile' as any);
+                }}
+              >
+                <User size={20} color="#94a3b8" />
               </Pressable>
             </View>
           </View>
@@ -679,7 +685,7 @@ const styles = StyleSheet.create({
   },
   mainContentContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc', // LIGHT background viewport!
+    backgroundColor: '#0a0e1a', // Obsidian dark background viewport to prevent white flashes!
     shadowColor: '#000000',
     shadowOffset: { width: -12, height: 0 },
     shadowOpacity: 0.35,

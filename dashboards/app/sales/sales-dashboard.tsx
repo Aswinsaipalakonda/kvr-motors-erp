@@ -9,6 +9,7 @@ import { createSalesInvoice } from "../services/sales";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
+import BottomNav from "../components/BottomNav";
 import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
@@ -322,7 +323,7 @@ export default function SalesDashboard() {
         <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
         {/* Dashboard Views */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 space-y-6">
 
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
@@ -875,6 +876,9 @@ export default function SalesDashboard() {
 
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <BottomNav role="sales" activeTab={activeTab} />
 
       {/* MODALS */}
       {/* 1. Add Lead Form */}

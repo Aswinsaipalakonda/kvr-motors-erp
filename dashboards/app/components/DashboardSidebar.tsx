@@ -36,7 +36,9 @@ interface SidebarProps {
 }
 
 export default function DashboardSidebar({ role, activeTab, setActiveTab }: SidebarProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  // Closed by default so it acts as an overlay drawer on mobile.
+  // On desktop (lg+) the aside is always visible via `lg:translate-x-0`.
+  const [isOpen, setIsOpen] = useState(false);
 
   // Define sidebar menu structure for each role based on the PRD & reference image
   const menuConfig = {
@@ -123,17 +125,29 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-600 text-white lg:hidden hover:bg-emerald-500 focus:outline-none shadow-md"
-      >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+      {/* Mobile Hamburger Toggle Button (hidden when drawer is open) */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+          className="fixed top-3 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-emerald-700 shadow-md lg:hidden hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Mobile backdrop overlay */}
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+        />
+      )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-64 border-r transition-transform duration-300 lg:translate-x-0 lg:static lg:shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-72 max-w-[85vw] border-r transition-transform duration-300 lg:translate-x-0 lg:static lg:w-64 lg:shrink-0 ${
           role === "owner"
             ? "bg-[#090d16] border-[#1e293b] text-white"
             : "bg-[#E2EFE7] border-emerald-150/40 text-slate-800"
@@ -148,6 +162,18 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
             : "border-emerald-150/40 bg-[#D6E6DC]/20"
         } ${role === "owner" ? "p-4" : "p-6"}`}>
           <div className="flex items-center gap-3">
+            {/* In-drawer close button (mobile only) */}
+            <button
+              onClick={() => setIsOpen(false)}
+              aria-label="Close menu"
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg lg:hidden transition-colors ${
+                role === "owner"
+                  ? "bg-[#04a700] text-white hover:bg-[#038a00]"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }`}
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className={`relative h-10 w-10 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center border ${
               role === "owner" ? "border-[#1e293b]" : "border-emerald-100/50"
             }`}>

@@ -51,17 +51,17 @@ export default function Navbar({ title, role }: NavbarProps) {
   ];
 
   return (
-    <header className="h-20 bg-[#E8F1EC] border-b border-emerald-100/50 px-6 flex items-center justify-between shrink-0 select-none z-30 relative">
-      {/* Title & Section Label */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold text-slate-800 hidden sm:block">{title}</h1>
+    <header className="h-20 bg-[#E8F1EC] border-b border-emerald-100/50 px-4 sm:px-6 flex items-center justify-between shrink-0 select-none z-30 relative">
+      {/* Title & Section Label (offset on mobile to clear the floating hamburger) */}
+      <div className="flex items-center gap-3 pl-12 lg:pl-0">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate max-w-[40vw] sm:max-w-none">{title}</h1>
       </div>
 
       {/* Utilities Container */}
-      <div className="flex items-center gap-4 lg:gap-6 ml-auto sm:ml-0">
+      <div className="flex items-center gap-3 lg:gap-6 ml-auto sm:ml-0">
         
-        {/* Search Bar matching mockup with rounded pill design */}
-        <div className="relative w-40 sm:w-60 md:w-80">
+        {/* Search Bar matching mockup with rounded pill design (hidden on smallest screens) */}
+        <div className="relative hidden xs:block w-36 sm:w-60 md:w-80">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
