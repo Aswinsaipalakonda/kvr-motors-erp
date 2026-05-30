@@ -26,6 +26,10 @@ export default function OwnerUsers() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [selectedOutletFilter, setSelectedOutletFilter] = useState<string>('All');
+  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<StaffUser | null>(null);
+  const [permLedger, setPermLedger] = useState(true);
+  const [permFifo, setPermFifo] = useState(false);
+  const [permDiscount, setPermDiscount] = useState(true);
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -125,64 +129,20 @@ export default function OwnerUsers() {
     return u.branch.toLowerCase().includes(selectedOutletFilter.toLowerCase());
   });
 
+  const contentPaddingTop = insets.top + 64;
+
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        {/* Compact Organizational Header */}
-        <View style={[styles.orgHeaderBar, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <ArrowLeft size={18} color="#ffffff" />
-            </Pressable>
-            <View style={styles.logoBadge}>
-              <Users size={14} color="#04a700" />
-              <ThemedText style={styles.logoBadgeText}>ORGANIZATION CHART</ThemedText>
-            </View>
-          </View>
-
-          {/* Add Staff Actions Bar */}
-          <View style={styles.actionRow}>
-            <View style={styles.outletLabelBox}>
-              <ThemedText style={styles.outletLabelSub}>ACTIVE SYSTEM RIGHTS</ThemedText>
-              <ThemedText style={styles.outletLabelMain}>Staff Directory</ThemedText>
-            </View>
-            <Pressable 
-              onPress={() => setIsModalOpen(true)}
-              style={styles.addStaffBtn}
-            >
-              <Plus size={14} color="#ffffff" />
-              <ThemedText style={styles.addStaffBtnText}>ADD USER</ThemedText>
-            </Pressable>
-          </View>
-
-          {/* Outlet switches slider */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.outletSliderScroll}>
-            {['All', 'Vizag', 'Srikakulam', 'Kakinada'].map(outlet => {
-              const isActive = selectedOutletFilter === outlet;
-              return (
-                <Pressable
-                  key={outlet}
-                  onPress={() => setSelectedOutletFilter(outlet)}
-                  style={[styles.outletPill, isActive && styles.outletPillActive]}
-                >
-                  <ThemedText style={[styles.outletPillText, isActive && styles.outletPillTextActive]}>
-                    {outlet}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
         {isLoading ? (
-          <View style={styles.loaderContainer}>
+          <View style={[styles.loaderContainer, { paddingTop: contentPaddingTop }]}>
             <ActivityIndicator size="small" color="#04a700" />
             <ThemedText style={styles.loaderText}>Tracing personnel directories...</ThemedText>
           </View>
         ) : (
           <ScrollView 
             style={styles.scrollView}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} 
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -194,6 +154,38 @@ export default function OwnerUsers() {
             }
           >
             <View style={styles.contentSection}>
+              {/* Add Staff Actions Bar */}
+              <View style={styles.actionRow}>
+                <View style={styles.outletLabelBox}>
+                  <ThemedText style={styles.outletLabelSub}>ACTIVE SYSTEM RIGHTS</ThemedText>
+                  <ThemedText style={styles.outletLabelMain}>Staff Directory</ThemedText>
+                </View>
+                <Pressable 
+                  onPress={() => setIsModalOpen(true)}
+                  style={styles.addStaffBtn}
+                >
+                  <Plus size={14} color="#ffffff" />
+                  <ThemedText style={styles.addStaffBtnText}>ADD USER</ThemedText>
+                </Pressable>
+              </View>
+
+              {/* Outlet switches slider */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.outletSliderScroll}>
+                {['All', 'Vizag', 'Srikakulam', 'Kakinada'].map(outlet => {
+                  const isActive = selectedOutletFilter === outlet;
+                  return (
+                    <Pressable
+                      key={outlet}
+                      onPress={() => setSelectedOutletFilter(outlet)}
+                      style={[styles.outletPill, isActive && styles.outletPillActive]}
+                    >
+                      <ThemedText style={[styles.outletPillText, isActive && styles.outletPillTextActive]}>
+                        {outlet}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
               {filteredUsers.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <ThemedText style={styles.emptyText}>No registered staff found for filter</ThemedText>
@@ -203,7 +195,19 @@ export default function OwnerUsers() {
                   {filteredUsers.map((user, idx) => {
                     const isActive = user.status === 'Active';
                     return (
-                      <View key={user.id || idx} style={styles.userGridCard}>
+                      <Pressable 
+                        key={user.id || idx} 
+                        style={({ pressed }) => [
+                          styles.userGridCard,
+                          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+                        ]}
+                        onPress={() => {
+                          setSelectedUserForPermissions(user);
+                          setPermLedger(user.role !== 'Sales Staff');
+                          setPermFifo(user.role === 'Owner' || user.role === 'Supervisor');
+                          setPermDiscount(user.role !== 'Sales Staff');
+                        }}
+                      >
                         {/* Profile initials with green indicator ring */}
                         <View style={styles.avatarContainer}>
                           <View style={[styles.avatarRing, { borderColor: isActive ? '#04a700' : '#1e293b' }]}>
@@ -232,7 +236,7 @@ export default function OwnerUsers() {
                         </ThemedText>
 
                         <ThemedText style={styles.sessionDate}>{user.lastLogin}</ThemedText>
-                      </View>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -366,6 +370,85 @@ export default function OwnerUsers() {
             </View>
           </View>
         </Modal>
+
+        {/* Interactive Permissions Drawer Modal [Suitability Addition] */}
+        <Modal
+          visible={selectedUserForPermissions !== null}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setSelectedUserForPermissions(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.permHeaderLeft}>
+                  <ShieldCheck size={18} color="#04a700" />
+                  <ThemedText style={styles.modalTitle}>Modify System Rights</ThemedText>
+                </View>
+                <Pressable onPress={() => setSelectedUserForPermissions(null)} style={styles.closeModalBtn}>
+                  <X size={18} color="#ffffff" />
+                </Pressable>
+              </View>
+
+              {selectedUserForPermissions && (
+                <ScrollView 
+                  style={styles.modalFormScroll}
+                  contentContainerStyle={{ paddingBottom: 40 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <ThemedText style={styles.permTargetLabel}>TUNING ERP AUTHORIZATION FOR</ThemedText>
+                  <ThemedText style={styles.permTargetName}>{selectedUserForPermissions.name}</ThemedText>
+                  <ThemedText style={styles.permTargetRole}>{selectedUserForPermissions.role.toUpperCase()} • {selectedUserForPermissions.branch.replace('KVR Motors - ', '').replace('Future Ride - ', '')}</ThemedText>
+
+                  <View style={styles.drawerDivider as any} />
+
+                  {/* Toggle 1: Ledger */}
+                  <Pressable onPress={() => setPermLedger(!permLedger)} style={styles.toggleRow as any}>
+                    <View style={styles.toggleTextCol as any}>
+                      <ThemedText style={styles.toggleTitle as any}>View Transaction Ledger</ThemedText>
+                      <ThemedText style={styles.toggleDesc as any}>Enables auditing double-entry financial journals</ThemedText>
+                    </View>
+                    <View style={[styles.toggleSwitch, permLedger && styles.toggleSwitchActive] as any}>
+                      <View style={[styles.toggleThumb, permLedger && styles.toggleThumbActive] as any} />
+                    </View>
+                  </Pressable>
+
+                  {/* Toggle 2: FIFO override */}
+                  <Pressable onPress={() => setPermFifo(!permFifo)} style={styles.toggleRow as any}>
+                    <View style={styles.toggleTextCol as any}>
+                      <ThemedText style={styles.toggleTitle as any}>FIFO Stock Override</ThemedText>
+                      <ThemedText style={styles.toggleDesc as any}>Enables overriding stock hold allocations</ThemedText>
+                    </View>
+                    <View style={[styles.toggleSwitch, permFifo && styles.toggleSwitchActive] as any}>
+                      <View style={[styles.toggleThumb, permFifo && styles.toggleThumbActive] as any} />
+                    </View>
+                  </Pressable>
+
+                  {/* Toggle 3: Discounts */}
+                  <Pressable onPress={() => setPermDiscount(!permDiscount)} style={styles.toggleRow as any}>
+                    <View style={styles.toggleTextCol as any}>
+                      <ThemedText style={styles.toggleTitle as any}>Issue Customer Discounts</ThemedText>
+                      <ThemedText style={styles.toggleDesc as any}>Authorizes custom price discounts on invoices</ThemedText>
+                    </View>
+                    <View style={[styles.toggleSwitch, permDiscount && styles.toggleSwitchActive] as any}>
+                      <View style={[styles.toggleThumb, permDiscount && styles.toggleThumbActive] as any} />
+                    </View>
+                  </Pressable>
+
+                  <Pressable 
+                    onPress={() => {
+                      Alert.alert('Permissions Synced', 'Interactive security profile synchronized across showroom ERP instances.');
+                      setSelectedUserForPermissions(null);
+                    }}
+                    style={styles.savePermissionsBtn as any}
+                  >
+                    <ThemedText style={styles.savePermissionsText as any}>SYNCHRONIZE ERP PROFILE</ThemedText>
+                  </Pressable>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
       </View>
     </FadeScaleTransition>
   );
@@ -374,14 +457,14 @@ export default function OwnerUsers() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#05070c',
+    backgroundColor: '#f8fafc',
   },
   orgHeaderBar: {
     paddingHorizontal: 24,
     paddingBottom: 20,
-    backgroundColor: '#05070c',
-    borderBottomWidth: 1,
-    borderColor: '#141a29',
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1.5,
+    borderColor: '#f1f5f9',
   },
   headerRow: {
     flexDirection: 'row',
@@ -393,22 +476,22 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: '#141a29',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141a29',
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.2)',
   },
   logoBadgeText: {
     color: '#04a700',
@@ -434,7 +517,7 @@ const styles = StyleSheet.create({
   outletLabelMain: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   addStaffBtn: {
     flexDirection: 'row',
@@ -457,9 +540,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: '#141a29',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
   },
   outletPillActive: {
     backgroundColor: '#04a700',
@@ -491,14 +574,13 @@ const styles = StyleSheet.create({
   },
   contentSection: {
     paddingHorizontal: 24,
-    paddingTop: 20,
     gap: 14,
   },
   emptyContainer: {
-    backgroundColor: '#141a29',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     paddingVertical: 60,
     alignItems: 'center',
   },
@@ -515,14 +597,19 @@ const styles = StyleSheet.create({
   },
   userGridCard: {
     width: '48%',
-    backgroundColor: '#141a29',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     padding: 16,
     alignItems: 'center',
     gap: 6,
     marginBottom: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 8,
+    elevation: 2,
   },
   avatarContainer: {
     position: 'relative',
@@ -535,19 +622,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#05070c',
+    backgroundColor: '#f8fafc',
   },
   avatarText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   activeStatusDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#141a29',
+    borderColor: '#ffffff',
     position: 'absolute',
     right: 2,
     bottom: 2,
@@ -555,13 +642,13 @@ const styles = StyleSheet.create({
   userNameText: {
     fontSize: 14.5,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
     textAlign: 'center',
   },
   roleBadgeWrapper: {
-    backgroundColor: '#05070c',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -574,7 +661,7 @@ const styles = StyleSheet.create({
   cardDivider: {
     width: '80%',
     height: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#f1f5f9',
     marginVertical: 4,
   },
   outletLocLabel: {
@@ -586,7 +673,7 @@ const styles = StyleSheet.create({
   outletLocValue: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   sessionDate: {
     fontSize: 9,
@@ -596,15 +683,15 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(5, 7, 12, 0.65)',
+    backgroundColor: 'rgba(5, 7, 12, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#0a0e1a',
+    backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     maxHeight: '85%',
   },
   modalHeader: {
@@ -612,21 +699,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#f1f5f9',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   closeModalBtn: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#141a29',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -645,20 +732,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   textInput: {
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    backgroundColor: '#05070c',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
     height: 48,
     paddingHorizontal: 14,
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 13.5,
     fontWeight: '500',
   },
   dropdownTrigger: {
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    backgroundColor: '#05070c',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
     height: 48,
     paddingHorizontal: 14,
@@ -668,25 +755,25 @@ const styles = StyleSheet.create({
   },
   dropdownValActive: {
     fontSize: 13.5,
-    color: '#ffffff',
+    color: '#0f172a',
     fontWeight: '500',
   },
   dropdownContainer: {
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     borderRadius: 10,
     marginTop: 6,
-    backgroundColor: '#05070c',
+    backgroundColor: '#f8fafc',
   },
   dropdownItem: {
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#f1f5f9',
   },
   dropdownItemText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   submitFormBtn: {
     backgroundColor: '#04a700',
@@ -699,6 +786,101 @@ const styles = StyleSheet.create({
   submitFormText: {
     color: '#ffffff',
     fontSize: 13.5,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  permHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  permissionsDrawerBody: {
+    gap: 16,
+  },
+  permTargetLabel: {
+    fontSize: 8.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginTop: 8,
+  },
+  permTargetName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  permTargetRole: {
+    fontSize: 11.5,
+    color: '#04a700',
+    fontWeight: 'bold',
+  },
+  drawerDivider: {
+    height: 1.5,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 4,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    padding: 12,
+    marginBottom: 10,
+  },
+  toggleTextCol: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 12,
+  },
+  toggleTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  toggleDesc: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#04a700',
+    borderColor: '#04a700',
+  },
+  toggleThumb: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#64748b',
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#ffffff',
+  },
+  savePermissionsBtn: {
+    backgroundColor: '#04a700',
+    borderRadius: 10,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  savePermissionsText: {
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },

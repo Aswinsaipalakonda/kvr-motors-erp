@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { 
   View, StyleSheet, Pressable, Platform, Dimensions, 
-  Image, Alert, ActivityIndicator, ScrollView 
+  Image, Alert, ActivityIndicator, ScrollView, Modal, FlatList 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { 
@@ -13,21 +13,23 @@ import { Spacing } from '@/constants/theme';
 import { 
   Home, Landmark, Package, UserCheck, TrendingUp, 
   Menu as HamburgerIcon, X, CalendarDays, ShoppingBag, 
-  Users, LogOut, ChevronRight, Shield, Sparkles 
+  Users, LogOut, ChevronRight, Shield, Sparkles,
+  MapPin, ChevronDown, MoreVertical, Check, User, Settings2
 } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 
 // Import Owner Screens
 import OwnerDashboard from './dashboard';
-import OwnerBranches from './branches';
 import OwnerInventory from './inventory';
-import OwnerLeads from './leads';
+import OwnerSales from './sales';
+import OwnerUsers from './users';
+import OwnerProfile from './profile';
 
-// Define Screen Tabs
-type ScreenTab = 'dashboard' | 'branches' | 'inventory' | 'leads';
+// Define Screen Tabs - 5 tabs!
+type ScreenTab = 'dashboard' | 'inventory' | 'sales' | 'users' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'branches', 'inventory', 'leads'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'sales', 'users', 'profile'];
 
 import { DrawerContext } from '@/context/DrawerContext';
 
@@ -37,12 +39,14 @@ export default function OwnerLayout() {
   const { user, logout, isLoading: authLoading } = useAuth();
   
   const [activeTab, setActiveTab] = useState<ScreenTab>('dashboard');
-  const [branch, setBranch] = useState('Vizag Showroom');
+  const [branch, setBranch] = useState('All Branches');
   const [isDrawerOpenState, setIsDrawerOpenState] = useState(false);
+  const [isBranchModalVisible, setIsBranchModalVisible] = useState(false);
   
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
   const drawerWidth = screenWidth * 0.78;
+  const headerHeight = insets.top + 54;
 
   // Sync pathname with active tab
   useEffect(() => {
@@ -102,8 +106,8 @@ export default function OwnerLayout() {
     );
   };
 
-  // Tab indicator sliding animation
-  const tabWidth = screenWidth / 4;
+  // Tab indicator sliding animation - stretched across 5 tabs
+  const tabWidth = screenWidth / 5;
   const activeIndexShared = useSharedValue(0);
 
   useEffect(() => {
@@ -164,16 +168,26 @@ export default function OwnerLayout() {
     switch (activeTab) {
       case 'dashboard':
         return <OwnerDashboard branch={branch} setBranch={setBranch} />;
-      case 'branches':
-        return <OwnerBranches />;
       case 'inventory':
-        return <OwnerInventory />;
-      case 'leads':
-        return <OwnerLeads />;
+        return <OwnerInventory branch={branch} />;
+      case 'sales':
+        return <OwnerSales />;
+      case 'users':
+        return <OwnerUsers />;
+      case 'profile':
+        return <OwnerProfile />;
       default:
         return <OwnerDashboard branch={branch} setBranch={setBranch} />;
     }
   };
+
+  const branchesList = [
+    { id: 'All Branches', label: 'All Branches', sub: 'Vizag, Srikakulam, Kakinada' },
+    { id: 'Vizag - KVR Showroom', label: 'Vizag - KVR Showroom', sub: 'Kinetic Green, Dynamo, Frankly' },
+    { id: 'Vizag - Future Ride', label: 'Vizag - Future Ride', sub: 'Kinetiq, Watts Engineering' },
+    { id: 'Srikakulam - KVR Showroom', label: 'Srikakulam - KVR Showroom', sub: 'Kinetic Green, Others' },
+    { id: 'Kakinada - KVR Showroom', label: 'Kakinada - KVR Showroom', sub: 'Kinetic Green, Dynamo' }
+  ];
 
   // Nav items inside the drawer
   const drawerMenuItems = [
@@ -181,13 +195,13 @@ export default function OwnerLayout() {
       title: 'Showroom Bookings',
       route: '/owner/bookings',
       icon: CalendarDays,
-      color: '#04a700',
+      color: '#ea580c',
     },
     {
       title: 'Purchase Orders',
       route: '/owner/purchases',
       icon: ShoppingBag,
-      color: '#ea580c',
+      color: '#04a700',
     },
     {
       title: 'Sales Overview',
@@ -199,7 +213,7 @@ export default function OwnerLayout() {
       title: 'User Management',
       route: '/owner/users',
       icon: Users,
-      color: '#a855f7',
+      color: '#8b5cf6',
     },
     {
       title: 'General Ledger',
@@ -304,8 +318,38 @@ export default function OwnerLayout() {
           </View>
         </Animated.View>
 
-        {/* Animated Main Content Container */}
+        {/* Animated Main Content Container (LIGHT slate grey background!) */}
         <Animated.View style={[styles.mainContentContainer, mainContentAnimatedStyle]}>
+          {/* Constant Top Floating Header Bar */}
+          <View style={[styles.fixedHeader, { paddingTop: insets.top + 10, height: headerHeight }]}>
+            <View style={styles.headerRow}>
+              <Pressable 
+                onPress={openDrawer}
+                style={({ pressed }) => [
+                  styles.hamburgerBtn,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
+                ]}
+              >
+                <HamburgerIcon size={22} color="#04a700" />
+              </Pressable>
+              
+              <Pressable 
+                style={styles.locationSelector}
+                onPress={() => setIsBranchModalVisible(true)}
+              >
+                <MapPin size={15} color="#04a700" />
+                <ThemedText style={styles.locationText} numberOfLines={1}>
+                  {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
+                </ThemedText>
+                <ChevronDown size={13} color="#94a3b8" />
+              </Pressable>
+
+              <Pressable style={styles.moreButton}>
+                <MoreVertical size={20} color="#94a3b8" />
+              </Pressable>
+            </View>
+          </View>
+
           {/* Active Screen View */}
           <View style={styles.screenContainer}>
             {renderActiveScreen()}
@@ -316,24 +360,20 @@ export default function OwnerLayout() {
             <Pressable style={styles.overlayPressable} onPress={closeDrawer} />
           </Animated.View>
 
-          {/* Dark Glassmorphic Bottom Navigation Bar */}
+          {/* Bottom Navigation Bar */}
           <View style={[styles.tabBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10 }]}>
-            {/* Animated Sliding Highlight Line and Glow */}
-            <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
-              <View style={styles.activeTopLine} />
-              <View style={styles.activeTopGlow} />
-            </Animated.View>
 
-            {/* Tab 1: Home / Dashboard */}
+            {/* Tab 1: Home */}
             <Pressable 
               onPress={() => setActiveTab('dashboard')} 
               style={styles.tabButton}
             >
-              <View style={styles.iconContainer}>
+              <View style={[styles.iconContainer, activeTab === 'dashboard' && styles.activeIconBg]}>
                 <Home 
-                  size={20} 
-                  color={activeTab === 'dashboard' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-                  strokeWidth={activeTab === 'dashboard' ? 2.2 : 1.8}
+                  size={22} 
+                  color={activeTab === 'dashboard' ? '#04a700' : '#9ca3af'} 
+                  fill={activeTab === 'dashboard' ? '#04a700' : 'none'}
+                  strokeWidth={1.8}
                 />
               </View>
               <ThemedText style={[styles.tabLabel, activeTab === 'dashboard' && styles.activeTabLabel]}>
@@ -341,33 +381,17 @@ export default function OwnerLayout() {
               </ThemedText>
             </Pressable>
 
-            {/* Tab 2: Branches */}
-            <Pressable 
-              onPress={() => setActiveTab('branches')} 
-              style={styles.tabButton}
-            >
-              <View style={styles.iconContainer}>
-                <Landmark 
-                  size={20} 
-                  color={activeTab === 'branches' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-                  strokeWidth={activeTab === 'branches' ? 2.2 : 1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'branches' && styles.activeTabLabel]}>
-                Branches
-              </ThemedText>
-            </Pressable>
-
-            {/* Tab 3: Inventory */}
+            {/* Tab 2: Inventory */}
             <Pressable 
               onPress={() => setActiveTab('inventory')} 
               style={styles.tabButton}
             >
-              <View style={styles.iconContainer}>
+              <View style={[styles.iconContainer, activeTab === 'inventory' && styles.activeIconBg]}>
                 <Package 
-                  size={20} 
-                  color={activeTab === 'inventory' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-                  strokeWidth={activeTab === 'inventory' ? 2.2 : 1.8}
+                  size={22} 
+                  color={activeTab === 'inventory' ? '#04a700' : '#9ca3af'} 
+                  fill={activeTab === 'inventory' ? '#04a700' : 'none'}
+                  strokeWidth={1.8}
                 />
               </View>
               <ThemedText style={[styles.tabLabel, activeTab === 'inventory' && styles.activeTabLabel]}>
@@ -375,24 +399,116 @@ export default function OwnerLayout() {
               </ThemedText>
             </Pressable>
 
-            {/* Tab 4: Hamburger Slide Trigger */}
+            {/* Tab 3: Sales */}
             <Pressable 
-              onPress={openDrawer} 
+              onPress={() => setActiveTab('sales')} 
               style={styles.tabButton}
             >
-              <View style={styles.iconContainer}>
-                <HamburgerIcon 
-                  size={20} 
-                  color="rgba(255, 255, 255, 0.4)" 
+              <View style={[styles.iconContainer, activeTab === 'sales' && styles.activeIconBg]}>
+                <TrendingUp 
+                  size={22} 
+                  color={activeTab === 'sales' ? '#04a700' : '#9ca3af'} 
+                  fill={activeTab === 'sales' ? '#04a700' : 'none'}
                   strokeWidth={1.8}
                 />
               </View>
-              <ThemedText style={styles.tabLabel}>
-                More
+              <ThemedText style={[styles.tabLabel, activeTab === 'sales' && styles.activeTabLabel]}>
+                Sales
+              </ThemedText>
+            </Pressable>
+
+            {/* Tab 4: Team */}
+            <Pressable 
+              onPress={() => setActiveTab('users')} 
+              style={styles.tabButton}
+            >
+              <View style={[styles.iconContainer, activeTab === 'users' && styles.activeIconBg]}>
+                <Users 
+                  size={22} 
+                  color={activeTab === 'users' ? '#04a700' : '#9ca3af'} 
+                  fill={activeTab === 'users' ? '#04a700' : 'none'}
+                  strokeWidth={1.8}
+                />
+              </View>
+              <ThemedText style={[styles.tabLabel, activeTab === 'users' && styles.activeTabLabel]}>
+                Team
+              </ThemedText>
+            </Pressable>
+
+            {/* Tab 5: Settings */}
+            <Pressable 
+              onPress={() => setActiveTab('profile')} 
+              style={styles.tabButton}
+            >
+              <View style={[styles.iconContainer, activeTab === 'profile' && styles.activeIconBg]}>
+                <Settings2 
+                  size={22} 
+                  color={activeTab === 'profile' ? '#04a700' : '#9ca3af'} 
+                  fill={activeTab === 'profile' ? '#04a700' : 'none'}
+                  strokeWidth={1.8}
+                />
+              </View>
+              <ThemedText style={[styles.tabLabel, activeTab === 'profile' && styles.activeTabLabel]}>
+                Settings
               </ThemedText>
             </Pressable>
           </View>
         </Animated.View>
+
+        {/* Global Showroom Selector Dropdown Modal Sheet */}
+        <Modal
+          visible={isBranchModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsBranchModalVisible(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay}
+            onPress={() => setIsBranchModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Showroom / Branch</ThemedText>
+                <Pressable onPress={() => setIsBranchModalVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+
+              <FlatList
+                data={branchesList}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.branchListContainer}
+                renderItem={({ item }) => {
+                  const isSelected = branch === item.id;
+                  return (
+                    <Pressable
+                      style={[styles.branchListItem, isSelected && styles.branchListItemActive]}
+                      onPress={() => {
+                        setBranch(item.id);
+                        setIsBranchModalVisible(false);
+                      }}
+                    >
+                      <View style={styles.branchListItemLeft}>
+                        <View style={[styles.modalPinCircle, { backgroundColor: isSelected ? 'rgba(4, 167, 0, 0.12)' : 'rgba(255, 255, 255, 0.04)' }]}>
+                          <MapPin size={16} color={isSelected ? '#04a700' : '#64748b'} />
+                        </View>
+                        <View>
+                          <ThemedText style={[styles.branchListLabel, isSelected && styles.branchListLabelActive]}>
+                            {item.label}
+                          </ThemedText>
+                          <ThemedText style={styles.branchListSub}>{item.sub}</ThemedText>
+                        </View>
+                      </View>
+                      {isSelected && (
+                        <Check size={18} color="#04a700" strokeWidth={2.5} />
+                      )}
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          </Pressable>
+        </Modal>
       </ThemedView>
     </DrawerContext.Provider>
   );
@@ -563,7 +679,7 @@ const styles = StyleSheet.create({
   },
   mainContentContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc', // dashboard bg color
+    backgroundColor: '#f8fafc', // LIGHT background viewport!
     shadowColor: '#000000',
     shadowOffset: { width: -12, height: 0 },
     shadowOpacity: 0.35,
@@ -581,21 +697,77 @@ const styles = StyleSheet.create({
   overlayPressable: {
     flex: 1,
   },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#0a0e1a', // Obsidian dark slate background
+    zIndex: 100,
+    paddingHorizontal: 24,
+    paddingBottom: 10,
+    justifyContent: 'center',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#111827', // Premium dark gray
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827', // Premium dark gray
+    borderRadius: 9999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 6,
+    maxWidth: 220,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  locationText: {
+    color: '#ffffff', // Clean white contrast text
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  moreButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#111827', // Premium dark gray
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#090d16', 
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingTop: 8,
+    backgroundColor: '#ffffff', 
+    height: Platform.OS === 'ios' ? 78 : 60,
+    paddingTop: 4,
     paddingHorizontal: 0,
     justifyContent: 'space-around',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 24,
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#94a3b8',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -631,19 +803,96 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 16,
   },
   iconContainer: {
-    width: 44,
+    width: 48,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 1,
+    borderRadius: 16,
+  },
+  activeIconBg: {
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
   },
   tabLabel: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.45)', 
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9ca3af', 
   },
   activeTabLabel: {
     color: '#04a700', 
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(9, 13, 22, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    maxHeight: '65%',
+    borderTopWidth: 1.5,
+    borderTopColor: '#f1f5f9',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  branchListContainer: {
+    paddingVertical: 12,
+    gap: 10,
+    paddingBottom: 30,
+  },
+  branchListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
+  },
+  branchListItemActive: {
+    borderColor: 'rgba(4, 167, 0, 0.25)',
+    backgroundColor: 'rgba(4, 167, 0, 0.04)',
+  },
+  branchListItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalPinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  branchListLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  branchListLabelActive: {
+    color: '#04a700',
+  },
+  branchListSub: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 2,
   },
 });

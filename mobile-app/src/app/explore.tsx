@@ -81,7 +81,7 @@ export default function TabTwoScreen() {
                 project.
               </ThemedText>
               <Image
-                source={require('@/assets/images/tutorial-web.png')}
+                source={require('@/assets/images/logo.png')}
                 style={styles.imageTutorial}
               />
             </ThemedView>

@@ -191,6 +191,33 @@ export default function OwnerPurchases() {
             }
           >
             <View style={styles.contentSection}>
+              {/* Shipping Logistics Tracker [Suitability Addition] */}
+              <View style={styles.logisticsCard}>
+                <View style={styles.logisticsHeader}>
+                  <ShoppingBag size={14} color="#04a700" />
+                  <ThemedText style={styles.logisticsTitle}>Freight In-Transit Logistics</ThemedText>
+                </View>
+                <View style={styles.logisticsSteps}>
+                  <View style={styles.logisticsStep}>
+                    <View style={[styles.logisticsDot, { backgroundColor: '#04a700' }]} />
+                    <ThemedText style={styles.logisticsStepLabel}>Dispatched</ThemedText>
+                  </View>
+                  <View style={[styles.logisticsLine, { backgroundColor: '#04a700' }]} />
+                  <View style={styles.logisticsStep}>
+                    <View style={[styles.logisticsDot, { backgroundColor: '#04a700' }]} />
+                    <ThemedText style={styles.logisticsStepLabel}>In-Transit</ThemedText>
+                  </View>
+                  <View style={styles.logisticsLine} />
+                  <View style={styles.logisticsStep}>
+                    <View style={styles.logisticsDot} />
+                    <ThemedText style={styles.logisticsStepLabel}>Showroom</ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.logisticsDesc}>
+                  Freight shipment <ThemedText style={{ fontWeight: 'bold', color: '#ffffff' }}>#KG-4019</ThemedText> (20 units Kinetic) is in-transit on Highway NH-16. Expected arrival Vizag Godown in 32 hrs.
+                </ThemedText>
+              </View>
+
               {purchaseOrders.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <ThemedText style={styles.emptyText}>No procurement purchase orders registered</ThemedText>
@@ -352,6 +379,22 @@ export default function OwnerPurchases() {
                       value={unitPrice}
                       onChangeText={setUnitPrice}
                     />
+                  </View>
+                </View>
+
+                {/* Bulk Price Discount Meter [Suitability Addition] */}
+                <View style={styles.discountMeter}>
+                  <ThemedText style={styles.discountMeterTitle}>Bulk Pricing Level Meter</ThemedText>
+                  <View style={styles.meterTrack}>
+                    <View style={[
+                      styles.meterFill, 
+                      { width: parseInt(quantity) >= 26 ? '100%' : parseInt(quantity) >= 11 ? '60%' : '20%', backgroundColor: '#04a700' }
+                    ]} />
+                  </View>
+                  <View style={styles.discountLabels}>
+                    <ThemedText style={[styles.discountLabel, (!quantity || parseInt(quantity) < 11) && { color: '#04a700', fontWeight: 'bold' }]}>1-10 (0%)</ThemedText>
+                    <ThemedText style={[styles.discountLabel, (parseInt(quantity) >= 11 && parseInt(quantity) <= 25) && { color: '#04a700', fontWeight: 'bold' }]}>11-25 (5%)</ThemedText>
+                    <ThemedText style={[styles.discountLabel, (parseInt(quantity) >= 26) && { color: '#04a700', fontWeight: 'bold' }]}>26+ (12% Off)</ThemedText>
                   </View>
                 </View>
 
@@ -776,5 +819,97 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  logisticsCard: {
+    backgroundColor: '#141a29',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
+    elevation: 3,
+    gap: 12,
+  },
+  logisticsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logisticsTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  logisticsSteps: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginVertical: 4,
+  },
+  logisticsStep: {
+    alignItems: 'center',
+    gap: 4,
+    width: 80,
+  },
+  logisticsDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#1e293b',
+    borderWidth: 2,
+    borderColor: '#04a700',
+  },
+  logisticsLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#1e293b',
+  },
+  logisticsStepLabel: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  logisticsDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  discountMeter: {
+    backgroundColor: '#141a29',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    gap: 8,
+    marginBottom: 14,
+  },
+  discountMeterTitle: {
+    fontSize: 8.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  meterTrack: {
+    height: 6,
+    backgroundColor: '#05070c',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: '100%',
+  },
+  discountLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  discountLabel: {
+    fontSize: 9,
+    color: '#64748b',
+    fontWeight: '600',
   },
 });

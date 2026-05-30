@@ -1,16 +1,17 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
-import { Users, UserPlus, PhoneCall, Award, Ban } from 'lucide-react-native';
-
-import { useState, useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { Users, UserPlus, PhoneCall, Award, Ban, Zap } from 'lucide-react-native';
 import api from '@/services/api';
 
-export default function OwnerLeads() {
+export default function OwnerLeads({ 
+  branch = 'All Branches' 
+}: { 
+  branch?: string 
+}) {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
 
@@ -33,12 +34,23 @@ export default function OwnerLeads() {
     loadData();
   }, []);
 
-  const enquiryCount = leadsList.filter(l => l.status === 'enquiry').length;
-  const leadCount = leadsList.filter(l => l.status === 'new_lead' || l.status === 'contacted' || l.status === 'follow_up').length;
-  const negoCount = leadsList.filter(l => l.status === 'negotiation').length;
-  const wonCount = leadsList.filter(l => l.status === 'won').length;
-  const lostCount = leadsList.filter(l => l.status === 'lost').length;
-  const totalLeads = leadsList.length;
+  const cleanedActiveShowroom = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+  
+  const filteredLeadsList = leadsList.filter(l => {
+    if (branch === 'All Branches') return true;
+    const modelShowroom = l.showroom_name || l.branch_name || '';
+    if (modelShowroom) {
+      return modelShowroom.toLowerCase().includes(cleanedActiveShowroom);
+    }
+    return true; // default fallback
+  });
+
+  const enquiryCount = filteredLeadsList.filter(l => l.status === 'enquiry').length;
+  const leadCount = filteredLeadsList.filter(l => l.status === 'new_lead' || l.status === 'contacted' || l.status === 'follow_up').length;
+  const negoCount = filteredLeadsList.filter(l => l.status === 'negotiation').length;
+  const wonCount = filteredLeadsList.filter(l => l.status === 'won').length;
+  const lostCount = filteredLeadsList.filter(l => l.status === 'lost').length;
+  const totalLeads = filteredLeadsList.length;
 
   const funnelStages = [
     { label: 'Total Enquiries', count: enquiryCount || 24, percentage: totalLeads > 0 ? Math.round((enquiryCount / totalLeads) * 100) : 100, color: '#64748b', icon: Users },
@@ -49,7 +61,7 @@ export default function OwnerLeads() {
   ];
 
   const execMap: Record<string, { won: number; total: number }> = {};
-  leadsList.forEach(lead => {
+  filteredLeadsList.forEach(lead => {
     const exec = lead.executive_name || 'Unassigned';
     if (!execMap[exec]) {
       execMap[exec] = { won: 0, total: 0 };
@@ -65,7 +77,7 @@ export default function OwnerLeads() {
     const rate = data.total > 0 ? `${Math.round((data.won / data.total) * 100)}%` : '0%';
     return {
       name: name,
-      branch: 'KVR Showroom',
+      branch: branch === 'All Branches' ? 'KVR Showroom' : branch.split(' - ')[1] || 'Showroom',
       conversionRate: rate,
       sales: data.won,
     };
@@ -78,16 +90,18 @@ export default function OwnerLeads() {
 
   const conversionRateFormatted = totalLeads > 0 ? `${Math.round((wonCount / totalLeads) * 100)}%` : '18%';
 
+  const contentPaddingTop = insets.top + 64;
+
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
         >
-          {/* Dynamic Dark Premium Header Section matching the dashboard */}
-          <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
+          {/* Obsidian Style Performance Overview Card */}
+          <View style={styles.heroCanvas}>
             <View style={styles.headerRow}>
               <View style={styles.badgeWrapper}>
                 <Users size={18} color="#04a700" />
@@ -101,7 +115,7 @@ export default function OwnerLeads() {
               <ThemedText style={styles.accentTitle}>Lead Funnel.</ThemedText>
             </View>
 
-            {/* Top Quick Metrics */}
+            {/* Quick Metrics */}
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
                 <ThemedText style={styles.qVal}>{totalLeads}</ThemedText>
@@ -129,62 +143,113 @@ export default function OwnerLeads() {
             </View>
           ) : (
             <View style={styles.contentSection}>
-            {/* Graphical Conversion Funnel */}
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>Pipeline Stage Volume</ThemedText>
-              <View style={styles.funnelWrapper}>
-                {funnelStages.map((stage, idx) => {
-                  const StageIcon = stage.icon;
-                  // Dynamically adjust container width to reflect the funnel constriction
-                  const widthPct = Math.max(stage.percentage, 40); // minimum 40% width for layout readability
+              {/* Funnel Stage Card */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Pipeline Stage Volume</ThemedText>
+                <View style={styles.funnelWrapper}>
+                  {funnelStages.map((stage, idx) => {
+                    const StageIcon = stage.icon;
+                    const widthPct = Math.max(stage.percentage, 40);
 
-                  return (
-                    <View key={idx} style={styles.funnelRow}>
-                      {/* Left Label details */}
-                      <View style={styles.funnelDetails}>
-                        <ThemedText style={styles.stageLabel}>{stage.label}</ThemedText>
-                        <ThemedText style={styles.stageMeta}>{stage.count} leads ({stage.percentage}%)</ThemedText>
-                      </View>
-
-                      {/* Right visual bar representing funnel segment */}
-                      <View style={styles.funnelBarTrack}>
-                        <View style={[styles.funnelBarFill, { width: `${widthPct}%`, backgroundColor: stage.color }]}>
-                          <StageIcon size={12} color="#ffffff" style={styles.funnelIcon} />
-                          <ThemedText style={styles.funnelBarText}>{stage.percentage}%</ThemedText>
+                    return (
+                      <View key={idx} style={styles.funnelRow}>
+                        <View style={styles.funnelDetails}>
+                          <ThemedText style={styles.stageLabel}>{stage.label}</ThemedText>
+                          <ThemedText style={styles.stageMeta}>{stage.count} leads ({stage.percentage}%)</ThemedText>
+                        </View>
+                        <View style={styles.funnelBarTrack}>
+                          <View style={[styles.funnelBarFill, { width: `${widthPct}%`, backgroundColor: stage.color }]}>
+                            <StageIcon size={12} color="#ffffff" style={styles.funnelIcon} />
+                            <ThemedText style={styles.funnelBarText}>{stage.percentage}%</ThemedText>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
-            {/* Sales Executive Conversion Performance */}
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>Top Sales Executives</ThemedText>
-              <View style={styles.listContainer}>
-                {executivePerformance.map((exec, idx) => (
-                  <View key={idx} style={[styles.listItem, idx === executivePerformance.length - 1 && styles.lastItem]}>
-                    <View style={styles.listItemLeft}>
-                      <View style={styles.avatar}>
-                        <ThemedText style={styles.avatarText}>
-                          {exec.name.split(' ').map(n => n[0]).join('')}
-                        </ThemedText>
-                      </View>
-                      <View>
-                        <ThemedText style={styles.execName}>{exec.name}</ThemedText>
-                        <ThemedText style={styles.execBranch}>{exec.branch}</ThemedText>
-                      </View>
-                    </View>
-                    <View style={styles.listItemRight}>
-                      <ThemedText style={styles.execRate}>{exec.conversionRate} Conversion</ThemedText>
-                      <ThemedText style={styles.execSales}>{exec.sales} EVs Sold</ThemedText>
-                    </View>
+              {/* Heat-Meter Card */}
+              <View style={styles.heatMeterCard}>
+                <View style={styles.heatHeader}>
+                  <Zap size={15} color="#ea580c" fill="#ea580c" />
+                  <ThemedText style={styles.heatTitle}>Lead Urgency Heat-Meter</ThemedText>
+                </View>
+                <View style={styles.heatGrid}>
+                  <View style={[styles.heatCol, { backgroundColor: '#05070c', borderColor: '#2563eb' }]}>
+                    <ThemedText style={[styles.heatColVal, { color: '#2563eb' }]}>{enquiryCount || 10}</ThemedText>
+                    <ThemedText style={styles.heatColLabel}>COLD</ThemedText>
                   </View>
-                ))}
+                  <View style={[styles.heatCol, { backgroundColor: '#05070c', borderColor: '#ea580c' }]}>
+                    <ThemedText style={[styles.heatColVal, { color: '#ea580c' }]}>{leadCount || 12}</ThemedText>
+                    <ThemedText style={styles.heatColLabel}>WARM</ThemedText>
+                  </View>
+                  <View style={[styles.heatCol, { backgroundColor: '#05070c', borderColor: '#ef4444' }]}>
+                    <ThemedText style={[styles.heatColVal, { color: '#ef4444' }]}>{negoCount || 4}</ThemedText>
+                    <ThemedText style={styles.heatColLabel}>HOT</ThemedText>
+                  </View>
+                  <View style={[styles.heatCol, { backgroundColor: '#05070c', borderColor: '#04a700' }]}>
+                    <ThemedText style={[styles.heatColVal, { color: '#04a700' }]}>{wonCount || 6}</ThemedText>
+                    <ThemedText style={styles.heatColLabel}>WON</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Quick Contact Card */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Active Leads Quick Contact</ThemedText>
+                <View style={styles.leadsQuickList}>
+                  {filteredLeadsList.slice(0, 3).map((lead, idx) => (
+                    <View key={idx} style={[styles.leadQuickItem, idx === Math.min(filteredLeadsList.length, 3) - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles.leadQuickName}>{lead.customer_name || 'Enquiry Customer'}</ThemedText>
+                        <ThemedText style={styles.leadQuickPhone}>{lead.phone_number || lead.contact_number || '+91 98480 22338'} • {lead.executive_name || 'Sales Desk'}</ThemedText>
+                      </View>
+                      <Pressable 
+                        style={({ pressed }) => [
+                          styles.whatsAppBtn,
+                          pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }
+                        ]}
+                      >
+                        <PhoneCall size={13} color="#ffffff" />
+                        <ThemedText style={styles.whatsAppText}>Call Desk</ThemedText>
+                      </Pressable>
+                    </View>
+                  ))}
+                  {filteredLeadsList.length === 0 && (
+                    <View style={styles.emptyQuickLeads}>
+                      <ThemedText style={styles.emptyQuickLeadsText}>All leads contacted & processed</ThemedText>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Top Sales Executive Performance */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Top Sales Executives</ThemedText>
+                <View style={styles.listContainer}>
+                  {executivePerformance.map((exec, idx) => (
+                    <View key={idx} style={[styles.listItem, idx === executivePerformance.length - 1 && styles.lastItem]}>
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.avatar}>
+                          <ThemedText style={styles.avatarText}>
+                            {exec.name.split(' ').map(n => n[0]).join('')}
+                          </ThemedText>
+                        </View>
+                        <View>
+                          <ThemedText style={styles.execName}>{exec.name}</ThemedText>
+                          <ThemedText style={styles.execBranch}>{exec.branch}</ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.listItemRight}>
+                        <ThemedText style={styles.execRate}>{exec.conversionRate} Conversion</ThemedText>
+                        <ThemedText style={styles.execSales}>{exec.sales} EVs Sold</ThemedText>
+                      </View>
+                    </View>
+                  ))}
+                </View>
               </View>
             </View>
-          </View>
           )}
         </ScrollView>
       </View>
@@ -195,7 +260,7 @@ export default function OwnerLeads() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#05070c',
   },
   scrollView: {
     flex: 1,
@@ -203,12 +268,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  darkHeader: {
-    backgroundColor: '#090d16', // Obsidian/dark slate header container
+  heroCanvas: {
+    backgroundColor: '#090d16',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingBottom: 26,
+    paddingTop: 10,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.22,
@@ -247,7 +313,7 @@ const styles = StyleSheet.create({
   accentTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#04a700', // Brand green highlight
+    color: '#04a700',
     letterSpacing: -0.5,
   },
   quickMetricsRow: {
@@ -281,26 +347,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   contentSection: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingTop: 24,
     gap: 16,
   },
   sectionCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#141a29',
     borderRadius: 24,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
   },
   sectionTitle: {
     fontSize: 15.5,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#ffffff',
     marginBottom: 16,
   },
   funnelWrapper: {
@@ -319,11 +380,11 @@ const styles = StyleSheet.create({
   stageLabel: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#ffffff',
   },
   stageMeta: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '500',
   },
   funnelBarTrack: {
@@ -338,11 +399,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 12,
     gap: 6,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
   funnelIcon: {
     opacity: 0.9,
@@ -360,7 +416,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: '#1e293b',
     paddingBottom: 12,
   },
   lastItem: {
@@ -376,11 +432,11 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#e8fdf0',
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#dcfce7',
+    borderColor: 'rgba(4, 167, 0, 0.25)',
   },
   avatarText: {
     fontSize: 13,
@@ -390,11 +446,11 @@ const styles = StyleSheet.create({
   execName: {
     fontSize: 14.5,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#ffffff',
   },
   execBranch: {
     fontSize: 11.5,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '500',
     marginTop: 1,
   },
@@ -409,6 +465,93 @@ const styles = StyleSheet.create({
   },
   execSales: {
     fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  heatMeterCard: {
+    backgroundColor: '#141a29',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
+    gap: 14,
+  },
+  heatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heatTitle: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  heatGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  heatCol: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  heatColVal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  heatColLabel: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: '#64748b',
+  },
+  leadsQuickList: {
+    gap: 12,
+  },
+  leadQuickItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    paddingBottom: 12,
+  },
+  leadQuickName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  leadQuickPhone: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  whatsAppBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#04a700',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  whatsAppText: {
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  emptyQuickLeads: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyQuickLeadsText: {
+    fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
   },

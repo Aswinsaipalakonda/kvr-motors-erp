@@ -133,14 +133,24 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-64 bg-[#E2EFE7] border-r border-emerald-150/40 text-slate-800 transition-transform duration-300 lg:translate-x-0 lg:static lg:shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-64 border-r transition-transform duration-300 lg:translate-x-0 lg:static lg:shrink-0 ${
+          role === "owner"
+            ? "bg-[#090d16] border-[#1e293b] text-white"
+            : "bg-[#E2EFE7] border-emerald-150/40 text-slate-800"
+        } ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Header / Logo */}
-        <div className={`flex flex-col border-b border-emerald-150/40 bg-[#D6E6DC]/20 ${role === "owner" ? "p-4" : "p-6"}`}>
+        <div className={`flex flex-col border-b ${
+          role === "owner"
+            ? "border-[#1e293b] bg-[#05070c]/50"
+            : "border-emerald-150/40 bg-[#D6E6DC]/20"
+        } ${role === "owner" ? "p-4" : "p-6"}`}>
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center border border-emerald-100/50">
+            <div className={`relative h-10 w-10 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center border ${
+              role === "owner" ? "border-[#1e293b]" : "border-emerald-100/50"
+            }`}>
               {/* If logo.png is loaded correctly, we use it, otherwise text fallback */}
               <Image
                 src="/logo.png"
@@ -152,8 +162,12 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
               />
             </div>
             <div className="flex flex-col text-left">
-              <span className="font-extrabold text-lg tracking-tight text-emerald-950 uppercase">KVR Motors</span>
-              <span className="text-[10px] font-bold text-emerald-800/80 uppercase tracking-widest -mt-1">
+              <span className={`font-extrabold text-lg tracking-tight uppercase ${
+                role === "owner" ? "text-white" : "text-emerald-950"
+              }`}>KVR Motors</span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest -mt-1 ${
+                role === "owner" ? "text-[#04a700]" : "text-emerald-800/80"
+              }`}>
                 {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : "Sales Terminal"}
               </span>
             </div>
@@ -162,7 +176,9 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
 
         {/* Scrollable menu items */}
         <div className={`flex-1 overflow-y-auto px-4 space-y-1 ${role === "owner" ? "py-3" : "py-6"}`}>
-          <span className="px-3 text-[10px] font-bold text-emerald-900/60 uppercase tracking-wider block mb-2 text-left">
+          <span className={`px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left ${
+            role === "owner" ? "text-slate-400" : "text-emerald-900/60"
+          }`}>
             Modules
           </span>
           <nav className="space-y-1">
@@ -181,18 +197,30 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 }
               };
 
+              const navItemClass = isTabActive
+                ? role === "owner"
+                  ? "bg-[#04a700]/15 text-[#04a700] border-l-4 border-[#04a700] font-bold"
+                  : "bg-emerald-500/10 text-emerald-950 border-l-4 border-emerald-600 font-bold"
+                : role === "owner"
+                  ? "text-slate-300 hover:bg-[#04a700]/10 hover:text-white"
+                  : "text-emerald-900/80 hover:bg-emerald-500/5 hover:text-emerald-950";
+
+              const navIconClass = isTabActive
+                ? role === "owner"
+                  ? "text-[#04a700]"
+                  : "text-emerald-700"
+                : role === "owner"
+                  ? "text-slate-400 group-hover:text-white"
+                  : "text-emerald-800/60 group-hover:text-emerald-950";
+
               return (
                 <Link
                   key={item.id}
                   href={itemPath}
                   onClick={handleClick}
-                  className={`flex w-full items-center gap-3 px-3 ${role === "owner" ? "py-2" : "py-2.5"} rounded-lg text-sm font-semibold transition-all duration-200 group text-left ${
-                    isTabActive
-                      ? activeColorClass
-                      : "text-emerald-900/80 hover:bg-emerald-500/5 hover:text-emerald-950"
-                  }`}
+                  className={`flex w-full items-center gap-3 px-3 ${role === "owner" ? "py-2" : "py-2.5"} rounded-lg text-sm font-semibold transition-all duration-200 group text-left ${navItemClass}`}
                 >
-                  <Icon className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${iconColorClass(item.id)}`} />
+                  <Icon className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${navIconClass}`} />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -201,24 +229,42 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         </div>
 
         {/* User profile footer matching the image */}
-        <div className="p-4 border-t border-emerald-150/40 bg-[#D6E6DC]">
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/60 border border-white/80 shadow-sm">
-            <div className="h-10 w-10 rounded-full bg-emerald-600 border border-emerald-500 flex items-center justify-center font-bold text-sm text-white shrink-0">
+        <div className={`p-4 border-t ${
+          role === "owner"
+            ? "border-[#1e293b] bg-[#05070c]"
+            : "border-emerald-150/40 bg-[#D6E6DC]"
+        }`}>
+          <div className={`flex items-center gap-3 p-2 rounded-xl border shadow-sm ${
+            role === "owner"
+              ? "bg-[#141a29] border-[#1e293b]"
+              : "bg-white/60 border-white/80"
+          }`}>
+            <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 ${
+              role === "owner" ? "bg-[#04a700] border border-[#04a700]/55" : "bg-emerald-600 border border-emerald-500"
+            }`}>
               {currentConfig.profile.initials}
             </div>
             <div className="flex flex-col overflow-hidden text-left">
-              <span className="text-sm font-bold leading-tight text-emerald-950 truncate">
+              <span className={`text-sm font-bold leading-tight truncate ${
+                role === "owner" ? "text-white" : "text-emerald-950"
+              }`}>
                 {currentConfig.profile.name}
               </span>
-              <span className="text-xs text-emerald-800/70 leading-tight">
+              <span className={`text-xs leading-tight ${
+                role === "owner" ? "text-[#94a3b8]" : "text-emerald-800/70"
+              }`}>
                 {currentConfig.profile.roleName}
               </span>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[10px] text-emerald-800/60 px-2 select-none">
+          <div className={`mt-3 flex items-center justify-between text-[10px] px-2 select-none ${
+            role === "owner" ? "text-slate-400" : "text-emerald-800/60"
+          }`}>
             <span>ERP Platform v1.2.0</span>
             <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${
+                role === "owner" ? "bg-[#04a700]" : "bg-emerald-600"
+              }`} />
               <span>Online</span>
             </div>
           </div>

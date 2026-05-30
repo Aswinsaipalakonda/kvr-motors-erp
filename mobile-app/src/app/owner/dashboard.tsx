@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Image, TextInput, Dimensions, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Dimensions, ActivityIndicator, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -7,11 +7,17 @@ import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { 
-  Search, SlidersHorizontal, MapPin, ChevronDown, MoreVertical, Zap, Gauge, Battery, 
-  Star, Sparkles, Award, TrendingUp, Warehouse, UserCheck, CalendarDays, Check, X,
-  ArrowUpRight, Landmark, Layers, ShoppingBag, Menu
+  Search, SlidersHorizontal, Zap, Gauge, Battery, 
+  Sparkles, Award, TrendingUp, Warehouse, UserCheck, CalendarDays, Check, X,
+  Layers, ShoppingBag, Star, Wallet, ArrowDownLeft, ArrowUpRight, ShieldAlert
 } from 'lucide-react-native';
-import { DrawerContext } from '@/context/DrawerContext';
+
+const scooterImages: Record<string, any> = {
+  scooter_green: require('@/assets/images/scooter_green.png'),
+  scooter_red: require('@/assets/images/scooter_red.png'),
+  scooter_blue: require('@/assets/images/scooter_blue.png'),
+  scooter_orange: require('@/assets/images/scooter_orange.png'),
+};
 
 interface BrandCategory {
   id: string;
@@ -22,18 +28,16 @@ interface BrandCategory {
 }
 
 export default function OwnerDashboard({ 
-  branch = 'Vizag Showroom', 
+  branch = 'All Branches', 
   setBranch = () => {} 
 }: { 
   branch?: string; 
   setBranch?: (b: string) => void; 
 }) {
-  const { openDrawer } = React.useContext(DrawerContext);
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [isBranchModalVisible, setIsBranchModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Live database states
@@ -43,6 +47,12 @@ export default function OwnerDashboard({
   const [vehicleModels, setVehicleModels] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
+  const [batteries, setBatteries] = useState<any[]>([]);
+  const [pendingPOs, setPendingPOs] = useState<any[]>([
+    { id: 1, invoice: 'PO-2026-8910', showroom: 'Vizag - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
+    { id: 2, invoice: 'PO-2026-9233', showroom: 'Vizag - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
+    { id: 3, invoice: 'PO-2026-9411', showroom: 'Srikakulam - KVR Showroom', details: '4x Watts Engineering 100', value: '₹ 4,80,000', approved: false },
+  ]);
 
   // Brand Showroom Categories from PRD.md
   const brands: BrandCategory[] = [
@@ -50,15 +60,6 @@ export default function OwnerDashboard({
     { id: 'Future', name: 'Future', sub: 'Ride', icon: Sparkles, color: '#d71d22' },
     { id: 'Dynamo', name: 'Dynamo', sub: 'EV', icon: Gauge, color: '#2563eb' },
     { id: 'Watts', name: 'Watts', sub: 'Eng.', icon: Battery, color: '#ea580c' },
-  ];
-
-  // Showrooms mapping from PRD.md
-  const branchesList = [
-    { id: 'All Branches', label: 'All Branches', sub: 'Vizag, Srikakulam, Kakinada' },
-    { id: 'Vizag - KVR Showroom', label: 'Vizag - KVR Showroom', sub: 'Kinetic Green, Dynamo, Frankly' },
-    { id: 'Vizag - Future Ride', label: 'Vizag - Future Ride', sub: 'Kinetiq, Watts Engineering' },
-    { id: 'Srikakulam - KVR Showroom', label: 'Srikakulam - KVR Showroom', sub: 'Kinetic Green, Others' },
-    { id: 'Kakinada - KVR Showroom', label: 'Kakinada - KVR Showroom', sub: 'Kinetic Green, Dynamo' }
   ];
 
   const getBranchBackendName = (b: string) => {
@@ -76,21 +77,28 @@ export default function OwnerDashboard({
     return null;
   };
 
+  const handleApprovePO = (poId: number) => {
+    setPendingPOs(prev => prev.map(po => po.id === poId ? { ...po, approved: true } : po));
+    Alert.alert('PO Approved', 'Purchase Order successfully signed off and queued for delivery!');
+  };
+
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes] = await Promise.all([
+      const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes, batteriesRes] = await Promise.all([
         api.get('/ledger-entries/'),
         api.get('/vehicle-units/'),
         api.get('/vehicle-models/'),
         api.get('/bookings/'),
         api.get('/leads/'),
+        api.get('/batteries/'),
       ]);
       setLedgerEntries(ledgerRes.data);
       setVehicleUnits(unitsRes.data);
       setVehicleModels(modelsRes.data);
       setBookings(bookingsRes.data);
       setLeads(leadsRes.data);
+      setBatteries(batteriesRes.data);
     } catch (e) {
       console.error('Failed to load dashboard metrics from backend API:', e);
     } finally {
@@ -111,6 +119,10 @@ export default function OwnerDashboard({
 
   // Calculate MTD Sales Revenue
   const mtdRevenue = filteredLedger.reduce((acc, curr) => acc + parseFloat(curr.income || 0), 0);
+  const totalInflow = filteredLedger.reduce((sum, curr) => sum + parseFloat(curr.income || 0), 0);
+  const totalOutflow = filteredLedger.reduce((sum, curr) => sum + parseFloat(curr.expense || 0), 0);
+  const netProfit = totalInflow - totalOutflow;
+
   const formattedRevenue = mtdRevenue >= 100000 
     ? `₹ ${(mtdRevenue / 100000).toFixed(1)} Lakhs`
     : `₹ ${mtdRevenue.toLocaleString('en-IN')}`;
@@ -148,7 +160,7 @@ export default function OwnerDashboard({
         Math.round(mtdRevenue * 0.25),
         Math.round(mtdRevenue * 0.3)
       ]
-    : [20, 35, 28, 48, 40, 58, 68]; // fallback shape
+    : [20, 35, 28, 48, 40, 58, 68];
 
   // Map backend vehicle models & units to evCollections
   const evCollections = vehicleModels.map((model: any) => {
@@ -186,51 +198,20 @@ export default function OwnerDashboard({
     return matchesBrand && matchesSearch;
   });
 
-  const headerHeight = insets.top + 54;
+  const contentPaddingTop = insets.top + 50;
 
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        {/* Pinned Constant Top Navigation Bar */}
-        <View style={[styles.fixedHeader, { paddingTop: insets.top + 10, height: headerHeight }]}>
-          <View style={styles.headerRow}>
-            <Pressable 
-              onPress={openDrawer}
-              style={({ pressed }) => [
-                styles.hamburgerBtn,
-                pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
-              ]}
-            >
-              <Menu size={22} color="#04a700" />
-            </Pressable>
-            
-            <Pressable 
-              style={styles.locationSelector}
-              onPress={() => setIsBranchModalVisible(true)}
-            >
-              <MapPin size={15} color="#04a700" />
-              <ThemedText style={styles.locationText} numberOfLines={1}>
-                {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
-              </ThemedText>
-              <ChevronDown size={13} color="rgba(255,255,255,0.7)" />
-            </Pressable>
-
-            <Pressable style={styles.moreButton} onPress={() => loadData()}>
-              <MoreVertical size={20} color="#ffffff" />
-            </Pressable>
-          </View>
-        </View>
-
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
         >
-          {/* Dynamic Dark Premium Header Section */}
-          <View style={[styles.darkHeaderInner, { paddingTop: headerHeight + 10 }]}>
-
+          {/* Obsidian SaaS Home Hero Canvas (Matches header dark slate theme) */}
+          <View style={styles.heroCanvas}>
             <View style={styles.titleWrapper}>
-              <ThemedText style={styles.mainTitle}>Let's Manage Your</ThemedText>
+              <ThemedText style={styles.mainTitle}>Manage Your</ThemedText>
               <ThemedText style={styles.accentTitle}>Motors Enterprise.</ThemedText>
             </View>
 
@@ -306,8 +287,11 @@ export default function OwnerDashboard({
             </View>
           ) : (
             <>
+              {/* Bento Stats Insight Section */}
               <View style={styles.bentoSection}>
                 <ThemedText style={styles.bentoTitle}>Operational & Financial Insights</ThemedText>
+                
+                {/* 1. Monthly MTD Revenue spark chart */}
                 <View style={styles.revenueBentoCard}>
                   <View style={styles.revHeader}>
                     <View>
@@ -332,36 +316,145 @@ export default function OwnerDashboard({
                   </View>
                 </View>
 
-                <View style={styles.metricsRow}>
-                  <View style={styles.statCard}>
-                    <View style={[styles.statIconCircle, { backgroundColor: '#eefde8' }]}>
-                      <Warehouse size={16} color="#04a700" />
+                {/* 2. Won-Leads Converted Rate Bento Ring */}
+                <View style={styles.ringGaugeCard}>
+                  <View style={styles.ringGaugeLeft}>
+                    <View style={styles.ringGaugeOuter}>
+                      <View style={styles.ringGaugeInner}>
+                        <ThemedText style={styles.ringGaugePercentage}>{leadsWonPercentage}</ThemedText>
+                        <ThemedText style={styles.ringGaugeSubLabel}>CONVERTED</ThemedText>
+                      </View>
                     </View>
-                    <ThemedText style={styles.statValue}>{filteredUnits.length}</ThemedText>
-                    <ThemedText style={styles.statLabel}>EV Stock</ThemedText>
                   </View>
-                  <View style={styles.statCard}>
-                    <View style={[styles.statIconCircle, { backgroundColor: '#eff6ff' }]}>
-                      <CalendarDays size={16} color="#2563eb" />
+                  <View style={styles.ringGaugeRight}>
+                    <View style={styles.ringGaugeTitleRow}>
+                      <Zap size={14} color="#04a700" fill="#04a700" />
+                      <ThemedText style={styles.ringGaugeTitle}>Won-Leads Target Ring</ThemedText>
                     </View>
-                    <ThemedText style={styles.statValue}>{filteredBookings.length}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Booked</ThemedText>
+                    <ThemedText style={styles.ringGaugeDesc}>
+                      Outstanding conversion this month. Out of {totalLeadsCount} active customer enquiries, {wonLeadsCount} are closed as won. Ahead of regional target pace.
+                    </ThemedText>
                   </View>
-                  <View style={styles.statCard}>
-                    <View style={[styles.statIconCircle, { backgroundColor: '#fff7ed' }]}>
-                      <UserCheck size={16} color="#ea580c" />
+                </View>
+
+                {/* 3. Live Inventory Telemetry */}
+                <View style={styles.telemetryCard}>
+                  <View style={styles.telemetryHeader}>
+                    <Warehouse size={15} color="#04a700" />
+                    <ThemedText style={styles.telemetryTitle}>Live Inventory Telemetry</ThemedText>
+                  </View>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryItem}>
+                      <View style={styles.telemetryItemHeader}>
+                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#04a700' }]} />
+                        <ThemedText style={styles.telemetryItemValue}>{filteredUnits.length}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.telemetryItemLabel}>Physical Stock</ThemedText>
                     </View>
-                    <ThemedText style={styles.statValue}>{leadsWonPercentage}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Won Leads</ThemedText>
+                    <View style={styles.telemetryItem}>
+                      <View style={styles.telemetryItemHeader}>
+                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#2563eb' }]} />
+                        <ThemedText style={styles.telemetryItemValue}>{filteredBookings.length}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.telemetryItemLabel}>Active Bookings</ThemedText>
+                    </View>
+                    <View style={styles.telemetryItem}>
+                      <View style={styles.telemetryItemHeader}>
+                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#ea580c' }]} />
+                        <ThemedText style={styles.telemetryItemValue}>
+                          {filteredUnits.filter(u => u.stock_status === 'reserved').length}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={styles.telemetryItemLabel}>FIFO Reserves</ThemedText>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 4. Sales Funnel Breakdown & Targets */}
+                <View style={styles.funnelCard}>
+                  <View style={styles.funnelHeader}>
+                    <TrendingUp size={15} color="#04a700" />
+                    <ThemedText style={styles.funnelTitle}>Leads Pipeline Funnel</ThemedText>
+                  </View>
+                  <View style={styles.funnelPipelineRow}>
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'new' || l.status === 'lead').length || 18}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Cold</ThemedText>
+                    </View>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'contacted' || l.status === 'active').length || 12}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Warm</ThemedText>
+                    </View>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'qualified' || l.status === 'hot').length || 8}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Hot</ThemedText>
+                    </View>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={[styles.funnelStageVal, { color: '#04a700' }]}>{wonLeadsCount}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Won</ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.funnelTargetTrack}>
+                    <View style={[styles.funnelTargetFill, { width: leadsWonPercentage as any }]} />
+                  </View>
+                  <View style={styles.funnelTargetFooter}>
+                    <ThemedText style={styles.funnelTargetLabel}>Conversion Target pace</ThemedText>
+                    <ThemedText style={styles.funnelTargetVal}>{leadsWonPercentage} Closed</ThemedText>
                   </View>
                 </View>
               </View>
 
+              {/* Audit Vault Quick Summary (Inflow, Outflow, Net Profit, GST) */}
+              <View style={styles.bentoSection}>
+                <ThemedText style={styles.bentoTitle}>KVR Capital Audit vault</ThemedText>
+                <View style={styles.auditCard}>
+                  <View style={styles.auditHeader}>
+                    <Wallet size={16} color="#04a700" />
+                    <ThemedText style={styles.auditCardTitle}>Auto-Journal Ledger Summary</ThemedText>
+                  </View>
+                  <View style={styles.auditGrid}>
+                    <View style={styles.auditItem}>
+                      <View style={styles.auditRow}>
+                        <ArrowDownLeft size={13} color="#04a700" />
+                        <ThemedText style={styles.auditItemVal}>₹ {totalInflow.toLocaleString('en-IN')}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.auditItemLabel}>Inflow Total</ThemedText>
+                    </View>
+                    <View style={styles.auditItem}>
+                      <View style={styles.auditRow}>
+                        <ArrowUpRight size={13} color="#ea580c" />
+                        <ThemedText style={styles.auditItemVal}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.auditItemLabel}>Outflow Total</ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.auditDivider} />
+                  <View style={styles.auditGrid}>
+                    <View style={styles.auditSubItem}>
+                      <ThemedText style={styles.auditItemLabel}>EST. CAPITAL NET</ThemedText>
+                      <ThemedText style={[styles.auditItemVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444', fontSize: 14 }]}>
+                        {netProfit >= 0 ? '+' : ''}₹ {netProfit.toLocaleString('en-IN')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.auditSubItem}>
+                      <ThemedText style={styles.auditItemLabel}>18% EST. GST LIABILITY</ThemedText>
+                      <ThemedText style={[styles.auditItemVal, { color: '#ea580c', fontSize: 14 }]}>
+                        ₹ {Math.max(0, Math.round((totalInflow * 0.18) - (totalOutflow * 0.18 * 0.7))).toLocaleString('en-IN')}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Primary Actions Grid */}
               <View style={styles.toolsSection}>
                 <ThemedText style={styles.toolsTitle}>Enterprise Operations</ThemedText>
                 <View style={styles.toolsGrid}>
                   <Pressable onPress={() => router.push('/owner/purchases' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: '#eff6ff' }]}>
+                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
                       <ShoppingBag size={18} color="#2563eb" />
                     </View>
                     <View style={styles.toolTextWrapper}>
@@ -370,7 +463,7 @@ export default function OwnerDashboard({
                     </View>
                   </Pressable>
                   <Pressable onPress={() => router.push('/owner/bookings' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: '#eefde8' }]}>
+                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(4, 167, 0, 0.08)' }]}>
                       <CalendarDays size={18} color="#04a700" />
                     </View>
                     <View style={styles.toolTextWrapper}>
@@ -379,7 +472,7 @@ export default function OwnerDashboard({
                     </View>
                   </Pressable>
                   <Pressable onPress={() => router.push('/owner/sales' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: '#fff7ed' }]}>
+                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
                       <Layers size={18} color="#ea580c" />
                     </View>
                     <View style={styles.toolTextWrapper}>
@@ -388,7 +481,7 @@ export default function OwnerDashboard({
                     </View>
                   </Pressable>
                   <Pressable onPress={() => router.push('/owner/users' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: '#f5f3ff' }]}>
+                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
                       <UserCheck size={18} color="#8b5cf6" />
                     </View>
                     <View style={styles.toolTextWrapper}>
@@ -398,9 +491,79 @@ export default function OwnerDashboard({
                   </Pressable>
                 </View>
               </View>
+
+              {/* Pending PO Approvals & Operations Vault */}
+              <View style={styles.poSection}>
+                <View style={styles.poHeaderRow}>
+                  <ShieldAlert size={16} color="#d97706" />
+                  <ThemedText style={styles.poSectionTitle}>Pending PO Approvals</ThemedText>
+                  <View style={styles.poBadgeCount}>
+                    <ThemedText style={styles.poBadgeCountText}>
+                      {pendingPOs.filter(p => !p.approved).length} Action
+                    </ThemedText>
+                  </View>
+                </View>
+
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.poHorizontalScroll}
+                >
+                  {pendingPOs.map((po) => {
+                    const isApproved = po.approved;
+                    return (
+                      <View key={po.id} style={[styles.poCard, isApproved && styles.poCardApproved]}>
+                        <View style={styles.poCardTop}>
+                          <ThemedText style={styles.poInvoiceText}>{po.invoice}</ThemedText>
+                          <View style={[styles.poStatusBadge, isApproved ? styles.poStatusBadgeApproved : styles.poStatusBadgePending]}>
+                            <ThemedText style={[styles.poStatusBadgeText, isApproved ? styles.poStatusBadgeTextApproved : styles.poStatusBadgeTextPending]}>
+                              {isApproved ? 'Approved' : 'Pending Sign-off'}
+                            </ThemedText>
+                          </View>
+                        </View>
+
+                        <ThemedText style={styles.poDetailsText} numberOfLines={1}>{po.details}</ThemedText>
+                        <ThemedText style={styles.poShowroomText}>{po.showroom.split(' - ')[0]}</ThemedText>
+
+                        <View style={styles.poCardDivider} />
+
+                        <View style={styles.poCardBottom}>
+                          <View>
+                            <ThemedText style={styles.poValueLabel}>EST. PO COST</ThemedText>
+                            <ThemedText style={styles.poValueText}>{po.value}</ThemedText>
+                          </View>
+
+                          {!isApproved ? (
+                            <Pressable 
+                              onPress={() => handleApprovePO(po.id)}
+                              style={({ pressed }) => [
+                                styles.approvePoBtn,
+                                pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
+                              ]}
+                            >
+                              <ThemedText style={styles.approvePoBtnText}>Sign off</ThemedText>
+                            </Pressable>
+                          ) : (
+                            <View style={styles.approvedIndicator}>
+                              <Check size={12} color="#04a700" strokeWidth={3} />
+                              <ThemedText style={styles.approvedIndicatorText}>Signed</ThemedText>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                  {pendingPOs.length === 0 && (
+                    <View style={styles.poEmptyCard}>
+                      <ThemedText style={styles.poEmptyText}>All Purchase Orders signed and finalized</ThemedText>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
             </>
           )}
 
+          {/* Active EV Fleet Collections Card Feed (HORIZONTAL SCROLLING!) */}
           <View style={styles.collectionsSection}>
             <View style={styles.sectionHeaderRow}>
               <ThemedText style={styles.collectionsTitle}>Active EV Fleet Collections</ThemedText>
@@ -415,30 +578,20 @@ export default function OwnerDashboard({
                 <ThemedText style={styles.emptyText}>No vehicle matching filters found</ThemedText>
               </View>
             ) : (
-              <View style={styles.cardsContainer}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.evHorizontalScroll}
+              >
                 {filteredCollections.map((model, idx) => (
                   <View key={idx} style={styles.evCard}>
-                    {/* Visual mockup vector area representing the EV */}
+                    {/* High Fidelity Generated Scooter Image Asset */}
                     <View style={styles.imageMockupContainer}>
-                      {/* Decorative Gradient Background */}
-                      <View style={[
-                        styles.scooterBackgroundCircle, 
-                        { backgroundColor: model.image === 'scooter_green' ? '#e8fdf0' : model.image === 'scooter_red' ? '#fef2f2' : model.image === 'scooter_blue' ? '#eff6ff' : '#fff7ed' }
-                      ]} />
-                      
-                      {/* High Fidelity Vector Scooter Representation */}
-                      <View style={styles.vectorScooterBody}>
-                        {/* Body chassis paint */}
-                        <View style={[
-                          styles.vectorChassis, 
-                          { backgroundColor: model.image === 'scooter_green' ? '#04a700' : model.image === 'scooter_red' ? '#d71d22' : model.image === 'scooter_blue' ? '#2563eb' : '#ea580c' }
-                        ]} />
-                        {/* Wheels */}
-                        <View style={styles.vectorWheelFront} />
-                        <View style={styles.vectorWheelBack} />
-                        {/* Handle bars */}
-                        <View style={styles.vectorHandle} />
-                      </View>
+                      <Image 
+                        source={scooterImages[model.image] || scooterImages.scooter_green} 
+                        style={styles.scooterImage} 
+                        resizeMode="contain"
+                      />
 
                       {model.isPopular && (
                         <View style={styles.badgePopular}>
@@ -465,7 +618,7 @@ export default function OwnerDashboard({
 
                       {/* Specifications Pills */}
                       <View style={styles.specsRow}>
-                        {model.specs.map((spec, sIdx) => (
+                        {model.specs.slice(0, 2).map((spec, sIdx) => (
                           <View key={sIdx} style={styles.specPill}>
                             <ThemedText style={styles.specText}>{spec}</ThemedText>
                           </View>
@@ -479,84 +632,121 @@ export default function OwnerDashboard({
                       <View style={styles.stockStatusRow}>
                         <View style={styles.stockBadge}>
                           <Warehouse size={12} color="#64748b" />
-                          <ThemedText style={styles.stockBadgeText}>In Stock: {model.stock} Units</ThemedText>
+                          <ThemedText style={styles.stockBadgeText}>Stock: {model.stock} Units</ThemedText>
                         </View>
                         
                         <View style={[
                           styles.fifoBadge, 
-                          { backgroundColor: model.fifoStatus === 'Approved' ? '#f0fdf4' : model.fifoStatus === 'FIFO Hold' ? '#fffbeb' : '#fef2f2' }
+                          { backgroundColor: model.fifoStatus === 'Approved' ? 'rgba(4, 167, 0, 0.08)' : 'rgba(234, 88, 12, 0.08)' }
                         ]}>
-                          <Check size={10} color={model.fifoStatus === 'Approved' ? '#04a700' : model.fifoStatus === 'FIFO Hold' ? '#d97706' : '#d71d22'} />
+                          <Check size={10} color={model.fifoStatus === 'Approved' ? '#04a700' : '#ea580c'} />
                           <ThemedText style={[
                             styles.fifoBadgeText,
-                            { color: model.fifoStatus === 'Approved' ? '#04a700' : model.fifoStatus === 'FIFO Hold' ? '#d97706' : '#d71d22' }
+                            { color: model.fifoStatus === 'Approved' ? '#04a700' : '#ea580c' }
                           ]}>
-                            FIFO {model.fifoStatus}
+                            FIFO {model.fifoStatus.split(' ')[0]}
                           </ThemedText>
                         </View>
                       </View>
                     </View>
                   </View>
                 ))}
-              </View>
+              </ScrollView>
             )}
           </View>
-        </ScrollView>
 
-        {/* Branch Selector Dropdown Modal Sheet */}
-        <Modal
-          visible={isBranchModalVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsBranchModalVisible(false)}
-        >
-          <Pressable 
-            style={styles.modalOverlay}
-            onPress={() => setIsBranchModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Showroom / Branch</ThemedText>
-                <Pressable onPress={() => setIsBranchModalVisible(false)}>
-                  <X size={20} color="#0f172a" />
-                </Pressable>
-              </View>
-
-              <FlatList
-                data={branchesList}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.branchListContainer}
-                renderItem={({ item }) => {
-                  const isSelected = branch === item.id;
-                  return (
-                    <Pressable
-                      style={[styles.branchListItem, isSelected && styles.branchListItemActive]}
-                      onPress={() => {
-                        setBranch(item.id);
-                        setIsBranchModalVisible(false);
-                      }}
-                    >
-                      <View style={styles.branchListItemLeft}>
-                        <View style={[styles.modalPinCircle, { backgroundColor: isSelected ? '#e8fdf0' : '#f1f5f9' }]}>
-                          <MapPin size={16} color={isSelected ? '#04a700' : '#64748b'} />
-                        </View>
-                        <View>
-                          <ThemedText style={[styles.branchListLabel, isSelected && styles.branchListLabelActive]}>
-                            {item.label}
-                          </ThemedText>
-                          <ThemedText style={styles.branchListSub}>{item.sub}</ThemedText>
-                        </View>
-                      </View>
-                      {isSelected && (
-                        <Check size={18} color="#04a700" strokeWidth={2.5} />
-                      )}
-                    </Pressable>
-                  );
-                }}
-              />
+          {/* Horizontal Scrolling FIFO Battery Queue Row */}
+          <View style={styles.batteryFifoSection}>
+            <View style={styles.sectionHeaderRow}>
+              <ThemedText style={styles.batteryFifoTitle}>FIFO Battery Stock Queue</ThemedText>
+              <ThemedText style={styles.batteryFifoSubText}>
+                ({batteries.length} Serials active)
+              </ThemedText>
             </View>
-          </Pressable>
-        </Modal>
+
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.batteryHorizontalScroll}
+            >
+              {batteries.map((bat, idx) => {
+                const ageDays = Math.round((new Date().getTime() - new Date(bat.purchase_date).getTime()) / (1000 * 60 * 60 * 24)) || 4;
+                
+                // FIFO status algorithm
+                const sameCapacityAvailable = batteries.filter(b => b.capacity === bat.capacity && b.status === 'available');
+                const isOldest = sameCapacityAvailable.length > 0 && sameCapacityAvailable[0].serial_number === bat.serial_number;
+                
+                let fifoStatus = 'FIFO Approved';
+                let statusColor = '#04a700';
+                let statusBg = 'rgba(4, 167, 0, 0.08)';
+                
+                if (isOldest) {
+                  fifoStatus = 'FIFO Oldest';
+                  statusColor = '#04a700';
+                  statusBg = 'rgba(4, 167, 0, 0.12)';
+                } else if (bat.status === 'reserved') {
+                  fifoStatus = 'On Hold';
+                  statusColor = '#ea580c';
+                  statusBg = 'rgba(234, 88, 12, 0.08)';
+                } else {
+                  fifoStatus = 'FIFO Warning';
+                  statusColor = '#ef4444';
+                  statusBg = 'rgba(239, 68, 68, 0.08)';
+                }
+
+                return (
+                  <View key={bat.id || idx} style={styles.batteryCard}>
+                    <View style={styles.batteryCardTop}>
+                      <View style={[styles.batteryCircleIndicator, { borderColor: statusColor, backgroundColor: statusBg }]}>
+                        <Battery size={14} color={statusColor} />
+                      </View>
+                      <View style={[styles.fifoBadgeTextContainer, { backgroundColor: statusBg }]}>
+                        <ThemedText style={[styles.fifoCardBadgeText, { color: statusColor }]}>{fifoStatus}</ThemedText>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.batteryCardBody}>
+                      <ThemedText style={styles.batterySerial}>{bat.serial_number}</ThemedText>
+                      <ThemedText style={styles.batterySpecs}>{bat.capacity} Li-ion • {ageDays} Days</ThemedText>
+                    </View>
+                    
+                    <View style={styles.batteryCardDivider} />
+                    
+                    <ThemedText style={styles.batteryLocationText} numberOfLines={1}>
+                      {bat.location_name || 'Vizag Godown'}
+                    </ThemedText>
+                  </View>
+                );
+              })}
+              
+              {batteries.length === 0 && (
+                <View style={styles.emptyBatteriesCard}>
+                  <ThemedText style={styles.emptyBatteriesText}>No battery stock records available</ThemedText>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+
+          {/* Showroom Live Activity Log Feed */}
+          <View style={styles.activityFeedSection}>
+            <ThemedText style={styles.activityTitle}>Live Showroom Activity</ThemedText>
+            <View style={styles.activityCard}>
+              {[
+                { time: '10m ago', desc: 'Sai Krishna confirmed booking for kinetic Zoom', badgeColor: '#04a700' },
+                { time: '42m ago', desc: 'Suresh approved FIFO override for serial B-10923', badgeColor: '#ea580c' },
+                { time: '2h ago', desc: 'Warehouse transfer of 8 Dynamo units completed', badgeColor: '#2563eb' },
+              ].map((item, actIdx) => (
+                <View key={actIdx} style={[styles.activityRow, actIdx === 2 && { borderBottomWidth: 0, paddingBottom: 0 }]}>
+                  <View style={styles.activityLeft}>
+                    <View style={[styles.activityIndicatorDot, { backgroundColor: item.badgeColor }]} />
+                    <ThemedText style={styles.activityTimeText}>{item.time}</ThemedText>
+                  </View>
+                  <ThemedText style={styles.activityDescText} numberOfLines={1}>{item.desc}</ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       </View>
     </FadeScaleTransition>
   );
@@ -565,7 +755,7 @@ export default function OwnerDashboard({
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f8fafc', // LIGHT background viewport!
   },
   scrollView: {
     flex: 1,
@@ -573,101 +763,35 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  fixedHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#090d16',
-    zIndex: 100,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: 10,
-    justifyContent: 'center',
-  },
-  darkHeaderInner: {
-    backgroundColor: '#090d16', // Obsidian/dark slate header container
+  heroCanvas: {
+    backgroundColor: '#0a0e1a', // Beautiful deep obsidian canvas!
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: 26,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
     paddingTop: 10,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-  },
-  profileWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    padding: 2,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  hamburgerBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  profileImg: {
-    width: '100%',
-    height: '100%',
-  },
-  locationSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 9999, // ROUND_FULL
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 6,
-    maxWidth: 220,
-  },
-  locationText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  moreButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   titleWrapper: {
-    marginBottom: 20,
-    gap: 2,
+    marginBottom: 22,
+    gap: 4,
   },
   mainTitle: {
-    fontSize: 26,
+    fontSize: 32, // Increased font size for a premium look
     fontWeight: '400',
-    color: '#ffffff',
+    color: '#ffffff', // Clean white contrast text
     letterSpacing: -0.5,
-    fontFamily: 'system-ui',
   },
   accentTitle: {
-    fontSize: 28,
+    fontSize: 34, // Increased font size for a premium look
     fontWeight: 'bold',
-    color: '#04a700', // Brand green highlight
+    color: '#04a700', // KVR brand green
     letterSpacing: -0.5,
   },
   searchBarRow: {
@@ -679,8 +803,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 9999, // ROUND_FULL
+    backgroundColor: '#1e293b', // Premium slate-800 dark container
+    borderWidth: 1.5,
+    borderColor: '#334155', // Slate-700 border
+    borderRadius: 9999,
     height: 50,
     paddingHorizontal: 16,
   },
@@ -689,15 +815,15 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
-    fontSize: 14,
+    color: '#ffffff', // White input text
+    fontSize: 15, // Increased input text size
     fontWeight: '500',
   },
   filterButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#04a700', // Brand green filter circle
+    backgroundColor: '#04a700',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#04a700',
@@ -716,12 +842,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   brandsTitle: {
-    fontSize: 14.5,
+    fontSize: 17, // Increased section title font size
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#ffffff', // White text on dark hero section
   },
   clearFilterText: {
-    fontSize: 11.5,
+    fontSize: 13, // Increased filter reset font size
     color: '#04a700',
     fontWeight: 'bold',
   },
@@ -731,49 +857,48 @@ const styles = StyleSheet.create({
   },
   brandCol: {
     alignItems: 'center',
-    width: 76,
+    width: 78,
     gap: 2,
   },
   brandCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    width: 56, // Slightly wider for a premium touch
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1e293b', // Sleek dark circle backdrop
+    borderWidth: 1.5,
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   brandNameText: {
-    fontSize: 11.5,
+    fontSize: 12.5, // Increased brand name font size
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: '#94a3b8', // Lighter slate for optimal readability
     marginTop: 4,
   },
   brandSubText: {
-    fontSize: 10,
+    fontSize: 10.5, // Increased brand subtitle font size
     color: '#64748b',
     fontWeight: '500',
   },
   bentoSection: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingTop: 24,
     gap: 14,
   },
   bentoTitle: {
-    fontSize: 16,
+    fontSize: 19, // Increased section header font size
     fontWeight: 'bold',
     color: '#0f172a',
     marginBottom: 2,
   },
   toolsSection: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingTop: 24,
     gap: 14,
   },
   toolsTitle: {
-    fontSize: 16,
+    fontSize: 19, // Increased section header font size
     fontWeight: 'bold',
     color: '#0f172a',
     marginBottom: 2,
@@ -789,13 +914,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -818,20 +938,15 @@ const styles = StyleSheet.create({
   },
   toolDesc: {
     fontSize: 9,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '600',
   },
   revenueBentoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff', // LIGHT Card background!
     borderRadius: 22,
     padding: 18,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 12,
-    elevation: 3,
     gap: 18,
   },
   revHeader: {
@@ -842,11 +957,11 @@ const styles = StyleSheet.create({
   revLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#64748b',
     letterSpacing: 0.8,
   },
   revVal: {
-    fontSize: 26,
+    fontSize: 30, // Increased font size for visual weight
     fontWeight: 'bold',
     color: '#0f172a',
     marginTop: 2,
@@ -854,7 +969,7 @@ const styles = StyleSheet.create({
   trendBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e8fdf0',
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -886,52 +1001,133 @@ const styles = StyleSheet.create({
   chartDayText: {
     fontSize: 8.5,
     fontWeight: 'bold',
-    color: '#94a3b8',
+    color: '#64748b',
   },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
+  ringGaugeCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1.5,
     borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 16,
   },
-  statIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
+  ringGaugeLeft: {
     justifyContent: 'center',
-    marginBottom: 2,
+    alignItems: 'center',
   },
-  statValue: {
-    fontSize: 18,
+  ringGaugeOuter: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 7,
+    borderColor: 'rgba(4, 167, 0, 0.08)',
+    borderTopColor: '#04a700',
+    borderRightColor: '#04a700',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ringGaugeInner: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ringGaugePercentage: {
+    fontSize: 20, // Increased font size
     fontWeight: 'bold',
     color: '#0f172a',
   },
-  statLabel: {
-    fontSize: 10.5,
+  ringGaugeSubLabel: {
+    fontSize: 7.5,
+    fontWeight: '800',
     color: '#64748b',
-    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  ringGaugeRight: {
+    flex: 1,
+    gap: 6,
+  },
+  ringGaugeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ringGaugeTitle: {
+    fontSize: 13.5, // Increased title size slightly
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  ringGaugeDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  telemetryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    gap: 12,
+  },
+  telemetryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  telemetryTitle: {
+    fontSize: 15, // Increased title size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  telemetryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  telemetryItem: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+    alignItems: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+  },
+  telemetryItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  telemetryItemValue: {
+    fontSize: 20, // Increased value size for telemetry
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  telemetryItemLabel: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  pulseIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   collectionsSection: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingTop: 24,
     gap: 14,
   },
   collectionsTitle: {
-    fontSize: 16,
+    fontSize: 19, // Increased section title font size
     fontWeight: 'bold',
     color: '#0f172a',
   },
@@ -942,7 +1138,7 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     backgroundColor: '#ffffff',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#f1f5f9',
     borderRadius: 22,
     paddingVertical: 40,
@@ -952,129 +1148,128 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '500',
   },
   cardsContainer: {
     gap: 16,
   },
+  evHorizontalScroll: {
+    gap: 14,
+    paddingVertical: 4,
+  },
   evCard: {
+    width: 250, // HORIZONTAL Card width!
     backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 3,
     gap: 14,
   },
   imageMockupContainer: {
-    height: 170,
+    height: 140,
     backgroundColor: '#f8fafc',
     borderRadius: 20,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
   },
   scooterBackgroundCircle: {
     position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
   },
   vectorScooterBody: {
-    width: 120,
-    height: 60,
+    width: 100,
+    height: 50,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
   vectorChassis: {
-    width: 80,
-    height: 28,
-    borderRadius: 14,
+    width: 70,
+    height: 24,
+    borderRadius: 12,
     position: 'absolute',
-    bottom: 12,
+    bottom: 10,
     transform: [{ rotateZ: '-10deg' }],
   },
   vectorWheelFront: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#1e293b',
-    borderWidth: 5,
+    borderWidth: 4,
     borderColor: '#94a3b8',
     position: 'absolute',
     bottom: 2,
-    right: 14,
+    right: 12,
   },
   vectorWheelBack: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#1e293b',
-    borderWidth: 5,
+    borderWidth: 4,
     borderColor: '#94a3b8',
     position: 'absolute',
     bottom: 2,
-    left: 14,
+    left: 12,
   },
   vectorHandle: {
-    width: 4,
-    height: 38,
+    width: 3.5,
+    height: 32,
     backgroundColor: '#475569',
     position: 'absolute',
-    bottom: 18,
-    right: 28,
+    bottom: 14,
+    right: 24,
     transform: [{ rotateZ: '-15deg' }],
-    borderRadius: 2,
+    borderRadius: 1.5,
   },
   badgePopular: {
     position: 'absolute',
-    top: 12,
-    left: 12,
+    top: 10,
+    left: 10,
     backgroundColor: '#04a700',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
     gap: 4,
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#ffffff',
     letterSpacing: 0.5,
   },
   badgeRating: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
     gap: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   ratingText: {
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#0f172a',
   },
   cardDetails: {
-    gap: 12,
+    gap: 10,
   },
   nameRow: {
     flexDirection: 'row',
@@ -1082,35 +1277,37 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   evName: {
-    fontSize: 16,
+    fontSize: 17, // Increased font size for model name
     fontWeight: 'bold',
     color: '#0f172a',
   },
   evShowroom: {
-    fontSize: 12,
+    fontSize: 11.5, // Increased size slightly
     color: '#64748b',
     fontWeight: '600',
     marginTop: 2,
   },
   evPrice: {
-    fontSize: 16.5,
+    fontSize: 17, // Increased price text size
     fontWeight: '800',
-    color: '#04a700', // Brand green highlight price
+    color: '#04a700',
   },
   specsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   specPill: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 9999, // ROUND_FULL
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: '#f8fafc',
+    borderRadius: 9999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   specText: {
-    fontSize: 11,
-    color: '#475569',
+    fontSize: 10.5, // Increased text size inside specs pill
+    color: '#64748b',
     fontWeight: '600',
   },
   cardDivider: {
@@ -1129,7 +1326,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   stockBadgeText: {
-    fontSize: 11.5,
+    fontSize: 12.5, // Increased stock badge text size
     color: '#64748b',
     fontWeight: 'bold',
   },
@@ -1137,87 +1334,426 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  fifoBadgeText: {
+    fontSize: 10, // Increased size slightly
+    fontWeight: 'bold',
+  },
+  batteryFifoSection: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    gap: 14,
+  },
+  batteryFifoTitle: {
+    fontSize: 19, // Increased section header font size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  batteryFifoSubText: {
+    fontSize: 13, // Increased subtitle text size
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  batteryHorizontalScroll: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  batteryCard: {
+    width: 180, // Slightly wider for larger text
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    padding: 14,
+    gap: 10,
+  },
+  batteryCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  batteryCircleIndicator: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fifoBadgeTextContainer: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  fifoBadgeText: {
-    fontSize: 10,
+  fifoCardBadgeText: {
+    fontSize: 9.5, // Increased font size slightly
     fontWeight: 'bold',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(9, 13, 22, 0.45)',
-    justifyContent: 'flex-end',
+  batteryCardBody: {
+    gap: 2,
   },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    maxHeight: '65%',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  modalTitle: {
-    fontSize: 16,
+  batterySerial: {
+    fontSize: 16, // Increased battery serial font size
     fontWeight: 'bold',
     color: '#0f172a',
   },
-  branchListContainer: {
-    paddingVertical: 12,
-    gap: 10,
-    paddingBottom: 30,
+  batterySpecs: {
+    fontSize: 11.5, // Increased battery spec details font size
+    color: '#64748b',
+    fontWeight: '600',
   },
-  branchListItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 14,
+  batteryCardDivider: {
+    height: 1,
+    borderColor: '#f1f5f9',
+    borderBottomWidth: 1,
+  },
+  batteryLocationText: {
+    fontSize: 10.5, // Increased battery showroom name text size
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  emptyBatteriesCard: {
+    width: Dimensions.get('window').width - 48,
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: '#f1f5f9',
-  },
-  branchListItemActive: {
-    borderColor: '#e8fdf0',
-    backgroundColor: '#fafdfa',
-  },
-  branchListItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  modalPinCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    paddingVertical: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  branchListLabel: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#334155',
+  emptyBatteriesText: {
+    fontSize: 12.5, // Increased size slightly
+    color: '#64748b',
+    fontWeight: '500',
   },
-  branchListLabelActive: {
+  auditCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    padding: 18,
+    gap: 14,
+  },
+  auditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  auditCardTitle: {
+    fontSize: 15, // Increased audit card title font size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  auditGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  auditItem: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    padding: 10,
+    gap: 4,
+  },
+  auditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  auditItemVal: {
+    fontSize: 15.5, // Increased audit numerical values size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  auditItemLabel: {
+    fontSize: 10, // Increased label size slightly
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  auditDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+  },
+  auditSubItem: {
+    flex: 1,
+    gap: 2,
+  },
+  activityFeedSection: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    gap: 14,
+  },
+  activityTitle: {
+    fontSize: 19, // Increased section title font size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  activityCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    padding: 18,
+    gap: 14,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 12,
+    gap: 12,
+  },
+  activityLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activityIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activityTimeText: {
+    fontSize: 12.5, // Increased relative time text size
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  activityDescText: {
+    fontSize: 13, // Increased activity log text size
+    color: '#334155',
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+  scooterImage: {
+    width: '90%',
+    height: '90%',
+  },
+  funnelCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    gap: 12,
+  },
+  funnelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  funnelTitle: {
+    fontSize: 15, // Increased funnel title font size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  funnelPipelineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  funnelStage: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  funnelStageVal: {
+    fontSize: 22, // Increased funnel stage value size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  funnelStageLabel: {
+    fontSize: 11, // Increased label size
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  funnelStageDivider: {
+    width: 1.5,
+    height: 24,
+    backgroundColor: '#f1f5f9',
+  },
+  funnelTargetTrack: {
+    height: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: 2,
+  },
+  funnelTargetFill: {
+    height: '100%',
+    backgroundColor: '#04a700',
+    borderRadius: 3,
+  },
+  funnelTargetFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  funnelTargetLabel: {
+    fontSize: 9.5,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  funnelTargetVal: {
+    fontSize: 10,
+    fontWeight: 'bold',
     color: '#04a700',
   },
-  branchListSub: {
-    fontSize: 10.5,
-    color: '#94a3b8',
-    fontWeight: '500',
+  poSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    gap: 14,
+  },
+  poHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  poSectionTitle: {
+    fontSize: 19, // Increased section title size
+    fontWeight: 'bold',
+    color: '#0f172a',
+    flex: 1,
+  },
+  poBadgeCount: {
+    backgroundColor: 'rgba(217, 119, 6, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  poBadgeCountText: {
+    fontSize: 11.5, // Increased count font size
+    fontWeight: 'bold',
+    color: '#d97706',
+  },
+  poHorizontalScroll: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  poCard: {
+    width: 250, // Slightly wider for increased font size
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    padding: 14,
+    gap: 8,
+  },
+  poCardApproved: {
+    borderColor: 'rgba(4, 167, 0, 0.2)',
+  },
+  poCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  poInvoiceText: {
+    fontSize: 14, // Increased invoice text size
+    fontWeight: 'bold',
+    color: '#2563eb',
+    fontFamily: 'monospace',
+  },
+  poStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  poStatusBadgeApproved: {
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+  },
+  poStatusBadgePending: {
+    backgroundColor: 'rgba(217, 119, 6, 0.08)',
+  },
+  poStatusBadgeText: {
+    fontSize: 9.5, // Increased size slightly
+    fontWeight: 'bold',
+  },
+  poStatusBadgeTextApproved: {
+    color: '#04a700',
+  },
+  poStatusBadgeTextPending: {
+    color: '#d97706',
+  },
+  poDetailsText: {
+    fontSize: 15.5, // Increased details text size
+    fontWeight: 'bold',
+    color: '#0f172a',
     marginTop: 2,
+  },
+  poShowroomText: {
+    fontSize: 12.5, // Increased showroom text size
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  poCardDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 2,
+  },
+  poCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  poValueLabel: {
+    fontSize: 8.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  poValueText: {
+    fontSize: 14.5, // Increased PO cost value size
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  approvePoBtn: {
+    backgroundColor: '#04a700',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  approvePoBtnText: {
+    color: '#ffffff',
+    fontSize: 12, // Increased button font size
+    fontWeight: 'bold',
+  },
+  approvedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  approvedIndicatorText: {
+    fontSize: 11.5, // Increased approved text size
+    fontWeight: 'bold',
+    color: '#04a700',
+  },
+  poEmptyCard: {
+    width: Dimensions.get('window').width - 48,
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  poEmptyText: {
+    fontSize: 13, // Increased empty text size
+    color: '#64748b',
+    fontWeight: '500',
   },
 });

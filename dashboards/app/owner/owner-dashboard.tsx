@@ -392,16 +392,16 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden">
+    <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       
       {/* Sidebar - Leaves existing Sidebar.tsx alone, uses DashboardSidebar */}
       <DashboardSidebar role="owner" activeTab={activeTab} />
       {/* Main Panel Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
         <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
         {/* Dashboard Views */}
-        <main className={`flex-1 p-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-3 h-[calc(100vh-80px)]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 h-[calc(100vh-80px)] bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -409,14 +409,14 @@ export default function OwnerDashboard() {
               <div className="bg-white border border-emerald-100/60 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm shadow-emerald-950/4 select-none">
                 <div>
                   <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    Welcome back, Ravi Varma! <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
+                    Welcome back, Ravi Varma! <Sparkles className="h-4 w-4 text-[#04a700] animate-pulse" />
                   </h2>
                   <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Here&apos;s a quick snapshot of your multi-branch enterprise statistics today.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-505 border border-emerald-100 bg-white rounded-lg px-3 py-1 flex items-center gap-1.5 shadow-sm shadow-emerald-950/4">
-                    <Calendar className="h-3.5 w-3.5 text-emerald-600" />
-                    Last Updated: Today, 22:50
+                  <span className="text-[10px] font-bold text-[#04a700] border border-[#04a700]/30 bg-[#04a700]/10 rounded-lg px-3 py-1 flex items-center gap-1.5 shadow-sm shadow-emerald-950/4">
+                    <Calendar className="h-3.5 w-3.5 text-[#04a700]" />
+                    SYSTEM LIVE
                   </span>
                 </div>
               </div>
@@ -438,8 +438,8 @@ export default function OwnerDashboard() {
                       <h3 className="text-xs font-bold text-slate-800">Sales Overview</h3>
                       <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Cumulative monthly sales compared to previous cycle</p>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-emerald-500" /> This Month</span>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-[#04a700]">
+                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-[#04a700]" /> This Month</span>
                       <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-slate-350" /> Last Month</span>
                     </div>
                   </div>
@@ -448,16 +448,16 @@ export default function OwnerDashboard() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={salesOverviewData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="colorThis" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.18}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          <linearGradient id="glowBrandGreen" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#04a700" stopOpacity={0.18}/>
+                            <stop offset="95%" stopColor="#04a700" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
                         <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₹ ${(val / 100000).toFixed(0)}L`} tick={{ fill: "#94a3b8", fontSize: 9 }} />
                         <Tooltip formatter={(value: any) => [`₹ ${value.toLocaleString()}`, "Sales"]} />
-                        <Area type="monotone" dataKey="ThisMonth" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorThis)" name="This Month" />
+                        <Area type="monotone" dataKey="ThisMonth" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="This Month" />
                         <Area type="monotone" dataKey="LastMonth" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fillOpacity={0} name="Last Month" />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -472,7 +472,7 @@ export default function OwnerDashboard() {
                   <div className="h-[220px] w-full flex flex-col justify-center items-center relative">
                     <div className="absolute flex flex-col items-center">
                       <span className="text-xl font-extrabold text-slate-800">312</span>
-                      <span className="text-[8px] font-bold text-emerald-800/60 uppercase tracking-widest leading-none">Total units</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Total units</span>
                     </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -572,7 +572,7 @@ export default function OwnerDashboard() {
                         </div>
                         <div className="flex flex-col text-right text-[10px] font-bold">
                           <span className="text-slate-800">{model.count} Units</span>
-                          <span className="text-[9px] text-emerald-650 mt-0.5">₹ {((model.count * 85000)).toLocaleString()}</span>
+                          <span className="text-[9px] text-[#04a700] mt-0.5">₹ {((model.count * 85000)).toLocaleString()}</span>
                         </div>
                       </div>
                     ))}

@@ -65,46 +65,20 @@ export default function OwnerSales() {
   const targetUnits = 30;
   const salesRunRatePct = Math.min(100, Math.round((salesCount / targetUnits) * 100));
 
+  const contentPaddingTop = insets.top + 64;
+
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        {/* Flat Visual Journal Header */}
-        <View style={[styles.journalHeaderBar, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <ArrowLeft size={18} color="#ffffff" />
-            </Pressable>
-            <View style={styles.logoBadge}>
-              <Layers size={14} color="#04a700" />
-              <ThemedText style={styles.logoBadgeText}>TRANSACTION STREAM</ThemedText>
-            </View>
-          </View>
-
-          {/* Sales Target Run-rate Gauge */}
-          <View style={styles.gaugeContainer}>
-            <View style={styles.gaugeLabelRow}>
-              <ThemedText style={styles.gaugeTitle}>MONTHLY TARGET RUN-RATE</ThemedText>
-              <ThemedText style={styles.gaugeValue}>{salesCount} / {targetUnits} EVs</ThemedText>
-            </View>
-            <View style={styles.gaugeBarTrack}>
-              <View style={[styles.gaugeBarFill, { width: `${salesRunRatePct}%` }]} />
-            </View>
-            <View style={styles.gaugeFooter}>
-              <ThemedText style={styles.gaugeDesc}>Progress index to sales milestones</ThemedText>
-              <ThemedText style={styles.gaugePctText}>{salesRunRatePct}%</ThemedText>
-            </View>
-          </View>
-        </View>
-
         {isLoading ? (
-          <View style={styles.loaderContainer}>
+          <View style={[styles.loaderContainer, { paddingTop: contentPaddingTop }]}>
             <ActivityIndicator size="small" color="#04a700" />
             <ThemedText style={styles.loaderText}>Auditing transaction journal streams...</ThemedText>
           </View>
         ) : (
           <ScrollView 
             style={styles.scrollView}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} 
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -116,6 +90,56 @@ export default function OwnerSales() {
             }
           >
             <View style={styles.contentSection}>
+              {/* Sales Target Run-rate Gauge */}
+              <View style={styles.gaugeContainer}>
+                <View style={styles.gaugeLabelRow}>
+                  <ThemedText style={styles.gaugeTitle}>MONTHLY TARGET RUN-RATE</ThemedText>
+                  <ThemedText style={styles.gaugeValue}>{salesCount} / {targetUnits} EVs</ThemedText>
+                </View>
+                <View style={styles.gaugeBarTrack}>
+                  <View style={[styles.gaugeBarFill, { width: `${salesRunRatePct}%` }]} />
+                </View>
+                <View style={styles.gaugeFooter}>
+                  <ThemedText style={styles.gaugeDesc}>Progress index to sales milestones</ThemedText>
+                  <ThemedText style={styles.gaugePctText}>{salesRunRatePct}%</ThemedText>
+                </View>
+              </View>
+
+              {/* 1. Daily Sales Target Progress Bar [Suitability Addition] */}
+              <View style={styles.dailyTargetCard as any}>
+                <View style={styles.dailyTargetHeader as any}>
+                  <CheckCircle size={14} color="#04a700" />
+                  <ThemedText style={styles.dailyTargetTitle as any}>Daily Deliveries Pacer</ThemedText>
+                </View>
+                <View style={styles.dailyTargetTrack as any}>
+                  {/* Say, 2 deliveries completed out of daily target of 4 */}
+                  <View style={[styles.dailyTargetFill, { width: '50%' }] as any} />
+                </View>
+                <View style={styles.dailyTargetFooter as any}>
+                  <ThemedText style={styles.dailyTargetDesc as any}>2 of 4 deliveries finished today</ThemedText>
+                  <ThemedText style={styles.dailyTargetValue as any}>50% Done</ThemedText>
+                </View>
+              </View>
+
+              {/* 2. Sales Commission Tracker Capsules [Suitability Addition] */}
+              <View style={styles.commissionCard as any}>
+                <ThemedText style={styles.commissionTitle as any}>Active Commission Rewards Pool</ThemedText>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commissionScroll as any}>
+                  <View style={styles.commissionCapsule as any}>
+                    <ThemedText style={styles.commissionLabel as any}>Sai Krishna</ThemedText>
+                    <ThemedText style={styles.commissionValue as any}>₹ 12,000</ThemedText>
+                  </View>
+                  <View style={styles.commissionCapsule as any}>
+                    <ThemedText style={styles.commissionLabel as any}>Appalaraju</ThemedText>
+                    <ThemedText style={styles.commissionValue as any}>₹ 8,500</ThemedText>
+                  </View>
+                  <View style={styles.commissionCapsule as any}>
+                    <ThemedText style={styles.commissionLabel as any}>Suresh Babu</ThemedText>
+                    <ThemedText style={styles.commissionValue as any}>₹ 6,000</ThemedText>
+                  </View>
+                </ScrollView>
+              </View>
+
               {invoices.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <ThemedText style={styles.emptyText}>No sales invoices recorded in journal</ThemedText>
@@ -208,55 +232,20 @@ export default function OwnerSales() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#05070c',
-  },
-  journalHeaderBar: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: '#05070c',
-    borderBottomWidth: 1,
-    borderColor: '#141a29',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 18,
-  },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#141a29',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#141a29',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  logoBadgeText: {
-    color: '#04a700',
-    fontSize: 9.5,
-    fontWeight: 'bold',
-    letterSpacing: 0.8,
+    backgroundColor: '#f8fafc',
   },
   gaugeContainer: {
-    backgroundColor: '#141a29',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    gap: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    gap: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 8,
+    elevation: 2,
   },
   gaugeLabelRow: {
     flexDirection: 'row',
@@ -270,13 +259,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   gaugeValue: {
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   gaugeBarTrack: {
     height: 6,
-    backgroundColor: '#05070c',
+    backgroundColor: '#f8fafc',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -291,12 +280,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gaugeDesc: {
-    fontSize: 9,
+    fontSize: 9.5,
     color: '#64748b',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   gaugePctText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#04a700',
   },
@@ -318,14 +307,13 @@ const styles = StyleSheet.create({
   },
   contentSection: {
     paddingHorizontal: 24,
-    paddingTop: 20,
     gap: 14,
   },
   emptyContainer: {
-    backgroundColor: '#141a29',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     paddingVertical: 60,
     alignItems: 'center',
   },
@@ -335,12 +323,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   invoiceCard: {
-    backgroundColor: '#141a29',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     padding: 18,
     gap: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeaderPressable: {
     flexDirection: 'row',
@@ -360,13 +353,13 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
     marginTop: 2,
   },
   customerContact: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#64748b',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   headerRight: {
     flexDirection: 'row',
@@ -388,11 +381,11 @@ const styles = StyleSheet.create({
   techGrid: {
     flexDirection: 'row',
     gap: 16,
-    backgroundColor: '#05070c',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
   },
   gridCell: {
     flex: 1,
@@ -405,21 +398,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cellValue: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   priceVal: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#04a700',
   },
   expandedVault: {
-    backgroundColor: '#05070c',
-    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
     gap: 10,
   },
   vaultRow: {
@@ -434,24 +427,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   vaultVal: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   vaultValMonospaced: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
     fontFamily: 'monospace',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#f1f5f9',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 4,
+    paddingTop: 12,
   },
   dateText: {
     fontSize: 11,
@@ -467,5 +462,96 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: 'bold',
     color: '#04a700',
+  },
+  dailyTargetCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  dailyTargetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dailyTargetTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  dailyTargetTrack: {
+    height: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  dailyTargetFill: {
+    height: '100%',
+    backgroundColor: '#04a700',
+    borderRadius: 3,
+  },
+  dailyTargetFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dailyTargetDesc: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  dailyTargetValue: {
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    color: '#04a700',
+  },
+  commissionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  commissionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  commissionScroll: {
+    gap: 10,
+  },
+  commissionCapsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  commissionLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: 'bold',
+  },
+  commissionValue: {
+    fontSize: 11.5,
+    color: '#04a700',
+    fontWeight: 'bold',
   },
 });

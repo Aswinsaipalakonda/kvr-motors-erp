@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Wallet, ArrowDownLeft, ArrowUpRight, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Wallet, ArrowDownLeft, ArrowUpRight, ArrowLeft, ShieldCheck, ChevronRight } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -18,6 +19,7 @@ interface Transaction {
 
 export default function OwnerLedger() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +131,9 @@ export default function OwnerLedger() {
         {/* Crisp Flat Auditing Vault Top Header */}
         <View style={[styles.flatVaultBar, { paddingTop: insets.top + 16 }]}>
           <View style={styles.flatVaultRow}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <ArrowLeft size={18} color="#ffffff" />
+            </Pressable>
             <View style={styles.flatLogoBadge}>
               <View style={styles.activeDot} />
               <ThemedText style={styles.flatBadgeText}>KVR AUDIT VAULT</ThemedText>
@@ -156,15 +161,19 @@ export default function OwnerLedger() {
           }
         >
           {/* Double-Decker Premium Balance Card */}
+          {/* Double-Decker Premium Balance Card */}
           <View style={styles.vaultBalanceCard}>
             <View style={styles.balanceTopRow}>
               <View>
                 <ThemedText style={styles.balanceLabel}>NET EARNINGS</ThemedText>
                 <ThemedText style={styles.balanceValue}>{formattedNetProfit}</ThemedText>
               </View>
-              <View style={styles.marginGlowBox}>
-                <ThemedText style={styles.marginGlowText}>{formattedMargin}</ThemedText>
-                <ThemedText style={styles.marginGlowLabel}>MARGIN INDEX</ThemedText>
+              {/* Radial Profitability Indicator Ring [Suitability Addition] */}
+              <View style={styles.radialRingOuter}>
+                <View style={styles.radialRingInner}>
+                  <ThemedText style={styles.radialPercentage}>{formattedMargin}</ThemedText>
+                  <ThemedText style={styles.radialLabel}>MARGIN</ThemedText>
+                </View>
               </View>
             </View>
             <View style={styles.balanceDivider} />
@@ -176,6 +185,30 @@ export default function OwnerLedger() {
               <View style={styles.cashFlowCol}>
                 <View style={[styles.flowDot, { backgroundColor: '#64748b' }]} />
                 <ThemedText style={styles.flowLabel}>Outflow: {formattedExpense}</ThemedText>
+              </View>
+            </View>
+          </View>
+
+          {/* Tax Liability Estimator Box [Suitability Addition] */}
+          <View style={styles.taxEstimatorCard}>
+            <View style={styles.taxHeader}>
+              <Wallet size={14} color="#04a700" />
+              <ThemedText style={styles.taxTitle}>GST Liability Estimator (18% GFR)</ThemedText>
+            </View>
+            <View style={styles.taxGrid}>
+              <View style={styles.taxCell}>
+                <ThemedText style={styles.taxCellLabel}>EST. OUTPUT GST</ThemedText>
+                <ThemedText style={styles.taxCellVal}>₹ {Math.round(totalIncome * 0.18).toLocaleString('en-IN')}</ThemedText>
+              </View>
+              <View style={styles.taxCell}>
+                <ThemedText style={styles.taxCellLabel}>INPUT TAX CREDIT</ThemedText>
+                <ThemedText style={styles.taxCellVal}>₹ {Math.round(totalExpense * 0.18 * 0.7).toLocaleString('en-IN')}</ThemedText>
+              </View>
+              <View style={styles.taxCell}>
+                <ThemedText style={styles.taxCellLabel}>EST. NET GST DUE</ThemedText>
+                <ThemedText style={[styles.taxCellVal, { color: '#ea580c' }]}>
+                  ₹ {Math.max(0, Math.round((totalIncome * 0.18) - (totalExpense * 0.18 * 0.7))).toLocaleString('en-IN')}
+                </ThemedText>
               </View>
             </View>
           </View>
@@ -321,6 +354,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#141a29',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   flatLogoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,25 +437,79 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginTop: 2,
   },
-  marginGlowBox: {
-    alignItems: 'flex-end',
-    backgroundColor: '#05070c',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  radialRingOuter: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 5,
+    borderColor: 'rgba(4, 167, 0, 0.1)',
+    borderTopColor: '#04a700',
+    borderRightColor: '#04a700',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  marginGlowText: {
-    fontSize: 14,
+  radialRingInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#141a29',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 1,
+  },
+  radialPercentage: {
+    fontSize: 12.5,
     fontWeight: 'bold',
     color: '#04a700',
   },
-  marginGlowLabel: {
-    fontSize: 7,
+  radialLabel: {
+    fontSize: 7.5,
     fontWeight: 'bold',
     color: '#64748b',
-    marginTop: 1,
+  },
+  taxEstimatorCard: {
+    marginHorizontal: 24,
+    backgroundColor: '#141a29',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginTop: 14,
+    gap: 12,
+  },
+  taxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  taxTitle: {
+    fontSize: 12.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  taxGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  taxCell: {
+    flex: 1,
+    backgroundColor: '#05070c',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 10,
+    gap: 3,
+  },
+  taxCellLabel: {
+    fontSize: 7.5,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  taxCellVal: {
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
   balanceDivider: {
     height: 1,

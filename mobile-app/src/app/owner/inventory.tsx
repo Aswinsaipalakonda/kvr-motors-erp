@@ -1,16 +1,17 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import { Warehouse, BatteryCharging, AlertTriangle, Check, ShieldAlert, Layers } from 'lucide-react-native';
-
-import { useState, useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
 import api from '@/services/api';
 
-export default function OwnerInventory() {
+export default function OwnerInventory({ 
+  branch = 'All Branches' 
+}: { 
+  branch?: string 
+}) {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
 
@@ -41,10 +42,16 @@ export default function OwnerInventory() {
     loadData();
   }, []);
 
-  // Map warehouseStock
+  // Map showroomStock
   const showroomStock: any[] = [];
-  branchesList.forEach(branch => {
-    branch.showrooms?.forEach((sr: any) => {
+  branchesList.forEach(branchItem => {
+    branchItem.showrooms?.forEach((sr: any) => {
+      // Filter showrooms by global branch selector
+      if (branch !== 'All Branches') {
+        const cleanedActiveShowroom = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        if (!sr.name.toLowerCase().includes(cleanedActiveShowroom)) return;
+      }
+      
       const vehicles = vehicleUnits.filter(u => u.showroom_name === sr.name);
       const batteriesInShowroom = batteries.filter(b => b.location_name && b.location_name.includes(sr.name));
       const status = vehicles.length > 20 ? 'Healthy' : vehicles.length > 8 ? 'Low Stock' : 'Critical';
@@ -57,7 +64,13 @@ export default function OwnerInventory() {
       });
     });
 
-    branch.inventory_locations?.forEach((loc: any) => {
+    branchItem.inventory_locations?.forEach((loc: any) => {
+      // Filter inventory locations by global branch selector
+      if (branch !== 'All Branches') {
+        const cleanedActiveShowroom = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        if (!loc.name.toLowerCase().includes(cleanedActiveShowroom) && !branchItem.name.toLowerCase().includes(cleanedActiveShowroom)) return;
+      }
+      
       const vehicles = vehicleUnits.filter(u => u.location_name === loc.name);
       const batteriesInLoc = batteries.filter(b => b.location_name === loc.name);
       const status = vehicles.length > 15 ? 'Healthy' : vehicles.length > 5 ? 'Low Stock' : 'Critical';
@@ -98,16 +111,18 @@ export default function OwnerInventory() {
     };
   });
 
+  const contentPaddingTop = insets.top + 64;
+
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
         >
-          {/* Dynamic Dark Premium Header Section matching the dashboard */}
-          <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
+          {/* Obsidian Style Performance Overview Card */}
+          <View style={styles.heroCanvas}>
             <View style={styles.headerRow}>
               <View style={styles.badgeWrapper}>
                 <Layers size={18} color="#04a700" />
@@ -121,7 +136,7 @@ export default function OwnerInventory() {
               <ThemedText style={styles.accentTitle}>Audit Logs.</ThemedText>
             </View>
 
-            {/* Top Quick Metrics */}
+            {/* Quick Metrics */}
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
                 <Warehouse size={20} color="#04a700" />
@@ -150,78 +165,126 @@ export default function OwnerInventory() {
             </View>
           ) : (
             <View style={styles.contentSection}>
-            {/* Warehouse Breakdown */}
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>Location-wise Stock</ThemedText>
-              <View style={styles.listContainer}>
-                {warehouseStock.map((loc, idx) => {
-                  const isCrit = loc.status === 'Critical';
-                  const isLow = loc.status === 'Low Stock';
+              {/* Critical Low-Stock Alarm Panel */}
+              <View style={styles.alarmPanel}>
+                <View style={styles.alarmHeader}>
+                  <AlertTriangle size={15} color="#d71d22" fill="rgba(215, 29, 34, 0.1)" />
+                  <ThemedText style={styles.alarmTitle}>Critical Low-Stock Alert</ThemedText>
+                </View>
+                <View style={styles.alarmItem}>
+                  <View style={styles.alarmMarker} />
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.alarmDesc}>
+                      <ThemedText style={{ fontWeight: 'bold', color: '#ffffff' }}>Dynamo EV</ThemedText> stock counts in <ThemedText style={{ fontWeight: 'bold', color: '#ffffff' }}>Vizag Showroom</ThemedText> are down to <ThemedText style={{ color: '#d71d22', fontWeight: 'bold' }}>3 units</ThemedText>.
+                    </ThemedText>
+                    <ThemedText style={styles.alarmSubDesc}>
+                      Reallocation of 8 units from Pendurthi Godown is recommended immediately.
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
 
-                  return (
-                    <View key={idx} style={[styles.listItem, idx === warehouseStock.length - 1 && styles.lastItem]}>
-                      <View style={styles.listItemLeft}>
-                        <View style={[styles.locIconWrapper, { backgroundColor: isCrit ? '#fef2f2' : isLow ? '#fffbeb' : '#f8fafc' }]}>
-                          <Warehouse size={18} color={isCrit ? '#d71d22' : isLow ? '#d97706' : '#64748b'} />
+              {/* Color Distribution Filter Capsule */}
+              <View style={styles.distributionCard}>
+                <ThemedText style={styles.distributionTitle}>Active Fleet Color Mix</ThemedText>
+                <View style={styles.capsuleTrack}>
+                  <View style={[styles.capsuleFill, { width: '45%', backgroundColor: '#04a700' }]} />
+                  <View style={[styles.capsuleFill, { width: '30%', backgroundColor: '#d71d22' }]} />
+                  <View style={[styles.capsuleFill, { width: '15%', backgroundColor: '#2563eb' }]} />
+                  <View style={[styles.capsuleFill, { width: '10%', backgroundColor: '#ea580c' }]} />
+                </View>
+                <View style={styles.capsuleLegend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#04a700' }]} />
+                    <ThemedText style={styles.legendText}>Green 45%</ThemedText>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#d71d22' }]} />
+                    <ThemedText style={styles.legendText}>Red 30%</ThemedText>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
+                    <ThemedText style={styles.legendText}>Blue 15%</ThemedText>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#ea580c' }]} />
+                    <ThemedText style={styles.legendText}>Orange 10%</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Warehouse Breakdown */}
+              <View style={styles.sectionCard}>
+                <ThemedText style={styles.sectionTitle}>Location-wise Stock</ThemedText>
+                <View style={styles.listContainer}>
+                  {warehouseStock.map((loc, idx) => {
+                    const isCrit = loc.status === 'Critical';
+                    const isLow = loc.status === 'Low Stock';
+
+                    return (
+                      <View key={idx} style={[styles.listItem, idx === warehouseStock.length - 1 && styles.lastItem]}>
+                        <View style={styles.listItemLeft}>
+                          <View style={[styles.locIconWrapper, { backgroundColor: 'rgba(255, 255, 255, 0.04)' }]}>
+                            <Warehouse size={18} color={isCrit ? '#d71d22' : isLow ? '#d97706' : '#64748b'} />
+                          </View>
+                          <View style={styles.nameCol}>
+                            <ThemedText style={styles.locationName}>{loc.name}</ThemedText>
+                            <ThemedText style={styles.locationStats}>Batteries in stock: {loc.batteries}</ThemedText>
+                          </View>
                         </View>
-                        <View style={styles.nameCol}>
-                          <ThemedText style={styles.locationName}>{loc.name}</ThemedText>
-                          <ThemedText style={styles.locationStats}>Batteries in stock: {loc.batteries}</ThemedText>
+                        <View style={styles.listItemRight}>
+                          <ThemedText style={styles.vehicleCount}>{loc.vehicles} EVs</ThemedText>
+                          <View style={[styles.statusBadge, { backgroundColor: isCrit ? 'rgba(239, 68, 68, 0.08)' : isLow ? 'rgba(217, 119, 6, 0.08)' : 'rgba(4, 167, 0, 0.08)' }]}>
+                            <ThemedText style={[styles.statusText, { color: isCrit ? '#d71d22' : isLow ? '#d97706' : '#04a700' }]}>
+                              {loc.status}
+                            </ThemedText>
+                          </View>
                         </View>
                       </View>
-                      <View style={styles.listItemRight}>
-                        <ThemedText style={styles.vehicleCount}>{loc.vehicles} EVs</ThemedText>
-                        <View style={[styles.statusBadge, { backgroundColor: isCrit ? '#fef2f2' : isLow ? '#fffbeb' : '#e8fdf0' }]}>
-                          <ThemedText style={[styles.statusText, { color: isCrit ? '#d71d22' : isLow ? '#d97706' : '#04a700' }]}>
-                            {loc.status}
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Battery FIFO Checklist */}
+              <View style={styles.sectionCard}>
+                <View style={styles.batteryHeader}>
+                  <BatteryCharging size={18} color="#04a700" />
+                  <ThemedText style={styles.sectionTitleBattery}>Battery FIFO Stock Queue</ThemedText>
+                </View>
+                <ThemedText style={styles.batteryDesc}>FIFO queue validation is active. Oldest battery batches must be assigned first.</ThemedText>
+                
+                <View style={styles.batteryList}>
+                  {batteryStock.map((bat, idx) => {
+                    const isOldest = bat.fifoStatus.includes('Oldest');
+                    const isWarning = bat.fifoStatus.includes('Warning');
+
+                    return (
+                      <View key={idx} style={styles.batteryItem}>
+                        <View style={styles.batteryItemLeft}>
+                          <View style={[styles.checkCircle, { backgroundColor: isOldest ? 'rgba(4, 167, 0, 0.08)' : isWarning ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.04)' }]}>
+                            {isWarning ? (
+                              <ShieldAlert size={14} color="#d71d22" />
+                            ) : (
+                              <Check size={14} color={isOldest ? '#04a700' : '#64748b'} />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <ThemedText style={styles.batterySerial}>{bat.serial}</ThemedText>
+                            <ThemedText style={styles.batteryType}>{bat.type} • In Stock {bat.ageDays} Days</ThemedText>
+                          </View>
+                        </View>
+                        <View style={[styles.fifoBadge, { backgroundColor: isOldest ? 'rgba(4, 167, 0, 0.08)' : isWarning ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.04)' }]}>
+                          <ThemedText style={[styles.fifoText, { color: isOldest ? '#04a700' : isWarning ? '#d71d22' : '#64748b' }]}>
+                            {bat.fifoStatus}
                           </ThemedText>
                         </View>
                       </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+                </View>
               </View>
             </View>
-
-            {/* Battery FIFO Checklist */}
-            <View style={styles.sectionCard}>
-              <View style={styles.batteryHeader}>
-                <BatteryCharging size={18} color="#04a700" />
-                <ThemedText style={styles.sectionTitleBattery}>Battery FIFO Stock Queue</ThemedText>
-              </View>
-              <ThemedText style={styles.batteryDesc}>FIFO queue validation is active. Oldest battery batches must be assigned first.</ThemedText>
-              
-              <View style={styles.batteryList}>
-                {batteryStock.map((bat, idx) => {
-                  const isOldest = bat.fifoStatus.includes('Oldest');
-                  const isWarning = bat.fifoStatus.includes('Warning');
-
-                  return (
-                    <View key={idx} style={styles.batteryItem}>
-                      <View style={styles.batteryItemLeft}>
-                        <View style={[styles.checkCircle, { backgroundColor: isOldest ? '#e8fdf0' : isWarning ? '#fef2f2' : '#f8fafc' }]}>
-                          {isWarning ? (
-                            <ShieldAlert size={14} color="#d71d22" />
-                          ) : (
-                            <Check size={14} color={isOldest ? '#04a700' : '#64748b'} />
-                          )}
-                        </View>
-                        <View>
-                          <ThemedText style={styles.batterySerial}>{bat.serial}</ThemedText>
-                          <ThemedText style={styles.batteryType}>{bat.type} • In Stock {bat.ageDays} Days</ThemedText>
-                        </View>
-                      </View>
-                      <View style={[styles.fifoBadge, { backgroundColor: isOldest ? '#e8fdf0' : isWarning ? '#fef2f2' : '#f1f5f9' }]}>
-                        <ThemedText style={[styles.fifoText, { color: isOldest ? '#04a700' : isWarning ? '#d71d22' : '#475569' }]}>
-                          {bat.fifoStatus}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
           )}
         </ScrollView>
       </View>
@@ -232,7 +295,7 @@ export default function OwnerInventory() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#05070c',
   },
   scrollView: {
     flex: 1,
@@ -240,12 +303,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  darkHeader: {
-    backgroundColor: '#090d16', // Obsidian/dark slate header container
+  heroCanvas: {
+    backgroundColor: '#090d16',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingBottom: 26,
+    paddingTop: 10,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.22,
@@ -284,7 +348,7 @@ const styles = StyleSheet.create({
   accentTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#04a700', // Brand green highlight
+    color: '#04a700',
     letterSpacing: -0.5,
   },
   quickMetricsRow: {
@@ -323,32 +387,111 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   contentSection: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 24,
     paddingTop: 24,
     gap: 16,
   },
+  alarmPanel: {
+    backgroundColor: '#141a29',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
+    gap: 12,
+  },
+  alarmHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  alarmTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#d71d22',
+  },
+  alarmItem: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  alarmMarker: {
+    width: 3,
+    height: '100%',
+    backgroundColor: '#d71d22',
+    borderRadius: 2,
+  },
+  alarmDesc: {
+    fontSize: 11.5,
+    color: '#64748b',
+    lineHeight: 16,
+  },
+  alarmSubDesc: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  distributionCard: {
+    backgroundColor: '#141a29',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
+    gap: 14,
+  },
+  distributionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  capsuleTrack: {
+    height: 14,
+    backgroundColor: '#05070c',
+    borderRadius: 7,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  capsuleFill: {
+    height: '100%',
+  },
+  capsuleLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
   sectionCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#141a29',
     borderRadius: 24,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
   },
   sectionTitle: {
     fontSize: 15.5,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#ffffff',
     marginBottom: 16,
   },
   sectionTitleBattery: {
     fontSize: 15.5,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#ffffff',
   },
   listContainer: {
     gap: 14,
@@ -358,7 +501,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: '#1e293b',
     paddingBottom: 12,
   },
   lastItem: {
@@ -380,15 +523,16 @@ const styles = StyleSheet.create({
   },
   nameCol: {
     gap: 2,
+    flex: 1,
   },
   locationName: {
     fontSize: 14.5,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#ffffff',
   },
   locationStats: {
     fontSize: 11.5,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '500',
   },
   listItemRight: {
@@ -398,7 +542,7 @@ const styles = StyleSheet.create({
   vehicleCount: {
     fontSize: 14.5,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#ffffff',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -429,9 +573,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#05070c',
     borderRadius: 16,
     padding: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
   },
   batteryItemLeft: {
     flexDirection: 'row',
@@ -449,11 +595,11 @@ const styles = StyleSheet.create({
   batterySerial: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#ffffff',
   },
   batteryType: {
     fontSize: 10.5,
-    color: '#94a3b8',
+    color: '#64748b',
     fontWeight: '500',
     marginTop: 1,
   },
