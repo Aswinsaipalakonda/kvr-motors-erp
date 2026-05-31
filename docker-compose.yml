@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  postgres:
+  db:
     image: postgres:16
     container_name: kvr_postgres
     restart: always
@@ -14,5 +14,54 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kvr_backend
+    restart: always
+    environment:
+      - POSTGRES_DB=kvr_motors
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - DEBUG=False
+      - SECRET_KEY=django-insecure-prod-kvr-motors-key-2026
+    depends_on:
+      - db
+    volumes:
+      - django_static:/app/staticfiles
+      - django_media:/app/media
+
+  frontend:
+    build:
+      context: ./dashboards
+      dockerfile: Dockerfile
+    container_name: kvr_frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=https://kvr.thehps.in/api/v1
+      - NEXT_PUBLIC_AUTH_URL=https://kvr.thehps.in/api/auth/login/
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: kvr_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - django_static:/app/backend/staticfiles:ro
+      - django_media:/app/backend/media:ro
+    depends_on:
+      - backend
+      - frontend
+
 volumes:
   postgres_data:
+  django_static:
+  django_media:

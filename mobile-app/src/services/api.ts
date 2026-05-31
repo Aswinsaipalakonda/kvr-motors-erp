@@ -3,15 +3,18 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
-let baseHostUrl = 'http://127.0.0.1:8000';
+let baseHostUrl = 'https://kvr.thehps.in';
 
-// Automatically resolve localhost to host IP in Expo Go development
-const hostUri = Constants.expoConfig?.hostUri;
-if (hostUri) {
-  const ip = hostUri.split(':')[0];
-  baseHostUrl = `http://${ip}:8000`;
-} else {
-  baseHostUrl = 'http://10.0.2.2:8000'; // Android emulator fallback
+if (__DEV__) {
+  baseHostUrl = 'http://127.0.0.1:8000';
+  // Automatically resolve localhost to host IP in Expo Go development
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    baseHostUrl = `http://${ip}:8000`;
+  } else {
+    baseHostUrl = 'http://10.0.2.2:8000'; // Android emulator fallback
+  }
 }
 
 export const authApi = axios.create({

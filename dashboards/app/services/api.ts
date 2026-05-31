@@ -1,7 +1,18 @@
 import axios from "axios";
 import { getCookie, eraseCookie } from "../utils/cookies";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+const getApiBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.")) {
+      return `http://${host}:8000/api/v1`;
+    }
+    return "https://kvr.thehps.in/api/v1";
+  }
+  return "http://127.0.0.1:8000/api/v1";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,

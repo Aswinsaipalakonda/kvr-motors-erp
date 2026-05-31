@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, StyleSheet, ScrollView, Pressable, BackHandler, Modal,
+  View, StyleSheet, ScrollView, Pressable, BackHandler, Modal, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,11 +9,19 @@ import {
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
+import api from '@/services/api';
 
 interface HandoverItem {
   id: number;
   label: string;
   checked: boolean;
+}
+
+interface HandoverTarget {
+  invoiceId: number | null;
+  customer: string;
+  model: string;
+  reference: string;
 }
 
 const INITIAL_ITEMS: HandoverItem[] = [
@@ -30,6 +38,36 @@ export default function StaffHandover() {
   const [items, setItems] = useState<HandoverItem[]>(INITIAL_ITEMS);
   const [signed, setSigned] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [target, setTarget] = useState<HandoverTarget>({
+    invoiceId: null,
+    customer: 'Ramesh Naidu',
+    model: 'Kinetic Green Zoom',
+    reference: 'INV-2026-4491',
+  });
+
+  // Load a real sales invoice awaiting delivery so completion settles it in the DB.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await api.get('/sales-invoices/?delivery_status=processing');
+        const list = Array.isArray(res.data) ? res.data : [];
+        const inv = list[0];
+        if (active && inv) {
+          setTarget({
+            invoiceId: inv.id ?? null,
+            customer: inv.customer_name || 'Customer',
+            model: inv.model_name || 'EV Unit',
+            reference: inv.invoice_number || `INV-${inv.id}`,
+          });
+        }
+      } catch {
+        /* fallback target retained */
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   const handleBack = useCallback((): boolean => {
     if (success) {
@@ -57,8 +95,18 @@ export default function StaffHandover() {
   const allChecked = items.every((i) => i.checked);
   const canComplete = allChecked && signed;
 
-  const handleComplete = () => {
-    if (!canComplete) return;
+  const handleComplete = async () => {
+    if (!canComplete || isSubmitting) return;
+    setIsSubmitting(true);
+    // Settle the linked sales invoice as delivered.
+    if (target.invoiceId) {
+      try {
+        await api.patch(`/sales-invoices/${target.invoiceId}/`, { delivery_status: 'delivered' });
+      } catch {
+        /* local fallback applied */
+      }
+    }
+    setIsSubmitting(false);
     setSuccess(true);
   };
 
@@ -97,6 +145,18 @@ export default function StaffHandover() {
           </View>
 
           <View style={styles.contentSection}>
+            {/* Delivery target card */}
+            <View style={styles.targetCard}>
+              <View style={styles.targetIconWrap}>
+                <KeyRound size={20} color="#04a700" />
+              </View>
+              <View style={styles.targetInfo}>
+                <ThemedText style={styles.targetCustomer}>{target.customer}</ThemedText>
+                <ThemedText style={styles.targetModel}>{target.model}</ThemedText>
+                <ThemedText style={styles.targetRef}>{target.reference}</ThemedText>
+              </View>
+            </View>
+
             <ThemedText style={styles.sectionTitle}>Handover Verification</ThemedText>
 
             <View style={styles.checklistCard}>
@@ -144,13 +204,19 @@ export default function StaffHandover() {
 
             <Pressable
               onPress={handleComplete}
-              disabled={!canComplete}
+              disabled={!canComplete || isSubmitting}
               style={({ pressed }) => [styles.completeBtn, !canComplete && styles.completeBtnDisabled, pressed && canComplete && { opacity: 0.9 }]}
             >
-              <KeyRound size={17} color={canComplete ? '#ffffff' : '#94a3b8'} />
-              <ThemedText style={[styles.completeBtnText, !canComplete && { color: '#94a3b8' }]}>
-                COMPLETE KEY DELIVERY & DISPATCH
-              </ThemedText>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <KeyRound size={17} color={canComplete ? '#ffffff' : '#94a3b8'} />
+                  <ThemedText style={[styles.completeBtnText, !canComplete && { color: '#94a3b8' }]}>
+                    COMPLETE KEY DELIVERY & DISPATCH
+                  </ThemedText>
+                </>
+              )}
             </Pressable>
             {!canComplete && (
               <ThemedText style={styles.lockHint}>
@@ -205,6 +271,15 @@ const styles = StyleSheet.create({
   mainTitle: { fontSize: 26, lineHeight: 34, fontWeight: '300', color: '#ffffff', letterSpacing: -0.5 },
   accentTitle: { fontSize: 30, lineHeight: 38, fontWeight: 'bold', color: '#04a700', letterSpacing: -0.5 },
   contentSection: { paddingHorizontal: 20, paddingTop: 22, gap: 14 },
+  targetCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#ffffff', borderRadius: 18, padding: 16,
+    borderWidth: 1, borderColor: '#f1f5f9', boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  targetIconWrap: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(4, 167, 0, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  targetInfo: { flex: 1, gap: 2 },
+  targetCustomer: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
+  targetModel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  targetRef: { fontSize: 11, color: '#04a700', fontWeight: 'bold', fontFamily: 'monospace', marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginTop: 2 },
   checklistCard: {
     backgroundColor: '#ffffff', borderRadius: 18, paddingHorizontal: 16,

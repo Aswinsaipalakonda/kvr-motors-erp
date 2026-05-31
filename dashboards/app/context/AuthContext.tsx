@@ -50,7 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<UserProfile> => {
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/auth/login/", {
+      const host = typeof window !== "undefined" ? window.location.hostname : "127.0.0.1";
+      const isLocal = host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.");
+      const authUrl = isLocal ? `http://${host}:8000/api/auth/login/` : "https://kvr.thehps.in/api/auth/login/";
+
+      const response = await axios.post(authUrl, {
         username,
         password,
       });

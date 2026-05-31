@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
+import api from '@/services/api';
 
 type MovementType = 'GRN Received' | 'Stock Shipped' | 'Showroom Dispatch';
 
@@ -18,6 +19,7 @@ interface ScanLog {
   vin: string;
   time: string;
   movement: MovementType;
+  verified?: boolean;
 }
 
 const MOVEMENTS: MovementType[] = ['GRN Received', 'Stock Shipped', 'Showroom Dispatch'];
@@ -25,6 +27,12 @@ const MOVEMENT_COLOR: Record<MovementType, string> = {
   'GRN Received': '#04a700',
   'Stock Shipped': '#2563eb',
   'Showroom Dispatch': '#ea580c',
+};
+// Maps a yard movement to the vehicle unit's stock status for DB persistence.
+const MOVEMENT_STATUS: Record<MovementType, string> = {
+  'GRN Received': 'available',
+  'Stock Shipped': 'in_transit',
+  'Showroom Dispatch': 'available',
 };
 const MOVEMENT_ICON: Record<MovementType, any> = {
   'GRN Received': PackageCheck,
@@ -73,9 +81,22 @@ export default function StaffGodownScanner({
     return () => sub.remove();
   }, [isActive, handleBack]);
 
-  const registerMovement = (vin: string) => {
+  const registerMovement = async (vin: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setLogs((prev) => [{ id: Date.now(), vin, time: now, movement }, ...prev]);
+    const logId = Date.now();
+    // Optimistically add to the log feed.
+    setLogs((prev) => [{ id: logId, vin, time: now, movement }, ...prev]);
+    // Verify against real stock and persist the movement when the unit exists.
+    try {
+      const res = await api.get(`/vehicle-units/lookup/?q=${encodeURIComponent(vin)}`);
+      const unit = res.data;
+      if (unit?.id) {
+        await api.patch(`/vehicle-units/${unit.id}/`, { stock_status: MOVEMENT_STATUS[movement] });
+        setLogs((prev) => prev.map((l) => (l.id === logId ? { ...l, verified: true } : l)));
+      }
+    } catch {
+      /* unit not found in DB or offline — log retained as unverified */
+    }
   };
 
   const handleSimulatedScan = () => {
@@ -215,7 +236,15 @@ export default function StaffGodownScanner({
                     </View>
                     <View style={styles.logTextCol}>
                       <ThemedText style={styles.logVin}>{log.vin}</ThemedText>
-                      <ThemedText style={styles.logTime}>{log.time}</ThemedText>
+                      <View style={styles.logMetaRow}>
+                        <ThemedText style={styles.logTime}>{log.time}</ThemedText>
+                        {log.verified && (
+                          <View style={styles.verifiedTag}>
+                            <CheckCircle size={9} color="#04a700" />
+                            <ThemedText style={styles.verifiedTagText}>SYNCED</ThemedText>
+                          </View>
+                        )}
+                      </View>
                     </View>
                     <View style={[styles.logStatusPill, { backgroundColor: `${color}14` }]}>
                       <ThemedText style={[styles.logStatusText, { color }]}>{log.movement}</ThemedText>
@@ -310,7 +339,10 @@ const styles = StyleSheet.create({
   logIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   logTextCol: { flex: 1, gap: 2 },
   logVin: { fontSize: 13.5, fontWeight: 'bold', color: '#0f172a', fontFamily: 'monospace' },
+  logMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logTime: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+  verifiedTag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(4, 167, 0, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
+  verifiedTagText: { fontSize: 8, fontWeight: 'bold', color: '#04a700', letterSpacing: 0.4 },
   logStatusPill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   logStatusText: { fontSize: 9.5, fontWeight: 'bold' },
 });

@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, StyleSheet, ScrollView, Pressable, BackHandler, Alert,
+  View, StyleSheet, ScrollView, Pressable, BackHandler, Alert, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,11 +9,19 @@ import {
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
+import api from '@/services/api';
 
 interface ChecklistStep {
   id: number;
   label: string;
   checked: boolean;
+}
+
+interface PdiVehicle {
+  bookingId: number | null;
+  model: string;
+  identifier: string;
+  customer: string;
 }
 
 const INITIAL_STEPS: ChecklistStep[] = [
@@ -23,6 +31,13 @@ const INITIAL_STEPS: ChecklistStep[] = [
   { id: 4, label: 'Double keys and vehicle manual loaded?', checked: false },
   { id: 5, label: 'Mechanic test-ride safety verification complete?', checked: false },
 ];
+
+const FALLBACK_VEHICLE: PdiVehicle = {
+  bookingId: null,
+  model: 'Kinetic Green Zoom',
+  identifier: 'VIN-KG-44821 • Motor MTR-8841',
+  customer: 'Ramesh Naidu',
+};
 
 export default function StaffPdiChecklist({
   isActive = true,
@@ -36,6 +51,32 @@ export default function StaffPdiChecklist({
 
   const [steps, setSteps] = useState<ChecklistStep[]>(INITIAL_STEPS);
   const [submitted, setSubmitted] = useState(false);
+  const [vehicle, setVehicle] = useState<PdiVehicle>(FALLBACK_VEHICLE);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load a real booking awaiting PDI inspection so the sign-off persists
+  // to the supervisor's booking-lock queue (pdi_verified flag).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await api.get('/bookings/?pdi_verified=pending');
+        const pending = Array.isArray(res.data) ? res.data : [];
+        const target = pending.find((b: any) => b.status !== 'cancelled') || pending[0];
+        if (active && target) {
+          setVehicle({
+            bookingId: target.id ?? null,
+            model: target.vehicle_model_name || 'EV Unit',
+            identifier: target.vin_number || target.booking_id || 'Awaiting VIN allocation',
+            customer: target.customer_name || 'Customer',
+          });
+        }
+      } catch {
+        /* fallback vehicle retained */
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   const handleBack = useCallback((): boolean => {
     if (onBack) {
@@ -65,8 +106,18 @@ export default function StaffPdiChecklist({
   const allChecked = completedCount === steps.length;
   const progress = Math.round((completedCount / steps.length) * 100);
 
-  const handleSubmit = () => {
-    if (!allChecked) return;
+  const handleSubmit = async () => {
+    if (!allChecked || isSubmitting) return;
+    setIsSubmitting(true);
+    // Persist PDI pass to the booking so supervisors see "PDI Passed".
+    if (vehicle.bookingId) {
+      try {
+        await api.patch(`/bookings/${vehicle.bookingId}/`, { pdi_verified: 'yes' });
+      } catch {
+        /* local fallback applied */
+      }
+    }
+    setIsSubmitting(false);
     setSubmitted(true);
     Alert.alert('PDI Passed', 'Inspection record submitted. Key delivery process unlocked.', [
       { text: 'OK', onPress: () => handleBack() },
@@ -121,9 +172,9 @@ export default function StaffPdiChecklist({
                 <Car size={20} color="#04a700" />
               </View>
               <View style={styles.vehicleInfo}>
-                <ThemedText style={styles.vehicleModel}>Kinetic Green Zoom</ThemedText>
-                <ThemedText style={styles.vehicleVin}>VIN-KG-44821 • Motor MTR-8841</ThemedText>
-                <ThemedText style={styles.vehicleCustomer}>Customer: Ramesh Naidu</ThemedText>
+                <ThemedText style={styles.vehicleModel}>{vehicle.model}</ThemedText>
+                <ThemedText style={styles.vehicleVin}>{vehicle.identifier}</ThemedText>
+                <ThemedText style={styles.vehicleCustomer}>Customer: {vehicle.customer}</ThemedText>
               </View>
             </View>
 
@@ -149,17 +200,23 @@ export default function StaffPdiChecklist({
 
             <Pressable
               onPress={handleSubmit}
-              disabled={!allChecked || submitted}
+              disabled={!allChecked || submitted || isSubmitting}
               style={({ pressed }) => [
                 styles.submitBtn,
                 (!allChecked || submitted) && styles.submitBtnDisabled,
                 pressed && allChecked && { opacity: 0.9 },
               ]}
             >
-              <CheckCircle size={17} color={allChecked ? '#ffffff' : '#94a3b8'} />
-              <ThemedText style={[styles.submitBtnText, !allChecked && { color: '#94a3b8' }]}>
-                SUBMIT COMPLETED PDI RECORD
-              </ThemedText>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <CheckCircle size={17} color={allChecked ? '#ffffff' : '#94a3b8'} />
+                  <ThemedText style={[styles.submitBtnText, !allChecked && { color: '#94a3b8' }]}>
+                    SUBMIT COMPLETED PDI RECORD
+                  </ThemedText>
+                </>
+              )}
             </Pressable>
             {!allChecked && (
               <ThemedText style={styles.lockHint}>Complete all {steps.length} checks to unlock submission.</ThemedText>

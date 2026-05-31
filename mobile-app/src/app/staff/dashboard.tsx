@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
+import api from '@/services/api';
 import {
   Boxes, Check, User, ClipboardCheck, ScanLine, ArrowRight, Truck,
 } from 'lucide-react-native';
@@ -24,6 +25,8 @@ export default function StaffDashboard({ isActive = true }: { isActive?: boolean
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pendingPdis, setPendingPdis] = useState<number | null>(null);
+  const [pendingTransfers, setPendingTransfers] = useState<number | null>(null);
 
   useEffect(() => {
     if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -39,12 +42,22 @@ export default function StaffDashboard({ isActive = true }: { isActive?: boolean
 
   const loadData = async () => {
     setIsLoading(true);
-    // Tasks are operational and seeded locally; simulate a quick load.
-    setTimeout(() => {
-      setTasks((prev) => (prev.length > 0 ? prev : SEED));
-      setIsLoading(false);
-      setRefreshing(false);
-    }, 350);
+    // Pull live operational telemetry; tasks remain operational/local.
+    try {
+      const [bookingsRes, transfersRes] = await Promise.all([
+        api.get('/bookings/?pdi_verified=pending'),
+        api.get('/stock-transfers/?status=pending'),
+      ]);
+      const bookings = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
+      const transfers = Array.isArray(transfersRes.data) ? transfersRes.data : [];
+      setPendingPdis(bookings.filter((b: any) => b.status !== 'cancelled').length);
+      setPendingTransfers(transfers.length);
+    } catch {
+      /* telemetry falls back to task-derived counts */
+    }
+    setTasks((prev) => (prev.length > 0 ? prev : SEED));
+    setIsLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -139,6 +152,25 @@ export default function StaffDashboard({ isActive = true }: { isActive?: boolean
                 <ThemedText style={styles.feedCount}>{activeTasks.length} pending</ThemedText>
               </View>
 
+              {/* Live ops strip — reflects real pending PDIs and transfers from the backend */}
+              {(pendingPdis !== null || pendingTransfers !== null) && (
+                <View style={styles.liveOpsRow}>
+                  <View style={styles.liveOpsItem}>
+                    <ClipboardCheck size={14} color="#2563eb" />
+                    <ThemedText style={styles.liveOpsText}>
+                      <ThemedText style={styles.liveOpsVal}>{pendingPdis ?? 0}</ThemedText> PDIs awaiting
+                    </ThemedText>
+                  </View>
+                  <View style={styles.liveOpsDivider} />
+                  <View style={styles.liveOpsItem}>
+                    <Truck size={14} color="#ea580c" />
+                    <ThemedText style={styles.liveOpsText}>
+                      <ThemedText style={styles.liveOpsVal}>{pendingTransfers ?? 0}</ThemedText> transfers pending
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+
               {tasks.map((task) => (
                 <Pressable
                   key={task.id}
@@ -214,6 +246,14 @@ const styles = StyleSheet.create({
   feedHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   feedTitle: { fontSize: 17, fontWeight: 'bold', color: '#0f172a' },
   feedCount: { fontSize: 12, color: '#64748b', fontWeight: 'bold' },
+  liveOpsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#ffffff',
+    borderRadius: 16, paddingVertical: 14, borderWidth: 1, borderColor: '#f1f5f9', boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  liveOpsItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  liveOpsText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  liveOpsVal: { fontSize: 13, color: '#0f172a', fontWeight: 'bold' },
+  liveOpsDivider: { width: 1, height: 24, backgroundColor: '#f1f5f9' },
   taskCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#ffffff', borderRadius: 18, padding: 16,
     borderWidth: 1, borderColor: '#f1f5f9', boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
