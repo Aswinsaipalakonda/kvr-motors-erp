@@ -1,12 +1,12 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { View, StyleSheet, Pressable, Platform, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Pressable, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { ClipboardCheck, Boxes, Users } from 'lucide-react-native';
-import { Slot, usePathname } from 'expo-router';
+import { Slot, usePathname, useRouter } from 'expo-router';
 
 // Direct imports instead of React.lazy to avoid Metro resolution issues
 import SupervisorDashboard from './dashboard';
@@ -18,8 +18,62 @@ type ScreenTab = 'dashboard' | 'inventory' | 'leads';
 
 const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'leads'];
 
+const TABS_CONFIG = [
+  { key: 'dashboard', label: 'Approvals', icon: ClipboardCheck },
+  { key: 'inventory', label: 'Inventory', icon: Boxes },
+  { key: 'leads', label: 'Leads Control', icon: Users },
+] as const;
+
+// Branded premium hardware-accelerated micro-animated bottom tab button
+function AnimatedTabButton({ 
+  label, 
+  icon: IconComp, 
+  isActive, 
+  onPress 
+}: { 
+  label: string; 
+  icon: any; 
+  isActive: boolean; 
+  onPress: () => void; 
+}) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.6);
+
+  useEffect(() => {
+    scale.value = withSpring(isActive ? 1.05 : 1, { damping: 15, stiffness: 200 });
+    opacity.value = withSpring(isActive ? 1 : 0.6, { damping: 15, stiffness: 200 });
+  }, [isActive]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <Pressable 
+      onPress={onPress} 
+      style={styles.tabButton}
+    >
+      <Animated.View style={[styles.iconContainer, animatedStyle]}>
+        <IconComp 
+          size={22} 
+          color={isActive ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
+          fill="none"
+          strokeWidth={isActive ? 2.2 : 1.8}
+        />
+      </Animated.View>
+      <ThemedText style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 export default function SupervisorLayout() {
   const pathname = usePathname();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ScreenTab>('dashboard');
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
@@ -82,62 +136,20 @@ export default function SupervisorLayout() {
 
       {/* Dark Glassmorphic Bottom Navigation Bar */}
       <View style={[styles.tabBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10 }]}>
-        {/* Animated Sliding Highlight Line and Glow */}
+        {/* Animated Sliding Highlight Line at the top of the tab bar */}
         <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
           <View style={styles.activeTopLine} />
-          <View style={styles.activeTopGlow} />
         </Animated.View>
 
-        {/* Tab 1: Approvals Hub */}
-        <Pressable 
-          onPress={() => setActiveTab('dashboard')} 
-          style={styles.tabButton}
-        >
-          <View style={styles.iconContainer}>
-            <ClipboardCheck 
-              size={22} 
-              color={activeTab === 'dashboard' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-              strokeWidth={activeTab === 'dashboard' ? 2.2 : 1.8}
-            />
-          </View>
-          <ThemedText style={[styles.tabLabel, activeTab === 'dashboard' && styles.activeTabLabel]}>
-            Approvals
-          </ThemedText>
-        </Pressable>
-
-        {/* Tab 2: Inventory */}
-        <Pressable 
-          onPress={() => setActiveTab('inventory')} 
-          style={styles.tabButton}
-        >
-          <View style={styles.iconContainer}>
-            <Boxes 
-              size={22} 
-              color={activeTab === 'inventory' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-              strokeWidth={activeTab === 'inventory' ? 2.2 : 1.8}
-            />
-          </View>
-          <ThemedText style={[styles.tabLabel, activeTab === 'inventory' && styles.activeTabLabel]}>
-            Inventory
-          </ThemedText>
-        </Pressable>
-
-        {/* Tab 3: Leads routing */}
-        <Pressable 
-          onPress={() => setActiveTab('leads')} 
-          style={styles.tabButton}
-        >
-          <View style={styles.iconContainer}>
-            <Users 
-              size={22} 
-              color={activeTab === 'leads' ? '#04a700' : 'rgba(255, 255, 255, 0.4)'} 
-              strokeWidth={activeTab === 'leads' ? 2.2 : 1.8}
-            />
-          </View>
-          <ThemedText style={[styles.tabLabel, activeTab === 'leads' && styles.activeTabLabel]}>
-            Leads Control
-          </ThemedText>
-        </Pressable>
+        {TABS_CONFIG.map((tab) => (
+          <AnimatedTabButton
+            key={tab.key}
+            label={tab.label}
+            icon={tab.icon}
+            isActive={activeTab === tab.key}
+            onPress={() => setActiveTab(tab.key)}
+          />
+        ))}
       </View>
     </ThemedView>
   );
@@ -183,22 +195,16 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     width: 48,
-    height: '100%',
+    height: 3,
     alignItems: 'center',
+    zIndex: 20,
   },
   activeTopLine: {
-    height: 3.5,
+    height: 3,
     width: 48,
     backgroundColor: '#04a700', 
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-  },
-  activeTopGlow: {
-    height: 24,
-    width: 48,
-    backgroundColor: 'rgba(4, 167, 0, 0.15)', 
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
   },
   iconContainer: {
     width: 44,
@@ -206,6 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
+    zIndex: 10,
   },
   tabLabel: {
     fontSize: 10.5,
@@ -214,6 +221,6 @@ const styles = StyleSheet.create({
   },
   activeTabLabel: {
     color: '#04a700', 
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

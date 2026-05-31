@@ -1,35 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
-import { Warehouse, BatteryCharging, AlertTriangle, Check, ShieldAlert, Layers } from 'lucide-react-native';
+import {
+  Warehouse, BatteryCharging, AlertTriangle, Check, ShieldAlert, Layers,
+  ArrowLeft, Search, X, Zap, MapPin,
+} from 'lucide-react-native';
 import api from '@/services/api';
 
-export default function OwnerInventory({ 
-  branch = 'All Branches' 
-}: { 
-  branch?: string 
+type StockFilter = 'all' | 'ev' | 'battery';
+
+interface FeedItem {
+  kind: 'ev' | 'battery';
+  key: string;
+  title: string;
+  subtitle: string;
+  location: string;
+  status: string;
+  flagged: boolean;
+}
+
+export default function OwnerInventory({
+  branch = 'All Branches',
+  isActive = true,
+  onBack,
+}: {
+  branch?: string;
+  isActive?: boolean;
+  onBack?: () => void;
 }) {
+  const scrollRef = React.useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [isActive]);
   const insets = useSafeAreaInsets();
-  const screenWidth = Dimensions.get('window').width;
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
   const [branchesList, setBranchesList] = useState<any[]>([]);
   const [vehicleUnits, setVehicleUnits] = useState<any[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<any[]>([]);
   const [batteries, setBatteries] = useState<any[]>([]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<StockFilter>('all');
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [branchRes, unitsRes, battRes] = await Promise.all([
+      const [branchRes, unitsRes, modelsRes, battRes] = await Promise.all([
         api.get('/branches/'),
         api.get('/vehicle-units/'),
+        api.get('/vehicle-models/'),
         api.get('/batteries/'),
       ]);
       setBranchesList(branchRes.data);
       setVehicleUnits(unitsRes.data);
+      setVehicleModels(modelsRes.data);
       setBatteries(battRes.data);
     } catch (e) {
       console.error('Failed to load inventory data:', e);
@@ -42,114 +74,163 @@ export default function OwnerInventory({
     loadData();
   }, []);
 
-  // Map showroomStock
+  // Robust back-stack handler that returns to home instead of exiting the app.
+  const handleBack = useCallback((): boolean => {
+    if (onBack) {
+      onBack();
+      return true;
+    }
+    // @ts-ignore - canGoBack exists on expo-router's router at runtime
+    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
+      router.back();
+      return true;
+    }
+    router.replace('/owner' as any);
+    return true;
+  }, [onBack, router]);
+
+  // Hardware back button hook (only when this screen is the active tab to avoid listener conflicts).
+  useEffect(() => {
+    if (isActive === false) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [isActive, handleBack]);
+
+  // ---- Location-wise stock breakdown ----
   const showroomStock: any[] = [];
-  branchesList.forEach(branchItem => {
+  branchesList.forEach((branchItem) => {
     branchItem.showrooms?.forEach((sr: any) => {
-      // Filter showrooms by global branch selector
       if (branch !== 'All Branches') {
-        const cleanedActiveShowroom = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
-        if (!sr.name.toLowerCase().includes(cleanedActiveShowroom)) return;
+        const cleaned = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        if (!sr.name.toLowerCase().includes(cleaned)) return;
       }
-      
-      const vehicles = vehicleUnits.filter(u => u.showroom_name === sr.name);
-      const batteriesInShowroom = batteries.filter(b => b.location_name && b.location_name.includes(sr.name));
-      const status = vehicles.length > 20 ? 'Healthy' : vehicles.length > 8 ? 'Low Stock' : 'Critical';
-      
-      showroomStock.push({
-        name: sr.name,
-        vehicles: vehicles.length,
-        batteries: batteriesInShowroom.length,
-        status: status,
-      });
+      const vehicles = vehicleUnits.filter((u) => u.showroom_name === sr.name);
+      const batteriesInShowroom = batteries.filter((b) => b.location_name && b.location_name.includes(sr.name));
+      const status = vehicles.length > 15 ? 'Sufficient' : vehicles.length > 6 ? 'Low Stock' : 'Critical';
+      showroomStock.push({ name: sr.name, vehicles: vehicles.length, batteries: batteriesInShowroom.length, status });
     });
 
     branchItem.inventory_locations?.forEach((loc: any) => {
-      // Filter inventory locations by global branch selector
       if (branch !== 'All Branches') {
-        const cleanedActiveShowroom = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
-        if (!loc.name.toLowerCase().includes(cleanedActiveShowroom) && !branchItem.name.toLowerCase().includes(cleanedActiveShowroom)) return;
+        const cleaned = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        if (!loc.name.toLowerCase().includes(cleaned) && !branchItem.name.toLowerCase().includes(cleaned)) return;
       }
-      
-      const vehicles = vehicleUnits.filter(u => u.location_name === loc.name);
-      const batteriesInLoc = batteries.filter(b => b.location_name === loc.name);
-      const status = vehicles.length > 15 ? 'Healthy' : vehicles.length > 5 ? 'Low Stock' : 'Critical';
-
-      showroomStock.push({
-        name: loc.name,
-        vehicles: vehicles.length,
-        batteries: batteriesInLoc.length,
-        status: status,
-      });
+      const vehicles = vehicleUnits.filter((u) => u.location_name === loc.name);
+      const batteriesInLoc = batteries.filter((b) => b.location_name === loc.name);
+      const status = vehicles.length > 15 ? 'Sufficient' : vehicles.length > 5 ? 'Low Stock' : 'Critical';
+      showroomStock.push({ name: loc.name, vehicles: vehicles.length, batteries: batteriesInLoc.length, status });
     });
   });
 
   const warehouseStock = showroomStock.length > 0 ? showroomStock : [
-    { name: 'Pendurthi Godown', vehicles: 45, batteries: 30, status: 'Healthy' },
-    { name: 'Pineapple Colony Godown', vehicles: 28, batteries: 18, status: 'Healthy' },
-    { name: 'KVR Showroom - Vizag', vehicles: 12, batteries: 8, status: 'Healthy' },
+    { name: 'Pendurthi Godown', vehicles: 45, batteries: 30, status: 'Sufficient' },
+    { name: 'KVR Showroom - Vizag', vehicles: 3, batteries: 8, status: 'Critical' },
+    { name: 'KVR Showroom - Srikakulam', vehicles: 18, batteries: 12, status: 'Sufficient' },
+    { name: 'KVR Showroom - Kakinada', vehicles: 9, batteries: 6, status: 'Low Stock' },
   ];
 
-  // Map batteries FIFO
-  const sortedBatteries = [...batteries].sort((a, b) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime());
-  
-  const batteryStock = sortedBatteries.map((bat, idx) => {
-    const sameCapacityAvailable = sortedBatteries.filter(b => b.capacity === bat.capacity && b.status === 'available');
-    const isOldest = sameCapacityAvailable.length > 0 && sameCapacityAvailable[0].serial_number === bat.serial_number;
+  // ---- FIFO battery ordering ----
+  const sortedBatteries = [...batteries].sort(
+    (a, b) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime()
+  );
 
-    let fifoStatus = 'Valid';
-    if (isOldest) fifoStatus = 'Valid - Oldest';
-    else if (bat.status === 'reserved') fifoStatus = 'Warning - Hold';
+  const modelNameById = (id: any) =>
+    vehicleModels.find((m) => m.id === id)?.model_name || 'EV Unit';
 
-    const ageDays = Math.round((new Date().getTime() - new Date(bat.purchase_date).getTime()) / (1000 * 60 * 60 * 24)) || 5;
+  // ---- Combined searchable / filterable stock feed ----
+  const evFeed: FeedItem[] = vehicleUnits.map((u, idx) => ({
+    kind: 'ev',
+    key: `ev-${u.id ?? u.vin_number ?? idx}`,
+    title: u.vin_number || 'VIN-UNASSIGNED',
+    subtitle: modelNameById(u.model),
+    location: u.showroom_name || u.location_name || 'Unassigned',
+    status: u.stock_status === 'reserved' ? 'Reserved' : 'In Stock',
+    flagged: u.stock_status === 'reserved',
+  }));
 
-    return {
-      serial: bat.serial_number,
-      type: `${bat.capacity} Li-ion`,
-      ageDays: ageDays < 0 ? 5 : ageDays,
-      fifoStatus: fifoStatus,
-    };
+  const batteryFeed: FeedItem[] = sortedBatteries.map((b, idx) => ({
+    kind: 'battery',
+    key: `bat-${b.id ?? b.serial_number ?? idx}`,
+    title: b.serial_number || 'SN-UNKNOWN',
+    subtitle: `${b.capacity || '48V'} Li-ion`,
+    location: b.location_name || 'Central Warehouse',
+    status: b.status === 'reserved' ? 'On Hold' : 'Available',
+    flagged: b.status === 'reserved',
+  }));
+
+  const fallbackFeed: FeedItem[] = [
+    { kind: 'ev', key: 'fb-ev-1', title: 'VIN-KG-44821', subtitle: 'Kinetic Green Zoom', location: 'KVR Showroom - Vizag', status: 'In Stock', flagged: false },
+    { kind: 'ev', key: 'fb-ev-2', title: 'VIN-DY-10093', subtitle: 'Dynamo EV Pro', location: 'KVR Showroom - Vizag', status: 'Reserved', flagged: true },
+    { kind: 'battery', key: 'fb-bt-1', title: 'B-2026-0091', subtitle: '60V Li-ion', location: 'Pendurthi Godown', status: 'Available', flagged: false },
+    { kind: 'battery', key: 'fb-bt-2', title: 'B-2026-0042', subtitle: '48V Li-ion', location: 'Pendurthi Godown', status: 'On Hold', flagged: true },
+  ];
+
+  const baseFeed = evFeed.length + batteryFeed.length > 0 ? [...evFeed, ...batteryFeed] : fallbackFeed;
+
+  const filteredFeed = baseFeed.filter((item) => {
+    const matchesFilter = activeFilter === 'all' ? true : item.kind === activeFilter;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = q
+      ? item.title.toLowerCase().includes(q) ||
+        item.subtitle.toLowerCase().includes(q) ||
+        item.location.toLowerCase().includes(q)
+      : true;
+    return matchesFilter && matchesSearch;
   });
 
-  const contentPaddingTop = insets.top + 64;
+  const totalEvs = vehicleUnits.length || 3;
+  const totalBatteries = batteries.length || 3;
+
+  const filterPills: { key: StockFilter; label: string }[] = [
+    { key: 'all', label: 'All Stock' },
+    { key: 'ev', label: 'EV Units' },
+    { key: 'battery', label: 'Batteries' },
+  ];
+
+  const isFiltering = searchQuery.trim() !== '' || activeFilter !== 'all';
+  const resetFilters = () => {
+    setSearchQuery('');
+    setActiveFilter('all');
+  };
+
+  const contentPaddingTop = insets.top + 49;
 
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        <ScrollView 
+        <ScrollView
+          ref={scrollRef}
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Obsidian Style Performance Overview Card */}
-          <View style={styles.heroCanvas}>
-            <View style={styles.headerRow}>
-              <View style={styles.badgeWrapper}>
-                <Layers size={18} color="#04a700" />
-                <ThemedText style={styles.badgeText}>REAL-TIME STOCK METRICS</ThemedText>
-              </View>
-            </View>
-
+           {/* Obsidian Hero Canvas */}
+          <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#0a0e1a' }} />
+          <View style={[styles.heroCanvas, { paddingTop: 28 }]}>
             {/* Editorial Title */}
             <View style={styles.titleWrapper}>
               <ThemedText style={styles.mainTitle}>Inventory & Stock</ThemedText>
               <ThemedText style={styles.accentTitle}>Audit Logs.</ThemedText>
             </View>
 
-            {/* Quick Metrics */}
+            {/* Quick Totals */}
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
-                <Warehouse size={20} color="#04a700" />
+                <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(4, 167, 0, 0.12)' }]}>
+                  <Warehouse size={18} color="#04a700" />
+                </View>
                 <View style={styles.metricTextWrapper}>
-                  <ThemedText style={styles.qVal}>{vehicleUnits.length}</ThemedText>
+                  <ThemedText style={styles.qVal}>{totalEvs}</ThemedText>
                   <ThemedText style={styles.qLbl}>Total EVs</ThemedText>
                 </View>
               </View>
               <View style={styles.qDivider} />
               <View style={styles.quickMetricBox}>
-                <BatteryCharging size={20} color="#2563eb" />
+                <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(37, 99, 235, 0.12)' }]}>
+                  <BatteryCharging size={18} color="#2563eb" />
+                </View>
                 <View style={styles.metricTextWrapper}>
-                  <ThemedText style={styles.qVal}>{batteries.length}</ThemedText>
+                  <ThemedText style={styles.qVal}>{totalBatteries}</ThemedText>
                   <ThemedText style={styles.qLbl}>Total Batteries</ThemedText>
                 </View>
               </View>
@@ -159,39 +240,43 @@ export default function OwnerInventory({
           {isLoading ? (
             <View style={{ paddingVertical: 80, alignItems: 'center' }}>
               <ActivityIndicator size="large" color="#04a700" />
-              <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
-                Fetching inventory state...
-              </ThemedText>
+              <ThemedText style={styles.loadingText}>Fetching inventory state...</ThemedText>
             </View>
           ) : (
             <View style={styles.contentSection}>
-              {/* Critical Low-Stock Alarm Panel */}
+              {/* Critical Low-Stock Alert */}
               <View style={styles.alarmPanel}>
-                <View style={styles.alarmHeader}>
-                  <AlertTriangle size={15} color="#d71d22" fill="rgba(215, 29, 34, 0.1)" />
-                  <ThemedText style={styles.alarmTitle}>Critical Low-Stock Alert</ThemedText>
-                </View>
-                <View style={styles.alarmItem}>
-                  <View style={styles.alarmMarker} />
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.alarmDesc}>
-                      <ThemedText style={{ fontWeight: 'bold', color: '#ffffff' }}>Dynamo EV</ThemedText> stock counts in <ThemedText style={{ fontWeight: 'bold', color: '#ffffff' }}>Vizag Showroom</ThemedText> are down to <ThemedText style={{ color: '#d71d22', fontWeight: 'bold' }}>3 units</ThemedText>.
-                    </ThemedText>
-                    <ThemedText style={styles.alarmSubDesc}>
-                      Reallocation of 8 units from Pendurthi Godown is recommended immediately.
-                    </ThemedText>
+                <View style={styles.alarmAccent} />
+                <View style={styles.alarmBody}>
+                  <View style={styles.alarmHeader}>
+                    <View style={styles.alarmIconWrap}>
+                      <AlertTriangle size={14} color="#d71d22" />
+                    </View>
+                    <ThemedText style={styles.alarmTitle}>Critical Low-Stock Alert</ThemedText>
                   </View>
+                  <ThemedText style={styles.alarmDesc}>
+                    <ThemedText style={styles.alarmStrong}>Dynamo EV</ThemedText> stock in{' '}
+                    <ThemedText style={styles.alarmStrong}>Vizag Showroom</ThemedText> is down to{' '}
+                    <ThemedText style={styles.alarmCritical}>3 units</ThemedText>. Reallocation from{' '}
+                    <ThemedText style={styles.alarmStrong}>Pendurthi Godown</ThemedText> recommended.
+                  </ThemedText>
                 </View>
               </View>
 
-              {/* Color Distribution Filter Capsule */}
-              <View style={styles.distributionCard}>
-                <ThemedText style={styles.distributionTitle}>Active Fleet Color Mix</ThemedText>
+              {/* Active Fleet Color Mix */}
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <ThemedText style={styles.cardTitle}>Active Fleet Color Mix</ThemedText>
+                  <View style={styles.mixChip}>
+                    <Layers size={11} color="#64748b" />
+                    <ThemedText style={styles.mixChipText}>Live</ThemedText>
+                  </View>
+                </View>
                 <View style={styles.capsuleTrack}>
-                  <View style={[styles.capsuleFill, { width: '45%', backgroundColor: '#04a700' }]} />
-                  <View style={[styles.capsuleFill, { width: '30%', backgroundColor: '#d71d22' }]} />
-                  <View style={[styles.capsuleFill, { width: '15%', backgroundColor: '#2563eb' }]} />
-                  <View style={[styles.capsuleFill, { width: '10%', backgroundColor: '#ea580c' }]} />
+                  <View style={[styles.capsuleFill, { flex: 45, backgroundColor: '#04a700' }]} />
+                  <View style={[styles.capsuleFill, { flex: 30, backgroundColor: '#d71d22' }]} />
+                  <View style={[styles.capsuleFill, { flex: 15, backgroundColor: '#2563eb' }]} />
+                  <View style={[styles.capsuleFill, { flex: 10, backgroundColor: '#ea580c' }]} />
                 </View>
                 <View style={styles.capsuleLegend}>
                   <View style={styles.legendItem}>
@@ -213,31 +298,29 @@ export default function OwnerInventory({
                 </View>
               </View>
 
-              {/* Warehouse Breakdown */}
-              <View style={styles.sectionCard}>
-                <ThemedText style={styles.sectionTitle}>Location-wise Stock</ThemedText>
+              {/* Location-wise Stock */}
+              <View style={styles.card}>
+                <ThemedText style={styles.cardTitle}>Location-wise Stock</ThemedText>
                 <View style={styles.listContainer}>
                   {warehouseStock.map((loc, idx) => {
                     const isCrit = loc.status === 'Critical';
                     const isLow = loc.status === 'Low Stock';
-
+                    const accent = isCrit ? '#d71d22' : isLow ? '#d97706' : '#04a700';
                     return (
                       <View key={idx} style={[styles.listItem, idx === warehouseStock.length - 1 && styles.lastItem]}>
                         <View style={styles.listItemLeft}>
-                          <View style={[styles.locIconWrapper, { backgroundColor: 'rgba(255, 255, 255, 0.04)' }]}>
-                            <Warehouse size={18} color={isCrit ? '#d71d22' : isLow ? '#d97706' : '#64748b'} />
+                          <View style={[styles.locIconWrapper, { backgroundColor: `${accent}14` }]}>
+                            <Warehouse size={17} color={accent} />
                           </View>
                           <View style={styles.nameCol}>
-                            <ThemedText style={styles.locationName}>{loc.name}</ThemedText>
-                            <ThemedText style={styles.locationStats}>Batteries in stock: {loc.batteries}</ThemedText>
+                            <ThemedText style={styles.locationName} numberOfLines={1}>{loc.name}</ThemedText>
+                            <ThemedText style={styles.locationStats}>{loc.batteries} batteries in stock</ThemedText>
                           </View>
                         </View>
                         <View style={styles.listItemRight}>
                           <ThemedText style={styles.vehicleCount}>{loc.vehicles} EVs</ThemedText>
-                          <View style={[styles.statusBadge, { backgroundColor: isCrit ? 'rgba(239, 68, 68, 0.08)' : isLow ? 'rgba(217, 119, 6, 0.08)' : 'rgba(4, 167, 0, 0.08)' }]}>
-                            <ThemedText style={[styles.statusText, { color: isCrit ? '#d71d22' : isLow ? '#d97706' : '#04a700' }]}>
-                              {loc.status}
-                            </ThemedText>
+                          <View style={[styles.statusBadge, { backgroundColor: `${accent}14` }]}>
+                            <ThemedText style={[styles.statusText, { color: accent }]}>{loc.status}</ThemedText>
                           </View>
                         </View>
                       </View>
@@ -246,43 +329,104 @@ export default function OwnerInventory({
                 </View>
               </View>
 
-              {/* Battery FIFO Checklist */}
-              <View style={styles.sectionCard}>
-                <View style={styles.batteryHeader}>
-                  <BatteryCharging size={18} color="#04a700" />
-                  <ThemedText style={styles.sectionTitleBattery}>Battery FIFO Stock Queue</ThemedText>
+              {/* Stock Audit Feed: search + filter + list */}
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <ThemedText style={styles.cardTitle}>Stock Audit Feed</ThemedText>
+                  <ThemedText style={styles.feedCount}>{filteredFeed.length} items</ThemedText>
                 </View>
-                <ThemedText style={styles.batteryDesc}>FIFO queue validation is active. Oldest battery batches must be assigned first.</ThemedText>
-                
-                <View style={styles.batteryList}>
-                  {batteryStock.map((bat, idx) => {
-                    const isOldest = bat.fifoStatus.includes('Oldest');
-                    const isWarning = bat.fifoStatus.includes('Warning');
 
+                {/* Search */}
+                <View style={styles.searchContainer}>
+                  <Search size={17} color="#94a3b8" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search VIN, serial, model, location..."
+                    placeholderTextColor="#94a3b8"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  {searchQuery !== '' && (
+                    <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+                      <X size={16} color="#94a3b8" />
+                    </Pressable>
+                  )}
+                </View>
+
+                {/* Filter pills */}
+                <View style={styles.filterRow}>
+                  {filterPills.map((pill) => {
+                    const active = activeFilter === pill.key;
                     return (
-                      <View key={idx} style={styles.batteryItem}>
-                        <View style={styles.batteryItemLeft}>
-                          <View style={[styles.checkCircle, { backgroundColor: isOldest ? 'rgba(4, 167, 0, 0.08)' : isWarning ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.04)' }]}>
-                            {isWarning ? (
-                              <ShieldAlert size={14} color="#d71d22" />
-                            ) : (
-                              <Check size={14} color={isOldest ? '#04a700' : '#64748b'} />
-                            )}
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <ThemedText style={styles.batterySerial}>{bat.serial}</ThemedText>
-                            <ThemedText style={styles.batteryType}>{bat.type} • In Stock {bat.ageDays} Days</ThemedText>
-                          </View>
-                        </View>
-                        <View style={[styles.fifoBadge, { backgroundColor: isOldest ? 'rgba(4, 167, 0, 0.08)' : isWarning ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.04)' }]}>
-                          <ThemedText style={[styles.fifoText, { color: isOldest ? '#04a700' : isWarning ? '#d71d22' : '#64748b' }]}>
-                            {bat.fifoStatus}
-                          </ThemedText>
-                        </View>
-                      </View>
+                      <Pressable
+                        key={pill.key}
+                        onPress={() => setActiveFilter(pill.key)}
+                        style={({ pressed }) => [
+                          styles.filterPill,
+                          active && styles.filterPillActive,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        <ThemedText style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+                          {pill.label}
+                        </ThemedText>
+                      </Pressable>
                     );
                   })}
+                  {isFiltering && (
+                    <Pressable onPress={resetFilters} style={styles.resetPill} hitSlop={6}>
+                      <X size={12} color="#d71d22" />
+                      <ThemedText style={styles.resetPillText}>Reset</ThemedText>
+                    </Pressable>
+                  )}
                 </View>
+
+                {/* Feed list */}
+                {filteredFeed.length === 0 ? (
+                  <View style={styles.emptyFeed}>
+                    <Layers size={30} color="#cbd5e1" />
+                    <ThemedText style={styles.emptyFeedText}>No stock matches your filters</ThemedText>
+                    {isFiltering && (
+                      <Pressable onPress={resetFilters} style={styles.emptyResetBtn}>
+                        <ThemedText style={styles.emptyResetText}>Clear filters</ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.feedList}>
+                    {filteredFeed.map((item) => {
+                      const isEv = item.kind === 'ev';
+                      const accent = item.flagged ? '#ea580c' : isEv ? '#04a700' : '#2563eb';
+                      return (
+                        <View key={item.key} style={styles.feedItem}>
+                          <View style={[styles.feedIconWrap, { backgroundColor: `${accent}14` }]}>
+                            {isEv ? <Zap size={16} color={accent} /> : <BatteryCharging size={16} color={accent} />}
+                          </View>
+                          <View style={styles.feedTextCol}>
+                            <ThemedText style={styles.feedTitle} numberOfLines={1}>{item.title}</ThemedText>
+                            <View style={styles.feedMetaRow}>
+                              <ThemedText style={styles.feedSubtitle} numberOfLines={1}>{item.subtitle}</ThemedText>
+                              <View style={styles.feedLocRow}>
+                                <MapPin size={9} color="#94a3b8" />
+                                <ThemedText style={styles.feedLoc} numberOfLines={1}>{item.location}</ThemedText>
+                              </View>
+                            </View>
+                          </View>
+                          <View style={[styles.feedStatusBadge, { backgroundColor: `${accent}14` }]}>
+                            {item.flagged ? (
+                              <ShieldAlert size={10} color={accent} />
+                            ) : (
+                              <Check size={10} color={accent} strokeWidth={3} />
+                            )}
+                            <ThemedText style={[styles.feedStatusText, { color: accent }]}>{item.status}</ThemedText>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -295,7 +439,7 @@ export default function OwnerInventory({
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#05070c',
+    backgroundColor: '#f8fafc', // Light viewport
   },
   scrollView: {
     flex: 1,
@@ -303,50 +447,76 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  // ---- Hero ----
   heroCanvas: {
-    backgroundColor: '#090d16',
+    backgroundColor: '#0a0e1a',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     paddingHorizontal: 24,
-    paddingBottom: 26,
+    paddingBottom: 28,
     paddingTop: 10,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  headerRow: {
-    marginBottom: 16,
+  topRow: {
+    marginTop: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(4, 167, 0, 0.35)',
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
+    paddingVertical: 7,
+    gap: 7,
+  },
+  badgePulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#04a700',
   },
   badgeText: {
-    color: '#ffffff',
+    color: '#04a700',
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 0.8,
   },
   titleWrapper: {
-    marginBottom: 20,
+    marginTop: 22,
+    marginBottom: 22,
     gap: 2,
   },
   mainTitle: {
-    fontSize: 26,
-    fontWeight: '400',
+    fontSize: 30,
+    lineHeight: 38,
+    fontWeight: '300',
     color: '#ffffff',
     letterSpacing: -0.5,
   },
   accentTitle: {
-    fontSize: 28,
+    fontSize: 32,
+    lineHeight: 40,
     fontWeight: 'bold',
     color: '#04a700',
     letterSpacing: -0.5,
@@ -356,10 +526,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 18,
     paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginTop: 4,
+    paddingHorizontal: 18,
   },
   quickMetricBox: {
     flex: 1,
@@ -367,98 +538,147 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  metricIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   metricTextWrapper: {
     gap: 1,
   },
   qVal: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   qLbl: {
-    color: '#64748b',
+    color: '#94a3b8',
     fontSize: 11,
     fontWeight: '600',
   },
   qDivider: {
     width: 1,
-    height: 24,
+    height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginHorizontal: 10,
   },
+  loadingText: {
+    color: '#64748b',
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  // ---- Light content ----
   contentSection: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 22,
     gap: 16,
   },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  // ---- Critical alert ----
   alarmPanel: {
-    backgroundColor: '#141a29',
-    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#fee2e2',
+    flexDirection: 'row',
+    overflow: 'hidden',
+    boxShadow: '0 6px 16px rgba(215, 29, 34, 0.05)',
+  },
+  alarmAccent: {
+    width: 4,
+    backgroundColor: '#d71d22',
+  },
+  alarmBody: {
+    flex: 1,
     padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#1e293b',
-    gap: 12,
+    gap: 8,
   },
   alarmHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  alarmIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: 'rgba(215, 29, 34, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   alarmTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: 'bold',
     color: '#d71d22',
   },
-  alarmItem: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  alarmMarker: {
-    width: 3,
-    height: '100%',
-    backgroundColor: '#d71d22',
-    borderRadius: 2,
-  },
   alarmDesc: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     color: '#64748b',
-    lineHeight: 16,
+    lineHeight: 18,
+    fontWeight: '500',
   },
-  alarmSubDesc: {
+  alarmStrong: {
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  alarmCritical: {
+    fontWeight: 'bold',
+    color: '#d71d22',
+  },
+  // ---- Color mix ----
+  mixChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  mixChipText: {
     fontSize: 10,
+    fontWeight: 'bold',
     color: '#64748b',
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  distributionCard: {
-    backgroundColor: '#141a29',
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: '#1e293b',
-    gap: 14,
-  },
-  distributionTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#ffffff',
   },
   capsuleTrack: {
     height: 14,
-    backgroundColor: '#05070c',
+    backgroundColor: '#f1f5f9',
     borderRadius: 7,
     flexDirection: 'row',
     overflow: 'hidden',
+    gap: 2,
   },
   capsuleFill: {
     height: '100%',
+    borderRadius: 4,
   },
   capsuleLegend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 10,
+    marginTop: 14,
   },
   legendItem: {
     flexDirection: 'row',
@@ -471,28 +691,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#64748b',
+    color: '#475569',
   },
-  sectionCard: {
-    backgroundColor: '#141a29',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1.5,
-    borderColor: '#1e293b',
-  },
-  sectionTitle: {
-    fontSize: 15.5,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 16,
-  },
-  sectionTitleBattery: {
-    fontSize: 15.5,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
+  // ---- Location list ----
   listContainer: {
     gap: 14,
   },
@@ -501,8 +704,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    paddingBottom: 12,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 14,
   },
   lastItem: {
     borderBottomWidth: 0,
@@ -515,9 +718,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -526,9 +729,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationName: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   locationStats: {
     fontSize: 11.5,
@@ -537,79 +740,178 @@ const styles = StyleSheet.create({
   },
   listItemRight: {
     alignItems: 'flex-end',
-    gap: 4,
+    gap: 5,
   },
   vehicleCount: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 8,
   },
   statusText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: 'bold',
   },
-  batteryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  batteryDesc: {
+  // ---- Feed ----
+  feedCount: {
     fontSize: 12,
     color: '#64748b',
-    fontWeight: '500',
-    marginBottom: 16,
-    lineHeight: 16,
+    fontWeight: 'bold',
   },
-  batteryList: {
-    gap: 12,
-  },
-  batteryItem: {
+  searchContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#05070c',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    height: 46,
+    paddingHorizontal: 14,
+    gap: 10,
   },
-  batteryItemLeft: {
+  searchInput: {
+    flex: 1,
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '500',
+    padding: 0,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    minHeight: 34,
+    justifyContent: 'center',
+  },
+  filterPillActive: {
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderColor: 'rgba(4, 167, 0, 0.3)',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  filterPillTextActive: {
+    color: '#04a700',
+  },
+  resetPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(215, 29, 34, 0.06)',
+    minHeight: 34,
   },
-  checkCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  resetPillText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#d71d22',
+  },
+  feedList: {
+    marginTop: 14,
+    gap: 10,
+  },
+  feedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    padding: 12,
+  },
+  feedIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  batterySerial: {
-    fontSize: 13,
+  feedTextCol: {
+    flex: 1,
+    gap: 3,
+  },
+  feedTitle: {
+    fontSize: 13.5,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0f172a',
   },
-  batteryType: {
-    fontSize: 10.5,
+  feedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feedSubtitle: {
+    fontSize: 11,
     color: '#64748b',
-    fontWeight: '500',
-    marginTop: 1,
+    fontWeight: '600',
+    flexShrink: 1,
   },
-  fifoBadge: {
+  feedLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 1,
+  },
+  feedLoc: {
+    fontSize: 10.5,
+    color: '#94a3b8',
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  feedStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 8,
   },
-  fifoText: {
-    fontSize: 10,
+  feedStatusText: {
+    fontSize: 9.5,
     fontWeight: 'bold',
+  },
+  emptyFeed: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 10,
+    marginTop: 8,
+  },
+  emptyFeedText: {
+    fontSize: 13,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  emptyResetBtn: {
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+  },
+  emptyResetText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#04a700',
   },
 });

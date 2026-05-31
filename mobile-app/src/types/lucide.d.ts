@@ -76,5 +76,21 @@ declare module 'lucide-react-native' {
   export const Menu: LucideIcon;
   export const Mail: LucideIcon;
   export const Building: LucideIcon;
+  export const Settings: LucideIcon;
   export const Settings2: LucideIcon;
+  export const FileText: LucideIcon;
+  export const IndianRupee: LucideIcon;
+  export const Flame: LucideIcon;
+  export const Snowflake: LucideIcon;
+  export const Sun: LucideIcon;
+  export const KeyRound: LucideIcon;
+  export const Percent: LucideIcon;
+  export const ArrowRight: LucideIcon;
+  export const ChevronUp: LucideIcon;
+  export const Trash2: LucideIcon;
+  export const RotateCcw: LucideIcon;
+  export const Truck: LucideIcon;
+  export const PackageCheck: LucideIcon;
+  export const Bell: LucideIcon;
+  export const HelpCircle: LucideIcon;
 }

@@ -18,3 +18,6 @@ class VehicleUnitAdmin(admin.ModelAdmin):
     list_display = ('vin_number', 'model', 'branch', 'showroom', 'location', 'stock_status')
     search_fields = ('vin_number', 'motor_number', 'chassis_number', 'model__model_name')
     list_filter = ('branch', 'showroom', 'location', 'stock_status')
+
+    class Media:
+        js = ('admin/js/vehicle_unit_mirror.js',)

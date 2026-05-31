@@ -1,272 +1,472 @@
-import React from 'react';
-import { 
-  View, StyleSheet, ScrollView, Pressable, Image, 
-  Platform, Alert, ActivityIndicator 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicator,
+  BackHandler, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  User, Mail, Phone, Shield, ArrowLeft, LogOut, 
-  CalendarDays, ShoppingBag, TrendingUp, Users, 
-  ChevronRight, Sparkles, Building, Settings2,
+import {
+  Mail, Phone, Shield, ArrowLeft, LogOut, ChevronRight, X, CheckCircle,
+  User, Lock, KeyRound, Percent, Building, SlidersHorizontal, ShieldCheck, Edit,
+  Bell, Eye, FileText, Info, HelpCircle,
 } from 'lucide-react-native';
-// @ts-ignore
-import { Smartphone, Laptop, Cloud, Database } from 'lucide-react-native';
 
-export default function OwnerProfile() {
+type EditField = 'name' | 'phone' | 'email' | 'password' | 'pin' | 'tax' | null;
+
+interface EditConfig {
+  title: string;
+  label: string;
+  placeholder: string;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  secure?: boolean;
+}
+
+const EDIT_CONFIG: Record<Exclude<EditField, null>, EditConfig> = {
+  name: { title: 'Edit Full Name', label: 'Full Name', placeholder: 'Enter your full name' },
+  phone: { title: 'Edit Telephone', label: 'Phone Number', placeholder: '+91 98765 43210', keyboardType: 'phone-pad' },
+  email: { title: 'Edit Primary Email', label: 'Email Address', placeholder: 'owner@kvrmotors.in', keyboardType: 'email-address' },
+  password: { title: 'Change Password', label: 'New Password', placeholder: 'Enter new password', secure: true },
+  pin: { title: 'Set Security PIN', label: '4-Digit PIN', placeholder: '••••', keyboardType: 'numeric', secure: true },
+  tax: { title: 'Default Tax Rate', label: 'GST / Tax %', placeholder: '18', keyboardType: 'numeric' },
+};
+
+export default function OwnerProfile({
+  isActive = true,
+  onBack,
+}: {
+  isActive?: boolean;
+  onBack?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, isLoading } = useAuth();
+  const scrollRef = React.useRef<ScrollView>(null);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Confirm Log Out',
-      'Are you sure you want to end your session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Log Out', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/login');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to log out. Please try again.');
-            }
+  // Editable profile state (seeded from auth user)
+  const [profile, setProfile] = useState({
+    name: user?.full_name || 'Ravi Varma',
+    phone: user?.phone_number || '9876543210',
+    email: user?.email || 'owner@kvrmotors.com',
+    taxRate: '18',
+  });
+
+  // Toggle states matching second image settings context
+  const [pauseNotifications, setPauseNotifications] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [biometric, setBiometric] = useState(true);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [autoTax, setAutoTax] = useState(true);
+
+  // Edit sheet
+  const [editField, setEditField] = useState<EditField>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editError, setEditError] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [isActive]);
+
+  useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        name: user.full_name || prev.name,
+        phone: user.phone_number || prev.phone,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert('Confirm Log Out', 'Are you sure you want to end your session?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace('/login');
+          } catch {
+            Alert.alert('Error', 'Failed to log out. Please try again.');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
+  }, [logout, router]);
+
+  // Robust hardware back handling
+  const handleBack = useCallback((): boolean => {
+    if (editField) {
+      setEditField(null);
+      return true;
+    }
+    if (onBack) {
+      onBack();
+      return true;
+    }
+    // @ts-ignore - canGoBack exists at runtime
+    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
+      router.back();
+      return true;
+    }
+    router.replace('/owner' as any);
+    return true;
+  }, [editField, onBack, router]);
+
+  useEffect(() => {
+    if (isActive === false) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [isActive, handleBack]);
+
+  const openEdit = (field: Exclude<EditField, null>) => {
+    setEditError(undefined);
+    if (field === 'name') setEditValue(profile.name);
+    else if (field === 'phone') setEditValue(profile.phone);
+    else if (field === 'email') setEditValue(profile.email);
+    else if (field === 'tax') setEditValue(profile.taxRate);
+    else setEditValue('');
+    setEditField(field);
   };
 
-  const navItems = [
-    {
-      title: 'Showroom Bookings',
-      desc: 'Advance vehicle bookings and customer files',
-      route: '/owner/bookings',
-      icon: CalendarDays,
-      color: '#04a700',
-    },
-    {
-      title: 'Purchase Orders',
-      desc: 'Inventory purchase files and supply records',
-      route: '/owner/purchases',
-      icon: ShoppingBag,
-      color: '#ea580c',
-    },
-    {
-      title: 'Sales Overview',
-      desc: 'Sales performance and showroom stats',
-      route: '/owner/sales',
-      icon: TrendingUp,
-      color: '#2563eb',
-    },
-    {
-      title: 'User Management',
-      desc: 'Configure sales staff and showroom managers',
-      route: '/owner/users',
-      icon: Users,
-      color: '#a855f7',
-    },
-  ];
+  const validateEdit = (field: Exclude<EditField, null>, value: string): string | undefined => {
+    const v = value.trim();
+    if (!v) return 'This field cannot be empty';
+    if (field === 'name' && v.length < 3) return 'Enter at least 3 characters';
+    if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address';
+    if (field === 'phone' && !/^[0-9+\-\s]{7,15}$/.test(v)) return 'Enter a valid phone number';
+    if (field === 'password' && v.length < 6) return 'Password must be at least 6 characters';
+    if (field === 'pin' && !/^[0-9]{4}$/.test(v)) return 'PIN must be exactly 4 digits';
+    if (field === 'tax') {
+      const n = parseFloat(v);
+      if (isNaN(n) || n < 0 || n > 100) return 'Enter a valid percentage (0-100)';
+    }
+    return undefined;
+  };
 
-  const contentPaddingTop = insets.top + 64;
+  const handleEditSave = () => {
+    if (!editField) return;
+    const err = validateEdit(editField, editValue);
+    if (err) {
+      setEditError(err);
+      return;
+    }
+    const v = editValue.trim();
+    if (editField === 'name') setProfile((p) => ({ ...p, name: v }));
+    else if (editField === 'phone') setProfile((p) => ({ ...p, phone: v }));
+    else if (editField === 'email') setProfile((p) => ({ ...p, email: v }));
+    else if (editField === 'tax') setProfile((p) => ({ ...p, taxRate: v }));
+
+    const savedField = editField;
+    setEditField(null);
+    Alert.alert('Saved', `${EDIT_CONFIG[savedField].title} updated successfully.`);
+  };
+
+  const roleLabel = `${(user?.role || 'OWNER').toUpperCase()} • Vizag HQ`;
+  const usernameHandle = `@${profile.name.toLowerCase().replace(/\s+/g, '')}`;
+
+  // Custom high-end settings row matching second image structure
+  const SettingsRow = ({
+    icon: Icon,
+    color,
+    title,
+    value,
+    onPress,
+    isLast,
+  }: {
+    icon: any;
+    color: string;
+    title: string;
+    value?: string;
+    onPress: () => void;
+    isLast?: boolean;
+  }) => (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.settingsRow,
+        !isLast && styles.settingsRowBorder,
+        pressed && styles.settingsRowPressed
+      ]}
+    >
+      <View style={[styles.rowIconWrap, { backgroundColor: `${color}10` }]}>
+        <Icon size={18} color={color} strokeWidth={2.2} />
+      </View>
+      <View style={styles.rowTextCol}>
+        <ThemedText style={styles.rowTitle}>{title}</ThemedText>
+        {value ? <ThemedText style={styles.rowValue} numberOfLines={1}>{value}</ThemedText> : null}
+      </View>
+      <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
+    </Pressable>
+  );
+
+  // Custom high-end toggle row matching second image structure
+  const ToggleRow = ({
+    icon: Icon,
+    color,
+    title,
+    value,
+    onToggle,
+    isLast,
+  }: {
+    icon: any;
+    color: string;
+    title: string;
+    value: boolean;
+    onToggle: () => void;
+    isLast?: boolean;
+  }) => (
+    <Pressable
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.settingsRow,
+        !isLast && styles.settingsRowBorder,
+        pressed && styles.settingsRowPressed
+      ]}
+    >
+      <View style={[styles.rowIconWrap, { backgroundColor: `${color}10` }]}>
+        <Icon size={18} color={color} strokeWidth={2.2} />
+      </View>
+      <View style={styles.rowTextCol}>
+        <ThemedText style={styles.rowTitle}>{title}</ThemedText>
+      </View>
+      <View style={[styles.toggleTrack, value && styles.toggleTrackActive]}>
+        <View style={[styles.toggleThumb, value && styles.toggleThumbActive]} />
+      </View>
+    </Pressable>
+  );
 
   return (
     <FadeScaleTransition>
       <View style={styles.container}>
-        {/* Content Body */}
-        <ScrollView 
+        {/* Persistent Premium Title Header (Light theme brand accent) */}
+        <View style={[styles.customHeader, { paddingTop: insets.top + 10 }]}>
+          <Pressable
+            onPress={handleBack}
+            style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+            hitSlop={12}
+          >
+            <ArrowLeft size={20} color="#0f172a" strokeWidth={2.5} />
+          </Pressable>
+          <ThemedText style={styles.headerTitle}>Settings</ThemedText>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView
+          ref={scrollRef}
           style={styles.body}
-          contentContainerStyle={[styles.bodyContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]}
+          contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Profile Card */}
-          <View style={styles.profileCard}>
-            <View style={styles.avatarSection}>
-              <View style={styles.avatarGlowBorder}>
-                <Image 
-                  source={require('@/assets/images/logo.png')} 
-                  style={styles.avatarImg} 
+          {/* User Profile Card (First block in second image) */}
+          <Pressable
+            onPress={() => openEdit('name')}
+            style={({ pressed }) => [styles.profileCard, pressed && { opacity: 0.96 }]}
+          >
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatarInner}>
+                <Image
+                  source={require('@/assets/images/logo.png')}
+                  style={styles.avatarImg}
                   resizeMode="contain"
                 />
               </View>
-              <View style={styles.profileMeta}>
-                <View style={styles.badgeContainer}>
-                  <View style={styles.roleBadge}>
-                    <Shield size={10} color="#04a700" style={styles.badgeIcon} />
-                    <ThemedText style={styles.roleText}>{user?.role?.toUpperCase() || 'OWNER'}</ThemedText>
-                  </View>
-                  <View style={[styles.roleBadge, { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderColor: 'rgba(37, 99, 235, 0.3)' }]}>
-                    <Sparkles size={10} color="#2563eb" style={styles.badgeIcon} />
-                    <ThemedText style={[styles.roleText, { color: '#3b82f6' }]}>Super User</ThemedText>
-                  </View>
-                </View>
-                <ThemedText style={styles.profileName}>{user?.full_name || 'Enterprise Owner'}</ThemedText>
-                <ThemedText style={styles.profileEmail}>@{user?.username || 'admin'}</ThemedText>
-              </View>
             </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoGrid}>
-              <View style={styles.infoItem}>
-                <Mail size={14} color="#64748b" />
-                <ThemedText style={styles.infoText} numberOfLines={1}>
-                  {user?.email || 'owner@kvrmotors.com'}
-                </ThemedText>
-              </View>
-              <View style={styles.infoItem}>
-                <Phone size={14} color="#64748b" />
-                <ThemedText style={styles.infoText}>
-                  {user?.phone_number || '+91 98765 43210'}
-                </ThemedText>
-              </View>
+            <View style={styles.profileInfo}>
+              <ThemedText style={styles.profileName} numberOfLines={1}>{profile.name}</ThemedText>
+              <ThemedText style={styles.profileHandle} numberOfLines={1}>{usernameHandle}</ThemedText>
             </View>
-          </View>
-
-          {/* Related Screens Navigation */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Settings2 size={16} color="#04a700" />
-              <ThemedText style={styles.sectionTitle}>Enterprise Directory</ThemedText>
-            </View>
-
-            <View style={styles.menuContainer}>
-              {navItems.map((item, idx) => {
-                const IconComp = item.icon;
-                return (
-                  <Pressable 
-                    key={idx} 
-                    onPress={() => router.push(item.route as any)}
-                    style={({ pressed }) => [
-                      styles.menuItem,
-                      pressed && styles.menuItemPressed
-                    ]}
-                  >
-                    <View style={[styles.menuIconWrapper, { backgroundColor: `${item.color}15` }]}>
-                      <IconComp size={20} color={item.color} />
-                    </View>
-                    
-                    <View style={styles.menuMeta}>
-                      <ThemedText style={styles.menuTitle}>{item.title}</ThemedText>
-                      <ThemedText style={styles.menuDesc}>{item.desc}</ThemedText>
-                    </View>
-
-                    <ChevronRight size={18} color="rgba(255,255,255,0.25)" />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Quick Settings & Support */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Building size={16} color="#04a700" />
-              <ThemedText style={styles.sectionTitle}>System Status & Backup</ThemedText>
-            </View>
-            
-            <View style={styles.statusBox}>
-              <View style={styles.statusRow}>
-                <ThemedText style={styles.statusLabel}>Database Server</ThemedText>
-                <View style={styles.statusIndicatorRow}>
-                  <View style={styles.onlineDot} />
-                  <ThemedText style={styles.statusVal}>Connected</ThemedText>
-                </View>
-              </View>
-              <View style={styles.statusRow}>
-                <ThemedText style={styles.statusLabel}>API Protocol</ThemedText>
-                <ThemedText style={styles.statusVal}>v1/JSON REST</ThemedText>
-              </View>
-              <View style={styles.statusRow}>
-                <ThemedText style={styles.statusLabel}>App Version</ThemedText>
-                <ThemedText style={styles.statusVal}>2.1.0-Obsidian</ThemedText>
-              </View>
-              
-              <View style={styles.divider} />
-
-              {/* Single-Tap Secure Cloud Backup Button [Suitability Addition] */}
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.backupBtn,
-                  pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
-                ]}
-                onPress={() => {
-                  Alert.alert(
-                    'ERP Backup Active', 
-                    'Cloud backup sequence initialized. ERP local sqlite transactions & remote postgres records successfully compressed into backup_kvr_2026_05_29.sql.gz (14.2 MB) and pushed to secure Cloud Vault.'
-                  );
-                }}
-              >
-                <Cloud size={14} color="#04a700" fill="#04a700" />
-                <ThemedText style={styles.backupBtnText}>TAP SECURE CLOUD BACKUP</ThemedText>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Device Session Timeline Grid [Suitability Addition] */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Shield size={16} color="#04a700" />
-              <ThemedText style={styles.sectionTitle}>Active Device Sessions</ThemedText>
-            </View>
-            <View style={styles.sessionsContainer}>
-              <View style={styles.sessionItem}>
-                <Smartphone size={16} color="#04a700" />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.sessionDeviceText}>iPhone 15 Pro (KVR-M-10)</ThemedText>
-                  <ThemedText style={styles.sessionMetaText}>Vizag Showroom • ACTIVE SESSION</ThemedText>
-                </View>
-                <View style={styles.activeDotLabel}>
-                  <View style={styles.onlineDot} />
-                  <ThemedText style={styles.activeDotText}>Now</ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.sessionItem}>
-                <Laptop size={16} color="#64748b" />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.sessionDeviceText}>macOS Chrome (KVR-Web)</ThemedText>
-                  <ThemedText style={styles.sessionMetaText}>Kakinada HQ Godown • 2 hours ago</ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.sessionItem}>
-                <Smartphone size={16} color="#64748b" />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.sessionDeviceText}>Android Pixel 8 (Manager-S)</ThemedText>
-                  <ThemedText style={styles.sessionMetaText}>Srikakulam Showroom • 1 day ago</ThemedText>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Logout Trigger */}
-          <Pressable 
-            onPress={handleLogout} 
-            disabled={isLoading}
-            style={({ pressed }) => [
-              styles.logoutButton,
-              pressed && styles.logoutButtonPressed
-            ]}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#ff4444" />
-            ) : (
-              <>
-                <LogOut size={18} color="#ff4444" />
-                <ThemedText style={styles.logoutText}>End Active Session</ThemedText>
-              </>
-            )}
+            <ChevronRight size={18} color="#cbd5e1" strokeWidth={2} />
           </Pressable>
+
+          {/* Section 1: Notification & Branches */}
+          <View style={styles.bentoCard}>
+            <ToggleRow
+              icon={Bell}
+              color="#ea580c"
+              title="Pause notifications"
+              value={pauseNotifications}
+              onToggle={() => setPauseNotifications((v) => !v)}
+            />
+            <SettingsRow
+              icon={Building}
+              color="#04a700"
+              title="Showroom Branch Mappings"
+              value="3 active branches linked"
+              onPress={() => router.push('/owner/branches' as any)}
+              isLast
+            />
+          </View>
+
+          {/* Section 2: Account Preferences */}
+          <View style={styles.bentoCard}>
+            <ToggleRow
+              icon={SlidersHorizontal}
+              color="#2563eb"
+              title="Automatic GST Billing"
+              value={autoTax}
+              onToggle={() => setAutoTax((v) => !v)}
+            />
+            <SettingsRow
+              icon={Percent}
+              color="#ea580c"
+              title="Default Tax Parameters"
+              value={`GST ${profile.taxRate}% applied on invoices`}
+              onPress={() => openEdit('tax')}
+            />
+            <SettingsRow
+              icon={Phone}
+              color="#2563eb"
+              title="Telephone Contact"
+              value={profile.phone}
+              onPress={() => openEdit('phone')}
+            />
+            <SettingsRow
+              icon={Mail}
+              color="#8b5cf6"
+              title="Primary Email"
+              value={profile.email}
+              onPress={() => openEdit('email')}
+              isLast
+            />
+          </View>
+
+          {/* Section 3: Security & Credentials */}
+          <View style={styles.bentoCard}>
+            <SettingsRow
+              icon={Lock}
+              color="#ec4899"
+              title="Change Password"
+              value="Update account password"
+              onPress={() => openEdit('password')}
+            />
+            <SettingsRow
+              icon={KeyRound}
+              color="#ea580c"
+              title="Security System PIN"
+              value="Set a 4-digit access PIN"
+              onPress={() => openEdit('pin')}
+            />
+            <ToggleRow
+              icon={ShieldCheck}
+              color="#04a700"
+              title="Biometric Unlock"
+              value={biometric}
+              onToggle={() => setBiometric((v) => !v)}
+            />
+            <ToggleRow
+              icon={Shield}
+              color="#2563eb"
+              title="Two-Factor Auth"
+              value={twoFactor}
+              onToggle={() => setTwoFactor((v) => !v)}
+              isLast
+            />
+          </View>
+
+          {/* Section 4: Support & Policies */}
+          <View style={styles.bentoCard}>
+            <SettingsRow
+              icon={HelpCircle}
+              color="#64748b"
+              title="FAQ & User Guide"
+              onPress={() => Alert.alert('FAQ & Support', 'Help guides and operator tutorials are linked to the central ERP directory.')}
+            />
+            <SettingsRow
+              icon={FileText}
+              color="#64748b"
+              title="Terms of service"
+              onPress={() => Alert.alert('Terms of Service', 'KVR Motors Enterprise Service Level Agreement. Version 2026.4.')}
+            />
+            <SettingsRow
+              icon={Info}
+              color="#64748b"
+              title="User policy"
+              onPress={() => Alert.alert('User Policy', 'Enterprise data handling, tenant isolation, and strict access control guidelines.')}
+              isLast
+            />
+          </View>
+
+          {/* Log Out Button (Fully rounded red-outline pill matching second image exactly) */}
+          <View style={styles.logoutContainer}>
+            <Pressable
+              onPress={handleLogout}
+              disabled={isLoading}
+              style={({ pressed }) => [
+                styles.logoutButton,
+                pressed && styles.logoutButtonPressed
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <>
+                  <LogOut size={16} color="#ef4444" strokeWidth={2.5} style={{ marginRight: 6 }} />
+                  <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+                </>
+              )}
+            </Pressable>
+            <ThemedText style={styles.versionText}>KVR Motors ERP • v2.2.0 • Vizag</ThemedText>
+          </View>
         </ScrollView>
+
+        {/* Edit field modal sheet */}
+        <Modal visible={editField !== null} transparent animationType="slide" onRequestClose={() => setEditField(null)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setEditField(null)} />
+            <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
+              <View style={styles.modalGrabber} />
+              {editField && (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View style={styles.modalTitleRow}>
+                      <View style={styles.modalIconWrap}>
+                        <Edit size={16} color="#04a700" strokeWidth={2.5} />
+                      </View>
+                      <ThemedText style={styles.modalTitle}>{EDIT_CONFIG[editField].title}</ThemedText>
+                    </View>
+                    <Pressable onPress={() => setEditField(null)} style={styles.modalCloseBtn} hitSlop={8}>
+                      <X size={18} color="#0f172a" />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText style={styles.fieldLabel}>{EDIT_CONFIG[editField].label}</ThemedText>
+                    <TextInput
+                      style={[styles.input, editError && styles.inputError]}
+                      placeholder={EDIT_CONFIG[editField].placeholder}
+                      placeholderTextColor="#94a3b8"
+                      value={editValue}
+                      onChangeText={(t) => {
+                        setEditValue(t);
+                        if (editError) setEditError(undefined);
+                      }}
+                      keyboardType={EDIT_CONFIG[editField].keyboardType || 'default'}
+                      secureTextEntry={EDIT_CONFIG[editField].secure}
+                      autoCapitalize={editField === 'email' ? 'none' : 'sentences'}
+                      maxLength={editField === 'pin' ? 4 : undefined}
+                      autoFocus
+                    />
+                    {editError && <ThemedText style={styles.errorText}>{editError}</ThemedText>}
+                  </View>
+
+                  {/* Fully Rounded Pill Save Changes button! */}
+                  <Pressable
+                    onPress={handleEditSave}
+                    style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.85 }]}
+                  >
+                    <CheckCircle size={16} color="#ffffff" strokeWidth={2.5} />
+                    <ThemedText style={styles.submitBtnText}>Save Changes</ThemedText>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </FadeScaleTransition>
   );
@@ -275,263 +475,305 @@ export default function OwnerProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9', // Modern, sleek light-themed background
   },
-  profileCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.01,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  avatarSection: {
+  customHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  avatarGlowBorder: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    padding: 2,
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    borderWidth: 1.5,
-    borderColor: '#04a700',
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  profileMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(4, 167, 0, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  badgeIcon: {
-    marginRight: 4,
-  },
-  roleText: {
-    fontSize: 8.5,
-    fontWeight: 'bold',
-    color: '#04a700',
-  },
-  profileName: {
+  headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#0f172a',
-  },
-  profileEmail: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 16,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  infoItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 12.5,
-    color: '#475569',
-    fontWeight: '500',
   },
   body: {
     flex: 1,
   },
   bodyContent: {
-    paddingHorizontal: Spacing.four,
-    gap: 24,
-  },
-  section: {
-    gap: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#04a700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  menuContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexGrow: 1,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#f1f5f9',
-    gap: 14,
+    paddingTop: 16,
+    gap: 16,
   },
-  menuItemPressed: {
-    backgroundColor: '#f8fafc',
+  // ---- Profile card block ----
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  menuIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  avatarWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2.5,
+    borderColor: '#4ade80', // Signature KVR green accent ring
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 2,
   },
-  menuMeta: {
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  profileInfo: {
     flex: 1,
     gap: 2,
   },
-  menuTitle: {
-    fontSize: 14.5,
-    fontWeight: 'bold',
+  profileName: {
+    fontSize: 16.5,
+    fontWeight: '800',
     color: '#0f172a',
   },
-  menuDesc: {
-    fontSize: 11,
+  profileHandle: {
+    fontSize: 12.5,
     color: '#64748b',
+    fontWeight: '600',
   },
-  statusBox: {
+  // ---- Bento List Cards ----
+  bentoCard: {
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
     borderRadius: 24,
-    padding: 16,
-    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  statusRow: {
+  settingsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 56,
   },
-  statusLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
+  settingsRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  statusVal: {
-    fontSize: 13,
+  settingsRowPressed: {
+    backgroundColor: '#f8fafc',
+  },
+  rowIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: '#0f172a',
-    fontWeight: 'bold',
   },
-  statusIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  rowValue: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '600',
   },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#04a700',
+  // ---- Toggles ----
+  toggleTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    padding: 3,
+    justifyContent: 'center',
+  },
+  toggleTrackActive: {
+    backgroundColor: '#04a700', // Brand green active track matching second image green settings toggle context
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
+  },
+  // ---- Log Out ----
+  logoutContainer: {
+    marginTop: 12,
+    alignItems: 'stretch',
+    gap: 12,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 68, 68, 0.08)',
+    backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 68, 68, 0.25)',
-    borderRadius: 20,
-    paddingVertical: 16,
-    gap: 8,
-    marginTop: 8,
+    borderColor: '#fca5a5',
+    borderRadius: 9999, // Completely rounded pill layout!
+    height: 52,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
   },
   logoutButtonPressed: {
-    backgroundColor: 'rgba(255, 68, 68, 0.15)',
-    borderColor: 'rgba(255, 68, 68, 0.4)',
+    backgroundColor: '#fef2f2',
+    borderColor: '#f87171',
   },
   logoutText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ff4444',
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#ef4444',
   },
-  backupBtn: {
+  versionText: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  // ---- Modal ----
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 13, 22, 0.45)',
+  },
+  modalSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 12,
+    paddingHorizontal: 22,
+    gap: 18,
+    borderTopWidth: 1.5,
+    borderTopColor: '#f1f5f9',
+  },
+  modalGrabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 6,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  field: {
+    gap: 8,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#475569',
+  },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 9999, // Completely rounded pill input!
+    paddingHorizontal: 20,
+    height: 50,
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  inputError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  errorText: {
+    fontSize: 11,
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#04a70012',
-    borderWidth: 1.5,
-    borderColor: '#04a70030',
-    borderRadius: 12,
-    paddingVertical: 10,
     gap: 8,
-    marginTop: 6,
+    backgroundColor: '#04a700',
+    borderRadius: 9999, // Completely rounded pill submit CTA!
+    height: 52,
+    shadowColor: '#04a700',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  backupBtnText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#04a700',
-    letterSpacing: 0.5,
-  },
-  sessionsContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    borderRadius: 24,
-    padding: 16,
-    gap: 14,
-  },
-  sessionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sessionDeviceText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  sessionMetaText: {
-    fontSize: 10.5,
-    color: '#64748b',
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  activeDotLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  activeDotText: {
-    fontSize: 10.5,
-    color: '#04a700',
-    fontWeight: 'bold',
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 14.5,
+    fontWeight: '800',
   },
 });

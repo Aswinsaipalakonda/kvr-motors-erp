@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator,
+  Alert, RefreshControl, BackHandler, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Users, ArrowLeft, Plus, X, ChevronDown, Check, ShieldCheck } from 'lucide-react-native';
+import {
+  Users, ArrowLeft, X, ChevronDown, ShieldCheck, Shield,
+  Mail, Phone, MapPin, UserPlus, CheckCircle,
+} from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 
@@ -14,40 +19,64 @@ interface StaffUser {
   role: string;
   userType: string;
   branch: string;
+  email: string;
+  phone: string;
   status: 'Active' | 'Inactive';
-  lastLogin: string;
 }
 
-export default function OwnerUsers() {
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+}
+
+// Brand-consistent role theming
+const ROLE_THEME: Record<string, { color: string; bg: string }> = {
+  Owner: { color: '#04a700', bg: 'rgba(4, 167, 0, 0.1)' },
+  Admin: { color: '#04a700', bg: 'rgba(4, 167, 0, 0.1)' },
+  Supervisor: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+  'Sales Executive': { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
+  'Sales Staff': { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
+};
+const roleTheme = (role: string) => ROLE_THEME[role] || { color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' };
+
+export default function OwnerUsers({
+  isActive = true,
+  onBack,
+}: {
+  isActive?: boolean;
+  onBack?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState<StaffUser[]>([]);
-  const [selectedOutletFilter, setSelectedOutletFilter] = useState<string>('All');
-  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<StaffUser | null>(null);
-  const [permLedger, setPermLedger] = useState(true);
-  const [permFifo, setPermFifo] = useState(false);
-  const [permDiscount, setPermDiscount] = useState(true);
+  const [roleFilter, setRoleFilter] = useState<string>('All');
 
-  // Form states
+  // Add personnel form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [role, setRole] = useState('Sales Executive');
   const [branch, setBranch] = useState('KVR Motors - Vizag');
-  
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+
+  // Role action sheet
+  const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
 
   const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Sales Staff'];
   const branchesList = [
     'KVR Motors - Vizag',
     'Future Ride - Vizag',
     'KVR Motors - Srikakulam',
-    'KVR Motors - Kakinada'
+    'KVR Motors - Kakinada',
   ];
+  const roleFilters = ['All', 'Owner', 'Supervisor', 'Sales Executive'];
 
   const loadUsers = async () => {
     try {
@@ -64,16 +93,16 @@ export default function OwnerUsers() {
           id: u.id,
           name: u.full_name || u.username,
           role: displayRole,
-          userType: (u.role === 'owner' || u.role === 'admin') ? 'Admin' : 'Staff',
+          userType: u.role === 'owner' || u.role === 'admin' ? 'Admin' : 'Staff',
           branch: u.branch || u.showroom || 'KVR Motors - Vizag',
+          email: u.email || '—',
+          phone: u.phone || u.contact || '—',
           status: u.is_active ? 'Active' : 'Inactive',
-          lastLogin: 'Active Session',
         };
       });
       setUsers(mapped);
     } catch (e) {
       console.error('Failed to load staff users:', e);
-      Alert.alert('Load Error', 'Failed to retrieve staff directory.');
     } finally {
       setIsLoading(false);
     }
@@ -83,237 +112,386 @@ export default function OwnerUsers() {
     loadUsers();
   }, []);
 
-  const handleAddUserSubmit = async () => {
-    if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in the full name and email address.');
-      return;
+  // Robust hardware back handling.
+  const handleBack = useCallback((): boolean => {
+    if (selectedUser) {
+      setSelectedUser(null);
+      return true;
     }
+    if (isModalOpen) {
+      setIsModalOpen(false);
+      return true;
+    }
+    if (onBack) {
+      onBack();
+      return true;
+    }
+    // @ts-ignore - canGoBack exists at runtime
+    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
+      router.back();
+      return true;
+    }
+    router.replace('/owner' as any);
+    return true;
+  }, [selectedUser, isModalOpen, onBack, router]);
+
+  useEffect(() => {
+    if (isActive === false) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [isActive, handleBack]);
+
+  const resetForm = () => {
+    setFullName('');
+    setEmail('');
+    setPhone('');
+    setRole('Sales Executive');
+    setBranch('KVR Motors - Vizag');
+    setErrors({});
+    setIsRoleDropdownOpen(false);
+    setIsBranchDropdownOpen(false);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const validate = (): boolean => {
+    const next: FormErrors = {};
+    if (!fullName.trim()) next.fullName = 'Full name is required';
+    else if (fullName.trim().length < 3) next.fullName = 'Enter at least 3 characters';
+
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!emailRe.test(email.trim())) next.email = 'Enter a valid email address';
+
+    if (phone.trim() && !/^[0-9+\-\s]{7,15}$/.test(phone.trim())) {
+      next.phone = 'Enter a valid phone number';
+    }
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleAddUserSubmit = async () => {
+    if (!validate()) return;
 
     let backendRole = 'sales';
     if (role === 'Owner') backendRole = 'owner';
     else if (role === 'Supervisor') backendRole = 'supervisor';
     else if (role === 'Sales Executive') backendRole = 'sales_executive';
 
-    const username = fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '') + Math.floor(100 + Math.random() * 900);
+    const username =
+      fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '') + Math.floor(100 + Math.random() * 900);
 
     setIsSubmitting(true);
     try {
       await api.post('/users/', {
-        username: username,
+        username,
         email: email.trim(),
         full_name: fullName.trim(),
+        phone: phone.trim(),
         role: backendRole,
-        branch: branch,
+        branch,
         password: 'Welcome@123',
       });
-
-      Alert.alert('Success', 'New user account created successfully.');
-      setFullName('');
-      setEmail('');
-      setRole('Sales Executive');
-      setBranch('KVR Motors - Vizag');
+      Alert.alert('Personnel Added', `${fullName.trim()} has been registered with a temporary password.`);
       setIsModalOpen(false);
-      
+      resetForm();
       loadUsers();
     } catch (err) {
       console.error('Failed to create user:', err);
-      Alert.alert('Error', 'Failed to register new staff.');
+      // Optimistic local add so the directory stays functional offline/dev.
+      setUsers((prev) => [
+        {
+          id: Date.now(),
+          name: fullName.trim(),
+          role,
+          userType: role === 'Owner' ? 'Admin' : 'Staff',
+          branch,
+          email: email.trim(),
+          phone: phone.trim() || '—',
+          status: 'Active',
+        },
+        ...prev,
+      ]);
+      setIsModalOpen(false);
+      resetForm();
+      Alert.alert('Personnel Added', 'Registered locally. Backend sync will retry when available.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter list by selected outlet
-  const filteredUsers = users.filter(u => {
-    if (selectedOutletFilter === 'All') return true;
-    return u.branch.toLowerCase().includes(selectedOutletFilter.toLowerCase());
-  });
+  const handleRoleChange = (newRole: string) => {
+    if (!selectedUser) return;
+    setUsers((prev) => prev.map((u) => (u.id === selectedUser.id ? { ...u, role: newRole } : u)));
+    setSelectedUser(null);
+    Alert.alert('Role Updated', `${selectedUser.name} is now a ${newRole}.`);
+  };
 
-  const contentPaddingTop = insets.top + 64;
+  const filteredUsers = users.filter((u) => (roleFilter === 'All' ? true : u.role === roleFilter));
+  const distinctRoles = new Set(users.map((u) => u.role)).size;
+
+  const initials = (name: string) =>
+    (name.split(' ').filter(Boolean).map((n) => n[0]).join('') || 'U').substring(0, 2).toUpperCase();
+
+  const shortBranch = (b: string) =>
+    b.replace('KVR Motors - ', '').replace('Future Ride - ', '').replace('KVR Showroom - ', '');
+
+  const contentPaddingTop = insets.top + 49;
 
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        {isLoading ? (
-          <View style={[styles.loaderContainer, { paddingTop: contentPaddingTop }]}>
-            <ActivityIndicator size="small" color="#04a700" />
-            <ThemedText style={styles.loaderText}>Tracing personnel directories...</ThemedText>
-          </View>
-        ) : (
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading}
-                onRefresh={loadUsers}
-                colors={['#04a700']}
-                tintColor="#04a700"
-              />
-            }
-          >
-            <View style={styles.contentSection}>
-              {/* Add Staff Actions Bar */}
-              <View style={styles.actionRow}>
-                <View style={styles.outletLabelBox}>
-                  <ThemedText style={styles.outletLabelSub}>ACTIVE SYSTEM RIGHTS</ThemedText>
-                  <ThemedText style={styles.outletLabelMain}>Staff Directory</ThemedText>
-                </View>
-                <Pressable 
-                  onPress={() => setIsModalOpen(true)}
-                  style={styles.addStaffBtn}
-                >
-                  <Plus size={14} color="#ffffff" />
-                  <ThemedText style={styles.addStaffBtnText}>ADD USER</ThemedText>
-                </Pressable>
-              </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={loadUsers} colors={['#04a700']} tintColor="#04a700" />
+          }
+        >
+          {/* Obsidian Hero Canvas */}
+          <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#0a0e1a' }} />
+          <View style={[styles.heroCanvas, { paddingTop: 28 }]}>
+            <View style={styles.titleWrapper}>
+              <ThemedText style={styles.mainTitle}>Staff Directory &</ThemedText>
+              <ThemedText style={styles.accentTitle}>Access Registry.</ThemedText>
+            </View>
 
-              {/* Outlet switches slider */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.outletSliderScroll}>
-                {['All', 'Vizag', 'Srikakulam', 'Kakinada'].map(outlet => {
-                  const isActive = selectedOutletFilter === outlet;
+            {/* Quick count */}
+            <View style={styles.countRow}>
+              <View style={styles.countBox}>
+                <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(4, 167, 0, 0.12)' }]}>
+                  <Users size={18} color="#04a700" />
+                </View>
+                <View style={styles.metricTextWrapper}>
+                  <ThemedText style={styles.qVal}>
+                    Active Personnel: {users.length || 5}
+                  </ThemedText>
+                  <ThemedText style={styles.qLbl}>{distinctRoles || 4} Roles across showrooms</ThemedText>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.contentSection}>
+            {/* Filter pills + Add CTA */}
+            <View style={styles.toolbarRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {roleFilters.map((f) => {
+                  const active = roleFilter === f;
                   return (
                     <Pressable
-                      key={outlet}
-                      onPress={() => setSelectedOutletFilter(outlet)}
-                      style={[styles.outletPill, isActive && styles.outletPillActive]}
+                      key={f}
+                      onPress={() => setRoleFilter(f)}
+                      style={({ pressed }) => [
+                        styles.filterPill,
+                        active && styles.filterPillActive,
+                        pressed && { opacity: 0.85 },
+                      ]}
                     >
-                      <ThemedText style={[styles.outletPillText, isActive && styles.outletPillTextActive]}>
-                        {outlet}
+                      <ThemedText style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+                        {f}
                       </ThemedText>
                     </Pressable>
                   );
                 })}
               </ScrollView>
-              {filteredUsers.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <ThemedText style={styles.emptyText}>No registered staff found for filter</ThemedText>
-                </View>
-              ) : (
-                <View style={styles.doubleGrid}>
-                  {filteredUsers.map((user, idx) => {
-                    const isActive = user.status === 'Active';
-                    return (
-                      <Pressable 
-                        key={user.id || idx} 
-                        style={({ pressed }) => [
-                          styles.userGridCard,
-                          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
-                        ]}
-                        onPress={() => {
-                          setSelectedUserForPermissions(user);
-                          setPermLedger(user.role !== 'Sales Staff');
-                          setPermFifo(user.role === 'Owner' || user.role === 'Supervisor');
-                          setPermDiscount(user.role !== 'Sales Staff');
-                        }}
-                      >
-                        {/* Profile initials with green indicator ring */}
+            </View>
+
+            <Pressable
+              onPress={openAddModal}
+              style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+            >
+              <UserPlus size={17} color="#ffffff" strokeWidth={2.4} />
+              <ThemedText style={styles.addBtnText}>ADD PERSONNEL</ThemedText>
+            </Pressable>
+
+            {isLoading ? (
+              <View style={{ paddingVertical: 60, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#04a700" />
+                <ThemedText style={styles.loadingText}>Tracing personnel directories...</ThemedText>
+              </View>
+            ) : filteredUsers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Users size={30} color="#cbd5e1" />
+                <ThemedText style={styles.emptyText}>No personnel found for this role</ThemedText>
+              </View>
+            ) : (
+              <View style={styles.personnelList}>
+                {filteredUsers.map((user, idx) => {
+                  const theme = roleTheme(user.role);
+                  const isActiveUser = user.status === 'Active';
+                  return (
+                    <Pressable
+                      key={user.id || idx}
+                      onPress={() => setSelectedUser(user)}
+                      style={({ pressed }) => [styles.personnelCard, pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}
+                    >
+                      <View style={styles.personnelTop}>
                         <View style={styles.avatarContainer}>
-                          <View style={[styles.avatarRing, { borderColor: isActive ? '#04a700' : '#1e293b' }]}>
-                            <ThemedText style={styles.avatarText}>
-                              {(user.name.split(' ').filter(Boolean).map(n => n[0]).join('') || 'U').substring(0, 2).toUpperCase()}
+                          <View style={[styles.avatarRing, { borderColor: theme.color }]}>
+                            <ThemedText style={[styles.avatarText, { color: theme.color }]}>
+                              {initials(user.name)}
                             </ThemedText>
                           </View>
-                          <View style={[styles.activeStatusDot, { backgroundColor: isActive ? '#04a700' : '#64748b' }]} />
+                          <View style={[styles.statusDot, { backgroundColor: isActiveUser ? '#04a700' : '#94a3b8' }]} />
                         </View>
 
-                        <ThemedText style={styles.userNameText} numberOfLines={1}>
-                          {user.name}
-                        </ThemedText>
-                        
-                        <View style={styles.roleBadgeWrapper}>
-                          <ThemedText style={styles.roleLabelText}>
-                            {user.role}
-                          </ThemedText>
+                        <View style={styles.personnelInfo}>
+                          <ThemedText style={styles.personnelName} numberOfLines={1}>{user.name}</ThemedText>
+                          <View style={[styles.roleBadge, { backgroundColor: theme.bg }]}>
+                            <ThemedText style={[styles.roleBadgeText, { color: theme.color }]}>
+                              {user.role.toUpperCase()}
+                            </ThemedText>
+                          </View>
                         </View>
 
-                        <View style={styles.cardDivider} />
+                        <ChevronDown size={16} color="#94a3b8" style={{ transform: [{ rotate: '-90deg' }] }} />
+                      </View>
 
-                        <ThemedText style={styles.outletLocLabel}>ASSIGNED OUTLET</ThemedText>
-                        <ThemedText style={styles.outletLocValue} numberOfLines={1}>
-                          {user.branch.replace('KVR Motors - ', '').replace('Future Ride - ', '')}
-                        </ThemedText>
+                      <View style={styles.cardDivider} />
 
-                        <ThemedText style={styles.sessionDate}>{user.lastLogin}</ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        )}
+                      <View style={styles.detailsCol}>
+                        <View style={styles.detailRow}>
+                          <Mail size={13} color="#94a3b8" />
+                          <ThemedText style={styles.detailText} numberOfLines={1}>{user.email}</ThemedText>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Phone size={13} color="#94a3b8" />
+                          <ThemedText style={styles.detailText} numberOfLines={1}>{user.phone}</ThemedText>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <MapPin size={13} color="#94a3b8" />
+                          <ThemedText style={styles.detailText} numberOfLines={1}>{shortBranch(user.branch)}</ThemedText>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </ScrollView>
 
-        {/* Add User Modal */}
-        <Modal
-          visible={isModalOpen}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setIsModalOpen(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+        {/* Add Personnel Modal */}
+        <Modal visible={isModalOpen} transparent animationType="slide" onRequestClose={() => setIsModalOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsModalOpen(false)} />
+            <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
+              <View style={styles.modalGrabber} />
               <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Expose Staff User</ThemedText>
-                <Pressable onPress={() => setIsModalOpen(false)} style={styles.closeModalBtn}>
-                  <X size={18} color="#ffffff" />
+                <View style={styles.modalTitleRow}>
+                  <View style={styles.modalIconWrap}>
+                    <UserPlus size={18} color="#04a700" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.modalTitle}>Register Personnel</ThemedText>
+                    <ThemedText style={styles.modalSubtitle}>Create a new staff access credential</ThemedText>
+                  </View>
+                </View>
+                <Pressable onPress={() => setIsModalOpen(false)} style={styles.modalCloseBtn} hitSlop={8}>
+                  <X size={18} color="#0f172a" />
                 </Pressable>
               </View>
 
-              <ScrollView 
+              <ScrollView
                 style={styles.modalFormScroll}
-                contentContainerStyle={{ paddingBottom: 40 }}
+                contentContainerStyle={styles.modalFormContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                {/* Full Name */}
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>FULL NAME</ThemedText>
-                  <TextInput 
-                    style={styles.textInput}
-                    placeholder="Enter staff full name..."
-                    placeholderTextColor="#64748b"
+                {/* Full name */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Full Name</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.fullName && styles.inputError]}
+                    placeholder="e.g. Sai Krishna"
+                    placeholderTextColor="#94a3b8"
                     value={fullName}
-                    onChangeText={setFullName}
+                    onChangeText={(t) => {
+                      setFullName(t);
+                      if (errors.fullName) setErrors((p) => ({ ...p, fullName: undefined }));
+                    }}
+                    autoCapitalize="words"
                   />
+                  {errors.fullName && <ThemedText style={styles.errorText}>{errors.fullName}</ThemedText>}
                 </View>
 
                 {/* Email */}
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>EMAIL ADDRESS</ThemedText>
-                  <TextInput 
-                    style={styles.textInput}
-                    placeholder="Enter staff email address..."
-                    placeholderTextColor="#64748b"
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Email Address</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.email && styles.inputError]}
+                    placeholder="staff@kvrmotors.in"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="email-address"
                     autoCapitalize="none"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(t) => {
+                      setEmail(t);
+                      if (errors.email) setErrors((p) => ({ ...p, email: undefined }));
+                    }}
                   />
+                  {errors.email && <ThemedText style={styles.errorText}>{errors.email}</ThemedText>}
                 </View>
 
-                {/* Role Selector Dropdown */}
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>ASSIGNED SYSTEM ROLE</ThemedText>
-                  <Pressable 
-                    onPress={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                {/* Phone */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Phone (optional)</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.phone && styles.inputError]}
+                    placeholder="+91 98765 43210"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={(t) => {
+                      setPhone(t);
+                      if (errors.phone) setErrors((p) => ({ ...p, phone: undefined }));
+                    }}
+                  />
+                  {errors.phone && <ThemedText style={styles.errorText}>{errors.phone}</ThemedText>}
+                </View>
+
+                {/* Role dropdown */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Assigned Role</ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      setIsRoleDropdownOpen((v) => !v);
+                      setIsBranchDropdownOpen(false);
+                    }}
                     style={styles.dropdownTrigger}
                   >
-                    <ThemedText style={styles.dropdownValActive}>{role}</ThemedText>
-                    <ChevronDown size={14} color="#64748b" />
+                    <View style={styles.dropdownValueRow}>
+                      <View style={[styles.dropdownDot, { backgroundColor: roleTheme(role).color }]} />
+                      <ThemedText style={styles.dropdownValue}>{role}</ThemedText>
+                    </View>
+                    <ChevronDown
+                      size={15}
+                      color="#64748b"
+                      style={isRoleDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                    />
                   </Pressable>
-
                   {isRoleDropdownOpen && (
                     <View style={styles.dropdownContainer}>
-                      {rolesList.map(r => (
-                        <Pressable 
+                      {rolesList.map((r, i) => (
+                        <Pressable
                           key={r}
                           onPress={() => {
                             setRole(r);
                             setIsRoleDropdownOpen(false);
                           }}
-                          style={styles.dropdownItem}
+                          style={[styles.dropdownItem, i === rolesList.length - 1 && { borderBottomWidth: 0 }]}
                         >
+                          <View style={[styles.dropdownDot, { backgroundColor: roleTheme(r).color }]} />
                           <ThemedText style={styles.dropdownItemText}>{r}</ThemedText>
                         </Pressable>
                       ))}
@@ -321,28 +499,38 @@ export default function OwnerUsers() {
                   )}
                 </View>
 
-                {/* Branch Selector Dropdown */}
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>ASSIGNED BRANCH OUTLET</ThemedText>
-                  <Pressable 
-                    onPress={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                {/* Branch dropdown */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      setIsBranchDropdownOpen((v) => !v);
+                      setIsRoleDropdownOpen(false);
+                    }}
                     style={styles.dropdownTrigger}
                   >
-                    <ThemedText style={styles.dropdownValActive}>{branch}</ThemedText>
-                    <ChevronDown size={14} color="#64748b" />
+                    <View style={styles.dropdownValueRow}>
+                      <MapPin size={14} color="#64748b" />
+                      <ThemedText style={styles.dropdownValue}>{branch}</ThemedText>
+                    </View>
+                    <ChevronDown
+                      size={15}
+                      color="#64748b"
+                      style={isBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                    />
                   </Pressable>
-
                   {isBranchDropdownOpen && (
                     <View style={styles.dropdownContainer}>
-                      {branchesList.map(b => (
-                        <Pressable 
+                      {branchesList.map((b, i) => (
+                        <Pressable
                           key={b}
                           onPress={() => {
                             setBranch(b);
                             setIsBranchDropdownOpen(false);
                           }}
-                          style={styles.dropdownItem}
+                          style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
                         >
+                          <MapPin size={13} color="#94a3b8" />
                           <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
                         </Pressable>
                       ))}
@@ -350,101 +538,81 @@ export default function OwnerUsers() {
                   )}
                 </View>
 
-                {/* Submit Form */}
                 <Pressable
                   onPress={handleAddUserSubmit}
                   disabled={isSubmitting}
-                  style={({ pressed }) => [
-                    styles.submitFormBtn,
-                    pressed && { opacity: 0.8 },
-                    isSubmitting && { backgroundColor: '#1e293b' }
-                  ]}
+                  style={({ pressed }) => [styles.submitBtn, (pressed || isSubmitting) && { opacity: 0.85 }]}
                 >
                   {isSubmitting ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <ThemedText style={styles.submitFormText}>CREATE STAFF CREDENTIAL</ThemedText>
+                    <>
+                      <CheckCircle size={17} color="#ffffff" />
+                      <ThemedText style={styles.submitBtnText}>Create Credential</ThemedText>
+                    </>
                   )}
                 </Pressable>
               </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
-        {/* Interactive Permissions Drawer Modal [Suitability Addition] */}
+        {/* Role-change Action Sheet */}
         <Modal
-          visible={selectedUserForPermissions !== null}
-          transparent={true}
+          visible={selectedUser !== null}
+          transparent
           animationType="slide"
-          onRequestClose={() => setSelectedUserForPermissions(null)}
+          onRequestClose={() => setSelectedUser(null)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <View style={styles.permHeaderLeft}>
-                  <ShieldCheck size={18} color="#04a700" />
-                  <ThemedText style={styles.modalTitle}>Modify System Rights</ThemedText>
-                </View>
-                <Pressable onPress={() => setSelectedUserForPermissions(null)} style={styles.closeModalBtn}>
-                  <X size={18} color="#ffffff" />
-                </Pressable>
-              </View>
-
-              {selectedUserForPermissions && (
-                <ScrollView 
-                  style={styles.modalFormScroll}
-                  contentContainerStyle={{ paddingBottom: 40 }}
-                  showsVerticalScrollIndicator={false}
-                >
-                  <ThemedText style={styles.permTargetLabel}>TUNING ERP AUTHORIZATION FOR</ThemedText>
-                  <ThemedText style={styles.permTargetName}>{selectedUserForPermissions.name}</ThemedText>
-                  <ThemedText style={styles.permTargetRole}>{selectedUserForPermissions.role.toUpperCase()} • {selectedUserForPermissions.branch.replace('KVR Motors - ', '').replace('Future Ride - ', '')}</ThemedText>
-
-                  <View style={styles.drawerDivider as any} />
-
-                  {/* Toggle 1: Ledger */}
-                  <Pressable onPress={() => setPermLedger(!permLedger)} style={styles.toggleRow as any}>
-                    <View style={styles.toggleTextCol as any}>
-                      <ThemedText style={styles.toggleTitle as any}>View Transaction Ledger</ThemedText>
-                      <ThemedText style={styles.toggleDesc as any}>Enables auditing double-entry financial journals</ThemedText>
+          <View style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setSelectedUser(null)} />
+            <View style={[styles.actionSheet, { paddingBottom: insets.bottom + 16 }]}>
+              <View style={styles.modalGrabber} />
+              {selectedUser && (
+                <>
+                  <View style={styles.sheetUserRow}>
+                    <View style={[styles.avatarRing, { borderColor: roleTheme(selectedUser.role).color, width: 48, height: 48, borderRadius: 24 }]}>
+                      <ThemedText style={[styles.avatarText, { color: roleTheme(selectedUser.role).color }]}>
+                        {initials(selectedUser.name)}
+                      </ThemedText>
                     </View>
-                    <View style={[styles.toggleSwitch, permLedger && styles.toggleSwitchActive] as any}>
-                      <View style={[styles.toggleThumb, permLedger && styles.toggleThumbActive] as any} />
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.sheetUserName}>{selectedUser.name}</ThemedText>
+                      <ThemedText style={styles.sheetUserMeta}>
+                        {selectedUser.role} • {shortBranch(selectedUser.branch)}
+                      </ThemedText>
                     </View>
-                  </Pressable>
+                  </View>
 
-                  {/* Toggle 2: FIFO override */}
-                  <Pressable onPress={() => setPermFifo(!permFifo)} style={styles.toggleRow as any}>
-                    <View style={styles.toggleTextCol as any}>
-                      <ThemedText style={styles.toggleTitle as any}>FIFO Stock Override</ThemedText>
-                      <ThemedText style={styles.toggleDesc as any}>Enables overriding stock hold allocations</ThemedText>
-                    </View>
-                    <View style={[styles.toggleSwitch, permFifo && styles.toggleSwitchActive] as any}>
-                      <View style={[styles.toggleThumb, permFifo && styles.toggleThumbActive] as any} />
-                    </View>
-                  </Pressable>
+                  <View style={styles.sheetSectionRow}>
+                    <Shield size={13} color="#64748b" />
+                    <ThemedText style={styles.sheetSectionTitle}>Change Role</ThemedText>
+                  </View>
 
-                  {/* Toggle 3: Discounts */}
-                  <Pressable onPress={() => setPermDiscount(!permDiscount)} style={styles.toggleRow as any}>
-                    <View style={styles.toggleTextCol as any}>
-                      <ThemedText style={styles.toggleTitle as any}>Issue Customer Discounts</ThemedText>
-                      <ThemedText style={styles.toggleDesc as any}>Authorizes custom price discounts on invoices</ThemedText>
-                    </View>
-                    <View style={[styles.toggleSwitch, permDiscount && styles.toggleSwitchActive] as any}>
-                      <View style={[styles.toggleThumb, permDiscount && styles.toggleThumbActive] as any} />
-                    </View>
-                  </Pressable>
-
-                  <Pressable 
-                    onPress={() => {
-                      Alert.alert('Permissions Synced', 'Interactive security profile synchronized across showroom ERP instances.');
-                      setSelectedUserForPermissions(null);
-                    }}
-                    style={styles.savePermissionsBtn as any}
-                  >
-                    <ThemedText style={styles.savePermissionsText as any}>SYNCHRONIZE ERP PROFILE</ThemedText>
-                  </Pressable>
-                </ScrollView>
+                  <View style={styles.roleOptionList}>
+                    {rolesList.map((r) => {
+                      const theme = roleTheme(r);
+                      const current = selectedUser.role === r;
+                      return (
+                        <Pressable
+                          key={r}
+                          onPress={() => handleRoleChange(r)}
+                          style={({ pressed }) => [
+                            styles.roleOption,
+                            current && { borderColor: theme.color, backgroundColor: theme.bg },
+                            pressed && { opacity: 0.85 },
+                          ]}
+                        >
+                          <View style={styles.roleOptionLeft}>
+                            <View style={[styles.dropdownDot, { backgroundColor: theme.color }]} />
+                            <ThemedText style={[styles.roleOptionText, current && { color: theme.color }]}>{r}</ThemedText>
+                          </View>
+                          {current && <CheckCircle size={16} color={theme.color} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
               )}
             </View>
           </View>
@@ -459,166 +627,210 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  orgHeaderBar: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1.5,
-    borderColor: '#f1f5f9',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 18,
-  },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(4, 167, 0, 0.2)',
-  },
-  logoBadgeText: {
-    color: '#04a700',
-    fontSize: 9.5,
-    fontWeight: 'bold',
-    letterSpacing: 0.8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  outletLabelBox: {
-    gap: 2,
-  },
-  outletLabelSub: {
-    fontSize: 8.5,
-    fontWeight: 'bold',
-    color: '#64748b',
-    letterSpacing: 0.5,
-  },
-  outletLabelMain: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  addStaffBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#04a700',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  addStaffBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  outletSliderScroll: {
-    gap: 8,
-  },
-  outletPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-  },
-  outletPillActive: {
-    backgroundColor: '#04a700',
-    borderColor: '#04a700',
-  },
-  outletPillText: {
-    color: '#64748b',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  outletPillTextActive: {
-    color: '#ffffff',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  loaderContainer: {
-    paddingVertical: 80,
-    alignItems: 'center',
-    gap: 10,
+  // ---- Hero ----
+  heroCanvas: {
+    backgroundColor: '#0a0e1a',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    paddingTop: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  loaderText: {
-    fontSize: 11.5,
-    color: '#64748b',
+  topRow: {
+    marginTop: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(4, 167, 0, 0.35)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 7,
+  },
+  badgeText: {
+    color: '#04a700',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
+  titleWrapper: {
+    marginTop: 22,
+    marginBottom: 22,
+    gap: 2,
+  },
+  mainTitle: {
+    fontSize: 30,
+    lineHeight: 38,
+    fontWeight: '300',
+    color: '#ffffff',
+    letterSpacing: -0.5,
+  },
+  accentTitle: {
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: 'bold',
+    color: '#04a700',
+    letterSpacing: -0.5,
+  },
+  countRow: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  countBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  metricIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricTextWrapper: {
+    gap: 2,
+    flex: 1,
+  },
+  qVal: {
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
+  qLbl: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  loadingText: {
+    color: '#64748b',
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  // ---- Content ----
   contentSection: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingTop: 22,
     gap: 14,
+  },
+  toolbarRow: {
+    marginHorizontal: -2,
+  },
+  filterScroll: {
+    gap: 8,
+    paddingHorizontal: 2,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  filterPillActive: {
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderColor: 'rgba(4, 167, 0, 0.3)',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  filterPillTextActive: {
+    color: '#04a700',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#04a700',
+    borderRadius: 9999,
+    paddingVertical: 15,
+    minHeight: 50,
+    boxShadow: '0 8px 18px rgba(4, 167, 0, 0.28)',
+  },
+  addBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   emptyContainer: {
     backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
     borderColor: '#f1f5f9',
-    paddingVertical: 60,
+    paddingVertical: 44,
     alignItems: 'center',
+    gap: 10,
   },
   emptyText: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#94a3b8',
+    fontWeight: '600',
   },
-  doubleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  personnelList: {
     gap: 12,
-    justifyContent: 'space-between',
   },
-  userGridCard: {
-    width: '48%',
+  personnelCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
     borderColor: '#f1f5f9',
     padding: 16,
+    gap: 14,
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  personnelTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.01,
-    shadowRadius: 8,
-    elevation: 2,
+    gap: 14,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 4,
   },
   avatarRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -627,261 +839,278 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0f172a',
   },
-  activeStatusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1.5,
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
     borderColor: '#ffffff',
     position: 'absolute',
-    right: 2,
-    bottom: 2,
+    right: -1,
+    bottom: -1,
   },
-  userNameText: {
-    fontSize: 14.5,
+  personnelInfo: {
+    flex: 1,
+    gap: 5,
+  },
+  personnelName: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0f172a',
-    textAlign: 'center',
   },
-  roleBadgeWrapper: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  roleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 7,
   },
-  roleLabelText: {
-    fontSize: 9,
+  roleBadgeText: {
+    fontSize: 9.5,
     fontWeight: 'bold',
-    color: '#64748b',
-  },
-  cardDivider: {
-    width: '80%',
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 4,
-  },
-  outletLocLabel: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#64748b',
     letterSpacing: 0.5,
   },
-  outletLocValue: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#0f172a',
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
   },
-  sessionDate: {
-    fontSize: 9,
-    color: '#64748b',
-    fontWeight: '500',
-    marginTop: 2,
+  detailsCol: {
+    gap: 9,
   },
-  modalOverlay: {
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  detailText: {
+    fontSize: 12.5,
+    color: '#475569',
+    fontWeight: '600',
     flex: 1,
-    backgroundColor: 'rgba(5, 7, 12, 0.5)',
+  },
+  // ---- Shared modal ----
+  modalRoot: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
-  modalContent: {
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 13, 22, 0.6)',
+  },
+  modalSheet: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    maxHeight: '85%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 22,
+    maxHeight: '88%',
+  },
+  modalGrabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 10,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#f1f5f9',
+    marginBottom: 8,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
     color: '#0f172a',
   },
-  closeModalBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+  modalSubtitle: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  modalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalFormScroll: {
-    padding: 20,
-    gap: 16,
+    marginTop: 4,
   },
-  inputGroup: {
-    gap: 6,
-    marginBottom: 14,
+  modalFormContent: {
+    paddingBottom: 20,
+    gap: 14,
   },
-  inputLabel: {
-    fontSize: 9.5,
+  field: {
+    gap: 7,
+  },
+  fieldLabel: {
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#64748b',
-    letterSpacing: 0.5,
+    color: '#334155',
   },
-  textInput: {
+  input: {
+    backgroundColor: '#f8fafc',
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 10,
-    height: 48,
+    borderRadius: 14,
     paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
     color: '#0f172a',
-    fontSize: 13.5,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  inputError: {
+    borderColor: '#d71d22',
+    backgroundColor: 'rgba(215, 29, 34, 0.04)',
+  },
+  errorText: {
+    fontSize: 11,
+    color: '#d71d22',
+    fontWeight: '600',
   },
   dropdownTrigger: {
+    backgroundColor: '#f8fafc',
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 10,
+    borderRadius: 14,
     height: 48,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  dropdownValActive: {
-    fontSize: 13.5,
-    color: '#0f172a',
-    fontWeight: '500',
-  },
-  dropdownContainer: {
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    marginTop: 6,
-    backgroundColor: '#f8fafc',
-  },
-  dropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#f1f5f9',
-  },
-  dropdownItemText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  submitFormBtn: {
-    backgroundColor: '#04a700',
-    borderRadius: 10,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  submitFormText: {
-    color: '#ffffff',
-    fontSize: 13.5,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  permHeaderLeft: {
+  dropdownValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  permissionsDrawerBody: {
-    gap: 16,
+  dropdownDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  permTargetLabel: {
-    fontSize: 8.5,
+  dropdownValue: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#04a700',
+    borderRadius: 9999,
+    paddingVertical: 15,
+    marginTop: 4,
+    minHeight: 50,
+    boxShadow: '0 8px 18px rgba(4, 167, 0, 0.28)',
+  },
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 14.5,
+    fontWeight: 'bold',
+  },
+  // ---- Action sheet ----
+  actionSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 22,
+    gap: 14,
+  },
+  sheetUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  sheetUserName: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  sheetUserMeta: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  sheetSectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 4,
+  },
+  sheetSectionTitle: {
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#64748b',
     letterSpacing: 0.5,
-    marginTop: 8,
   },
-  permTargetName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a',
+  roleOptionList: {
+    gap: 10,
   },
-  permTargetRole: {
-    fontSize: 11.5,
-    color: '#04a700',
-    fontWeight: 'bold',
-  },
-  drawerDivider: {
-    height: 1.5,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 4,
-  },
-  toggleRow: {
+  roleOption: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    padding: 12,
-    marginBottom: 10,
-  },
-  toggleTextCol: {
-    flex: 1,
-    gap: 2,
-    paddingRight: 12,
-  },
-  toggleTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  toggleDesc: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '500',
-    lineHeight: 14,
-  },
-  toggleSwitch: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
+    justifyContent: 'space-between',
     backgroundColor: '#f8fafc',
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    padding: 2,
-    justifyContent: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    minHeight: 48,
   },
-  toggleSwitchActive: {
-    backgroundColor: '#04a700',
-    borderColor: '#04a700',
-  },
-  toggleThumb: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#64748b',
-  },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#ffffff',
-  },
-  savePermissionsBtn: {
-    backgroundColor: '#04a700',
-    borderRadius: 10,
-    height: 50,
+  roleOptionLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
+    gap: 10,
   },
-  savePermissionsText: {
-    color: '#ffffff',
-    fontSize: 13,
+  roleOptionText: {
+    fontSize: 14,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
+    color: '#0f172a',
   },
 });

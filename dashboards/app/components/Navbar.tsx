@@ -51,14 +51,14 @@ export default function Navbar({ title, role }: NavbarProps) {
   ];
 
   return (
-    <header className="h-20 bg-[#E8F1EC] border-b border-emerald-100/50 px-4 sm:px-6 flex items-center justify-between shrink-0 select-none z-30 relative">
+    <header className="h-20 bg-[#E8F1EC] border-b border-emerald-100/50 px-4 sm:px-6 flex items-center justify-between gap-2 shrink-0 select-none z-30 relative">
       {/* Title & Section Label (offset on mobile to clear the floating hamburger) */}
-      <div className="flex items-center gap-3 pl-12 lg:pl-0">
-        <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate max-w-[40vw] sm:max-w-none">{title}</h1>
+      <div className="flex items-center gap-3 pl-12 lg:pl-0 min-w-0 flex-1">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{title}</h1>
       </div>
 
       {/* Utilities Container */}
-      <div className="flex items-center gap-3 lg:gap-6 ml-auto sm:ml-0">
+      <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 shrink-0">
         
         {/* Search Bar matching mockup with rounded pill design (hidden on smallest screens) */}
         <div className="relative hidden xs:block w-36 sm:w-60 md:w-80">
@@ -76,9 +76,9 @@ export default function Navbar({ title, role }: NavbarProps) {
           <span>01 May 2024 - 31 May 2024</span>
         </div>
 
-        {/* Branch Selector Dropdown (owner only) */}
+        {/* Branch Selector Dropdown (owner only, hidden on small screens) */}
         {role === "owner" && (
-          <div className="relative">
+          <div className="relative hidden md:block">
             <button
               onClick={() => setShowBranchDropdown(!showBranchDropdown)}
               className="flex items-center gap-2 border border-emerald-100 bg-white hover:bg-emerald-50/50 rounded-lg px-3 py-1.5 text-xs text-slate-750 font-semibold cursor-pointer transition-colors"
@@ -164,9 +164,9 @@ export default function Navbar({ title, role }: NavbarProps) {
               setShowProfileDropdown(!showProfileDropdown);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-3 pl-4 border-l border-emerald-250/60 cursor-pointer group select-none"
+            className="flex items-center gap-2 sm:gap-3 sm:pl-4 sm:border-l border-emerald-250/60 cursor-pointer group select-none"
           >
-            <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center font-bold text-xs text-emerald-800 border border-emerald-100 uppercase">
+            <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center font-bold text-xs text-emerald-800 border border-emerald-100 uppercase shrink-0">
               {role === "owner" ? "RV" : role === "supervisor" ? "SB" : "AK"}
             </div>
             <div className="hidden md:flex flex-col text-left shrink-0">
@@ -177,7 +177,7 @@ export default function Navbar({ title, role }: NavbarProps) {
                 {role === "owner" ? "Owner" : role === "supervisor" ? "Supervisor" : "Sales Exec"}
               </span>
             </div>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            <ChevronDown className="hidden sm:block h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </div>
 
           {showProfileDropdown && (

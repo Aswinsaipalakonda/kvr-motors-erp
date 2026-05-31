@@ -402,7 +402,7 @@ export default function OwnerDashboard() {
         {/* Navbar */}
         <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
         {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -504,7 +504,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               {/* Lower Section Charts & Lists */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-80">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:min-h-80">
                 
                 {/* Leads Funnel representation */}
                 <div className="bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col h-full justify-between">
@@ -536,12 +536,12 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 {/* Recent Activities */}
-                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full overflow-y-auto">
+                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full">
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-slate-800">Recent Activities</h3>
                     <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Latest logs across all outlets</p>
                   </div>
-                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
+                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto slim-scrollbar smooth-scroll">
                     {recentActivities.map((act) => (
                       <div key={act.id} className="py-2.5 flex items-center justify-between text-xs text-left">
                         <div className="flex flex-col">
@@ -557,21 +557,21 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 {/* Top Selling Models */}
-                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full overflow-y-auto">
+                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full">
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-slate-800">Top Selling EV Models</h3>
                     <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Top models sorted by unit delivery volume</p>
                   </div>
-                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
+                  <div className="flex-1 flex flex-col justify-between divide-y divide-slate-100">
                     {topSellingModels.map((model, idx) => (
-                      <div key={idx} className="py-2.5 flex items-center justify-between text-xs text-left">
-                        <div className="flex items-center gap-2.5">
-                          <span className="h-5 w-5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-[9px]">
+                      <div key={idx} className="py-2 flex items-center justify-between gap-2 text-xs text-left">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="h-5 w-5 shrink-0 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-[9px]">
                             {idx + 1}
                           </span>
-                          <span className="font-bold text-slate-750">{model.name}</span>
+                          <span className="font-bold text-slate-750 truncate">{model.name}</span>
                         </div>
-                        <div className="flex flex-col text-right text-[10px] font-bold">
+                        <div className="flex flex-col text-right text-[10px] font-bold shrink-0">
                           <span className="text-slate-800">{model.count} Units</span>
                           <span className="text-[9px] text-[#04a700] mt-0.5">₹ {((model.count * 85000)).toLocaleString()}</span>
                         </div>

@@ -30,12 +30,21 @@ interface BrandCategory {
 export default function OwnerDashboard({ 
   branch = 'All Branches', 
   setBranch = () => {},
-  openBranchModal = () => {}
+  onOpenBranchSelector = () => {},
+  isActive = true,
 }: { 
   branch?: string; 
   setBranch?: (b: string) => void; 
-  openBranchModal?: () => void;
+  onOpenBranchSelector?: () => void;
+  isActive?: boolean;
 }) {
+  const scrollRef = React.useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [isActive]);
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
@@ -206,11 +215,13 @@ export default function OwnerDashboard({
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
         <ScrollView 
+          ref={scrollRef}
           style={styles.scrollView} 
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
         >
           {/* Obsidian SaaS Home Hero Canvas (Matches header dark slate theme) */}
+          <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#0a0e1a' }} />
           <View style={styles.heroCanvas}>
             <View style={styles.titleWrapper}>
               <ThemedText style={styles.mainTitle}>Manage Your</ThemedText>
@@ -222,7 +233,7 @@ export default function OwnerDashboard({
                 <Search size={18} color="#94a3b8" style={styles.searchIcon} />
                 <TextInput 
                   style={styles.searchInput}
-                  placeholder="Search EV models..."
+                  placeholder="Search Models, Locations..."
                   placeholderTextColor="#64748b"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -233,10 +244,7 @@ export default function OwnerDashboard({
                   </Pressable>
                 )}
               </View>
-              <Pressable 
-                style={styles.filterButton}
-                onPress={openBranchModal}
-              >
+              <Pressable onPress={onOpenBranchSelector} style={styles.filterButton}>
                 <SlidersHorizontal size={18} color="#ffffff" />
               </Pressable>
             </View>
@@ -340,35 +348,37 @@ export default function OwnerDashboard({
                       Outstanding conversion this month. Out of {totalLeadsCount} active customer enquiries, {wonLeadsCount} are closed as won. Ahead of regional target pace.
                     </ThemedText>
                   </View>
-                              {/* 3. Live Inventory Telemetry */}
+                </View>
+
+                {/* 3. Live Inventory Telemetry */}
                 <View style={styles.telemetryCard}>
                   <View style={styles.telemetryHeader}>
-                    <Warehouse size={16} color="#ea580c" />
+                    <Warehouse size={15} color="#04a700" />
                     <ThemedText style={styles.telemetryTitle}>Live Inventory Telemetry</ThemedText>
                   </View>
                   <View style={styles.telemetryRow}>
-                    <View style={[styles.telemetryItem, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', borderWidth: 1 }]}>
+                    <View style={styles.telemetryItem}>
                       <View style={styles.telemetryItemHeader}>
                         <View style={[styles.pulseIndicatorDot, { backgroundColor: '#04a700' }]} />
-                        <ThemedText style={[styles.telemetryItemValue, { color: '#166534' }]}>{filteredUnits.length}</ThemedText>
+                        <ThemedText style={styles.telemetryItemValue}>{filteredUnits.length}</ThemedText>
                       </View>
-                      <ThemedText style={[styles.telemetryItemLabel, { color: '#166534' }]}>Physical Stock</ThemedText>
+                      <ThemedText style={styles.telemetryItemLabel}>Physical Stock</ThemedText>
                     </View>
-                    <View style={[styles.telemetryItem, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe', borderWidth: 1 }]}>
+                    <View style={styles.telemetryItem}>
                       <View style={styles.telemetryItemHeader}>
                         <View style={[styles.pulseIndicatorDot, { backgroundColor: '#2563eb' }]} />
-                        <ThemedText style={[styles.telemetryItemValue, { color: '#1e40af' }]}>{filteredBookings.length}</ThemedText>
+                        <ThemedText style={styles.telemetryItemValue}>{filteredBookings.length}</ThemedText>
                       </View>
-                      <ThemedText style={[styles.telemetryItemLabel, { color: '#1e40af' }]}>Active Bookings</ThemedText>
+                      <ThemedText style={styles.telemetryItemLabel}>Active Bookings</ThemedText>
                     </View>
-                    <View style={[styles.telemetryItem, { backgroundColor: '#fff7ed', borderColor: '#ffedd5', borderWidth: 1 }]}>
+                    <View style={styles.telemetryItem}>
                       <View style={styles.telemetryItemHeader}>
                         <View style={[styles.pulseIndicatorDot, { backgroundColor: '#ea580c' }]} />
-                        <ThemedText style={[styles.telemetryItemValue, { color: '#9a3412' }]}>
+                        <ThemedText style={styles.telemetryItemValue}>
                           {filteredUnits.filter(u => u.stock_status === 'reserved').length}
                         </ThemedText>
                       </View>
-                      <ThemedText style={[styles.telemetryItemLabel, { color: '#9a3412' }]}>FIFO Reserves</ThemedText>
+                      <ThemedText style={styles.telemetryItemLabel}>FIFO Reserves</ThemedText>
                     </View>
                   </View>
                 </View>
@@ -376,25 +386,28 @@ export default function OwnerDashboard({
                 {/* 4. Sales Funnel Breakdown & Targets */}
                 <View style={styles.funnelCard}>
                   <View style={styles.funnelHeader}>
-                    <TrendingUp size={16} color="#8b5cf6" />
+                    <TrendingUp size={15} color="#04a700" />
                     <ThemedText style={styles.funnelTitle}>Leads Pipeline Funnel</ThemedText>
                   </View>
-                  <View style={[styles.funnelPipelineRow, { gap: 8 }]}>
-                    <View style={[styles.funnelStage, { backgroundColor: '#f0fdfa', borderColor: '#ccfbf1', borderWidth: 1, borderRadius: 14, paddingVertical: 10 }]}>
-                      <ThemedText style={[styles.funnelStageVal, { color: '#0d9488' }]}>{leads.filter(l => l.status === 'new' || l.status === 'lead').length || 18}</ThemedText>
-                      <ThemedText style={[styles.funnelStageLabel, { color: '#0d9488' }]}>Cold</ThemedText>
+                  <View style={styles.funnelPipelineRow}>
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'new' || l.status === 'lead').length || 18}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Cold</ThemedText>
                     </View>
-                    <View style={[styles.funnelStage, { backgroundColor: '#fffbeb', borderColor: '#fef3c7', borderWidth: 1, borderRadius: 14, paddingVertical: 10 }]}>
-                      <ThemedText style={[styles.funnelStageVal, { color: '#d97706' }]}>{leads.filter(l => l.status === 'contacted' || l.status === 'active').length || 12}</ThemedText>
-                      <ThemedText style={[styles.funnelStageLabel, { color: '#d97706' }]}>Warm</ThemedText>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'contacted' || l.status === 'active').length || 12}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Warm</ThemedText>
                     </View>
-                    <View style={[styles.funnelStage, { backgroundColor: '#fef2f2', borderColor: '#fee2e2', borderWidth: 1, borderRadius: 14, paddingVertical: 10 }]}>
-                      <ThemedText style={[styles.funnelStageVal, { color: '#dc2626' }]}>{leads.filter(l => l.status === 'qualified' || l.status === 'hot').length || 8}</ThemedText>
-                      <ThemedText style={[styles.funnelStageLabel, { color: '#dc2626' }]}>Hot</ThemedText>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
+                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'qualified' || l.status === 'hot').length || 8}</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Hot</ThemedText>
                     </View>
-                    <View style={[styles.funnelStage, { backgroundColor: '#f0fdf4', borderColor: '#dcfce7', borderWidth: 1, borderRadius: 14, paddingVertical: 10 }]}>
+                    <View style={styles.funnelStageDivider} />
+                    <View style={styles.funnelStage}>
                       <ThemedText style={[styles.funnelStageVal, { color: '#04a700' }]}>{wonLeadsCount}</ThemedText>
-                      <ThemedText style={[styles.funnelStageLabel, { color: '#04a700' }]}>Won</ThemedText>
+                      <ThemedText style={styles.funnelStageLabel}>Won</ThemedText>
                     </View>
                   </View>
                   <View style={styles.funnelTargetTrack}>
@@ -412,36 +425,36 @@ export default function OwnerDashboard({
                 <ThemedText style={styles.bentoTitle}>KVR Capital Audit vault</ThemedText>
                 <View style={styles.auditCard}>
                   <View style={styles.auditHeader}>
-                    <Wallet size={16} color="#ec4899" />
+                    <Wallet size={16} color="#04a700" />
                     <ThemedText style={styles.auditCardTitle}>Auto-Journal Ledger Summary</ThemedText>
                   </View>
                   <View style={styles.auditGrid}>
-                    <View style={[styles.auditItem, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', borderWidth: 1 }]}>
+                    <View style={styles.auditItem}>
                       <View style={styles.auditRow}>
                         <ArrowDownLeft size={13} color="#04a700" />
-                        <ThemedText style={[styles.auditItemVal, { color: '#166534' }]}>₹ {totalInflow.toLocaleString('en-IN')}</ThemedText>
+                        <ThemedText style={styles.auditItemVal}>₹ {totalInflow.toLocaleString('en-IN')}</ThemedText>
                       </View>
-                      <ThemedText style={[styles.auditItemLabel, { color: '#166534' }]}>Inflow Total</ThemedText>
+                      <ThemedText style={styles.auditItemLabel}>Inflow Total</ThemedText>
                     </View>
-                    <View style={[styles.auditItem, { backgroundColor: '#fff7ed', borderColor: '#ffedd5', borderWidth: 1 }]}>
+                    <View style={styles.auditItem}>
                       <View style={styles.auditRow}>
                         <ArrowUpRight size={13} color="#ea580c" />
-                        <ThemedText style={[styles.auditItemVal, { color: '#9a3412' }]}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
+                        <ThemedText style={styles.auditItemVal}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
                       </View>
-                      <ThemedText style={[styles.auditItemLabel, { color: '#9a3412' }]}>Outflow Total</ThemedText>
+                      <ThemedText style={styles.auditItemLabel}>Outflow Total</ThemedText>
                     </View>
                   </View>
                   <View style={styles.auditDivider} />
                   <View style={styles.auditGrid}>
                     <View style={styles.auditSubItem}>
                       <ThemedText style={styles.auditItemLabel}>EST. CAPITAL NET</ThemedText>
-                      <ThemedText style={[styles.auditItemVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444', fontSize: 16 }]}>
+                      <ThemedText style={[styles.auditItemVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444', fontSize: 14 }]}>
                         {netProfit >= 0 ? '+' : ''}₹ {netProfit.toLocaleString('en-IN')}
                       </ThemedText>
                     </View>
                     <View style={styles.auditSubItem}>
                       <ThemedText style={styles.auditItemLabel}>18% EST. GST LIABILITY</ThemedText>
-                      <ThemedText style={[styles.auditItemVal, { color: '#ea580c', fontSize: 16 }]}>
+                      <ThemedText style={[styles.auditItemVal, { color: '#ea580c', fontSize: 14 }]}>
                         ₹ {Math.max(0, Math.round((totalInflow * 0.18) - (totalOutflow * 0.18 * 0.7))).toLocaleString('en-IN')}
                       </ThemedText>
                     </View>
@@ -755,7 +768,7 @@ export default function OwnerDashboard({
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f1f5f9', // Rich, elegant slate background for outstanding bento card contrast!
+    backgroundColor: '#f8fafc', // LIGHT background viewport!
   },
   scrollView: {
     flex: 1,
@@ -779,18 +792,20 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   titleWrapper: {
-    marginTop: 26, // Elegant vertical spacing below floating header
+    marginTop: 26,
     marginBottom: 22,
     gap: 4,
   },
   mainTitle: {
     fontSize: 32, // Increased font size for a premium look
+    lineHeight: 40,
     fontWeight: '400',
     color: '#ffffff', // Clean white contrast text
     letterSpacing: -0.5,
   },
   accentTitle: {
     fontSize: 34, // Increased font size for a premium look
+    lineHeight: 42,
     fontWeight: 'bold',
     color: '#04a700', // KVR brand green
     letterSpacing: -0.5,
@@ -943,19 +958,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   revenueBentoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff', // LIGHT Card background!
     borderRadius: 22,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0', // Clean slate-200 border
-    borderLeftWidth: 5,
-    borderLeftColor: '#04a700', // Brand green accent highlight!
+    borderColor: '#f1f5f9',
     gap: 18,
-    shadowColor: '#94a3b8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   revHeader: {
     flexDirection: 'row',
@@ -1016,17 +1024,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0', // Clean slate-200 border
-    borderLeftWidth: 5,
-    borderLeftColor: '#2563eb', // Brand blue accent highlight!
+    borderColor: '#f1f5f9',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    shadowColor: '#94a3b8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   ringGaugeLeft: {
     justifyContent: 'center',
@@ -1088,15 +1089,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0', // Clean slate-200 border
-    borderLeftWidth: 5,
-    borderLeftColor: '#ea580c', // Brand orange accent highlight!
+    borderColor: '#f1f5f9',
     gap: 12,
-    shadowColor: '#94a3b8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   telemetryHeader: {
     flexDirection: 'row',
@@ -1115,10 +1109,13 @@ const styles = StyleSheet.create({
   },
   telemetryItem: {
     flex: 1,
+    backgroundColor: '#f8fafc',
     borderRadius: 14,
     padding: 12,
     gap: 4,
     alignItems: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
   },
   telemetryItemHeader: {
     flexDirection: 'row',
@@ -1453,16 +1450,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0', // Clean slate-200 border
-    borderLeftWidth: 5,
-    borderLeftColor: '#ec4899', // Brand pink accent highlight!
+    borderColor: '#f1f5f9',
     padding: 18,
     gap: 14,
-    shadowColor: '#94a3b8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   auditHeader: {
     flexDirection: 'row',
@@ -1481,7 +1471,10 @@ const styles = StyleSheet.create({
   },
   auditItem: {
     flex: 1,
+    backgroundColor: '#f8fafc',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     padding: 10,
     gap: 4,
   },
@@ -1566,15 +1559,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0', // Clean slate-200 border
-    borderLeftWidth: 5,
-    borderLeftColor: '#8b5cf6', // Brand violet accent highlight!
+    borderColor: '#f1f5f9',
     gap: 12,
-    shadowColor: '#94a3b8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   funnelHeader: {
     flexDirection: 'row',

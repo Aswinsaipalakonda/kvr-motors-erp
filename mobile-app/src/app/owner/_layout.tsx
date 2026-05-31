@@ -14,7 +14,7 @@ import {
   Home, Landmark, Package, UserCheck, TrendingUp, 
   Menu as HamburgerIcon, X, CalendarDays, ShoppingBag, 
   Users, LogOut, ChevronRight, Shield, Sparkles,
-  MapPin, ChevronDown, MoreVertical, Check, User, Settings2
+  MapPin, ChevronDown, MoreVertical, Check, User, Building
 } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -24,14 +24,69 @@ import OwnerDashboard from './dashboard';
 import OwnerInventory from './inventory';
 import OwnerSales from './sales';
 import OwnerUsers from './users';
-import OwnerProfile from './profile';
+import OwnerBookings from './bookings';
 
 // Define Screen Tabs - 5 tabs!
-type ScreenTab = 'dashboard' | 'inventory' | 'sales' | 'users' | 'profile';
+type ScreenTab = 'dashboard' | 'inventory' | 'sales' | 'users' | 'bookings';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'sales', 'users', 'profile'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'sales', 'users', 'bookings'];
+
+const TABS_CONFIG = [
+  { key: 'dashboard', label: 'Home', icon: Home },
+  { key: 'inventory', label: 'Inventory', icon: Package },
+  { key: 'sales', label: 'Sales', icon: TrendingUp },
+  { key: 'users', label: 'Team', icon: Users },
+  { key: 'bookings', label: 'Bookings', icon: CalendarDays },
+] as const;
 
 import { DrawerContext } from '@/context/DrawerContext';
+
+// Branded premium hardware-accelerated micro-animated bottom tab button
+function AnimatedTabButton({ 
+  label, 
+  icon: IconComp, 
+  isActive, 
+  onPress 
+}: { 
+  label: string; 
+  icon: any; 
+  isActive: boolean; 
+  onPress: () => void; 
+}) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.7);
+
+  useEffect(() => {
+    scale.value = withSpring(isActive ? 1.05 : 1, { damping: 15, stiffness: 200 });
+    opacity.value = withSpring(isActive ? 1 : 0.65, { damping: 15, stiffness: 200 });
+  }, [isActive]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <Pressable 
+      onPress={onPress} 
+      style={styles.tabButton}
+    >
+      <Animated.View style={[styles.iconContainer, animatedStyle]}>
+        <IconComp 
+          size={22} 
+          color={isActive ? '#04a700' : '#94a3b8'} 
+          fill="none"
+          strokeWidth={isActive ? 2.2 : 1.8}
+        />
+      </Animated.View>
+      <ThemedText style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
 
 export default function OwnerLayout() {
   const pathname = usePathname();
@@ -57,7 +112,7 @@ export default function OwnerLayout() {
     }
   }, [pathname]);
 
-  const isSubRoute = pathname !== '/owner' && pathname !== '/owner/' && !TAB_KEYS.some(tab => pathname.endsWith(tab)) && !pathname.endsWith('profile');
+  const isSubRoute = pathname !== '/owner' && pathname !== '/owner/' && !TAB_KEYS.some(tab => pathname.endsWith(tab));
 
   // Shared value for Drawer slide and Main Screen shift/scale animation
   const drawerProgress = useSharedValue(0);
@@ -167,17 +222,17 @@ export default function OwnerLayout() {
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <OwnerDashboard branch={branch} setBranch={setBranch} openBranchModal={() => setIsBranchModalVisible(true)} />;
+        return <OwnerDashboard branch={branch} setBranch={setBranch} />;
       case 'inventory':
         return <OwnerInventory branch={branch} />;
       case 'sales':
         return <OwnerSales />;
       case 'users':
         return <OwnerUsers />;
-      case 'profile':
-        return <OwnerProfile />;
+      case 'bookings':
+        return <OwnerBookings />;
       default:
-        return <OwnerDashboard branch={branch} setBranch={setBranch} openBranchModal={() => setIsBranchModalVisible(true)} />;
+        return <OwnerDashboard branch={branch} setBranch={setBranch} />;
     }
   };
 
@@ -221,6 +276,12 @@ export default function OwnerLayout() {
       icon: Landmark,
       color: '#ec4899',
     },
+    {
+      title: 'Branch Mappings',
+      route: '/owner/branches',
+      icon: Building,
+      color: '#04a700',
+    },
   ];
 
   if (isSubRoute) {
@@ -230,91 +291,103 @@ export default function OwnerLayout() {
   return (
     <DrawerContext.Provider value={{ openDrawer, closeDrawer, isDrawerOpen: isDrawerOpenState }}>
       <ThemedView style={styles.container}>
-        {/* Animated Sliding Sidebar Drawer (Obsidian SaaS Styling) */}
+        {/* Animated Sliding Sidebar Drawer (Premium custom double-deck style matching second image) */}
         <Animated.View style={[styles.drawerContainer, { width: drawerWidth }, drawerAnimatedStyle]}>
-          <View style={[styles.drawerHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.drawerHeaderTop}>
-              <View style={styles.logoWrapper}>
-                <Image 
-                  source={require('@/assets/images/logo.png')} 
-                  style={styles.logoImg} 
-                  resizeMode="contain"
-                />
-              </View>
-              <Pressable onPress={closeDrawer} style={styles.closeBtn}>
-                <X size={20} color="#ffffff" />
+          {/* Top Deck: Premium Obsidian-Slate Header Container */}
+          <View style={[styles.drawerPremiumHeader, { paddingTop: insets.top + 16 }]}>
+            {/* Header Top Row */}
+            <View style={styles.drawerHeaderTopRow}>
+              <ThemedText style={styles.drawerHeaderTitle}>Profile</ThemedText>
+              <Pressable onPress={closeDrawer} style={styles.drawerCloseCircle}>
+                <X size={16} color="#ffffff" strokeWidth={2.8} />
               </Pressable>
             </View>
 
-            {/* Profile Detail */}
-            <View style={styles.profileSection}>
-              <View style={styles.avatarBorder}>
+            {/* Center Profile Deck */}
+            <View style={styles.profileDeckCenter}>
+              <View style={styles.profileAvatarContainer}>
                 <Image 
                   source={require('@/assets/images/logo.png')} 
-                  style={styles.avatarImg} 
+                  style={styles.profileAvatarImage} 
                   resizeMode="contain"
                 />
-              </View>
-              <View style={styles.profileMeta}>
-                <View style={styles.badgeRow}>
-                  <View style={styles.roleBadge}>
-                    <Shield size={10} color="#04a700" style={{ marginRight: 3 }} />
-                    <ThemedText style={styles.roleText}>{user?.role?.toUpperCase() || 'OWNER'}</ThemedText>
-                  </View>
+                {/* Floating Shield Badge */}
+                <View style={styles.profileAvatarBadge}>
+                  <Shield size={11} color="#ffffff" strokeWidth={2.8} />
                 </View>
-                <ThemedText style={styles.profileName} numberOfLines={1}>{user?.full_name || 'Enterprise Owner'}</ThemedText>
-                <Pressable onPress={() => { closeDrawer(); router.push('/owner/profile'); }} style={styles.profileLink}>
-                  <ThemedText style={styles.profileLinkText}>View profile</ThemedText>
-                  <ChevronRight size={10} color="#04a700" />
-                </Pressable>
               </View>
+              <ThemedText style={styles.profileDeckName}>{user?.full_name || 'Ravi Varma'}</ThemedText>
+              <ThemedText style={styles.profileDeckRole}>
+                {user?.role?.toUpperCase() || 'OWNER'} • Vizag HQ
+              </ThemedText>
             </View>
           </View>
 
-          <View style={styles.drawerDivider} />
-
-          {/* Navigation Menu List */}
-          <ScrollView 
-            style={styles.drawerBody} 
-            contentContainerStyle={styles.drawerBodyContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {drawerMenuItems.map((item, idx) => {
-              const IconComp = item.icon;
-              return (
-                <Pressable 
-                  key={idx}
-                  onPress={() => {
-                    closeDrawer();
-                    router.push(item.route as any);
-                  }}
-                  style={({ pressed }) => [
-                    styles.drawerMenuItem,
-                    pressed && styles.drawerMenuItemPressed
-                  ]}
-                >
-                  <View style={[styles.menuIconWrapper, { backgroundColor: `${item.color}15` }]}>
-                    <IconComp size={18} color={item.color} />
-                  </View>
-                  <ThemedText style={styles.menuItemText}>{item.title}</ThemedText>
-                  <ChevronRight size={14} color="rgba(255,255,255,0.2)" />
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Drawer Footer / Logout */}
-          <View style={[styles.drawerFooter, { paddingBottom: Platform.OS === 'ios' ? insets.bottom + 10 : 20 }]}>
-            <Pressable 
-              onPress={handleLogout} 
-              style={({ pressed }) => [
-                styles.logoutButton,
-                pressed && styles.logoutButtonPressed
-              ]}
+          {/* Bottom Deck: White Operations Sheet */}
+          <View style={styles.drawerWhiteSheet}>
+            <ThemedText style={styles.sheetSectionTitle}>Account Overview</ThemedText>
+            
+            {/* Scrollable Navigation Items */}
+            <ScrollView 
+              style={styles.sheetScrollView} 
+              contentContainerStyle={styles.sheetScrollContent}
+              showsVerticalScrollIndicator={false}
             >
-              <LogOut size={16} color="#ff4444" />
-              <ThemedText style={styles.logoutText}>Log out</ThemedText>
-            </Pressable>
+              {drawerMenuItems.map((item, idx) => {
+                const IconComp = item.icon;
+                // Soft pastel colors based on menu item color tint
+                const pastelBg = item.color === '#ea580c' ? '#fff7ed' : 
+                                 item.color === '#04a700' ? '#f0fdf4' : 
+                                 item.color === '#2563eb' ? '#eff6ff' : 
+                                 item.color === '#8b5cf6' ? '#faf5ff' : 
+                                 '#fdf2f8';
+                return (
+                  <Pressable 
+                    key={idx}
+                    onPress={() => {
+                      closeDrawer();
+                      if (item.route === '/owner/sales') {
+                        setActiveTab('sales');
+                      } else if (item.route === '/owner/users') {
+                        setActiveTab('users');
+                      } else if (item.route === '/owner/bookings') {
+                        setActiveTab('bookings');
+                      } else {
+                        router.replace(item.route as any);
+                      }
+                    }}
+                    style={({ pressed }) => [
+                      styles.sheetMenuItem,
+                      pressed && styles.sheetMenuItemPressed
+                    ]}
+                  >
+                    <View style={[styles.sheetMenuIconFrame, { backgroundColor: pastelBg }]}>
+                      <IconComp size={18} color={item.color} strokeWidth={2.2} />
+                    </View>
+                    <ThemedText style={styles.sheetMenuItemText}>{item.title}</ThemedText>
+                    <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
+                  </Pressable>
+                );
+              })}
+
+              {/* In-list Integrated Premium Logout Option */}
+              <Pressable 
+                onPress={handleLogout} 
+                style={({ pressed }) => [
+                  styles.sheetMenuItem,
+                  pressed && styles.sheetMenuItemPressed,
+                  { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }
+                ]}
+              >
+                <View style={[styles.sheetMenuIconFrame, { backgroundColor: '#fef2f2' }]}>
+                  <LogOut size={18} color="#ef4444" strokeWidth={2.2} />
+                </View>
+                <ThemedText style={[styles.sheetMenuItemText, { color: '#ef4444', fontWeight: '700' }]}>
+                  Log Out Session
+                </ThemedText>
+                <ChevronRight size={16} color="#fca5a5" strokeWidth={2} />
+              </Pressable>
+            </ScrollView>
           </View>
         </Animated.View>
 
@@ -345,20 +418,34 @@ export default function OwnerLayout() {
               </Pressable>
 
               <Pressable 
-                style={styles.moreButton}
-                onPress={() => {
-                  setActiveTab('profile');
-                  router.push('/owner/profile' as any);
-                }}
+                onPress={() => router.push('/owner/profile' as any)} 
+                style={({ pressed }) => [
+                  styles.profileHeaderBtn,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
+                ]}
               >
-                <User size={20} color="#94a3b8" />
+                <User size={18} color="#04a700" />
               </Pressable>
             </View>
           </View>
 
-          {/* Active Screen View */}
+          {/* Active Screen View with Persistent Mounting (Instant Tab Toggles!) */}
           <View style={styles.screenContainer}>
-            {renderActiveScreen()}
+            <View style={{ flex: 1, display: activeTab === 'dashboard' ? 'flex' : 'none' }}>
+              <OwnerDashboard branch={branch} setBranch={setBranch} onOpenBranchSelector={() => setIsBranchModalVisible(true)} isActive={activeTab === 'dashboard'} />
+            </View>
+            <View style={{ flex: 1, display: activeTab === 'inventory' ? 'flex' : 'none' }}>
+              <OwnerInventory branch={branch} isActive={activeTab === 'inventory'} onBack={() => setActiveTab('dashboard')} />
+            </View>
+            <View style={{ flex: 1, display: activeTab === 'sales' ? 'flex' : 'none' }}>
+              <OwnerSales isActive={activeTab === 'sales'} onBack={() => setActiveTab('dashboard')} />
+            </View>
+            <View style={{ flex: 1, display: activeTab === 'users' ? 'flex' : 'none' }}>
+              <OwnerUsers isActive={activeTab === 'users'} />
+            </View>
+            <View style={{ flex: 1, display: activeTab === 'bookings' ? 'flex' : 'none' }}>
+              <OwnerBookings isActive={activeTab === 'bookings'} onBack={() => setActiveTab('dashboard')} />
+            </View>
           </View>
 
           {/* Interactive Tap-to-Close Dim Overlay */}
@@ -367,97 +454,21 @@ export default function OwnerLayout() {
           </Animated.View>
 
           {/* Bottom Navigation Bar */}
-          <View style={[styles.tabBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10 }]}>
-
-            {/* Tab 1: Home */}
-            <Pressable 
-              onPress={() => setActiveTab('dashboard')} 
-              style={styles.tabButton}
-            >
-              <View style={[styles.iconContainer, activeTab === 'dashboard' && styles.activeIconBg]}>
-                <Home 
-                  size={22} 
-                  color={activeTab === 'dashboard' ? '#04a700' : '#9ca3af'} 
-                  fill={activeTab === 'dashboard' ? '#04a700' : 'none'}
-                  strokeWidth={1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'dashboard' && styles.activeTabLabel]}>
-                Home
-              </ThemedText>
-            </Pressable>
-
-            {/* Tab 2: Inventory */}
-            <Pressable 
-              onPress={() => setActiveTab('inventory')} 
-              style={styles.tabButton}
-            >
-              <View style={[styles.iconContainer, activeTab === 'inventory' && styles.activeIconBg]}>
-                <Package 
-                  size={22} 
-                  color={activeTab === 'inventory' ? '#04a700' : '#9ca3af'} 
-                  fill={activeTab === 'inventory' ? '#04a700' : 'none'}
-                  strokeWidth={1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'inventory' && styles.activeTabLabel]}>
-                Inventory
-              </ThemedText>
-            </Pressable>
-
-            {/* Tab 3: Sales */}
-            <Pressable 
-              onPress={() => setActiveTab('sales')} 
-              style={styles.tabButton}
-            >
-              <View style={[styles.iconContainer, activeTab === 'sales' && styles.activeIconBg]}>
-                <TrendingUp 
-                  size={22} 
-                  color={activeTab === 'sales' ? '#04a700' : '#9ca3af'} 
-                  fill={activeTab === 'sales' ? '#04a700' : 'none'}
-                  strokeWidth={1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'sales' && styles.activeTabLabel]}>
-                Sales
-              </ThemedText>
-            </Pressable>
-
-            {/* Tab 4: Team */}
-            <Pressable 
-              onPress={() => setActiveTab('users')} 
-              style={styles.tabButton}
-            >
-              <View style={[styles.iconContainer, activeTab === 'users' && styles.activeIconBg]}>
-                <Users 
-                  size={22} 
-                  color={activeTab === 'users' ? '#04a700' : '#9ca3af'} 
-                  fill={activeTab === 'users' ? '#04a700' : 'none'}
-                  strokeWidth={1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'users' && styles.activeTabLabel]}>
-                Team
-              </ThemedText>
-            </Pressable>
-
-            {/* Tab 5: Settings */}
-            <Pressable 
-              onPress={() => setActiveTab('profile')} 
-              style={styles.tabButton}
-            >
-              <View style={[styles.iconContainer, activeTab === 'profile' && styles.activeIconBg]}>
-                <Settings2 
-                  size={22} 
-                  color={activeTab === 'profile' ? '#04a700' : '#9ca3af'} 
-                  fill={activeTab === 'profile' ? '#04a700' : 'none'}
-                  strokeWidth={1.8}
-                />
-              </View>
-              <ThemedText style={[styles.tabLabel, activeTab === 'profile' && styles.activeTabLabel]}>
-                Settings
-              </ThemedText>
-            </Pressable>
+          <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
+            {/* Animated Sliding Highlight Line at the top of the tab bar */}
+            <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
+              <View style={styles.activeTopLine} />
+            </Animated.View>
+            
+            {TABS_CONFIG.map((tab) => (
+              <AnimatedTabButton 
+                key={tab.key}
+                label={tab.label}
+                icon={tab.icon}
+                isActive={activeTab === tab.key}
+                onPress={() => setActiveTab(tab.key)}
+              />
+            ))}
           </View>
         </Animated.View>
 
@@ -530,162 +541,156 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#0a0e1a', // Obsidian dark slate background
+    backgroundColor: '#ffffff', // Clean white background for the bottom sheet deck
     borderRightWidth: 1.5,
-    borderRightColor: 'rgba(255, 255, 255, 0.05)',
+    borderRightColor: '#f1f5f9',
     zIndex: 10,
-    justifyContent: 'space-between',
   },
-  drawerHeader: {
-    paddingHorizontal: 20,
+  drawerPremiumHeader: {
+    backgroundColor: '#0a0e1a', // Premium deep obsidian slate/black
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    position: 'relative',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  drawerHeaderTop: {
+  drawerHeaderTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    zIndex: 2,
   },
-  logoWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  logoImg: {
-    width: '100%',
-    height: '100%',
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 8,
-  },
-  avatarBorder: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#04a700',
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  profileMeta: {
-    flex: 1,
-    gap: 2,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(4, 167, 0, 0.12)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  roleText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#04a700',
-  },
-  profileName: {
-    fontSize: 14.5,
+  drawerHeaderTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
   },
-  profileLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  profileLinkText: {
-    fontSize: 11,
-    color: '#04a700',
-    fontWeight: '600',
-  },
-  drawerDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginHorizontal: 20,
-    marginVertical: 14,
-  },
-  drawerBody: {
-    flex: 1,
-  },
-  drawerBodyContent: {
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  drawerMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 14,
-    gap: 12,
-  },
-  drawerMenuItemPressed: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  menuIconWrapper: {
+  drawerCloseCircle: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  profileDeckCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    zIndex: 2,
+  },
+  profileAvatarContainer: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)', // Premium platinum/silver border
+    backgroundColor: '#ffffff', // Solid white to elegantly frame the white logo background!
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10, // Generous padding to frame the logo as a seal
+    position: 'relative',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  profileAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 4,
+  },
+  profileAvatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ea580c', // Bright orange floating badge
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  profileDeckName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginTop: 12,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  profileDeckRole: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#cbd5e1', // Elegant silver/slate grey role text
+    marginTop: 4,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  drawerWhiteSheet: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    marginTop: -24, // Negative margin for overlap effect
+    paddingTop: 8,
+  },
+  sheetSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 24,
+  },
+  sheetScrollView: {
+    flex: 1,
+  },
+  sheetScrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+    gap: 6,
+  },
+  sheetMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 16,
+    gap: 14,
+  },
+  sheetMenuItemPressed: {
+    backgroundColor: '#f8fafc',
+  },
+  sheetMenuIconFrame: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuItemText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+  sheetMenuItemText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e293b',
     flex: 1,
-  },
-  drawerFooter: {
-    paddingHorizontal: 20,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 68, 68, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 68, 68, 0.15)',
-  },
-  logoutButtonPressed: {
-    backgroundColor: 'rgba(255, 68, 68, 0.14)',
-  },
-  logoutText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#ff4444',
   },
   mainContentContainer: {
     flex: 1,
-    backgroundColor: '#0a0e1a', // Obsidian dark background viewport to prevent white flashes!
+    backgroundColor: '#f8fafc', // LIGHT background viewport!
     shadowColor: '#000000',
     shadowOffset: { width: -12, height: 0 },
     shadowOpacity: 0.35,
@@ -749,7 +754,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
-  moreButton: {
+  profileHeaderBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
@@ -757,13 +762,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(4, 167, 0, 0.25)', // Brand accent outline
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#ffffff', 
-    height: Platform.OS === 'ios' ? 78 : 60,
-    paddingTop: 4,
     paddingHorizontal: 0,
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -786,21 +789,6 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: 10,
   },
-  activeIndicatorWrapper: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 48,
-    height: '100%',
-    alignItems: 'center',
-  },
-  activeTopLine: {
-    height: 3.5,
-    width: 48,
-    backgroundColor: '#04a700', 
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-  },
   activeTopGlow: {
     height: 24,
     width: 48,
@@ -809,24 +797,37 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 16,
   },
   iconContainer: {
-    width: 48,
+    width: 44,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 1,
-    borderRadius: 16,
+    marginBottom: 2,
+    zIndex: 10,
   },
-  activeIconBg: {
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+  activeIndicatorWrapper: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 48,
+    height: 3,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  activeTopLine: {
+    height: 3,
+    width: 48,
+    backgroundColor: '#04a700', 
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
-    color: '#9ca3af', 
+    color: '#94a3b8', 
   },
   activeTabLabel: {
     color: '#04a700', 
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
