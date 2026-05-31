@@ -15,7 +15,7 @@ export default function EntryPoint() {
     if (user) {
       if (user.role === 'owner') {
         router.replace('/owner/dashboard');
-      } else if (user.role === 'sales') {
+      } else if (user.role === 'sales' || user.role === 'sales_executive') {
         router.replace('/sales/dashboard');
       } else if (user.role === 'supervisor') {
         router.replace('/supervisor/dashboard');

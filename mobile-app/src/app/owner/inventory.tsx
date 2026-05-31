@@ -101,7 +101,7 @@ export default function OwnerInventory({
   branchesList.forEach((branchItem) => {
     branchItem.showrooms?.forEach((sr: any) => {
       if (branch !== 'All Branches') {
-        const cleaned = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        const cleaned = branch.replace('Visakhapatnam - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
         if (!sr.name.toLowerCase().includes(cleaned)) return;
       }
       const vehicles = vehicleUnits.filter((u) => u.showroom_name === sr.name);
@@ -112,7 +112,7 @@ export default function OwnerInventory({
 
     branchItem.inventory_locations?.forEach((loc: any) => {
       if (branch !== 'All Branches') {
-        const cleaned = branch.replace('Vizag - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
+        const cleaned = branch.replace('Visakhapatnam - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
         if (!loc.name.toLowerCase().includes(cleaned) && !branchItem.name.toLowerCase().includes(cleaned)) return;
       }
       const vehicles = vehicleUnits.filter((u) => u.location_name === loc.name);
@@ -124,7 +124,7 @@ export default function OwnerInventory({
 
   const warehouseStock = showroomStock.length > 0 ? showroomStock : [
     { name: 'Pendurthi Godown', vehicles: 45, batteries: 30, status: 'Sufficient' },
-    { name: 'KVR Showroom - Vizag', vehicles: 3, batteries: 8, status: 'Critical' },
+    { name: 'KVR Showroom - Visakhapatnam', vehicles: 3, batteries: 8, status: 'Critical' },
     { name: 'KVR Showroom - Srikakulam', vehicles: 18, batteries: 12, status: 'Sufficient' },
     { name: 'KVR Showroom - Kakinada', vehicles: 9, batteries: 6, status: 'Low Stock' },
   ];
@@ -159,8 +159,8 @@ export default function OwnerInventory({
   }));
 
   const fallbackFeed: FeedItem[] = [
-    { kind: 'ev', key: 'fb-ev-1', title: 'VIN-KG-44821', subtitle: 'Kinetic Green Zoom', location: 'KVR Showroom - Vizag', status: 'In Stock', flagged: false },
-    { kind: 'ev', key: 'fb-ev-2', title: 'VIN-DY-10093', subtitle: 'Dynamo EV Pro', location: 'KVR Showroom - Vizag', status: 'Reserved', flagged: true },
+    { kind: 'ev', key: 'fb-ev-1', title: 'VIN-KG-44821', subtitle: 'Kinetic Green Zoom', location: 'KVR Showroom - Visakhapatnam', status: 'In Stock', flagged: false },
+    { kind: 'ev', key: 'fb-ev-2', title: 'VIN-DY-10093', subtitle: 'Dynamo EV Pro', location: 'KVR Showroom - Visakhapatnam', status: 'Reserved', flagged: true },
     { kind: 'battery', key: 'fb-bt-1', title: 'B-2026-0091', subtitle: '60V Li-ion', location: 'Pendurthi Godown', status: 'Available', flagged: false },
     { kind: 'battery', key: 'fb-bt-2', title: 'B-2026-0042', subtitle: '48V Li-ion', location: 'Pendurthi Godown', status: 'On Hold', flagged: true },
   ];
@@ -256,7 +256,7 @@ export default function OwnerInventory({
                   </View>
                   <ThemedText style={styles.alarmDesc}>
                     <ThemedText style={styles.alarmStrong}>Dynamo EV</ThemedText> stock in{' '}
-                    <ThemedText style={styles.alarmStrong}>Vizag Showroom</ThemedText> is down to{' '}
+                    <ThemedText style={styles.alarmStrong}>Visakhapatnam Showroom</ThemedText> is down to{' '}
                     <ThemedText style={styles.alarmCritical}>3 units</ThemedText>. Reallocation from{' '}
                     <ThemedText style={styles.alarmStrong}>Pendurthi Godown</ThemedText> recommended.
                   </ThemedText>

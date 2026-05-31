@@ -110,28 +110,24 @@ export default function SupervisorLayout() {
     };
   });
 
-  const renderActiveScreen = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <SupervisorDashboard />;
-      case 'inventory':
-        return <SupervisorInventory />;
-      case 'leads':
-        return <SupervisorLeads />;
-      default:
-        return <SupervisorDashboard />;
-    }
-  };
-
   if (isSubRoute) {
     return <Slot />;
   }
 
   return (
     <ThemedView style={styles.container}>
-      {/* Active Screen Area */}
+      {/* Persistent screen mounting — toggled via display so tab switches never
+          re-mount a screen (which previously replayed the fade = white blink). */}
       <View style={styles.screenContainer}>
-        {renderActiveScreen()}
+        <View style={[styles.screenLayer, { display: activeTab === 'dashboard' ? 'flex' : 'none' }]}>
+          <SupervisorDashboard />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'inventory' ? 'flex' : 'none' }]}>
+          <SupervisorInventory />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
+          <SupervisorLeads />
+        </View>
       </View>
 
       {/* Dark Glassmorphic Bottom Navigation Bar */}
@@ -162,6 +158,9 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  screenLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   tabBar: {
     flexDirection: 'row',

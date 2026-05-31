@@ -81,18 +81,22 @@ export default function SalesDashboard() {
           {/* Dark Premium Header Section */}
           <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
             <View style={styles.headerRow}>
-              <View style={styles.profileWrapper}>
+              <Pressable
+                onPress={() => router.push('/sales/profile' as any)}
+                style={({ pressed }) => [styles.profileWrapper, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+                hitSlop={8}
+              >
                 <Image 
                   source={require('@/assets/images/logo.png')} 
                   style={styles.profileImg} 
                   resizeMode="contain"
                 />
-              </View>
+              </Pressable>
               
               <View style={styles.locationSelector}>
                 <MapPin size={14} color="#04a700" />
                 <ThemedText style={styles.locationText} numberOfLines={1}>
-                  {user?.branch_name || 'Vizag Showroom'}
+                  {user?.branch_name || 'Visakhapatnam Showroom'}
                 </ThemedText>
               </View>
             </View>
@@ -161,6 +165,21 @@ export default function SalesDashboard() {
                     </View>
                   </Pressable>
                 </View>
+
+                {/* Walk-in token booking CTA */}
+                <Pressable
+                  onPress={() => router.push('/sales/booking-form' as any)}
+                  style={({ pressed }) => [styles.bookingCta, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                >
+                  <View style={styles.bookingCtaIcon}>
+                    <PhoneCall size={18} color="#ffffff" />
+                  </View>
+                  <View style={styles.bookingCtaText}>
+                    <ThemedText style={styles.bookingCtaTitle}>+ New Walk-in Booking</ThemedText>
+                    <ThemedText style={styles.bookingCtaDesc}>Register a token advance deposit</ThemedText>
+                  </View>
+                  <ArrowUpRight size={18} color="#04a700" />
+                </Pressable>
               </View>
 
               {/* Top Pipeline Leads */}
@@ -248,6 +267,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.25)',
   },
   profileImg: {
     width: 28,
@@ -371,6 +392,44 @@ const styles = StyleSheet.create({
   toolDesc: {
     fontSize: 10,
     color: '#64748b',
+  },
+  bookingCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.25)',
+    shadowColor: '#04a700',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  bookingCtaIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#04a700',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingCtaText: {
+    flex: 1,
+    gap: 2,
+  },
+  bookingCtaTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  bookingCtaDesc: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '600',
   },
   leadsSection: {
     paddingHorizontal: Spacing.four,

@@ -29,6 +29,7 @@ interface SalesInvoice {
   insurance_partner: string | null;
   delivery_status: 'processing' | 'dispatched' | 'delivered' | string;
   created_at: string;
+  sale_date: string;
   sales_executive: number;
   sales_executive_name: string;
 }
@@ -147,7 +148,7 @@ export default function SalesCustomers() {
                 myInvoices.map((inv, idx) => {
                   const status = getDeliveryStatusStyle(inv.delivery_status);
                   const formattedPrice = parseFloat(inv.sale_price || '0').toLocaleString('en-IN');
-                  const formattedDate = new Date(inv.created_at).toLocaleDateString('en-IN', {
+                  const formattedDate = new Date(inv.sale_date || inv.created_at).toLocaleDateString('en-IN', {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'

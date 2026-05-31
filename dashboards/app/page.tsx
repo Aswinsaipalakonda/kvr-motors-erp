@@ -201,7 +201,7 @@ export default function Home() {
             </div>
           </div>
           <span className="text-[10px] font-mono font-bold text-slate-400 px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50">
-            Node: LIVE_SERVER_VIZAG_MAIN
+            Node: LIVE_SERVER_VISAKHAPATNAM_MAIN
           </span>
         </div>
 

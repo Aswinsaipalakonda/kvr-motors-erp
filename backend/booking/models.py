@@ -15,6 +15,9 @@ class AdvanceBooking(models.Model):
     customer_name = models.CharField(max_length=255)
     contact_number = models.CharField(max_length=15)
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE)
+    color = models.CharField(max_length=50, blank=True, null=True)
+    payment_mode = models.CharField(max_length=50, blank=True, null=True)
+    payment_reference = models.CharField(max_length=100, blank=True, null=True)
     vehicle_unit = models.ForeignKey(
         VehicleUnit, 
         on_delete=models.SET_NULL, 

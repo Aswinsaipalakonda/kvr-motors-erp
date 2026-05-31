@@ -46,12 +46,12 @@ export default function Sidebar() {
   const [showBranchSelector, setShowBranchSelector] = useState(false);
   const [currentBranch, setCurrentBranch] = useState({
     name: "KVR Showroom",
-    location: "Vizag Branch",
+    location: "Visakhapatnam Branch",
   });
 
   const branches = [
-    { name: "KVR Showroom", location: "Vizag Branch" },
-    { name: "Future Ride", location: "Vizag Branch" },
+    { name: "KVR Showroom", location: "Visakhapatnam Branch" },
+    { name: "Future Ride", location: "Visakhapatnam Branch" },
     { name: "KVR Showroom", location: "Srikakulam Branch" },
     { name: "KVR Showroom", location: "Kakinada Branch" },
   ];

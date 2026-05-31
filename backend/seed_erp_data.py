@@ -10,27 +10,30 @@ from branches.models import Branch, Showroom, InventoryLocation
 from vehicles.models import VehicleBrand, VehicleModel, VehicleUnit
 from battery.models import Battery
 from users.models import User
+from inventory.models import StockTransfer
+from booking.models import AdvanceBooking
+from sales.models import SalesInvoice
 
 def seed_erp_data():
     print("--- Seeding Branches & Locations ---")
     branch, _ = Branch.objects.get_or_create(
-        name="KVR Motors - Vizag",
+        name="KVR Motors - Visakhapatnam",
         defaults={
-            "address": "Vizag City High Road",
+            "address": "Visakhapatnam City High Road",
             "phone_number": "9876543210",
             "is_active": True
         }
     )
     
-    showroom_vizag, _ = Showroom.objects.get_or_create(
+    showroom_visakhapatnam, _ = Showroom.objects.get_or_create(
         branch=branch,
-        name="KVR Showroom - Vizag",
+        name="KVR Showroom - Visakhapatnam",
         defaults={"is_active": True}
     )
     
     showroom_future, _ = Showroom.objects.get_or_create(
         branch=branch,
-        name="Future Ride - Vizag",
+        name="Future Ride - Visakhapatnam",
         defaults={"is_active": True}
     )
     
@@ -38,7 +41,7 @@ def seed_erp_data():
         branch=branch,
         name="Pendurthi Godown",
         defaults={
-            "showroom": showroom_vizag,
+            "showroom": showroom_visakhapatnam,
             "is_active": True
         }
     )
@@ -96,7 +99,7 @@ def seed_erp_data():
         defaults={
             "model": model_luna,
             "branch": branch,
-            "showroom": showroom_vizag,
+            "showroom": showroom_visakhapatnam,
             "location": location_pendurthi,
             "motor_number": "MTR-90802",
             "chassis_number": "CHS-88902",
@@ -112,7 +115,7 @@ def seed_erp_data():
         defaults={
             "model": model_dynamo,
             "branch": branch,
-            "showroom": showroom_vizag,
+            "showroom": showroom_visakhapatnam,
             "location": location_pendurthi,
             "motor_number": "MTR-90805",
             "chassis_number": "CHS-88904",
@@ -128,7 +131,7 @@ def seed_erp_data():
         defaults={
             "model": model_watts,
             "branch": branch,
-            "showroom": showroom_vizag,
+            "showroom": showroom_visakhapatnam,
             "location": location_pendurthi,
             "motor_number": "MTR-90812",
             "chassis_number": "CHS-88915",
@@ -187,8 +190,8 @@ def seed_erp_data():
             "email": "owner@kvrmotors.com",
             "full_name": "Ravi Varma",
             "role": "owner",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543210"
         },
         {
@@ -197,8 +200,8 @@ def seed_erp_data():
             "email": "supervisor@kvrmotors.com",
             "full_name": "Suresh Babu",
             "role": "supervisor",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543211"
         },
         {
@@ -207,8 +210,8 @@ def seed_erp_data():
             "email": "sales@kvrmotors.com",
             "full_name": "Anil Kumar",
             "role": "sales_executive",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543212"
         }
     ]
@@ -234,6 +237,85 @@ def seed_erp_data():
         user.phone_number = user_data["phone_number"]
         user.is_active = True
         user.save()
+
+    print("--- Seeding Stock Transfers, Bookings & Sales Invoices ---")
+    sales_user = User.objects.get(username="sales")
+    supervisor_user = User.objects.get(username="supervisor")
+    
+    # We need vehicle units to transfer/sell/book
+    unit_luna = VehicleUnit.objects.get(vin_number="KVRVIN2026X101")
+    unit_dynamo = VehicleUnit.objects.get(vin_number="KVRVIN2026X102")
+    unit_watts = VehicleUnit.objects.get(vin_number="KVRVIN2026X104")
+    
+    # Seed transfers
+    StockTransfer.objects.get_or_create(
+        transfer_id="TR-2026-902",
+        defaults={
+            "vehicle_unit": unit_luna,
+            "from_location": location_pendurthi,
+            "to_location": location_pineapple,
+            "status": "pending",
+            "requested_by": sales_user
+        }
+    )
+    StockTransfer.objects.get_or_create(
+        transfer_id="TR-2026-903",
+        defaults={
+            "vehicle_unit": unit_dynamo,
+            "from_location": location_pineapple,
+            "to_location": location_pendurthi,
+            "status": "approved",
+            "requested_by": sales_user,
+            "approved_by": supervisor_user
+        }
+    )
+    
+    # Seed bookings
+    AdvanceBooking.objects.get_or_create(
+        booking_id="BK-8012",
+        defaults={
+            "customer_name": "A. Srinivas",
+            "contact_number": "9876543210",
+            "vehicle_model": model_luna,
+            "vehicle_unit": unit_luna,
+            "advance_amount": 5000.00,
+            "expiry_date": date(2026, 6, 15),
+            "status": "pending",
+            "assigned_executive": sales_user,
+            "pdi_verified": "pending"
+        }
+    )
+    AdvanceBooking.objects.get_or_create(
+        booking_id="BK-8021",
+        defaults={
+            "customer_name": "V. Prasad",
+            "contact_number": "9876543211",
+            "vehicle_model": model_dynamo,
+            "vehicle_unit": unit_dynamo,
+            "advance_amount": 10000.00,
+            "expiry_date": date(2026, 6, 20),
+            "status": "confirmed",
+            "assigned_executive": sales_user,
+            "pdi_verified": "yes"
+        }
+    )
+    
+    # Seed sales invoices
+    SalesInvoice.objects.get_or_create(
+        invoice_number="INV-2026-0789",
+        defaults={
+            "customer_name": "M. Satish",
+            "customer_contact": "9876543212",
+            "vehicle_unit": unit_watts,
+            "assigned_battery": Battery.objects.get(serial_number="BATT-00890"),
+            "sale_price": 145000.00,
+            "payment_mode": "SBI Finance",
+            "insurance_partner": "ICICI Lombard",
+            "delivery_status": "ready",
+            "sales_executive": sales_user,
+            "branch": branch
+        }
+    )
 
     print("=== All ERP Inventory Seeding Complete! ===")
 

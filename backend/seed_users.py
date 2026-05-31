@@ -15,8 +15,8 @@ def seed_users():
             "email": "owner@kvrmotors.com",
             "full_name": "Ravi Varma",
             "role": "owner",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543210"
         },
         {
@@ -25,8 +25,8 @@ def seed_users():
             "email": "supervisor@kvrmotors.com",
             "full_name": "Suresh Babu",
             "role": "supervisor",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543211"
         },
         {
@@ -35,8 +35,8 @@ def seed_users():
             "email": "sales@kvrmotors.com",
             "full_name": "Anil Kumar",
             "role": "sales_executive",
-            "branch": "KVR Motors - Vizag",
-            "showroom": "KVR Showroom - Vizag",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543212"
         }
     ]

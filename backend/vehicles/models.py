@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from branches.models import Branch, Showroom, InventoryLocation
 
 class VehicleBrand(models.Model):
@@ -42,16 +43,52 @@ class VehicleUnit(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="vehicle_units")
     showroom = models.ForeignKey(Showroom, on_delete=models.CASCADE, related_name="vehicle_units")
     location = models.ForeignKey(InventoryLocation, on_delete=models.CASCADE, related_name="vehicle_units")
-    
-    vin_number = models.CharField(max_length=50, unique=True)
-    motor_number = models.CharField(max_length=50, unique=True)
-    chassis_number = models.CharField(max_length=50, unique=True)
-    color = models.CharField(max_length=50)
+
+    # Physical identifiers. A unit may arrive with only some of these stamped on it,
+    # so each is optional — but at least one is required (enforced in clean()).
+    # Uniqueness is enforced only when a value is actually provided (see Meta).
+    vin_number = models.CharField(max_length=50, null=True, blank=True)
+    motor_number = models.CharField(max_length=50, null=True, blank=True)
+    chassis_number = models.CharField(max_length=50, null=True, blank=True)
+    color = models.CharField(max_length=50, blank=True, null=True)
     purchase_date = models.DateField(blank=True, null=True)
     
     stock_status = models.CharField(max_length=20, choices=STOCK_STATUS_CHOICES, default='available')
     booking_status = models.BooleanField(default=False)
     assigned_battery = models.CharField(max_length=100, blank=True, null=True, help_text="Serial number of assigned battery")
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["vin_number"], name="unique_vin_when_present",
+                condition=models.Q(vin_number__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=["motor_number"], name="unique_motor_when_present",
+                condition=models.Q(motor_number__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=["chassis_number"], name="unique_chassis_when_present",
+                condition=models.Q(chassis_number__isnull=False),
+            ),
+        ]
+
+    def clean(self):
+        # At least one physical identifier must be supplied to register a unit.
+        if not (self.vin_number or self.motor_number or self.chassis_number):
+            raise ValidationError(
+                "Provide at least one identifier: VIN number, motor number, or chassis number."
+            )
+
+    def save(self, *args, **kwargs):
+        # Normalise empty strings to NULL so the partial-unique constraints don't
+        # treat multiple blank entries as duplicates.
+        for field in ("vin_number", "motor_number", "chassis_number"):
+            value = getattr(self, field)
+            if value is not None and value.strip() == "":
+                setattr(self, field, None)
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.model} (VIN: {self.vin_number})"
+        ident = self.vin_number or self.motor_number or self.chassis_number or f"Unit #{self.pk}"
+        return f"{self.model} ({ident})"

@@ -19,10 +19,10 @@ export interface VehicleUnitInput {
   branch: number; // Branch ID
   showroom: number; // Showroom ID
   location: number; // Location ID
-  vin_number: string;
-  motor_number: string;
-  chassis_number: string;
-  color: string;
+  vin_number?: string | null;
+  motor_number?: string | null;
+  chassis_number?: string | null;
+  color?: string | null;
   purchase_date?: string;
   stock_status?: string;
   booking_status?: boolean;
@@ -46,6 +46,26 @@ export const getVehicleUnits = async () => {
 
 export const createVehicleModel = async (data: VehicleModelInput) => {
   const response = await api.post("/vehicle-models/", data);
+  return response.data;
+};
+
+export const updateVehicleModel = async (id: number, data: Partial<VehicleModelInput>) => {
+  const response = await api.patch(`/vehicle-models/${id}/`, data);
+  return response.data;
+};
+
+export const createVehicleUnit = async (data: VehicleUnitInput) => {
+  const response = await api.post("/vehicle-units/", data);
+  return response.data;
+};
+
+export const updateVehicleUnit = async (id: number, data: Partial<VehicleUnitInput>) => {
+  const response = await api.patch(`/vehicle-units/${id}/`, data);
+  return response.data;
+};
+
+export const deleteVehicleUnit = async (id: number) => {
+  const response = await api.delete(`/vehicle-units/${id}/`);
   return response.data;
 };
 

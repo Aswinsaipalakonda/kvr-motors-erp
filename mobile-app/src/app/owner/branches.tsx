@@ -120,8 +120,8 @@ export default function OwnerBranches({
   }, [isActive, handleBack]);
 
   const FALLBACK_OUTLETS: Outlet[] = [
-    { id: 1, name: 'KVR Motors - Vizag', showroom: 'KVR Showroom - Vizag', location: 'Vizag', revenue: 3500000, unitsSold: 28, targetUnits: 50, manager: 'Suresh Babu', phone: '9876543210', color: '#04a700' },
-    { id: 2, name: 'KVR Motors - Vizag', showroom: 'Future Ride - Vizag', location: 'Vizag', revenue: 1020000, unitsSold: 22, targetUnits: 20, manager: 'Anil Kumar', phone: '9876543211', color: '#d71d22' },
+    { id: 1, name: 'KVR Motors - Visakhapatnam', showroom: 'KVR Showroom - Visakhapatnam', location: 'Visakhapatnam', revenue: 3500000, unitsSold: 28, targetUnits: 50, manager: 'Suresh Babu', phone: '9876543210', color: '#04a700' },
+    { id: 2, name: 'KVR Motors - Visakhapatnam', showroom: 'Future Ride - Visakhapatnam', location: 'Visakhapatnam', revenue: 1020000, unitsSold: 22, targetUnits: 20, manager: 'Anil Kumar', phone: '9876543211', color: '#d71d22' },
     { id: 3, name: 'KVR Motors - Srikakulam', showroom: 'KVR Showroom - Srikakulam', location: 'Srikakulam', revenue: 1850000, unitsSold: 16, targetUnits: 30, manager: 'Ramesh Rao', phone: '9876543212', color: '#2563eb' },
     { id: 4, name: 'KVR Motors - Kakinada', showroom: 'KVR Showroom - Kakinada', location: 'Kakinada', revenue: 980000, unitsSold: 9, targetUnits: 25, manager: 'Venkat Reddy', phone: '9876543213', color: '#ea580c' },
   ];
@@ -564,7 +564,7 @@ export default function OwnerBranches({
                   <ThemedText style={styles.fieldLabel}>Showroom Name</ThemedText>
                   <TextInput
                     style={[styles.input, errors.showroom && styles.inputError]}
-                    placeholder="e.g. KVR Showroom - Vizag"
+                    placeholder="e.g. KVR Showroom - Visakhapatnam"
                     placeholderTextColor="#94a3b8"
                     value={form.showroom}
                     onChangeText={(t) => updateField('showroom', t)}
@@ -577,7 +577,7 @@ export default function OwnerBranches({
                   <ThemedText style={styles.fieldLabel}>Location</ThemedText>
                   <TextInput
                     style={[styles.input, errors.location && styles.inputError]}
-                    placeholder="e.g. Vizag"
+                    placeholder="e.g. Visakhapatnam"
                     placeholderTextColor="#94a3b8"
                     value={form.location}
                     onChangeText={(t) => updateField('location', t)}

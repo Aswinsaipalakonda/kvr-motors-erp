@@ -59,7 +59,7 @@ Once the Owner role is complete, you should proceed with the other core business
 * **Core Screens**:
   * **Staff Operations Dashboard**: Simple, high-contrast visual feeds displaying assigned delivery handovers, pending godown transfers, and repair tickets.
   * **Digital Customer Handover Portal**: Sleek interactive checklist (keys, battery charger, owner's manual, warranty card) featuring a digital signature pad and instant photo capture tool of the physical vehicle at delivery.
-  * **Godown Stock Mover (Barcode/QR Scan)**: Quick QR scanning screen (or alphanumeric text inputs) to record when a vehicle or battery physically leaves the Vizag main warehouse for Kakinada or Srikakulam showrooms.
+  * **Godown Stock Mover (Barcode/QR Scan)**: Quick QR scanning screen (or alphanumeric text inputs) to record when a vehicle or battery physically leaves the Visakhapatnam main warehouse for Kakinada or Srikakulam showrooms.
   * **EV Service & Repairs Logger**: Diagnostic reporting sheet for showroom mechanics to record battery SoC diagnostics, thermal limits, and parts replaced during routine maintenance.
 
 ---

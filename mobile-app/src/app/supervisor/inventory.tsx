@@ -188,7 +188,7 @@ export default function SupervisorInventory() {
                               <MapPin size={11} color="#64748b" />
                               <ThemedText style={styles.gridLabel}>Showroom/Godown</ThemedText>
                             </View>
-                            <ThemedText style={styles.gridValue}>{v.location_name || 'Vizag Showroom'}</ThemedText>
+                            <ThemedText style={styles.gridValue}>{v.location_name || 'Visakhapatnam Showroom'}</ThemedText>
                           </View>
 
                           <View style={styles.gridItem}>
@@ -265,7 +265,7 @@ export default function SupervisorInventory() {
                               <MapPin size={11} color="#64748b" />
                               <ThemedText style={styles.gridLabel}>Location</ThemedText>
                             </View>
-                            <ThemedText style={styles.gridValue}>{b.location_name || 'Vizag Showroom'}</ThemedText>
+                            <ThemedText style={styles.gridValue}>{b.location_name || 'Visakhapatnam Showroom'}</ThemedText>
                           </View>
 
                           <View style={styles.gridItem}>

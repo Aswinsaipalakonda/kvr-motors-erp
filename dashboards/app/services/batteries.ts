@@ -11,6 +11,31 @@ export const getBatteries = async () => {
   return response.data;
 };
 
+export interface BatteryInput {
+  serial_number: string;
+  capacity: string;
+  purchase_date: string;
+  location: number;
+  supplier: string;
+  warranty_years?: number;
+  status?: string;
+}
+
+export const createBattery = async (data: BatteryInput) => {
+  const response = await api.post("/batteries/", data);
+  return response.data;
+};
+
+export const updateBattery = async (id: number, data: Partial<BatteryInput>) => {
+  const response = await api.patch(`/batteries/${id}/`, data);
+  return response.data;
+};
+
+export const deleteBattery = async (id: number) => {
+  const response = await api.delete(`/batteries/${id}/`);
+  return response.data;
+};
+
 export const checkFifo = async (serial: string) => {
   const response = await api.get(`/batteries/check-fifo/?serial=${encodeURIComponent(serial)}`);
   return response.data;

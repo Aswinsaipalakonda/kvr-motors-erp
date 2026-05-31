@@ -6,14 +6,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
   ClipboardCheck, Clock, Check, X, AlertTriangle, 
-  LogOut, ShieldAlert, BadgeCheck 
+  User, ShieldAlert, BadgeCheck, UserCheck, Boxes 
 } from 'lucide-react-native';
 
 interface FifoOverride {
@@ -43,7 +42,7 @@ interface Booking {
 
 export default function SupervisorDashboard() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -138,8 +137,8 @@ export default function SupervisorDashboard() {
               <ThemedText style={styles.badgeText}>SUPERVISOR OPERATIONS PORTAL</ThemedText>
             </View>
 
-            <Pressable onPress={() => logout()} style={styles.logoutBtn}>
-              <LogOut size={16} color="#ffffff" />
+            <Pressable onPress={() => router.push('/supervisor/profile' as any)} style={({ pressed }) => [styles.profileBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}>
+              <User size={18} color="#04a700" />
             </Pressable>
           </View>
 
@@ -173,6 +172,44 @@ export default function SupervisorDashboard() {
               <View style={styles.metricCard}>
                 <ThemedText style={styles.metricVal}>{pendingBookings.length}</ThemedText>
                 <ThemedText style={styles.metricLabel}>Booking Locks</ThemedText>
+              </View>
+            </View>
+
+            {/* Quick Actions to Operations Sub-Screens */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <ClipboardCheck size={18} color="#04a700" />
+                <ThemedText style={styles.sectionTitle}>Operations Command Center</ThemedText>
+              </View>
+              <View style={styles.quickGrid}>
+                <Pressable onPress={() => router.push('/supervisor/fifo-overrides' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(234, 88, 12, 0.1)' }]}>
+                    <ShieldAlert size={18} color="#ea580c" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>FIFO Overrides</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Battery exceptions</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/transfers' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(37, 99, 235, 0.1)' }]}>
+                    <Boxes size={18} color="#2563eb" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Stock Transfers</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Godown movers</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/leads-assignment' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                    <UserCheck size={18} color="#8b5cf6" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Lead Allocation</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Assign executives</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/bookings' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(4, 167, 0, 0.1)' }]}>
+                    <BadgeCheck size={18} color="#04a700" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Booking Locks</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Verify deposits</ThemedText>
+                </Pressable>
               </View>
             </View>
 
@@ -340,13 +377,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.8,
   },
-  logoutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  profileBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.25)',
   },
   titleWrapper: {
     marginBottom: 6,
@@ -415,6 +454,39 @@ const styles = StyleSheet.create({
   sectionContainer: {
     paddingHorizontal: Spacing.four,
     gap: 12,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  quickCard: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    gap: 8,
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  quickIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickTitle: {
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  quickDesc: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '600',
   },
   sectionHeaderRow: {
     flexDirection: 'row',

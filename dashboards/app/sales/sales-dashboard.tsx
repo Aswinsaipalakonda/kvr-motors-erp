@@ -1,11 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
-import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
-import { getLeads, createLead, updateLead } from "../services/leads";
-import { createBooking } from "../services/bookings";
-import { createSalesInvoice } from "../services/sales";
+import React, { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -14,6 +9,13 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+
+import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
+import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
+import { getLeads, createLead, updateLead } from "../services/leads";
+import { createBooking, getBookings, updateBooking } from "../services/bookings";
+import { createSalesInvoice, getSalesInvoices } from "../services/sales";
+
 import {
   Compass,
   CreditCard,
@@ -27,8 +29,15 @@ import {
   UsersRound,
   FileCheck,
   CalendarDays,
-  Target
+  Target,
+  Sparkles,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ShoppingBag,
+  FileSpreadsheet
 } from "lucide-react";
+
 import { 
   PieChart, 
   Pie, 
@@ -40,26 +49,41 @@ import {
 export default function SalesDashboard() {
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const activeTab = lastSegment === "sales" ? "dashboard" : lastSegment;
+  const initialTab = lastSegment === "sales" ? "dashboard" : lastSegment;
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync state with browser back/forward navigation popstate events
+  useEffect(() => {
+    const handlePopState = () => {
+      const segment = window.location.pathname.split("/").filter(Boolean).pop() || "dashboard";
+      const tab = segment === "sales" ? "dashboard" : segment;
+      setActiveTab(tab);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  
-  // Local Modals
+  // Toast feedback
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Modals state
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
 
-  // AUTO-FILL SEARCH STATE
+  // Auto-fill sales checkout VIN search
   const [vinQuery, setVinQuery] = useState("");
   const [autoFillResult, setAutoFillResult] = useState<any>(null);
   const [vinSearchError, setVinSearchError] = useState("");
   const [vinSearchLoading, setVinSearchLoading] = useState(false);
 
-  // FIFO WARNING STATE
+  // FIFO validation states
   const [selectedBattery, setSelectedBattery] = useState("");
   const [fifoWarning, setFifoWarning] = useState(false);
   const [overrideRequested, setOverrideRequested] = useState(false);
@@ -67,29 +91,40 @@ export default function SalesDashboard() {
   const [activeOverrideRequest, setActiveOverrideRequest] = useState<any>(null);
   const [oldestBatteryInStock, setOldestBatteryInStock] = useState<string>("BATT-00874");
 
-  // Real database leads states
+  // Live database states
   const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
 
-  // Add Lead form bindings
-  const [leadCustomerName, setLeadCustomerName] = useState("");
-  const [leadContactNumber, setLeadContactNumber] = useState("");
-  const [leadVehicleModel, setLeadVehicleModel] = useState<string>("");
-  const [leadSource, setLeadSource] = useState("walk_in");
+  const [liveBookingsList, setLiveBookingsList] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+
+  const [liveSalesList, setLiveSalesList] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(true);
+
+  // Forms state bindings
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const [newLead, setNewLead] = useState({ ...emptyLead });
+  const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
+  const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   // Advance Booking form bindings
-  const [bookingCustomerName, setBookingCustomerName] = useState("");
-  const [bookingContactNumber, setBookingContactNumber] = useState("");
-  const [bookingVehicleModel, setBookingVehicleModel] = useState("");
-  const [bookingAdvanceAmount, setBookingAdvanceAmount] = useState("");
-  const [bookingExpiryDate, setBookingExpiryDate] = useState("");
+  const [newBooking, setNewBooking] = useState({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+  const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
 
   // Sales Checkout form bindings
   const [checkoutCustomerName, setCheckoutCustomerName] = useState("");
   const [checkoutContactNumber, setCheckoutContactNumber] = useState("");
   const [checkoutPaymentMode, setCheckoutPaymentMode] = useState("SBI Finance");
   const [checkoutInsurancePartner, setCheckoutInsurancePartner] = useState("Chola MS - Comprehensive 1+5 Yr");
+
+  // Tab navigation
+  const navigateTo = (tab: string) => {
+    setActiveTab(tab);
+    const path = tab === "dashboard" ? "/sales" : `/sales/${tab}`;
+    window.history.pushState({ path }, "", path);
+  };
 
   const loadLeadsData = async () => {
     try {
@@ -116,13 +151,40 @@ export default function SalesDashboard() {
     }
   };
 
-  React.useEffect(() => {
+  const loadBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      const data = await getBookings();
+      setLiveBookingsList(data);
+    } catch (e) {
+      console.error("Failed to load bookings:", e);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const loadSales = async () => {
+    try {
+      setSalesLoading(true);
+      const data = await getSalesInvoices();
+      setLiveSalesList(data);
+    } catch (e) {
+      console.error("Failed to load sales invoices:", e);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  useEffect(() => {
     setIsMounted(true);
     loadBatteries();
     loadLeadsData();
+    loadBookings();
+    loadSales();
   }, []);
 
-  React.useEffect(() => {
+  // Polling for FIFO Override approvals
+  useEffect(() => {
     if (!overrideRequested || !activeOverrideRequest) return;
     
     const interval = setInterval(async () => {
@@ -133,12 +195,12 @@ export default function SalesDashboard() {
           setFifoWarning(false);
           setOverrideRequested(false);
           setActiveOverrideRequest(null);
-          alert("FIFO Override Request APPROVED by Supervisor! Form unlocked.");
+          showToast("FIFO Override APPROVED by Supervisor! Form unlocked.");
           clearInterval(interval);
         } else if (activeReq && activeReq.status === "rejected") {
           setActiveOverrideRequest(null);
           setOverrideRequested(false);
-          alert("FIFO Override Request REJECTED by Supervisor. Please select a FIFO-compliant battery pack.");
+          showToast("FIFO Override REJECTED. Select a FIFO-compliant battery.", "error");
           clearInterval(interval);
         }
       } catch (e) {
@@ -149,83 +211,7 @@ export default function SalesDashboard() {
     return () => clearInterval(interval);
   }, [overrideRequested, activeOverrideRequest]);
 
-  // MOCK INVENTORY UNIT REGISTER (FOR AUTO-FILL SIMULATION)
-  const mockVehiclesDb = [
-    { vin: "KVRVIN2026X101", motor: "MTR-90802", chassis: "CHS-88902", model: "Kinetic Green E-Luna", color: "Green", price: "₹ 74,999", branch: "Vizag Showroom", status: "Available", battery: "BATT-00982 (Oldest)" },
-    { vin: "KVRVIN2026X104", motor: "MTR-90812", chassis: "CHS-88915", model: "Watts 100", color: "Red", price: "₹ 1,45,000", branch: "Vizag Showroom", status: "Available", battery: "BATT-00511" },
-    { vin: "KVRVIN2026X115", motor: "MTR-90820", chassis: "CHS-88930", model: "Dynamo Pro", color: "Gray", price: "₹ 98,500", branch: "Vizag Showroom", status: "Available", battery: "BATT-00890 (Newer Stock)" }
-  ];
-
-  const handleAddLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadCustomerName.trim() || !leadContactNumber.trim() || !leadVehicleModel) return;
-    try {
-      await createLead({
-        customer_name: leadCustomerName.trim(),
-        contact_number: leadContactNumber.trim(),
-        interested_vehicle: parseInt(leadVehicleModel),
-        lead_source: leadSource,
-        status: "new_lead"
-      });
-      setLeadCustomerName("");
-      setLeadContactNumber("");
-      setLeadVehicleModel("");
-      setLeadSource("walk_in");
-      setIsAddLeadOpen(false);
-      loadLeadsData();
-    } catch (err) {
-      console.error("Failed to register lead enquiry:", err);
-    }
-  };
-
-  const handleAdvanceLeadStage = async (leadId: number, currentStatus: string) => {
-    const statusCycle: Record<string, string> = {
-      "new_lead": "contacted",
-      "contacted": "follow_up",
-      "follow_up": "negotiation",
-      "negotiation": "won",
-      "won": "won",
-      "lost": "lost"
-    };
-    const nextStatus = statusCycle[currentStatus] || "new_lead";
-    try {
-      await updateLead(leadId, { status: nextStatus });
-      loadLeadsData();
-    } catch (e) {
-      console.error("Failed to update lead status:", e);
-    }
-  };
-
-  // Lead Status donut data
-  const leadStatusData = [
-    { name: "New", value: 12, color: "#3b82f6" },
-    { name: "Contacted", value: 10, color: "#10b981" },
-    { name: "Follow-up", value: 10, color: "#f59e0b" },
-    { name: "Negotiation", value: 5, color: "#8b5cf6" },
-    { name: "Won", value: 1, color: "#22c55e" }
-  ];
-
-  const myFollowups = [
-    { name: "Ramesh Kumar", date: "13 May 2024", model: "Kinetic Green E-Luna", contact: "98855 12345", purpose: "Test Drive Booking", priority: "High" },
-    { name: "Vijayalakshmi", date: "12 May 2024", model: "Dynamo Pro", contact: "91234 56789", purpose: "Finance Doc collection", priority: "Medium" },
-    { name: "Sridhar", date: "15 May 2024", model: "Watts 100", contact: "99001 11223", purpose: "Exchange evaluation", priority: "High" },
-    { name: "Kiran", date: "16 May 2024", model: "Frankly 79", contact: "88887 66554", purpose: "Color confirmation", priority: "Medium" }
-  ];
-
-  const recentLeads = [
-    { id: "LD-2024-0501", name: "Ramesh Kumar", mobile: "98855 12345", source: "Walk-in", model: "Kinetic Green E-Luna", status: "New", date: "13 May 2024", nextFollowup: "15 May 2024", lastNote: "Discussing moped range spec" },
-    { id: "LD-2024-0502", name: "Vijayalakshmi", mobile: "91234 56789", source: "Website", model: "Dynamo Pro", status: "Contacted", date: "12 May 2024", nextFollowup: "14 May 2024", lastNote: "Requested catalog PDF" },
-    { id: "LD-2024-0503", name: "Sridhar", mobile: "99001 11223", source: "Reference", model: "Watts 100", status: "Follow-up", date: "12 May 2024", nextFollowup: "16 May 2024", lastNote: "Looking for loan details" },
-    { id: "LD-2024-0504", name: "Kiran", mobile: "88887 66554", source: "Facebook", model: "Frankly 79", status: "Negotiation", date: "11 May 2024", nextFollowup: "13 May 2024", lastNote: "Wants yellow color" }
-  ];
-
-  const customersList = [
-    { name: "T. Gouri Shankar", contact: "98480 22334", model: "Dynamo Pro", invDate: "05 May 2024", delStatus: "Delivered", notes: "First servicing schedule pending", pdiDoneBy: "Suresh Babu", nextService: "05 Jun 2024" },
-    { name: "M. Appalaraju", contact: "94901 88776", model: "Kinetic Green E-Luna", invDate: "09 May 2024", delStatus: "Delivered", notes: "Requested accessories kit", pdiDoneBy: "Suresh Babu", nextService: "09 Jun 2024" },
-    { name: "V. Satyavathi", contact: "88970 55443", model: "Watts 100", invDate: "12 May 2024", delStatus: "Processing", notes: "Insurance copy generated", pdiDoneBy: "Ravi Varma", nextService: "12 Jun 2024" }
-  ];
-
-  // Executing VIN auto-fill query
+  // VIN Search Auto-fill
   const handleVinSearch = async () => {
     setVinSearchError("");
     setAutoFillResult(null);
@@ -238,8 +224,6 @@ export default function SalesDashboard() {
     try {
       setVinSearchLoading(true);
       const data = await lookupVehicleUnit(query);
-      
-      // Map Django REST keys to frontend UI visual keys
       setAutoFillResult({
         id: data.id,
         branchId: data.branch,
@@ -249,19 +233,21 @@ export default function SalesDashboard() {
         model: data.model_name || "Kinetic Green E-Luna",
         color: data.color || "Green",
         price: data.base_price ? `₹ ${parseFloat(data.base_price).toLocaleString('en-IN')}` : "₹ 74,999",
-        branch: data.branch_name || "Vizag Showroom",
+        branch: data.branch_name || "Visakhapatnam Showroom",
         status: data.stock_status.charAt(0).toUpperCase() + data.stock_status.slice(1),
-        battery: data.assigned_battery || "BATT-00874 (Oldest)"
+        battery: data.assigned_battery || "BATT-00874"
       });
+      showToast("Vehicle details auto-filled.");
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || "No matching vehicle unit found.";
       setVinSearchError(errorMsg);
+      showToast("No vehicle unit found.", "error");
     } finally {
       setVinSearchLoading(false);
     }
   };
 
-  // Battery Selection and FIFO Validation check
+  // Battery validation check
   const handleBatterySelect = async (serial: string) => {
     setSelectedBattery(serial);
     if (!serial) {
@@ -280,7 +266,7 @@ export default function SalesDashboard() {
         setOverrideRequested(false);
       }
     } catch (e) {
-      console.error("Failed to validate battery FIFO status:", e);
+      console.error("Failed to validate FIFO status:", e);
       setFifoWarning(false);
     }
   };
@@ -298,10 +284,200 @@ export default function SalesDashboard() {
       });
       setActiveOverrideRequest(newOverride);
       setOverrideRequested(true);
+      showToast("Override request sent to Supervisor.");
     } catch (e) {
-      console.error("Failed to submit supervisor override request:", e);
+      showToast("Failed to request override.", "error");
     }
   };
+
+  // Leads CRUD
+  const openAddLead = () => {
+    setEditingLeadId(null);
+    setNewLead({ ...emptyLead });
+    setIsAddLeadOpen(true);
+  };
+
+  const openEditLead = (lead: any) => {
+    setEditingLeadId(lead.id);
+    setNewLead({
+      customer_name: lead.customer_name || "",
+      contact_number: lead.contact_number || "",
+      interested_vehicle: String(lead.interested_vehicle || ""),
+      lead_source: lead.lead_source || "walk_in",
+      status: lead.status || "new_lead",
+      notes: lead.notes || "",
+      follow_up_date: lead.follow_up_date || "",
+    });
+    setIsAddLeadOpen(true);
+  };
+
+  const handleAddLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
+    const payload = {
+      customer_name: newLead.customer_name.trim(),
+      contact_number: newLead.contact_number.trim(),
+      interested_vehicle: parseInt(newLead.interested_vehicle),
+      lead_source: newLead.lead_source,
+      status: newLead.status,
+      notes: newLead.notes.trim() || undefined,
+      follow_up_date: newLead.follow_up_date || undefined,
+      assigned_executive: 3 // Assinged to Anil Kumar (Sales Exec)
+    };
+    try {
+      if (editingLeadId) {
+        await updateLead(editingLeadId, payload);
+        showToast("Lead details updated.");
+      } else {
+        await createLead(payload);
+        showToast("Lead registered successfully.");
+      }
+      setNewLead({ ...emptyLead });
+      setEditingLeadId(null);
+      setIsAddLeadOpen(false);
+      loadLeadsData();
+    } catch (err) {
+      showToast("Failed to save lead.", "error");
+    }
+  };
+
+  const moveLeadToStage = async (leadId: number, newStatus: string) => {
+    const lead = liveLeadsList.find((l) => l.id === leadId);
+    if (!lead || lead.status === newStatus) return;
+    const prevStatus = lead.status;
+    setLiveLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)));
+    try {
+      await updateLead(leadId, { status: newStatus });
+      showToast(`Lead stage updated to ${newStatus.replace("_", " ")}.`);
+    } catch {
+      setLiveLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: prevStatus } : l)));
+      showToast("Failed to update lead stage.", "error");
+    }
+  };
+
+  // Booking CRUD
+  const openEditBooking = (bk: any) => {
+    setEditingBookingId(bk.id);
+    setNewBooking({
+      customer_name: bk.customer_name || "",
+      contact_number: bk.contact_number || "",
+      vehicle_model: String(bk.vehicle_model || ""),
+      advance_amount: String(bk.advance_amount || ""),
+      expiry_date: bk.expiry_date || "",
+    });
+    setIsCreateBookingOpen(true);
+  };
+
+  const handleCreateBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBooking.customer_name.trim() || !newBooking.vehicle_model || !newBooking.advance_amount || !newBooking.expiry_date) return;
+    try {
+      if (editingBookingId) {
+        await updateBooking(editingBookingId, {
+          customer_name: newBooking.customer_name.trim(),
+          contact_number: newBooking.contact_number.trim(),
+          vehicle_model: parseInt(newBooking.vehicle_model),
+          advance_amount: parseFloat(newBooking.advance_amount),
+          expiry_date: newBooking.expiry_date,
+        });
+        showToast("Booking updated.");
+      } else {
+        await createBooking({
+          booking_id: `BK-${Date.now().toString().slice(-6)}`,
+          customer_name: newBooking.customer_name.trim(),
+          contact_number: newBooking.contact_number.trim(),
+          vehicle_model: parseInt(newBooking.vehicle_model),
+          advance_amount: parseFloat(newBooking.advance_amount),
+          expiry_date: newBooking.expiry_date,
+          status: "pending"
+        });
+        showToast("Booking registered successfully.");
+      }
+      setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+      setEditingBookingId(null);
+      setIsCreateBookingOpen(false);
+      loadBookings();
+    } catch { showToast("Failed to save booking.", "error"); }
+  };
+
+  const handleCancelBooking = async (bk: any) => {
+    try {
+      await updateBooking(bk.id, { status: "cancelled" });
+      showToast("Booking cancelled.");
+      loadBookings();
+    } catch { showToast("Failed to cancel booking.", "error"); }
+  };
+
+  // Sales Checkout submission
+  const handleSalesCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!autoFillResult?.id) { showToast("Fetch vehicle details first.", "error"); return; }
+    const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
+    try {
+      await createSalesInvoice({
+        customer_name: checkoutCustomerName.trim(),
+        customer_contact: checkoutContactNumber.trim(),
+        vehicle_unit: autoFillResult.id,
+        assigned_battery: batteryObj?.id || null,
+        sale_price: autoFillResult.price ? parseFloat(autoFillResult.price.replace(/[₹,\s]/g, '')) : 0,
+        payment_mode: checkoutPaymentMode,
+        insurance_partner: checkoutInsurancePartner,
+        delivery_status: "processing",
+        branch: autoFillResult.branchId || 1
+      });
+      showToast("Sale Invoice Created Successfully!");
+      setCheckoutCustomerName(""); 
+      setCheckoutContactNumber("");
+      setAutoFillResult(null); 
+      setVinQuery(""); 
+      setSelectedBattery("");
+      loadSales();
+    } catch (err) { 
+      showToast("Failed to create sale invoice.", "error"); 
+    }
+  };
+
+  // Aggregates & Charts
+  const leadStatusData = useMemo(() => {
+    const fresh = liveLeadsList.filter(l => l.status === "new_lead").length;
+    const contacted = liveLeadsList.filter(l => l.status === "contacted").length;
+    const followUp = liveLeadsList.filter(l => l.status === "follow_up").length;
+    const nego = liveLeadsList.filter(l => l.status === "negotiation").length;
+    const won = liveLeadsList.filter(l => l.status === "won").length;
+    return [
+      { name: "New", value: fresh || 8, color: "#3b82f6" },
+      { name: "Contacted", value: contacted || 6, color: "#10b981" },
+      { name: "Follow-up", value: followUp || 5, color: "#f59e0b" },
+      { name: "Negotiation", value: nego || 3, color: "#8b5cf6" },
+      { name: "Won", value: won || 2, color: "#22c55e" }
+    ];
+  }, [liveLeadsList]);
+
+  const myFollowups = useMemo(() => {
+    return liveLeadsList
+      .filter(l => l.status === "follow_up" || l.follow_up_date)
+      .map((l) => ({
+        name: l.customer_name,
+        date: l.follow_up_date || "Today",
+        model: l.model_name || "Kinetic Green E-Luna",
+        contact: l.contact_number,
+        purpose: "Outbound Callback",
+        priority: "High"
+      }));
+  }, [liveLeadsList]);
+
+  const customersList = useMemo(() => {
+    return liveSalesList.map((s) => ({
+      name: s.customer_name,
+      contact: s.customer_contact,
+      model: s.model_name || "Kinetic Green E-Luna",
+      invDate: s.sale_date || "May 2024",
+      delStatus: s.delivery_status || "Delivered",
+      notes: s.insurance_partner || "Comprehensive package",
+      pdiDoneBy: "Suresh Babu",
+      nextService: "Next Month"
+    }));
+  }, [liveSalesList]);
 
   if (!isMounted) {
     return (
@@ -312,52 +488,104 @@ export default function SalesDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden">
+    <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       
-      {/* Sidebar */}
-      <DashboardSidebar role="sales" activeTab={activeTab} />
+      {/* Unified Sidebar */}
+      <DashboardSidebar role="sales" activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Panel Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
         <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
         {/* Dashboard Views */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 space-y-6 smooth-scroll">
-
+        <main data-lenis-prevent className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+          
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Grid Metric Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <DashboardCard title="My Active Leads" value="38 Leads" description="Assigned leads pipeline" icon={Compass} color="blue" />
-                <DashboardCard title="Follow-ups Due" value="12 Tasks" description="Due for interaction today" icon={CalendarDays} color="amber" />
-                <DashboardCard title="Personal Bookings" value="7 Reserved" description="Active stock lock reservations" icon={CreditCard} color="emerald" />
-                <DashboardCard title="Sales Volume" value="₹ 18,75,000" description="Completed invoice billing" icon={FileCheck} color="indigo" />
+              {/* Premium Welcome Hero */}
+              <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#04a700]/[0.07] to-transparent" />
+                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#04a700]/10 blur-3xl" />
+                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#04a700] to-emerald-600" />
+
+                <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#04a700]/30 bg-[#04a700]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#04a700]">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#04a700] opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#04a700]" />
+                        </span>
+                        Sales Terminal Live
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500">
+                        <CalendarDays className="h-3 w-3" /> Sales Executive Hub
+                      </span>
+                    </div>
+                    <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                      Welcome back, Anil Kumar
+                      <Sparkles className="h-5 w-5 text-[#04a700]" />
+                    </h2>
+                    <p className="mt-1.5 max-w-xl text-xs font-medium leading-relaxed text-slate-500 sm:text-sm">
+                      Check your active leads pipelines, follow up with customers, record bookings and checkout completed sales.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Middle Section Dashboard Graphs */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Lead Status Chart */}
-                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-80 justify-between">
-                  <div className="mb-2">
-                    <h3 className="text-sm font-bold text-slate-800">Lead Status Ratio</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Summary of my 38 active lead targets</p>
-                  </div>
+              {/* Quick Actions Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Add Lead", icon: Plus, onClick: openAddLead },
+                  { label: "Record Booking", icon: CalendarDays, onClick: () => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); setIsCreateBookingOpen(true); } },
+                  { label: "Sales Checkout", icon: CreditCard, onClick: () => navigateTo("sales_bookings") },
+                  { label: "My Follow-ups", icon: Phone, onClick: () => navigateTo("followups") },
+                ].map((qa, i) => {
+                  const QAIcon = qa.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={qa.onClick}
+                      className="group flex items-center gap-2.5 bg-white border border-emerald-100/70 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md hover:border-[#04a700]/40 hover:-translate-y-0.5 transition-all cursor-pointer text-left"
+                    >
+                      <span className="h-9 w-9 shrink-0 rounded-full bg-[#04a700]/10 border border-[#04a700]/20 flex items-center justify-center text-[#04a700] group-hover:bg-[#04a700] group-hover:text-white transition-colors">
+                        <QAIcon className="h-4 w-4" />
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-700 truncate">{qa.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
+              {/* Grid Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <DashboardCard title="My Active Leads" value={leadsLoading ? "..." : `${liveLeadsList.length} Leads`} trend="Pipeline" trendType="success" description="Assigned leads status" icon={Compass} color="blue" onClick={() => navigateTo("leads")} />
+                <DashboardCard title="Follow-ups Due" value={leadsLoading ? "..." : `${liveLeadsList.filter(l => l.status === "follow_up").length} Tasks`} trend="Pending Calls" trendType="neutral" description="Awaiting customer callback" icon={CalendarDays} color="amber" onClick={() => navigateTo("followups")} />
+                <DashboardCard title="Personal Bookings" value={bookingsLoading ? "..." : `${liveBookingsList.filter(b => b.status === "confirmed").length} Reserved`} trend="Active lock" trendType="success" description="Stock locked allocations" icon={CreditCard} color="emerald" onClick={() => navigateTo("sales_bookings")} />
+                <DashboardCard title="My Sales Volume" value={salesLoading ? "..." : "₹ " + liveSalesList.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0).toLocaleString('en-IN')} trend="MTD Billing" trendType="success" description="Completed invoice logs" icon={FileCheck} color="indigo" onClick={() => navigateTo("sales_bookings")} />
+              </div>
+
+              {/* Charts agenda Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Lead Status Chart */}
+                <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm flex flex-col h-80 justify-between hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-2">
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">Lead Status Distribution</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Ratio of active leads stages</p>
+                  </div>
                   <div className="h-[180px] w-full flex flex-col justify-center items-center relative">
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-2xl font-extrabold text-slate-800">38</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Leads</span>
+                      <span className="text-2xl font-black text-slate-800 font-mono">{leadsLoading ? "..." : liveLeadsList.length}</span>
+                      <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total Leads</span>
                     </div>
-
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={leadStatusData}
-                          innerRadius={50}
-                          outerRadius={70}
+                          innerRadius={45}
+                          outerRadius={60}
                           paddingAngle={3}
                           dataKey="value"
                         >
@@ -369,30 +597,27 @@ export default function SalesDashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-
-                  {/* Legend Grid */}
-                  <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[10px] font-bold text-slate-500">
+                  <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 text-[9px] font-bold text-slate-500">
                     {leadStatusData.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span>{item.name} ({item.value})</span>
+                      <div key={idx} className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="truncate">{item.name} ({item.value})</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* My Follow-ups Agenda list */}
-                <div className="lg:col-span-2 bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-80 justify-between">
+                {/* Agenda list */}
+                <div className="lg:col-span-2 bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm flex flex-col h-80 justify-between hover:shadow-md transition-shadow duration-300">
                   <div className="mb-3">
-                    <h3 className="text-sm font-bold text-slate-800">My Follow-ups Due</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Awaiting outbound calls or customer updates</p>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">My Follow-ups Agenda</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5 font-sans leading-normal">Outstanding client calls scheduled for today</p>
                   </div>
-
-                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto space-y-0.5 pr-1">
+                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto space-y-0.5 slim-scrollbar">
                     {myFollowups.map((item, idx) => (
                       <div key={idx} className="py-2.5 flex items-center justify-between text-xs text-left">
                         <div>
-                          <div className="font-bold text-slate-800 flex items-center gap-2">
+                          <div className="font-extrabold text-slate-800 flex items-center gap-2">
                             {item.name}
                             <span className={`px-1.5 py-0.2 rounded text-[8px] font-extrabold uppercase ${
                               item.priority === "High" ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -400,136 +625,134 @@ export default function SalesDashboard() {
                               {item.priority}
                             </span>
                           </div>
-                          <div className="text-[10px] text-slate-405 font-semibold mt-0.5">
+                          <div className="text-[10px] text-slate-400 font-bold mt-0.5">
                             Model: {item.model} • Contact: {item.contact}
-                            <span className="block text-emerald-805 mt-0.5">Purpose: {item.purpose}</span>
+                            <span className="block text-emerald-700 mt-0.5">Purpose: {item.purpose}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-500 bg-slate-150 px-2 py-0.5 rounded border border-slate-200">{item.date}</span>
-                          <button className="p-1.5 rounded-lg bg-emerald-55 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 cursor-pointer">
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{item.date}</span>
+                          <a href={`tel:${item.contact}`} className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer">
                             <Phone className="h-3.5 w-3.5" />
-                          </button>
+                          </a>
                         </div>
                       </div>
                     ))}
+                    {myFollowups.length === 0 && (
+                      <EmptyState title="No followups due!" description="You are all caught up." />
+                    )}
                   </div>
                 </div>
-
-              </div>
-
-              {/* Lower Section Lead Table */}
-              <div className="space-y-6">
-                <Table title="My Recent Leads Registry" headers={["Lead ID", "Customer Name", "Mobile Contact", "Lead Source", "Interested Model", "Creation Date", "Next Follow-up", "Last Note", "Status"]}>
-                  {recentLeads.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-700">{row.id}</td>
-                      <td className="py-3 px-4 font-bold text-slate-850">{row.name}</td>
-                      <td className="py-3 px-4 text-slate-500 font-mono">{row.mobile}</td>
-                      <td className="py-3 px-4 text-slate-500 font-semibold">{row.source}</td>
-                      <td className="py-3 px-4 text-slate-600 font-semibold">{row.model}</td>
-                      <td className="py-3 px-4 text-slate-400 font-medium">{row.date}</td>
-                      <td className="py-3 px-4 font-semibold text-slate-500">{row.nextFollowup}</td>
-                      <td className="py-3 px-4 text-slate-500">{row.lastNote}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          row.status === "New" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          row.status === "Contacted" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </Table>
               </div>
             </>
           )}
 
-          {/* TAB 2: LEADS / ENQUIRIES */}
+          {/* TAB 2: LEADS KANBAN PIPELINE */}
           {activeTab === "leads" && (
-            <div className="space-y-6">
-              
-              <Table 
-                title="My Total Leads Directory" 
-                headers={["Lead ID", "Customer Name", "Contact Number", "Inflow Source", "Interest Model", "Date Created", "Next Follow-up", "Last Action Note", "Stage Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={() => setIsAddLeadOpen(true)}
-                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" /> Add Lead Enquiry
-                  </button>
-                }
-              >
-                {leadsLoading ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
-                        <span>Loading leads registry from PostgreSQL...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : liveLeadsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center">
-                      <EmptyState title="No Leads Found" description="Click Add Lead Enquiry to register a customer lead." />
-                    </td>
-                  </tr>
-                ) : (
-                  liveLeadsList.map((row, idx) => (
-                    <tr key={row.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-mono font-bold text-blue-600">LD-{row.id}</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{row.customer_name}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-500">{row.contact_number}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{row.lead_source.replace("_", " ")}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.model_name || "Kinetic Green E-Luna"}</td>
-                      <td className="py-3.5 px-5 text-slate-400 font-semibold">{new Date(row.created_at).toLocaleDateString()}</td>
-                      <td className="py-3.5 px-5 font-semibold text-slate-500">{row.follow_up_date || "Awaiting call"}</td>
-                      <td className="py-3.5 px-5 text-slate-500">{row.notes || "No log notes added"}</td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                          row.status === "new_lead" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          row.status === "contacted" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}>
-                          {row.status.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <button 
-                          onClick={() => handleAdvanceLeadStage(row.id, row.status)}
-                          className="text-xs text-emerald-600 hover:text-emerald-800 font-bold mr-3 cursor-pointer"
-                        >
-                          Update Stage
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </Table>
+            <div className="space-y-5 text-left">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Leads Pipeline Board</h3>
+                  <p className="text-[11px] text-slate-450 font-semibold mt-0.5">Drag cards to advance sales stages, or click edit details.</p>
+                </div>
+                <button 
+                  onClick={openAddLead}
+                  className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 shrink-0 animate-pulse"
+                >
+                  <Plus className="h-4 w-4" /> Add Lead
+                </button>
+              </div>
 
+              {leadsLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#04a700]" />
+                  <span className="text-xs font-semibold text-slate-500">Loading pipeline...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                  {[
+                    { key: "enquiry", label: "Enquiry", statuses: ["enquiry"], accent: "#64748b", soft: "bg-slate-50", bar: "bg-slate-400" },
+                    { key: "new_lead", label: "New Lead", statuses: ["new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
+                    { key: "negotiation", label: "Negotiation", statuses: ["negotiation"], accent: "#ea580c", soft: "bg-amber-50/60", bar: "bg-amber-500" },
+                    { key: "won", label: "Won", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
+                    { key: "lost", label: "Lost", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
+                  ].map((col) => {
+                    const filteredLeads = liveLeadsList.filter((lead) => col.statuses.includes(lead.status));
+                    const isDragTarget = dragOverStage === col.key;
+                    return (
+                      <div
+                        key={col.key}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverStage(col.key); }}
+                        onDragLeave={() => setDragOverStage((s) => (s === col.key ? null : s))}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedLeadId != null) moveLeadToStage(draggedLeadId, col.key);
+                          setDraggedLeadId(null);
+                          setDragOverStage(null);
+                        }}
+                        className={`rounded-2xl border flex flex-col min-h-[420px] transition-all duration-200 ${col.soft} ${isDragTarget ? "border-[#04a700] ring-2 ring-[#04a700]/30 scale-[1.01]" : "border-slate-200/70"}`}
+                      >
+                        <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.accent }} />
+                            <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide">{col.label}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
+                        </div>
+
+                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto slim-scrollbar max-h-[60vh]">
+                          {filteredLeads.length === 0 ? (
+                            <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
+                              {isDragTarget ? "Drop here" : "No leads in stage"}
+                            </div>
+                          ) : (
+                            filteredLeads.map((lead) => (
+                              <div
+                                key={lead.id}
+                                draggable
+                                onDragStart={() => setDraggedLeadId(lead.id)}
+                                onDragEnd={() => { setDraggedLeadId(null); setDragOverStage(null); }}
+                                onClick={() => openEditLead(lead)}
+                                className={`bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all space-y-2 text-left cursor-grab active:cursor-grabbing group ${draggedLeadId === lead.id ? "opacity-40" : ""}`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-[#04a700] font-mono">LD-{lead.id}</span>
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.lead_source?.replace("_", " ")}</span>
+                                </div>
+                                <h4 className="text-xs font-bold text-slate-800 leading-tight">{lead.customer_name}</h4>
+                                <p className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</p>
+                                <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
+                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                                  <span className="text-[9px] text-slate-400 font-bold">Anil Kumar</span>
+                                  <span className="text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* TAB 3: CUSTOMERS */}
           {activeTab === "customers" && (
-            <div className="space-y-6">
-              
-              <Table title="Showroom Customer Profiles Directory" headers={["Customer Name", "Contact Mobile", "Purchased EV Model", "Invoice Date", "PDI Verified By", "Next Service Date", "Delivery Status", "Log Notes"]}>
+            <div className="space-y-6 text-left">
+              <Table title="Showroom Customer Profiles Directory" headers={["Customer Name", "Contact Mobile", "Purchased EV Model", "Invoice Date", "PDI Verified By", "Next Service Date", "Delivery Status", "Insurance"]}>
                 {customersList.map((cust, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                     <td className="py-3.5 px-5 font-bold text-slate-800">{cust.name}</td>
                     <td className="py-3.5 px-5 font-mono text-slate-500">{cust.contact}</td>
                     <td className="py-3.5 px-5 text-slate-700 font-semibold">{cust.model}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-semibold">{cust.invDate}</td>
+                    <td className="py-3.5 px-5 text-slate-450 font-semibold">{cust.invDate}</td>
                     <td className="py-3.5 px-5 text-slate-600 font-bold">{cust.pdiDoneBy}</td>
                     <td className="py-3.5 px-5 text-slate-700 font-bold text-emerald-700">{cust.nextService}</td>
                     <td className="py-3.5 px-5">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        cust.delStatus === "Delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                        cust.delStatus === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                       }`}>
                         {cust.delStatus}
                       </span>
@@ -537,260 +760,311 @@ export default function SalesDashboard() {
                     <td className="py-3.5 px-5 text-slate-500 font-medium">{cust.notes}</td>
                   </tr>
                 ))}
+                {customersList.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center"><EmptyState title="No Customers Found" description="Customers will populate here once sales invoices are checked out." /></td>
+                  </tr>
+                )}
               </Table>
-
             </div>
           )}
 
           {/* TAB 4: SALES & BOOKINGS (WITH AUTO-FILL VIN & FIFO ALERT) */}
           {activeTab === "sales_bookings" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+            <div className="space-y-6">
               
-              {/* Form panel Column - Span 2 */}
-              <div className="lg:col-span-2 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-5">
-                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Generate Booking / Delivery Invoice</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Use the auto-fill tool on the right to instantly query and populate vehicle details</p>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setAutoFillResult(null);
-                      setVinQuery("");
-                      setSelectedBattery("");
-                      setFifoWarning(false);
-                      setOverrideRequested(false);
-                    }}
-                    className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
-                  >
-                    Clear Form
-                  </button>
-                </div>
-
-                <form className="space-y-4 text-xs font-semibold text-slate-600" onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!autoFillResult?.id) { alert("Please use the Auto-fill tool to select a vehicle unit first."); return; }
-                  const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
-                  try {
-                    await createSalesInvoice({
-                      customer_name: checkoutCustomerName.trim(),
-                      customer_contact: checkoutContactNumber.trim(),
-                      vehicle_unit: autoFillResult.id,
-                      assigned_battery: batteryObj?.id || null,
-                      sale_price: autoFillResult.price ? parseFloat(autoFillResult.price.replace(/[₹,\s]/g, '')) : 0,
-                      payment_mode: checkoutPaymentMode,
-                      insurance_partner: checkoutInsurancePartner,
-                      delivery_status: "processing",
-                      branch: autoFillResult.branchId || 1
-                    });
-                    alert("Sale Invoice Created Successfully in PostgreSQL!");
-                    setCheckoutCustomerName(""); setCheckoutContactNumber("");
-                    setAutoFillResult(null); setVinQuery(""); setSelectedBattery("");
-                  } catch (err) { console.error("Failed to create sale invoice:", err); alert("Failed to create sale invoice."); }
-                }}>
-                  
-                  {/* Customer details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-                      <input type="text" placeholder="e.g. Ramesh Naidu" value={checkoutCustomerName} onChange={(e) => setCheckoutCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
+              {/* Sales Checkout & Auto-fill blocks */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+                {/* Form panel Column */}
+                <div className="lg:col-span-2 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-5">
+                  <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">Generate Booking / Delivery Invoice</h3>
+                      <p className="text-[10px] font-semibold text-slate-450 mt-0.5">Use the auto-fill helper on the right to populate vehicle specs.</p>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-                      <input type="text" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" required />
-                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setAutoFillResult(null);
+                        setVinQuery("");
+                        setSelectedBattery("");
+                        setFifoWarning(false);
+                        setOverrideRequested(false);
+                        setCheckoutCustomerName("");
+                        setCheckoutContactNumber("");
+                      }}
+                      className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                    >
+                      Clear Form
+                    </button>
                   </div>
 
-                  {/* Financier & Insurance Options */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Financier Partner</label>
-                      <select value={checkoutPaymentMode} onChange={(e) => setCheckoutPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
-                        <option>SBI Finance</option>
-                        <option>HDFC Bank Loan</option>
-                        <option>L&T Finance</option>
-                        <option>Self-Finance (Cash/Cheque)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Insurance Partner Scheme</label>
-                      <select value={checkoutInsurancePartner} onChange={(e) => setCheckoutInsurancePartner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
-                        <option>Chola MS - Comprehensive 1+5 Yr</option>
-                        <option>ICICI Lombard - Zero Dep</option>
-                        <option>Digit Insurance - Third Party Only</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Vehicle details populated by Auto-fill */}
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Vehicle Unit Allocation Details</span>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
-                        <input type="text" value={autoFillResult?.model || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
-                        <input type="text" value={autoFillResult?.color || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
-                        <input type="text" value={autoFillResult?.price || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                      </div>
-                    </div>
-
+                  <form className="space-y-4 text-xs font-semibold text-slate-650" onSubmit={handleSalesCheckoutSubmit}>
+                    {/* Customer details */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Allocated Location</label>
-                        <input type="text" value={autoFillResult ? `${autoFillResult.branch} - Vizag Showroom` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                        <input type="text" placeholder="e.g. Ramesh Naidu" value={checkoutCustomerName} onChange={(e) => setCheckoutCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">VIN / Motor Number</label>
-                        <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
+                        <input type="text" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Battery Assignment & FIFO Validation Alerts */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Battery Serial Number</label>
-                    <select 
-                      value={selectedBattery}
-                      onChange={(e) => handleBatterySelect(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-650 font-bold outline-none focus:border-emerald-500"
-                      required
-                    >
-                      <option value="">-- Choose Battery pack --</option>
-                      {batteriesList.filter(b => b.status === "available").map((b) => (
-                        <option key={b.id} value={b.serial_number}>
-                          {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date}) {b.serial_number === "BATT-00874" ? "[Oldest Stock]" : ""}
-                        </option>
-                      ))}
-                      {batteriesList.length === 0 && (
-                        <>
-                          <option value="BATT-00874">BATT-00874 (2.0 kWh - Purchase Date: 10 Jan 2024) [Oldest Stock]</option>
-                          <option value="BATT-00982">BATT-00982 (1.2 kWh - Purchase Date: 02 Mar 2024)</option>
-                          <option value="BATT-00890">BATT-00890 (2.0 kWh - Purchase Date: 12 May 2026) [Newer Stock]</option>
-                        </>
-                      )}
-                    </select>
+                    {/* Financier & Insurance Options */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Financier Partner</label>
+                        <select value={checkoutPaymentMode} onChange={(e) => setCheckoutPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
+                          <option>SBI Finance</option>
+                          <option>HDFC Bank Loan</option>
+                          <option>L&T Finance</option>
+                          <option>Self-Finance (Cash/Cheque)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Insurance Partner Scheme</label>
+                        <select value={checkoutInsurancePartner} onChange={(e) => setCheckoutInsurancePartner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
+                          <option>Chola MS - Comprehensive 1+5 Yr</option>
+                          <option>ICICI Lombard - Zero Dep</option>
+                          <option>Digit Insurance - Third Party Only</option>
+                        </select>
+                      </div>
+                    </div>
 
-                    {/* FIFO Warning Indicator */}
-                    {fifoWarning && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                        <div className="flex gap-2">
-                          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-                          <div>
-                            <h4 className="text-xs font-bold text-amber-800">FIFO Stock Restriction Triggered</h4>
-                            <p className="text-[11px] text-amber-600 font-semibold mt-1">
-                              Selected battery pack ({selectedBattery}) is newer than the oldest available battery in stock ({oldestBatteryInStock}). 
-                              Delivery requires an overriding approval code from a Branch Supervisor.
-                            </p>
+                    {/* Vehicle details populated by Auto-fill */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Vehicle Unit Allocation Details</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
+                          <input type="text" value={autoFillResult?.model || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+                          <input type="text" value={autoFillResult?.color || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
+                          <input type="text" value={autoFillResult?.price || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Allocated Location</label>
+                          <input type="text" value={autoFillResult ? `${autoFillResult.branch}` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">VIN / Motor Number</label>
+                          <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Battery Assignment & FIFO Validation Alerts */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Battery Serial Number</label>
+                      <select 
+                        value={selectedBattery}
+                        onChange={(e) => handleBatterySelect(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500"
+                        required
+                      >
+                        <option value="">-- Choose Battery pack --</option>
+                        {batteriesList.filter(b => b.status === "available").map((b) => (
+                          <option key={b.id} value={b.serial_number}>
+                            {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date}) {b.serial_number === "BATT-00874" ? "[Oldest Stock]" : ""}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* FIFO Warning Indicator */}
+                      {fifoWarning && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                          <div className="flex gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                            <div>
+                              <h4 className="text-xs font-bold text-amber-800">FIFO Stock Restriction Triggered</h4>
+                              <p className="text-[11px] text-amber-600 font-semibold mt-1">
+                                Selected battery pack ({selectedBattery}) is newer than the oldest available battery in stock ({oldestBatteryInStock}). 
+                                Delivery requires an overriding approval code from a Branch Supervisor.
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 pt-2 border-t border-amber-100">
+                            {overrideRequested ? (
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                                Override Request Transmitted to Supervisor Panel...
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleRequestOverride}
+                                className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3.5 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm"
+                              >
+                                Request Supervisor Override
+                              </button>
+                            )}
                           </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2 pt-2 border-t border-amber-100">
-                          {overrideRequested ? (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                              Override Request Transmitted to Supervisor Panel...
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={handleRequestOverride}
-                              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm shadow-amber-600/10"
-                            >
-                              Request Supervisor Override
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={fifoWarning && !overrideRequested}
+                      className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
+                    >
+                      Confirm Sale & Dispatch
+                    </button>
+                  </form>
+                </div>
+
+                {/* Auto-fill Helper Column */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm h-fit space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Vehicle Auto-fill Query</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 leading-normal">
+                      Enter a physical vehicle code (VIN, Motor Code, or Chassis) below to automatically populate the sale entry form.
+                    </p>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={fifoWarning && !overrideRequested}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
-                  >
-                    Confirm Sale & Dispatch
-                  </button>
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="e.g. KVRVIN2026X101 or MTR-90812"
+                        value={vinQuery}
+                        onChange={(e) => setVinQuery(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold font-mono outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleVinSearch}
+                      disabled={vinSearchLoading}
+                      className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer disabled:bg-slate-405 flex items-center justify-center gap-1.5"
+                    >
+                      {vinSearchLoading ? "Fetching..." : "Fetch Vehicle Details"}
+                    </button>
+                  </div>
 
-                </form>
+                  {vinSearchError && (
+                    <p className="text-[10px] font-bold text-rose-600">{vinSearchError}</p>
+                  )}
+
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 leading-normal">
+                    <span className="text-[#04a700] block mb-1">MOCK DATABASE CODES TO TRY:</span>
+                    <div className="space-y-1 font-mono font-semibold">
+                      <div>• VIN: <span className="text-slate-600">KVRVIN2026X101</span> (Moped)</div>
+                      <div>• VIN: <span className="text-slate-600">KVRVIN2026X104</span> (Motorcycle)</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Auto-fill Helper Column */}
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm h-fit space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">Vehicle Auto-fill Query</h3>
-                  <p className="text-[10px] font-semibold text-slate-400 mt-0.5 font-sans leading-normal">
-                    Enter a physical vehicle code (VIN, Motor Code, or Chassis) below to automatically populate the sale entry form.
-                  </p>
-                </div>
+              {/* Transactions Ledger (Bookings & Sales Tables) */}
+              <div className="grid grid-cols-1 gap-6">
+                {/* Bookings table */}
+                <Table 
+                  title="My Active Booking Commitments" 
+                  headers={["Booking ID", "Customer Details", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
+                  actions={
+                    <button 
+                      onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); setIsCreateBookingOpen(true); }}
+                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                    >
+                      <Plus className="h-4 w-4" /> Record Booking
+                    </button>
+                  }
+                >
+                  {bookingsLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading bookings...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : liveBookingsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center">
+                        <EmptyState title="No Bookings Recorded" description="Advance deposits will display here." />
+                      </td>
+                    </tr>
+                  ) : (
+                    liveBookingsList.map((bk) => (
+                      <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
+                        <td className="py-3 px-4 font-bold text-slate-805">{bk.customer_name}</td>
+                        <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
+                        <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
+                        <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {bk.status === "pending" ? "Pending Approval" : bk.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {bk.status === "pending" ? (
+                            <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                          ) : (
+                            <span className="text-[10px] text-slate-450 font-bold">No actions</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
 
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="e.g. KVRVIN2026X101 or MTR-90812"
-                      value={vinQuery}
-                      onChange={(e) => setVinQuery(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold font-mono outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <button 
-                    onClick={handleVinSearch}
-                    disabled={vinSearchLoading}
-                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer disabled:bg-slate-400 flex items-center justify-center gap-1.5"
-                  >
-                    {vinSearchLoading ? "Fetching..." : "Fetch Vehicle Details"}
-                  </button>
-                </div>
-
-                {vinSearchError && (
-                  <p className="text-[10px] font-bold text-rose-600">{vinSearchError}</p>
-                )}
-
-                {autoFillResult && (
-                  <div className="bg-emerald-50 border border-emerald-150 rounded-xl p-3.5 space-y-2 text-xs font-semibold text-slate-600">
-                    <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Vehicle Record Found!
-                    </div>
-                    <div className="pt-2 border-t border-emerald-100 space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Model:</span>
-                        <span className="text-slate-700 font-bold">{autoFillResult.model}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Color:</span>
-                        <span className="text-slate-700 font-bold">{autoFillResult.color}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Base Price:</span>
-                        <span className="text-slate-700 font-bold">{autoFillResult.price}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Branch Outlet:</span>
-                        <span className="text-slate-700 font-bold">{autoFillResult.branch}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Example helper block */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 leading-normal">
-                  <span className="text-indigo-600 block mb-1">MOCK DATABASE CODES TO TRY:</span>
-                  <div className="space-y-1 font-mono font-semibold">
-                    <div>• VIN: <span className="text-slate-600">KVRVIN2026X101</span> (Moped)</div>
-                    <div>• VIN: <span className="text-slate-600">KVRVIN2026X104</span> (Motorcycle)</div>
-                    <div>• Motor: <span className="text-slate-600">MTR-90820</span> (Scooter)</div>
-                  </div>
-                </div>
-
+                {/* Sales Ledger table */}
+                <Table title="My Completed Sales Billing Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Sale Price", "Payment Mode", "Insurance Partner", "Delivery Status"]}>
+                  {salesLoading ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading sales...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : liveSalesList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center"><EmptyState title="No Sales Billing Records" description="No sales records checked out." /></td>
+                    </tr>
+                  ) : (
+                    liveSalesList.map((inv) => (
+                      <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{inv.invoice_number || `INV-${inv.id}`}</td>
+                        <td className="py-3 px-4 font-bold text-slate-800">{inv.customer_name}</td>
+                        <td className="py-3 px-4 text-slate-600 font-semibold">{inv.customer_contact}</td>
+                        <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(inv.sale_price).toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-4 text-slate-550 font-bold">{inv.payment_mode}</td>
+                        <td className="py-3 px-4 text-slate-500 font-semibold">{inv.insurance_partner || "—"}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                            inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            inv.delivery_status === "ready" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                            "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {inv.delivery_status ? inv.delivery_status.charAt(0).toUpperCase() + inv.delivery_status.slice(1) : "Processing"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
               </div>
 
             </div>
@@ -799,8 +1073,7 @@ export default function SalesDashboard() {
           {/* TAB 5: FOLLOW-UPS SCHEDULE */}
           {activeTab === "followups" && (
             <div className="space-y-6 text-left">
-              
-              <Table title="My Active Follow-up Appointments Agenda" headers={["Customer", "Contact Mobile", "Reserved Model", "Scheduled Date", "Latest Progress Status"]}>
+              <Table title="My Active Follow-up Appointments Agenda" headers={["Customer Name", "Contact Mobile", "Reserved Model", "Scheduled Date", "Latest Progress Status"]}>
                 {myFollowups.map((f, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                     <td className="py-3.5 px-5 font-bold text-slate-800">{f.name}</td>
@@ -814,15 +1087,18 @@ export default function SalesDashboard() {
                     </td>
                   </tr>
                 ))}
+                {myFollowups.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center"><EmptyState title="No Followups" description="No follow-up dates registered." /></td>
+                  </tr>
+                )}
               </Table>
-
             </div>
           )}
 
-          {/* TAB 6: REPORTS & targets */}
+          {/* TAB 6: REPORTS & TARGETS */}
           {activeTab === "reports" && (
             <div className="space-y-6 text-left">
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Commission Summary */}
@@ -832,18 +1108,18 @@ export default function SalesDashboard() {
                     <h3 className="text-sm font-bold text-slate-800">My Sales & Commissions Overview</h3>
                   </div>
 
-                  <div className="space-y-3.5 font-semibold text-xs">
+                  <div className="space-y-3.5 font-semibold text-xs text-slate-600">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Total Cars/Bikes Sold (This Month):</span>
-                      <span className="text-slate-800 font-bold">11 Deliveries</span>
+                      <span className="text-slate-800 font-bold">{liveSalesList.length} Deliveries</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Commission Rate Per Unit:</span>
                       <span className="text-slate-800 font-bold">₹ 2,000 / EV unit</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-slate-100 text-sm">
-                      <span className="text-slate-600 font-bold">Accumulated Commission Earned:</span>
-                      <span className="text-emerald-600 font-extrabold">₹ 22,000</span>
+                      <span className="text-slate-650 font-bold">Accumulated Commission Earned:</span>
+                      <span className="text-emerald-650 font-extrabold">₹ {(liveSalesList.length * 2000).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -851,26 +1127,25 @@ export default function SalesDashboard() {
                 {/* Targets completions card */}
                 <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <Target className="h-5 w-5 text-indigo-500 animate-pulse" />
+                    <Target className="h-5 w-5 text-indigo-550 animate-pulse" />
                     <h3 className="text-sm font-bold text-slate-800">Monthly Targets Completion</h3>
                   </div>
 
                   <div className="space-y-2.5">
                     <div className="flex justify-between text-xs font-bold text-slate-600">
                       <span>EV Units Delivery Target</span>
-                      <span>11 of 15 (73% Achieved)</span>
+                      <span>{liveSalesList.length} of 15 ({Math.min(100, Math.round((liveSalesList.length / 15) * 100))}% Achieved)</span>
                     </div>
                     <div className="h-4 w-full bg-slate-100 rounded-lg overflow-hidden flex">
-                      <div className="h-full bg-blue-600 rounded-lg" style={{ width: "73%" }} />
+                      <div className="h-full bg-blue-600 rounded-lg" style={{ width: `${Math.min(100, (liveSalesList.length / 15) * 100)}%` }} />
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-2">
-                      Need 4 more vehicle deliveries by 31st May to qualify for performance bonus incentive.
+                      Reach 15 deliveries this month to qualify for target completion commissions and performance bonus.
                     </p>
                   </div>
                 </div>
 
               </div>
-
             </div>
           )}
 
@@ -880,69 +1155,104 @@ export default function SalesDashboard() {
       {/* Mobile bottom navigation */}
       <BottomNav role="sales" activeTab={activeTab} />
 
+      {/* Floated Toast Notifications */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce">
+          <div className={`flex items-center gap-2.5 rounded-2xl border px-5 py-3.5 shadow-xl ${
+            toast.type === "success" 
+              ? "bg-[#04a700] border-[#038a00] text-white" 
+              : "bg-rose-600 border-rose-700 text-white"
+          }`}>
+            {toast.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+            <span className="text-xs font-bold">{toast.msg}</span>
+          </div>
+        </div>
+      )}
+
       {/* MODALS */}
-      {/* 1. Add Lead Form */}
-      <Modal isOpen={isAddLeadOpen} onClose={() => setIsAddLeadOpen(false)} title="Register Customer Lead Enquiry">
+      {/* 1. Register / Edit Lead */}
+      <Modal isOpen={isAddLeadOpen} onClose={() => setIsAddLeadOpen(false)} title={editingLeadId ? "Update Pipeline Lead details" : "Register Pipeline Lead Enquiry"}>
         <form onSubmit={handleAddLeadSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-            <input 
-              type="text" 
-              placeholder="e.g. S. Sita Kumari" 
-              value={leadCustomerName}
-              onChange={(e) => setLeadCustomerName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-emerald-500" 
-              required 
-            />
+            <input type="text" placeholder="e.g. S. Sita Kumari" value={newLead.customer_name} onChange={(e) => setNewLead({ ...newLead, customer_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Mobile</label>
-            <input 
-              type="text" 
-              placeholder="e.g. 9900112233" 
-              value={leadContactNumber}
-              onChange={(e) => setLeadContactNumber(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-emerald-500" 
-              required 
-            />
+            <input type="text" placeholder="e.g. 9900112233" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
-            <select 
-              value={leadVehicleModel}
-              onChange={(e) => setLeadVehicleModel(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold" 
-              required
-            >
+            <select value={newLead.interested_vehicle} onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 outline-none focus:border-blue-500 font-bold" required>
               <option value="">Select vehicle...</option>
               {vehicleModelsList.map((model) => (
                 <option key={model.id} value={model.id}>{model.model_name}</option>
               ))}
-              {vehicleModelsList.length === 0 && (
-                <>
-                  <option value="1">Kinetic Green E-Luna</option>
-                  <option value="2">Dynamo Pro</option>
-                  <option value="3">Watts 100</option>
-                </>
-              )}
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Lead Source</label>
-            <select 
-              value={leadSource}
-              onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold" 
-              required
-            >
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Lead Inflow Source</label>
+            <select value={newLead.lead_source} onChange={(e) => setNewLead({ ...newLead, lead_source: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold">
               <option value="walk_in">Walk-in Inquiry</option>
               <option value="website">Website Portal</option>
               <option value="reference">Customer Reference</option>
               <option value="social">Social Media Ads</option>
             </select>
           </div>
-          <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer">
-            Create Lead Entry
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
+            <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold">
+              <option value="enquiry">Enquiry</option>
+              <option value="new_lead">New Lead</option>
+              <option value="contacted">Contacted</option>
+              <option value="follow_up">Follow-up</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Notes / Requirements</label>
+            <textarea placeholder="e.g. Inquired about monthly battery financing options" value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-semibold outline-none h-20" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Next Follow-up Date</label>
+            <input type="date" value={newLead.follow_up_date} onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
+            Save Lead
+          </button>
+        </form>
+      </Modal>
+
+      {/* 2. Register / Edit Booking */}
+      <Modal isOpen={isCreateBookingOpen} onClose={() => setIsCreateBookingOpen(false)} title={editingBookingId ? "Edit Booking Details" : "Record Advance Booking Commitment"}>
+        <form onSubmit={handleCreateBooking} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+            <input type="text" placeholder="e.g. Ramesh Naidu" value={newBooking.customer_name} onChange={(e) => setNewBooking({ ...newBooking, customer_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
+            <input type="text" placeholder="e.g. 9876543210" value={newBooking.contact_number} onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
+            <select value={newBooking.vehicle_model} onChange={(e) => setNewBooking({ ...newBooking, vehicle_model: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
+              <option value="">Select vehicle...</option>
+              {vehicleModelsList.map((m) => <option key={m.id} value={m.id}>{m.model_name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Deposit Paid (INR)</label>
+            <input type="number" placeholder="e.g. 5000" value={newBooking.advance_amount} onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry date (Lock Threshold)</label>
+            <input type="date" value={newBooking.expiry_date} onChange={(e) => setNewBooking({ ...newBooking, expiry_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" required />
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
+            Save Booking
           </button>
         </form>
       </Modal>

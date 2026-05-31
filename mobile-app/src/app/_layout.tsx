@@ -10,7 +10,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'owner' || segments[0] === 'sales' || segments[0] === 'supervisor';
+    const inAuthGroup = segments[0] === 'owner' || segments[0] === 'sales' || segments[0] === 'supervisor' || segments[0] === 'staff';
 
     if (!user && inAuthGroup) {
       // Redirect to the login screen if trying to access secure screens and not logged in
@@ -23,6 +23,8 @@ function RootLayoutNav() {
         router.replace('/sales/dashboard');
       } else if (user.role === 'supervisor') {
         router.replace('/supervisor/dashboard');
+      } else if (user.role === 'staff' || user.role === 'operations') {
+        router.replace('/staff/dashboard');
       }
     }
   }, [user, isLoading, segments]);
@@ -34,6 +36,7 @@ function RootLayoutNav() {
       <Stack.Screen name="owner" />
       <Stack.Screen name="sales" />
       <Stack.Screen name="supervisor" />
+      <Stack.Screen name="staff" />
     </Stack>
   );
 }

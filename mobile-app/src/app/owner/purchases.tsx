@@ -53,7 +53,7 @@ const COLORS = [
   { name: 'Blue', hex: '#2563eb' },
   { name: 'Orange', hex: '#ea580c' },
 ];
-const GODOWNS = ['Pendurthi Godown', 'Pineapple Colony Godown', 'KVR Showroom - Vizag', 'Srikakulam Godown'];
+const GODOWNS = ['Pendurthi Godown', 'Pineapple Colony Godown', 'KVR Showroom - Visakhapatnam', 'Srikakulam Godown'];
 
 const emptyForm = (): POForm => ({
   supplier_name: '',
@@ -132,7 +132,7 @@ export default function OwnerPurchases({
 
   const FALLBACK_PO: PurchaseOrder[] = [
     { id: 1, po_number: 'PO-2026-8910', supplier_name: 'Kinetic Green Factory', model_name: 'Kinetic Green Zoom', color: 'Green', quantity: 10, unit_price: 112000, total_price: 1120000, godown: 'Pendurthi Godown', status: 'pending', order_date: '12 May 2026' },
-    { id: 2, po_number: 'PO-2026-9233', supplier_name: 'Dynamo EV Works', model_name: 'Dynamo EV Pro', color: 'Blue', quantity: 5, unit_price: 129000, total_price: 645000, godown: 'KVR Showroom - Vizag', status: 'in_transit', order_date: '10 May 2026' },
+    { id: 2, po_number: 'PO-2026-9233', supplier_name: 'Dynamo EV Works', model_name: 'Dynamo EV Pro', color: 'Blue', quantity: 5, unit_price: 129000, total_price: 645000, godown: 'KVR Showroom - Visakhapatnam', status: 'in_transit', order_date: '10 May 2026' },
     { id: 3, po_number: 'PO-2026-9411', supplier_name: 'Watts Engineering', model_name: 'Watts 100', color: 'Orange', quantity: 4, unit_price: 120000, total_price: 480000, godown: 'Srikakulam Godown', status: 'approved', order_date: '08 May 2026' },
   ];
 

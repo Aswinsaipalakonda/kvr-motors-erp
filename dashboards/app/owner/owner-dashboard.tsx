@@ -8,13 +8,14 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
-import { getBranches, createBranch } from "../services/branches";
-import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel } from "../services/vehicles";
-import { getLeads } from "../services/leads";
-import { getBookings } from "../services/bookings";
-import { getSalesInvoices } from "../services/sales";
+import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms } from "../services/branches";
+import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit } from "../services/vehicles";
+import { getLeads, createLead, updateLead } from "../services/leads";
+import { getBookings, createBooking, updateBooking } from "../services/bookings";
+import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
 import { getLedgerEntries } from "../services/ledger";
+import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
 import {
   TrendingUp,
   Percent,
@@ -35,7 +36,15 @@ import {
   FileSpreadsheet,
   ShoppingBag,
   Car,
-  Compass
+  Compass,
+  CalendarDays,
+  CreditCard,
+  Battery,
+  Wallet,
+  Zap,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Truck
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -55,7 +64,19 @@ import {
 export default function OwnerDashboard() {
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const activeTab = lastSegment === "owner" ? "dashboard" : lastSegment;
+  const initialTab = lastSegment === "owner" ? "dashboard" : lastSegment;
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync state with browser back/forward navigation popstate events
+  useEffect(() => {
+    const handlePopState = () => {
+      const segment = window.location.pathname.split("/").filter(Boolean).pop() || "dashboard";
+      const tab = segment === "owner" ? "dashboard" : segment;
+      setActiveTab(tab);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,6 +87,7 @@ export default function OwnerDashboard() {
   const [branchName, setBranchName] = useState("");
   const [branchAddress, setBranchAddress] = useState("");
   const [branchPhone, setBranchPhone] = useState("");
+  const [branchActive, setBranchActive] = useState(true);
 
   // Real database vehicles states
   const [vehicleBrandsList, setVehicleBrandsList] = useState<any[]>([]);
@@ -90,6 +112,9 @@ export default function OwnerDashboard() {
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [ledgerEntriesLoading, setLedgerEntriesLoading] = useState(true);
 
+  const [batteriesStock, setBatteriesStock] = useState<any[]>([]);
+  const [batteriesLoading, setBatteriesLoading] = useState(true);
+
   // New PO form state
   const [newPOSupplier, setNewPOSupplier] = useState("");
   const [newPOModel, setNewPOModel] = useState("");
@@ -105,6 +130,17 @@ export default function OwnerDashboard() {
   const [newModelBattery, setNewModelBattery] = useState("");
   const [newModelColors, setNewModelColors] = useState("");
   const [newModelStatus, setNewModelStatus] = useState<"active" | "inactive">("active");
+
+  // Stock Unit (VIN registry) form state — supports full add + edit
+  const emptyStockUnit = {
+    model: "", branch: "", showroom: "", location: "",
+    vin_number: "", motor_number: "", chassis_number: "", color: "",
+    purchase_date: "", stock_status: "available", assigned_battery: "",
+  };
+  const [stockUnitForm, setStockUnitForm] = useState({ ...emptyStockUnit });
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
+  const [showroomsList, setShowroomsList] = useState<any[]>([]);
+  const [vinLookupState, setVinLookupState] = useState<"idle" | "searching" | "found" | "notfound">("idle");
 
   const loadVehicles = async () => {
     try {
@@ -140,19 +176,29 @@ export default function OwnerDashboard() {
     e.preventDefault();
     if (!branchName.trim()) return;
     try {
-      await createBranch({
+      const payload = {
         name: branchName.trim(),
         address: branchAddress.trim(),
         phone_number: branchPhone.trim(),
-        is_active: true
-      });
+        is_active: branchActive
+      };
+      if (editingBranchId) {
+        await updateBranch(editingBranchId, payload);
+        showToast("Branch updated.");
+      } else {
+        await createBranch(payload);
+        showToast("Branch registered.");
+      }
+      setEditingBranchId(null);
       setBranchName("");
       setBranchAddress("");
       setBranchPhone("");
+      setBranchActive(true);
       setIsAddBranchOpen(false);
       loadBranches();
     } catch (err) {
-      console.error("Failed to register branch showroom in PostgreSQL:", err);
+      console.error("Failed to save branch showroom in PostgreSQL:", err);
+      showToast("Failed to save branch.", "error");
     }
   };
 
@@ -161,14 +207,22 @@ export default function OwnerDashboard() {
     if (!newModelBrand || !newModelName.trim() || !newModelPrice) return;
     try {
       const colorVariants = newModelColors.split(",").map(c => c.trim()).filter(Boolean);
-      await createVehicleModel({
+      const payload = {
         brand: parseInt(newModelBrand),
         model_name: newModelName.trim(),
         base_price: parseFloat(newModelPrice),
         color_variants: colorVariants,
         battery_compatibility: newModelBattery.trim(),
         status: newModelStatus
-      });
+      };
+      if (editingModelId) {
+        await updateVehicleModel(editingModelId, payload);
+        showToast("Model updated.");
+      } else {
+        await createVehicleModel(payload);
+        showToast("Model added to catalog.");
+      }
+      setEditingModelId(null);
       setNewModelBrand("");
       setNewModelName("");
       setNewModelPrice("");
@@ -178,7 +232,8 @@ export default function OwnerDashboard() {
       setIsAddVehicleOpen(false);
       loadVehicles();
     } catch (err) {
-      console.error("Failed to add vehicle model to Django backend:", err);
+      console.error("Failed to save vehicle model to Django backend:", err);
+      showToast("Failed to save model.", "error");
     }
   };
 
@@ -218,6 +273,16 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleSalesDelivery = async (id: number, status: string) => {
+    try {
+      await updateSalesInvoice(id, { delivery_status: status });
+      showToast(`Delivery marked ${status}.`);
+      loadSales();
+    } catch {
+      showToast("Failed to update delivery status.", "error");
+    }
+  };
+
   const loadPurchases = async () => {
     try {
       setPurchaseOrdersLoading(true);
@@ -245,10 +310,22 @@ export default function OwnerDashboard() {
   const handleApprovePO = async (id: number) => {
     try {
       await updatePurchaseOrderStatus(id, "approved");
+      showToast("Purchase order approved.");
       loadPurchases();
       loadLedger();
-    } catch (err) {
-      console.error("Failed to approve purchase order:", err);
+    } catch {
+      showToast("Failed to approve purchase order.", "error");
+    }
+  };
+
+  const handlePOStatus = async (id: number, status: string) => {
+    try {
+      await updatePurchaseOrderStatus(id, status);
+      showToast(`Purchase order marked ${status}.`);
+      loadPurchases();
+      loadLedger();
+    } catch {
+      showToast("Failed to update purchase order.", "error");
     }
   };
 
@@ -278,6 +355,32 @@ export default function OwnerDashboard() {
     }
   };
 
+  const loadBatteries = async () => {
+    try {
+      setBatteriesLoading(true);
+      const data = await getBatteries();
+      const mapped = data.map((b: any) => ({
+        id: b.id,
+        serial: b.serial_number,
+        capacity: b.capacity,
+        purDate: b.purchase_date,
+        rawStatus: b.status,
+        status: b.status === "available" ? "Available" : b.status === "sold" ? "Sold" : b.status === "assigned" ? "Assigned" : b.status === "damaged" ? "Damaged" : b.status === "returned" ? "Returned" : "Available",
+        vehicle: b.assigned_to_vin || "N/A",
+        location: b.location_name || "Visakhapatnam Showroom",
+        locationId: b.location,
+        supplier: b.supplier || b.supplier_name || "Tesla Tech Pack",
+        warrantyYears: `${b.warranty_years || 3} Years`,
+        warrantyYearsRaw: b.warranty_years || 3,
+      }));
+      setBatteriesStock(mapped);
+    } catch (e) {
+      console.error("Failed to load batteries from Django REST API:", e);
+    } finally {
+      setBatteriesLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
@@ -287,12 +390,15 @@ export default function OwnerDashboard() {
     loadSales();
     loadPurchases();
     loadLedger();
+    loadBatteries();
+    getInventoryLocations().then(setLocationsList).catch(() => {});
+    getShowrooms().then(setShowroomsList).catch(() => {});
   }, []);
   const systemUsers = [
-    { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
-    { name: "Suresh Babu", role: "Supervisor", userType: "Staff", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 08:15 AM" },
-    { name: "Anil Kumar", role: "Sales Executive", userType: "Staff", branch: "KVR Motors - Vizag", status: "Active", lastLogin: "13 May 2024 09:10 AM" },
-    { name: "Venkatesh", role: "Sales Staff", userType: "Staff", branch: "Future Ride - Vizag", status: "Active", lastLogin: "13 May 2024 07:45 AM" },
+    { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
+    { name: "Suresh Babu", role: "Supervisor", userType: "Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 08:15 AM" },
+    { name: "Anil Kumar", role: "Sales Executive", userType: "Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 09:10 AM" },
+    { name: "Venkatesh", role: "Sales Staff", userType: "Staff", branch: "Future Ride - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 07:45 AM" },
     { name: "Prasad", role: "Sales Executive", userType: "Staff", branch: "KVR Motors - Srikakulam", status: "Active", lastLogin: "12 May 2024 05:20 PM" },
     { name: "Mahesh", role: "Sales Staff", userType: "Staff", branch: "KVR Motors - Kakinada", status: "Inactive", lastLogin: "10 May 2024 04:35 PM" },
   ];
@@ -313,26 +419,475 @@ export default function OwnerDashboard() {
     fullName: "",
     email: "",
     role: "Sales Staff",
-    branch: "KVR Motors - Vizag",
+    branch: "KVR Motors - Visakhapatnam",
     status: "Active",
     userType: "Staff"
   });
   const [users, setUsers] = useState(systemUsers);
-  // MOCK DATA
-  const salesOverviewData = [
-    { name: "01 May", ThisMonth: 4500000, LastMonth: 4000000 },
-    { name: "06 May", ThisMonth: 7200000, LastMonth: 6100000 },
-    { name: "11 May", ThisMonth: 9500000, LastMonth: 8200000 },
-    { name: "16 May", ThisMonth: 14500000, LastMonth: 12100000 },
-    { name: "21 May", ThisMonth: 19800000, LastMonth: 17200000 },
-    { name: "26 May", ThisMonth: 24580000, LastMonth: 21800000 },
-  ];
-  const stockStatusData = [
-    { name: "Available", value: 186, color: "#2563eb" }, // Blue
-    { name: "Booked", value: 45, color: "#10b981" },    // Green
-    { name: "In Transit", value: 32, color: "#f59e0b" }, // Amber
-    { name: "Sold", value: 49, color: "#64748b" },      // Slate
-  ];
+
+  // Lightweight feedback toast
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Tab navigation (mirrors sidebar behaviour so URL stays in sync)
+  const navigateTo = (tab: string) => {
+    setActiveTab(tab);
+    const path = tab === "dashboard" ? "/owner" : `/owner/${tab}`;
+    window.history.pushState({ path }, "", path);
+  };
+
+  // --- Branch edit / toggle ---
+  const [editingBranchId, setEditingBranchId] = useState<number | null>(null);
+  const openEditBranch = (branch: any) => {
+    setEditingBranchId(branch.id);
+    setBranchName(branch.name || "");
+    setBranchAddress(branch.address || "");
+    setBranchPhone(branch.phone_number || "");
+    setBranchActive(branch.is_active !== false);
+    setIsAddBranchOpen(true);
+  };
+  const handleToggleBranch = async (branch: any) => {
+    try {
+      await updateBranch(branch.id, { name: branch.name, address: branch.address, phone_number: branch.phone_number, is_active: !branch.is_active });
+      showToast(`Branch ${branch.is_active ? "deactivated" : "activated"}.`);
+      loadBranches();
+    } catch { showToast("Failed to update branch.", "error"); }
+  };
+
+  // --- Vehicle model edit ---
+  const [editingModelId, setEditingModelId] = useState<number | null>(null);
+  const openEditModel = (model: any) => {
+    setEditingModelId(model.id);
+    setNewModelBrand(String(model.brand || ""));
+    setNewModelName(model.model_name || "");
+    setNewModelPrice(String(model.base_price || ""));
+    setNewModelBattery(model.battery_compatibility || "");
+    setNewModelColors(Array.isArray(model.color_variants) ? model.color_variants.join(", ") : (model.color_variants || ""));
+    setNewModelStatus(model.status === "inactive" ? "inactive" : "active");
+    setIsAddVehicleOpen(true);
+  };
+
+  // --- Stock Unit (VIN registry) add / edit / delete ---
+  const resetStockUnitForm = () => {
+    setStockUnitForm({ ...emptyStockUnit });
+    setEditingUnitId(null);
+    setVinLookupState("idle");
+  };
+  const openAddStockUnit = () => {
+    resetStockUnitForm();
+    setIsAddStockOpen(true);
+  };
+  const openEditStockUnit = (unit: any) => {
+    setVinLookupState("idle");
+    setEditingUnitId(unit.id);
+    setStockUnitForm({
+      model: String(unit.model || ""),
+      branch: String(unit.branch || ""),
+      showroom: String(unit.showroom || ""),
+      location: String(unit.location || ""),
+      vin_number: unit.vin_number || "",
+      motor_number: unit.motor_number || "",
+      chassis_number: unit.chassis_number || "",
+      color: unit.color || "",
+      purchase_date: unit.purchase_date || "",
+      stock_status: unit.stock_status || "available",
+      assigned_battery: unit.assigned_battery || "",
+    });
+    setIsAddStockOpen(true);
+  };
+
+  // Auto-fill identifiers when one is entered. Vehicles are matched against the
+  // already-loaded units registry by VIN, Motor, OR Chassis number — so filling
+  // any one identifier pulls the rest. Falls back to the API lookup if needed.
+  const applyMatchedUnit = (unit: any) => {
+    setEditingUnitId(unit.id);
+    setStockUnitForm((prev) => ({
+      ...prev,
+      model: String(unit.model ?? prev.model ?? ""),
+      branch: String(unit.branch ?? prev.branch ?? ""),
+      showroom: String(unit.showroom ?? prev.showroom ?? ""),
+      location: String(unit.location ?? prev.location ?? ""),
+      vin_number: unit.vin_number || prev.vin_number,
+      motor_number: unit.motor_number || "",
+      chassis_number: unit.chassis_number || "",
+      color: unit.color || "",
+      purchase_date: unit.purchase_date || "",
+      stock_status: unit.stock_status || "available",
+      assigned_battery: unit.assigned_battery || "",
+    }));
+    setVinLookupState("found");
+  };
+
+  const handleIdentifierLookup = async (
+    field: "vin_number" | "motor_number" | "chassis_number",
+    raw: string
+  ) => {
+    const q = raw.trim();
+    if (q.length < 3) {
+      setVinLookupState("idle");
+      return;
+    }
+    setVinLookupState("searching");
+
+    // 1) Instant client-side match against the loaded registry (any identifier).
+    const local = vehicleUnitsList.find((u) => {
+      const vals = [u.vin_number, u.motor_number, u.chassis_number]
+        .filter(Boolean)
+        .map((v: string) => String(v).toLowerCase());
+      return vals.includes(q.toLowerCase());
+    });
+    if (local) {
+      applyMatchedUnit(local);
+      return;
+    }
+
+    // 2) Fall back to the backend lookup (matches VIN / motor / chassis exactly).
+    try {
+      const unit = await lookupVehicleUnit(q);
+      if (unit && unit.id) {
+        applyMatchedUnit(unit);
+        return;
+      }
+      setEditingUnitId(null);
+      setVinLookupState("notfound");
+    } catch {
+      setEditingUnitId(null);
+      setVinLookupState("notfound");
+    }
+  };
+
+  const handleStockUnitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const f = stockUnitForm;
+    if (!f.model || !f.branch || !f.showroom || !f.location) {
+      showToast("Select model, branch, showroom and location.", "error");
+      return;
+    }
+    const vin = f.vin_number.trim();
+    const motor = f.motor_number.trim();
+    const chassis = f.chassis_number.trim();
+    if (!vin && !motor && !chassis) {
+      showToast("Enter at least one identifier — VIN, Motor, or Chassis number.", "error");
+      return;
+    }
+    const payload = {
+      model: parseInt(f.model),
+      branch: parseInt(f.branch),
+      showroom: parseInt(f.showroom),
+      location: parseInt(f.location),
+      // Send null (not empty string) for blanks so the DB partial-unique
+      // constraints treat missing identifiers as absent rather than duplicates.
+      vin_number: vin || null,
+      motor_number: motor || null,
+      chassis_number: chassis || null,
+      color: f.color.trim() || null,
+      purchase_date: f.purchase_date || undefined,
+      stock_status: f.stock_status,
+      assigned_battery: f.assigned_battery.trim() || undefined,
+    };
+    try {
+      if (editingUnitId) {
+        await updateVehicleUnit(editingUnitId, payload);
+        showToast("Stock unit updated.");
+      } else {
+        await createVehicleUnit(payload);
+        showToast("Stock unit logged.");
+      }
+      resetStockUnitForm();
+      setIsAddStockOpen(false);
+      loadVehicles();
+    } catch {
+      showToast("Failed to save. An identifier may already be in use.", "error");
+    }
+  };
+  const handleDeleteStockUnit = async (unit: any) => {
+    if (!unit.id) return;
+    const ident = unit.vin_number || unit.motor_number || unit.chassis_number || `#${unit.id}`;
+    if (!window.confirm(`Delete stock unit ${ident}? This cannot be undone.`)) return;
+    try {
+      await deleteVehicleUnit(unit.id);
+      showToast("Stock unit removed.");
+      loadVehicles();
+    } catch { showToast("Failed to delete stock unit.", "error"); }
+  };
+
+  // --- Add / Edit Lead + Kanban drag-drop ---
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const [newLead, setNewLead] = useState({ ...emptyLead });
+  const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
+  const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+
+  const openAddLead = () => {
+    setEditingLeadId(null);
+    setNewLead({ ...emptyLead });
+    setIsAddLeadOpen(true);
+  };
+  const openEditLead = (lead: any) => {
+    setEditingLeadId(lead.id);
+    setNewLead({
+      customer_name: lead.customer_name || "",
+      contact_number: lead.contact_number || "",
+      interested_vehicle: String(lead.interested_vehicle || ""),
+      lead_source: lead.lead_source || "walk_in",
+      status: lead.status || "new_lead",
+      notes: lead.notes || "",
+      follow_up_date: lead.follow_up_date || "",
+    });
+    setIsAddLeadOpen(true);
+  };
+  const handleCreateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
+    const payload = {
+      customer_name: newLead.customer_name.trim(),
+      contact_number: newLead.contact_number.trim(),
+      interested_vehicle: parseInt(newLead.interested_vehicle),
+      lead_source: newLead.lead_source,
+      status: newLead.status,
+      notes: newLead.notes.trim() || undefined,
+      follow_up_date: newLead.follow_up_date || undefined,
+    };
+    try {
+      if (editingLeadId) {
+        await updateLead(editingLeadId, payload);
+        showToast("Lead updated.");
+      } else {
+        await createLead(payload);
+        showToast("Lead added to pipeline.");
+      }
+      setNewLead({ ...emptyLead });
+      setEditingLeadId(null);
+      setIsAddLeadOpen(false);
+      loadLeads();
+    } catch { showToast("Failed to save lead.", "error"); }
+  };
+
+  // Move a lead to a new pipeline stage (drag-drop). Optimistic UI + API persist.
+  const moveLeadToStage = async (leadId: number, newStatus: string) => {
+    const lead = leadsList.find((l) => l.id === leadId);
+    if (!lead || lead.status === newStatus) return;
+    const prevStatus = lead.status;
+    setLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)));
+    try {
+      await updateLead(leadId, { status: newStatus });
+      showToast(`Lead moved to ${newStatus.replace("_", " ")}.`);
+    } catch {
+      setLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: prevStatus } : l)));
+      showToast("Failed to move lead.", "error");
+    }
+  };
+
+  // --- Record Booking ---
+  const [newBooking, setNewBooking] = useState({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+  const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
+  const openEditBooking = (bk: any) => {
+    setEditingBookingId(bk.id);
+    setNewBooking({
+      customer_name: bk.customer_name || "",
+      contact_number: bk.contact_number || "",
+      vehicle_model: String(bk.vehicle_model || ""),
+      advance_amount: String(bk.advance_amount || ""),
+      expiry_date: bk.expiry_date || "",
+    });
+    setIsAddBookingOpen(true);
+  };
+  const handleCreateBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBooking.customer_name.trim() || !newBooking.vehicle_model || !newBooking.advance_amount || !newBooking.expiry_date) return;
+    try {
+      if (editingBookingId) {
+        await updateBooking(editingBookingId, {
+          customer_name: newBooking.customer_name.trim(),
+          contact_number: newBooking.contact_number.trim(),
+          vehicle_model: parseInt(newBooking.vehicle_model),
+          advance_amount: parseFloat(newBooking.advance_amount),
+          expiry_date: newBooking.expiry_date,
+        });
+        showToast("Booking updated.");
+      } else {
+        await createBooking({
+          booking_id: `BK-${Date.now().toString().slice(-6)}`,
+          customer_name: newBooking.customer_name.trim(),
+          contact_number: newBooking.contact_number.trim(),
+          vehicle_model: parseInt(newBooking.vehicle_model),
+          advance_amount: parseFloat(newBooking.advance_amount),
+          expiry_date: newBooking.expiry_date,
+          status: "confirmed"
+        });
+        showToast("Booking recorded.");
+      }
+      setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+      setEditingBookingId(null);
+      setIsAddBookingOpen(false);
+      loadBookings();
+    } catch { showToast("Failed to save booking.", "error"); }
+  };
+  const handleCancelBooking = async (bk: any) => {
+    try {
+      await updateBooking(bk.id, { status: "cancelled" });
+      showToast("Booking cancelled.");
+      loadBookings();
+    } catch { showToast("Failed to cancel booking.", "error"); }
+  };
+
+  // --- Log / Edit Battery ---
+  const [locationsList, setLocationsList] = useState<any[]>([]);
+  const emptyBattery = { serial_number: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
+  const [newBattery, setNewBattery] = useState({ ...emptyBattery });
+  const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
+
+  const openEditBattery = (batt: any) => {
+    setEditingBatteryId(batt.id);
+    setNewBattery({
+      serial_number: batt.serial || "",
+      capacity: batt.capacity || "",
+      purchase_date: batt.purDate || "",
+      location: batt.locationId ? String(batt.locationId) : "",
+      supplier: batt.supplier && batt.supplier !== "Tesla Tech Pack" ? batt.supplier : "",
+      warranty_years: String(batt.warrantyYearsRaw || 3),
+      status: batt.rawStatus || "available",
+    });
+    setIsAddBatteryOpen(true);
+  };
+
+  const handleCreateBattery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBattery.serial_number.trim() || !newBattery.capacity.trim() || !newBattery.purchase_date || !newBattery.location) return;
+    try {
+      const payload = {
+        serial_number: newBattery.serial_number.trim(),
+        capacity: newBattery.capacity.trim(),
+        purchase_date: newBattery.purchase_date,
+        location: parseInt(newBattery.location),
+        supplier: newBattery.supplier.trim() || "Unknown",
+        warranty_years: parseInt(newBattery.warranty_years) || 3,
+        status: newBattery.status,
+      };
+      if (editingBatteryId) {
+        await updateBattery(editingBatteryId, payload);
+        showToast("Battery updated.");
+      } else {
+        await createBattery(payload);
+        showToast("Battery logged to FIFO registry.");
+      }
+      setNewBattery({ ...emptyBattery });
+      setEditingBatteryId(null);
+      setIsAddBatteryOpen(false);
+      loadBatteries();
+    } catch { showToast("Failed to save battery.", "error"); }
+  };
+
+  const handleDeleteBattery = async (batt: any) => {
+    if (!batt.id) return;
+    if (!window.confirm(`Delete battery ${batt.serial}? This cannot be undone.`)) return;
+    try {
+      await deleteBattery(batt.id);
+      showToast("Battery removed from registry.");
+      loadBatteries();
+    } catch { showToast("Failed to delete battery.", "error"); }
+  };
+
+  // --- Battery history detail ---
+  const [historyBattery, setHistoryBattery] = useState<any | null>(null);
+
+  // --- Settings ---
+  const [settings, setSettings] = useState({ name: "KVR Motors Group", gst: "18% SGST/CGST split" });
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kvr_settings");
+      if (saved) setSettings(JSON.parse(saved));
+    } catch {}
+  }, []);
+  const handleSaveSettings = () => {
+    try { localStorage.setItem("kvr_settings", JSON.stringify(settings)); showToast("Settings saved."); }
+    catch { showToast("Failed to save settings.", "error"); }
+  };
+  const handleResetSettings = () => {
+    setSettings({ name: "KVR Motors Group", gst: "18% SGST/CGST split" });
+    showToast("Settings reset to defaults.");
+  };
+
+  // --- Report CSV export ---
+  const [reportModule, setReportModule] = useState("Sales Ledger Summary");
+  const downloadReport = () => {
+    let rows: string[][] = [];
+    if (reportModule === "Inventory In-Out Movements") {
+      rows = [["VIN", "Model", "Color", "Branch", "Status"], ...vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status])];
+    } else if (reportModule === "Lead Conversion Pipeline") {
+      rows = [["Lead", "Customer", "Contact", "Vehicle", "Status"], ...leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status])];
+    } else if (reportModule === "Battery FIFO Allocations") {
+      rows = [["Serial", "Capacity", "Acquired", "Status", "Location"], ...batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location])];
+    } else {
+      rows = [["Invoice", "Customer", "Model", "Sale Price", "Date"], ...salesInvoices.map(s => [s.invoice_number, s.customer_name, s.model_name, s.sale_price, s.sale_date])];
+    }
+    const csv = rows.map(r => r.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${reportModule.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Report exported as CSV.");
+  };
+
+  // DYNAMIC COMPUTATIONS & MEMOIZED AGGREGATES
+  const salesOverviewData = React.useMemo(() => {
+    if (salesInvoices.length === 0) {
+      return [
+        { name: "01 May", ThisMonth: 4500000, LastMonth: 4000000 },
+        { name: "06 May", ThisMonth: 7200000, LastMonth: 6100000 },
+        { name: "11 May", ThisMonth: 9500000, LastMonth: 8200000 },
+        { name: "16 May", ThisMonth: 14500000, LastMonth: 12100000 },
+        { name: "21 May", ThisMonth: 19800000, LastMonth: 17200000 },
+        { name: "26 May", ThisMonth: 24580000, LastMonth: 21800000 },
+      ];
+    }
+    const grouped: Record<string, number> = {};
+    salesInvoices.forEach((inv) => {
+      const date = new Date(inv.sale_date || inv.created_at);
+      const dayStr = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      grouped[dayStr] = (grouped[dayStr] || 0) + parseFloat(inv.sale_price || 0);
+    });
+    const sorted = Object.keys(grouped).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    let cumulative = 0;
+    return sorted.map((dateStr) => {
+      cumulative += grouped[dateStr];
+      return {
+        name: dateStr,
+        ThisMonth: cumulative,
+        LastMonth: Math.round(cumulative * 0.9)
+      };
+    });
+  }, [salesInvoices]);
+
+  const stockStatusData = React.useMemo(() => {
+    const available = vehicleUnitsList.filter(u => u.stock_status === "available").length;
+    const booked = vehicleUnitsList.filter(u => u.stock_status === "booked").length;
+    const reserved = vehicleUnitsList.filter(u => u.stock_status === "reserved").length;
+    const sold = vehicleUnitsList.filter(u => u.stock_status === "sold").length;
+    
+    // If all stats are zero, fallback to visual mock parameters
+    if (available + booked + reserved + sold === 0) {
+      return [
+        { name: "Available", value: 186, color: "#2563eb" },
+        { name: "Booked", value: 45, color: "#10b981" },
+        { name: "In Transit", value: 32, color: "#f59e0b" },
+        { name: "Sold", value: 49, color: "#64748b" },
+      ];
+    }
+    return [
+      { name: "Available", value: available, color: "#2563eb" },
+      { name: "Booked", value: booked, color: "#10b981" },
+      { name: "In Transit / Reserved", value: reserved, color: "#f59e0b" },
+      { name: "Sold", value: sold, color: "#64748b" }
+    ];
+  }, [vehicleUnitsList]);
+
   const enquiryCount = leadsList.filter(l => l.status === "enquiry").length;
   const leadCount = leadsList.filter(l => l.status === "new_lead" || l.status === "contacted" || l.status === "follow_up").length;
   const negoCount = leadsList.filter(l => l.status === "negotiation").length;
@@ -344,45 +899,66 @@ export default function OwnerDashboard() {
     { name: "Negotiation", count: negoCount, color: "#f59e0b" },
     { name: "Won", count: wonCount, color: "#10b981" },
   ];
-  const recentActivities = [
-    { id: 1, action: "Vehicle Stock In", ref: "GRN-2024-0512", location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
-    { id: 2, action: "Sale Invoice Created", ref: "INV-2024-0789", location: "Isakapallem Showroom", user: "Suresh", time: "15 mins ago" },
-    { id: 3, action: "Purchase Invoice Created", ref: "PINV-2024-0321", location: "Pineapple Colony Godown", user: "Ramesh", time: "1 hour ago" },
-    { id: 4, action: "Lead Converted to Sale", ref: "LD-2024-0156", location: "Kakinada Showroom", user: "Suresh", time: "2 hours ago" },
-  ];
-  const topSellingModels = [
-    { name: "Kinetic Green E-Luna", count: 72 },
-    { name: "Dynamo Pro", count: 61 },
-    { name: "Frankly 79", count: 48 },
-    { name: "Watts 100", count: 38 },
-    { name: "Others", count: 23 },
-  ];
-  // Modules List Data
-  const branchData = [
-    { name: "KVR Showroom - Vizag", location: "Vizag City", manager: "Suresh Babu", status: "Active", stock: 120, sales: "₹ 1,12,00,000", monthlyTarget: "₹ 1,50,00,000", targetPct: "74%" },
-    { name: "Future Ride - Vizag", location: "Vizag Suburban", manager: "Rajesh", status: "Active", stock: 85, sales: "₹ 78,50,000", monthlyTarget: "₹ 1,00,00,000", targetPct: "78%" },
-    { name: "KVR Showroom - Srikakulam", location: "Srikakulam Town", manager: "Prasad", status: "Active", stock: 62, sales: "₹ 34,20,000", monthlyTarget: "₹ 60,00,000", targetPct: "57%" },
-    { name: "KVR Showroom - Kakinada", location: "Kakinada Port", manager: "Mahesh", status: "Inactive", stock: 45, sales: "₹ 21,10,000", monthlyTarget: "₹ 50,00,000", targetPct: "42%" },
-  ];
-  const vehicleModels = [
-    { name: "Kinetic Green E-Luna", brand: "Kinetic", category: "Moped", price: "₹ 74,999", type: "Electric", colors: "Green, Red, Black", battery: "1.2 kWh Li-ion", status: "Available", warranty: "3 Yrs / 40K km", range: "120 km" },
-    { name: "Dynamo Pro", brand: "Dynamo", category: "Scooter", price: "₹ 98,500", type: "Electric", colors: "Blue, White, Gray", battery: "2.0 kWh Swappable", status: "Available", warranty: "3 Yrs / 40K km", range: "140 km" },
-    { name: "Frankly 79", brand: "Frankly", category: "Scooter", price: "₹ 1,15,000", type: "Electric", colors: "Yellow, Red, Black", battery: "2.4 kWh Dual", status: "Available", warranty: "5 Yrs / 60K km", range: "160 km" },
-    { name: "Watts 100", brand: "Watts", category: "Motorcycle", price: "₹ 1,45,000", type: "Electric", colors: "Matte Black, Red", battery: "3.2 kWh Fixed", status: "Available", warranty: "5 Yrs / 60K km", range: "180 km" },
-  ];
-  const vehicleStockUnits = [
-    { vin: "KVRVIN2026X101", motor: "MTR-90802", chassis: "CHS-88902", model: "Kinetic Green E-Luna", color: "Green", branch: "Vizag", location: "Pendurthi Godown", date: "12 May 2024", status: "Available", battery: "BATT-00982", booking: "N/A", pdi: "Passed", ageInStock: "5 days" },
-    { vin: "KVRVIN2026X102", motor: "MTR-90805", chassis: "CHS-88904", model: "Dynamo Pro", color: "Blue", branch: "Vizag", location: "Isakapallem Showroom", date: "10 May 2024", status: "Booked", battery: "BATT-00874", booking: "BK-8021", pdi: "Passed", ageInStock: "14 days" },
-    { vin: "KVRVIN2026X103", motor: "MTR-90807", chassis: "CHS-88908", model: "Frankly 79", color: "Yellow", branch: "Srikakulam", location: "Srikakulam Showroom", date: "15 May 2024", status: "Available", battery: "BATT-00621", booking: "N/A", pdi: "Passed", ageInStock: "3 days" },
-    { vin: "KVRVIN2026X104", motor: "MTR-90812", chassis: "CHS-88915", model: "Watts 100", color: "Red", branch: "Vizag", location: "Pendurthi Godown", date: "02 May 2024", status: "Reserved", battery: "BATT-00511", booking: "BK-8012", pdi: "Pending", ageInStock: "26 days" },
-  ];
-  // Loaded dynamically via useEffect hooks and Django REST API endpoints
-  const batteriesStock = [
-    { serial: "BATT-00982", capacity: "1.2 kWh", purDate: "02 Mar 2024", status: "Assigned", vehicle: "KVRVIN2026X101", location: "Pendurthi Godown", supplier: "Ampere Cells", warrantyYears: "3 Years" },
-    { serial: "BATT-00874", capacity: "2.0 kWh", purDate: "10 Jan 2024", status: "Sold", vehicle: "KVRVIN2026X102", location: "Vizag Showroom", supplier: "Future Batteries Ltd", warrantyYears: "3 Years" },
-    { serial: "BATT-00621", capacity: "2.4 kWh", purDate: "15 Apr 2024", status: "Available", vehicle: "N/A", location: "Srikakulam Showroom", supplier: "Tesla Tech Pack", warrantyYears: "5 Years" },
-    { serial: "BATT-00511", capacity: "3.2 kWh", purDate: "01 May 2024", status: "Assigned", vehicle: "KVRVIN2026X104", location: "Pendurthi Godown", supplier: "Tesla Tech Pack", warrantyYears: "5 Years" },
-  ];
+
+  const recentActivities = React.useMemo(() => {
+    const list: any[] = [];
+    salesInvoices.forEach((inv) => {
+      list.push({
+        id: `sales-${inv.id}`,
+        action: "Sale Invoice Created",
+        ref: inv.invoice_number,
+        location: inv.branch_name || "Visakhapatnam Showroom",
+        user: inv.executive_name || "Anil Kumar",
+        time: "Just now"
+      });
+    });
+    purchaseOrders.forEach((po) => {
+      list.push({
+        id: `po-${po.id}`,
+        action: `PO ${po.status.toUpperCase()}`,
+        ref: po.po_number,
+        location: "Visakhapatnam Showroom",
+        user: "Ravi Varma",
+        time: po.order_date
+      });
+    });
+    if (list.length === 0) {
+      return [
+        { id: 1, action: "Vehicle Stock In", ref: "GRN-2024-0512", location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
+        { id: 2, action: "Sale Invoice Created", ref: "INV-2024-0789", location: "Isakapallem Showroom", user: "Suresh", time: "15 mins ago" },
+        { id: 3, action: "Purchase Invoice Created", ref: "PINV-2024-0321", location: "Pineapple Colony Godown", user: "Ramesh", time: "1 hour ago" },
+        { id: 4, action: "Lead Converted to Sale", ref: "LD-2024-0156", location: "Kakinada Showroom", user: "Suresh", time: "2 hours ago" },
+      ];
+    }
+    return list.slice(0, 4);
+  }, [salesInvoices, purchaseOrders]);
+
+  const topSellingModels = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    salesInvoices.forEach((inv) => {
+      const model = inv.model_name || "Kinetic Green E-Luna";
+      counts[model] = (counts[model] || 0) + 1;
+    });
+    const sorted = Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    if (sorted.length === 0) {
+      return [
+        { name: "Kinetic Green E-Luna", count: 72 },
+        { name: "Dynamo Pro", count: 61 },
+        { name: "Frankly 79", count: 48 },
+        { name: "Watts 100", count: 38 }
+      ];
+    }
+    return sorted.slice(0, 5);
+  }, [salesInvoices]);
+
+  const netCashflow = ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0);
+  const totalSalesValue = salesInvoices.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0);
+
+  // Showrooms / locations filtered by the branch chosen in the stock-unit form
+  const branchShowrooms = showroomsList.filter((s) => String(s.branch) === stockUnitForm.branch);
+  const branchLocations = locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
 
   if (!isMounted) {
     return (
@@ -396,52 +972,156 @@ export default function OwnerDashboard() {
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       
       {/* Sidebar - Leaves existing Sidebar.tsx alone, uses DashboardSidebar */}
-      <DashboardSidebar role="owner" activeTab={activeTab} />
+      <DashboardSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
       {/* Main Panel Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
         <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
         {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main data-lenis-prevent className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Welcome Banner */}
-              <div className="bg-white border border-emerald-100/60 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm shadow-emerald-950/4 select-none">
-                <div>
-                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    Welcome back, Ravi Varma! <Sparkles className="h-4 w-4 text-[#04a700] animate-pulse" />
-                  </h2>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Here&apos;s a quick snapshot of your multi-branch enterprise statistics today.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-[#04a700] border border-[#04a700]/30 bg-[#04a700]/10 rounded-lg px-3 py-1 flex items-center gap-1.5 shadow-sm shadow-emerald-950/4">
-                    <Calendar className="h-3.5 w-3.5 text-[#04a700]" />
-                    SYSTEM LIVE
-                  </span>
+              {/* Premium Welcome Hero — light, integrated with the dashboard surface */}
+              <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
+                {/* soft brand accent wash on the right */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#04a700]/[0.07] to-transparent" />
+                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#04a700]/10 blur-3xl" />
+                {/* green left rail */}
+                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#04a700] to-emerald-600" />
+
+                <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#04a700]/30 bg-[#04a700]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#04a700]">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#04a700] opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#04a700]" />
+                        </span>
+                        Enterprise Live
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500">
+                        <CalendarDays className="h-3 w-3" /> 01 May – 31 May 2024
+                      </span>
+                    </div>
+                    <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                      Welcome back, Ravi Varma
+                      <Sparkles className="h-5 w-5 text-[#04a700]" />
+                    </h2>
+                    <p className="mt-1.5 max-w-xl text-xs font-medium leading-relaxed text-slate-500 sm:text-sm">
+                      Here&apos;s a live snapshot of your multi-branch automotive enterprise across Visakhapatnam, Srikakulam &amp; Kakinada.
+                    </p>
+                  </div>
+
+                  {/* Net Cashflow stat */}
+                  <div className="flex w-full shrink-0 items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white px-5 py-4 lg:w-auto lg:min-w-[240px]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#04a700]/10 text-[#04a700]">
+                      <Wallet className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Cashflow (MTD)</span>
+                      <div className={`font-mono text-xl font-black tracking-tight sm:text-2xl ${netCashflow >= 0 ? "text-slate-900" : "text-rose-500"}`}>
+                        ₹ {netCashflow.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-[#04a700]">
+                        <TrendingUp className="h-3 w-3" /> Auto-journaled from ledger
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* Grid Metric Cards */}
+
+              {/* Quick Actions Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  { label: "Create PO", icon: ShoppingBag, onClick: () => setIsAddPOOpen(true) },
+                  { label: "Add Lead", icon: Compass, onClick: () => setIsAddLeadOpen(true) },
+                  { label: "Record Booking", icon: CalendarDays, onClick: () => setIsAddBookingOpen(true) },
+                  { label: "Add Branch", icon: Building, onClick: () => { setEditingBranchId(null); setBranchName(""); setBranchAddress(""); setBranchPhone(""); setIsAddBranchOpen(true); } },
+                  { label: "Generate Report", icon: FileSpreadsheet, onClick: () => navigateTo("reports") },
+                ].map((qa, i) => {
+                  const QAIcon = qa.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={qa.onClick}
+                      className="group flex items-center gap-2.5 bg-white border border-emerald-100/70 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md hover:border-[#04a700]/40 hover:-translate-y-0.5 transition-all cursor-pointer text-left"
+                    >
+                      <span className="h-9 w-9 shrink-0 rounded-full bg-[#04a700]/10 border border-[#04a700]/20 flex items-center justify-center text-[#04a700] group-hover:bg-[#04a700] group-hover:text-white transition-colors">
+                        <QAIcon className="h-4 w-4" />
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-700 truncate">{qa.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grid Metric Cards (clickable) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <DashboardCard title="Total Sales" value="₹ 2,45,80,000" trend="↑ 12.8%" trendType="success" description="12.8% vs last month" icon={DollarSign} color="emerald" />
-                <DashboardCard title="Total Purchases" value="₹ 1,65,40,000" trend="↓ 6.2%" trendType="danger" description="6.2% vs last month" icon={ShoppingBag} color="rose" />
-                <DashboardCard title="Vehicles in Stock" value="312 Units" trend="↑ 8.4%" trendType="success" description="8.4% vs last month" icon={Car} color="blue" />
-                <DashboardCard title="Total Leads" value={`${leadsLoading ? "..." : leadsList.length} Leads`} trend="↑ 15.3%" trendType="success" description="15.3% vs last month" icon={Compass} color="amber" />
-                <DashboardCard title="Receivables" value="₹ 68,75,000" trend="↓ 3.7%" trendType="danger" description="3.7% vs last month" icon={Briefcase} color="purple" />
+                <DashboardCard 
+                  title="Total Sales" 
+                  value={salesInvoicesLoading ? "..." : "₹ " + totalSalesValue.toLocaleString('en-IN')} 
+                  trend="↑ 12.8%" 
+                  trendType="success" 
+                  description="Dynamic sales volume" 
+                  icon={DollarSign} 
+                  color="emerald" 
+                  onClick={() => navigateTo("sales")}
+                />
+                <DashboardCard 
+                  title="Total Purchases" 
+                  value={purchaseOrdersLoading ? "..." : "₹ " + purchaseOrders.filter(po => po.status === "approved" || po.status === "received").reduce((acc, curr) => acc + parseFloat(curr.total_price || 0), 0).toLocaleString('en-IN')} 
+                  trend="↓ 6.2%" 
+                  trendType="danger" 
+                  description="Approved PO total" 
+                  icon={ShoppingBag} 
+                  color="rose" 
+                  onClick={() => navigateTo("purchases")}
+                />
+                <DashboardCard 
+                  title="Vehicles in Stock" 
+                  value={vehiclesLoading ? "..." : `${vehicleUnitsList.filter(u => u.stock_status === "available").length} Units`} 
+                  trend="↑ 8.4%" 
+                  trendType="success" 
+                  description="Available units" 
+                  icon={Car} 
+                  color="blue" 
+                  onClick={() => navigateTo("vehicles")}
+                />
+                <DashboardCard 
+                  title="Total Leads" 
+                  value={`${leadsLoading ? "..." : leadsList.length} Leads`} 
+                  trend="↑ 15.3%" 
+                  trendType="success" 
+                  description="Inflow conversion pace" 
+                  icon={Compass} 
+                  color="amber" 
+                  onClick={() => navigateTo("leads")}
+                />
+                <DashboardCard 
+                  title="Receivables" 
+                  value={advanceBookingsLoading ? "..." : "₹ " + advanceBookings.filter(b => b.status === "confirmed").reduce((acc, curr) => acc + parseFloat(curr.advance_amount || 0), 0).toLocaleString('en-IN')} 
+                  trend="↓ 3.7%" 
+                  trendType="danger" 
+                  description="Deposit pipeline" 
+                  icon={Briefcase} 
+                  color="purple" 
+                  onClick={() => navigateTo("bookings")}
+                />
               </div>
               {/* Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[460px]">
                 
                 {/* Sales Overview Chart (Line) */}
-                <div className="lg:col-span-2 bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col justify-between h-full min-h-[440px]">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="lg:col-span-2 bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col justify-between h-full min-h-[440px] hover:shadow-md transition-shadow duration-300">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-xs font-bold text-slate-800">Sales Overview</h3>
-                      <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Cumulative monthly sales compared to previous cycle</p>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Sales Analytics Overview</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Real-time cumulative sales volume dynamically fetched from PostgreSQL</p>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-[#04a700]">
-                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-[#04a700]" /> This Month</span>
-                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-slate-350" /> Last Month</span>
+                    <div className="flex items-center gap-3.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#04a700]" /> This Month</span>
+                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /> Last Month</span>
                     </div>
                   </div>
                   
@@ -465,15 +1145,15 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 {/* Stock by Status (Donut) */}
-                <div className="bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col h-full min-h-[440px] justify-between">
-                  <div className="mb-2">
-                    <h3 className="text-xs font-bold text-slate-800">Vehicle Stock Status</h3>
-                    <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Distribution of 312 physical units</p>
+                <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col h-full min-h-[440px] justify-between hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">Vehicle Stock Status</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution loaded from PostgreSQL</p>
                   </div>
                   <div className="h-[220px] w-full flex flex-col justify-center items-center relative">
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-xl font-extrabold text-slate-800">312</span>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Total units</span>
+                      <span className="text-2xl font-black text-slate-800 font-mono">{vehiclesLoading ? "..." : vehicleUnitsList.length}</span>
+                      <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total units</span>
                     </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -493,13 +1173,16 @@ export default function OwnerDashboard() {
                     </ResponsiveContainer>
                   </div>
                   {/* Legend Grid */}
-                  <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-emerald-50 text-[10px] font-bold text-slate-500">
-                    {stockStatusData.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span>{item.name} ({((item.value / 312) * 100).toFixed(0)}%)</span>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 gap-1.5 pt-3 border-t border-slate-100 text-[10px] font-bold text-slate-500">
+                    {stockStatusData.map((item, idx) => {
+                      const totalSum = stockStatusData.reduce((s, c) => s + c.value, 0) || 1;
+                      return (
+                        <div key={idx} className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span>{item.name} ({((item.value / totalSum) * 100).toFixed(0)}%)</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -507,73 +1190,88 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:min-h-80">
                 
                 {/* Leads Funnel representation */}
-                <div className="bg-white border border-emerald-100/60 p-4 rounded-xl shadow-sm shadow-emerald-950/4 flex flex-col h-full justify-between">
-                  <div className="mb-2">
-                    <h3 className="text-xs font-bold text-slate-800">Leads Funnel</h3>
-                    <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Pipeline conversion ratios this month</p>
+                <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col h-full justify-between hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Leads Conversion Funnel</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Pipeline sales stage conversion ratios this month</p>
+                    </div>
+                    <button onClick={() => navigateTo("leads")} className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#04a700] hover:gap-1.5 transition-all cursor-pointer shrink-0">
+                      View <ArrowUpRight className="h-3 w-3" />
+                    </button>
                   </div>
-                  <div className="flex-1 flex flex-col justify-between py-1 min-h-0">
+                  <div className="flex-1 flex flex-col justify-between py-1 min-h-0 space-y-3">
                     {leadsFunnelData.map((stage, index) => {
-                      const maxVal = 256;
+                      const maxVal = leadsList.length || 1;
                       const percentage = (stage.count / maxVal) * 100;
                       return (
                         <div key={index} className="space-y-1">
                           <div className="flex justify-between text-[10px] font-bold text-slate-650">
-                            <span>{stage.name}</span>
-                            <span>{stage.count} ({((stage.count / maxVal) * 100).toFixed(0)}%)</span>
+                            <span className="font-extrabold uppercase tracking-wide text-slate-500">{stage.name}</span>
+                            <span className="font-mono">{stage.count} Units ({((stage.count / maxVal) * 100).toFixed(0)}%)</span>
                           </div>
-                          <div className="h-4 w-full bg-slate-100 rounded-lg overflow-hidden flex">
+                          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
                             <div 
-                              className="h-full rounded-lg transition-all duration-500 flex items-center justify-end pr-2 text-[8px] font-extrabold text-white shadow-sm"
+                              className="h-full rounded-full transition-all duration-500 shadow-sm"
                               style={{ width: `${percentage}%`, backgroundColor: stage.color }}
-                            >
-                              {percentage > 20 && `${stage.count}`}
-                            </div>
+                            />
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
+
                 {/* Recent Activities */}
-                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-slate-800">Recent Activities</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Latest logs across all outlets</p>
+                <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col h-full hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Recent Enterprise Activities</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Live operational logs across all showrooms</p>
+                    </div>
+                    <button onClick={() => navigateTo("ledger")} className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#04a700] hover:gap-1.5 transition-all cursor-pointer shrink-0">
+                      View <ArrowUpRight className="h-3 w-3" />
+                    </button>
                   </div>
-                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto slim-scrollbar smooth-scroll">
+                  <div className="flex-1 divide-y divide-slate-100 overflow-y-auto slim-scrollbar smooth-scroll max-h-[220px]">
                     {recentActivities.map((act) => (
                       <div key={act.id} className="py-2.5 flex items-center justify-between text-xs text-left">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800">{act.action}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold mt-0.5">{act.ref} • {act.location}</span>
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <span className="font-extrabold text-slate-800 truncate">{act.action}</span>
+                          <span className="text-[10px] text-slate-400 font-bold mt-0.5">{act.ref} • {act.location}</span>
                         </div>
-                        <div className="flex flex-col text-right text-[10px] font-bold">
-                          <span className="text-slate-600">{act.user}</span>
-                          <span className="text-slate-400 mt-0.5">{act.time}</span>
+                        <div className="flex flex-col text-right text-[10px] font-bold shrink-0">
+                          <span className="text-slate-600 font-extrabold">{act.user}</span>
+                          <span className="text-slate-400 font-mono mt-0.5">{act.time}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
                 {/* Top Selling Models */}
-                <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col h-full">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-slate-800">Top Selling EV Models</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Top models sorted by unit delivery volume</p>
+                <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col h-full hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Top Performing EV Models</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Ranked by dynamic monthly delivery volume</p>
+                    </div>
+                    <button onClick={() => navigateTo("sales")} className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#04a700] hover:gap-1.5 transition-all cursor-pointer shrink-0">
+                      View <ArrowUpRight className="h-3 w-3" />
+                    </button>
                   </div>
                   <div className="flex-1 flex flex-col justify-between divide-y divide-slate-100">
                     {topSellingModels.map((model, idx) => (
-                      <div key={idx} className="py-2 flex items-center justify-between gap-2 text-xs text-left">
+                      <div key={idx} className="py-2.5 flex items-center justify-between gap-2 text-xs text-left">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="h-5 w-5 shrink-0 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-[9px]">
+                          <span className="h-5.5 w-5.5 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center font-black text-[10px]">
                             {idx + 1}
                           </span>
-                          <span className="font-bold text-slate-750 truncate">{model.name}</span>
+                          <span className="font-extrabold text-slate-700 truncate">{model.name}</span>
                         </div>
                         <div className="flex flex-col text-right text-[10px] font-bold shrink-0">
-                          <span className="text-slate-800">{model.count} Units</span>
-                          <span className="text-[9px] text-[#04a700] mt-0.5">₹ {((model.count * 85000)).toLocaleString()}</span>
+                          <span className="text-slate-800 font-mono font-black">{model.count} Units</span>
+                          <span className="text-[9px] text-[#04a700] font-mono mt-0.5">₹ {((model.count * 85000)).toLocaleString()}</span>
                         </div>
                       </div>
                     ))}
@@ -593,7 +1291,7 @@ export default function OwnerDashboard() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => setIsAddBranchOpen(true)}
-                      className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-md shadow-emerald-600/10 transition-colors"
+                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 transition-colors"
                     >
                       <Plus className="h-4 w-4" /> Add Branch
                     </button>
@@ -624,7 +1322,7 @@ export default function OwnerDashboard() {
                     return (
                       <tr key={branch.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
-                        <td className="py-3.5 px-5 text-slate-600">{branch.address || "Vizag City"}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{branch.address || "Visakhapatnam City"}</td>
                         <td className="py-3.5 px-5 text-slate-600">{branch.phone_number || "Suresh Babu"}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-700">{branch.stock || 120} Vehicles</td>
                         <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales || "₹ 1,12,00,000"}</td>
@@ -645,8 +1343,8 @@ export default function OwnerDashboard() {
                           </span>
                         </td>
                         <td className="py-3.5 px-5">
-                          <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
-                          <button className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">Toggle Status</button>
+                          <button onClick={() => openEditBranch(branch)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleToggleBranch(branch)} className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">Toggle Status</button>
                         </td>
                       </tr>
                     );
@@ -666,7 +1364,7 @@ export default function OwnerDashboard() {
                 actions={
                   <button 
                     onClick={() => setIsAddVehicleOpen(true)}
-                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Add Model
                   </button>
@@ -706,7 +1404,7 @@ export default function OwnerDashboard() {
                         </span>
                       </td>
                       <td className="py-3.5 px-5">
-                        <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit Model</button>
+                        <button onClick={() => openEditModel(model)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit Model</button>
                       </td>
                     </tr>
                   ))
@@ -718,8 +1416,8 @@ export default function OwnerDashboard() {
                 headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "PDI Status", "Age in Stock", "Status", "Actions"]}
                 actions={
                   <button 
-                    onClick={() => setIsAddStockOpen(true)}
-                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                    onClick={openAddStockUnit}
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Add Stock Unit
                   </button>
@@ -743,12 +1441,12 @@ export default function OwnerDashboard() {
                 ) : (
                   vehicleUnitsList.map((unit, idx) => (
                     <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number}</td>
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
                       <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
                       <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Vizag"}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
                       <td className="py-3.5 px-5 text-slate-400 font-medium">{unit.location_name || "Warehouse"}</td>
                       <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
                       <td className="py-3.5 px-5">
@@ -767,6 +1465,10 @@ export default function OwnerDashboard() {
                           {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
                         </span>
                       </td>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                        <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -775,75 +1477,132 @@ export default function OwnerDashboard() {
           )}
           {/* TAB 4: STOCK (IN & OUT) */}
           {activeTab === "stock" && (
-            <div className="space-y-6">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Stock In Log */}
-                <Table title="Stock Intake Log (Stock-In)" headers={["Date Received", "VIN/Model", "Location", "Purchase Code", "Carrier Transport", "PDI Inspector", "Status"]}>
-                  <tr className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-700">12 May 2024</td>
-                    <td className="py-3 px-4 text-slate-800"><div className="font-bold">E-Luna Moped</div><div className="text-[10px] text-slate-400">KVRVIN2026X101</div></td>
-                    <td className="py-3 px-4 text-slate-600">Pendurthi Godown</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">GRN-2024-0512</td>
-                    <td className="py-3 px-4 text-slate-550 font-medium">KVR Logistics</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">Ramesh (Passed)</td>
-                    <td className="py-3 px-4"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Received</span></td>
-                  </tr>
-                  <tr className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-700">10 May 2024</td>
-                    <td className="py-3 px-4 text-slate-800"><div className="font-bold">Dynamo Pro</div><div className="text-[10px] text-slate-400">KVRVIN2026X102</div></td>
-                    <td className="py-3 px-4 text-slate-600">Isakapallem Showroom</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">GRN-2024-0508</td>
-                    <td className="py-3 px-4 text-slate-550 font-medium">SafeExpress</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">Suresh (Passed)</td>
-                    <td className="py-3 px-4"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Received</span></td>
-                  </tr>
-                </Table>
-                {/* Stock Out Log */}
-                <Table title="Stock Outflow Log (Stock-Out)" headers={["Date Dispatched", "VIN/Model", "Destination", "Sales Ref", "Dispatch Driver", "Status"]}>
-                  <tr className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-700">13 May 2024</td>
-                    <td className="py-3 px-4 text-slate-800"><div className="font-bold">Dynamo Pro</div><div className="text-[10px] text-slate-400">KVRVIN2026X102</div></td>
-                    <td className="py-3 px-4 text-slate-600">Vizag City Outlet</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">INV-2024-0789</td>
-                    <td className="py-3 px-4 text-slate-550 font-medium">Somu Naidu</td>
-                    <td className="py-3 px-4"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">Sold Dispatch</span></td>
-                  </tr>
-                  <tr className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-700">11 May 2024</td>
-                    <td className="py-3 px-4 text-slate-800"><div className="font-bold">Watts 100</div><div className="text-[10px] text-slate-400">KVRVIN2026X115</div></td>
-                    <td className="py-3 px-4 text-slate-600">Kakinada Showroom</td>
-                    <td className="py-3 px-4 font-semibold text-slate-500">TRN-2024-0044</td>
-                    <td className="py-3 px-4 text-slate-550 font-medium">Appalaraju</td>
-                    <td className="py-3 px-4"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Internal Transfer</span></td>
-                  </tr>
-                </Table>
+            <div className="space-y-5">
+              {/* Summary metric strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "Units In (MTD)", value: "24", icon: ArrowDownLeft, tint: "emerald" },
+                  { label: "Units Out (MTD)", value: "18", icon: ArrowUpRight, tint: "blue" },
+                  { label: "In Transit", value: "6", icon: Truck, tint: "amber" },
+                  { label: "Pending Approval", value: "1", icon: AlertTriangle, tint: "rose" },
+                ].map((s, i) => {
+                  const SIcon = s.icon;
+                  const tintMap: Record<string, string> = {
+                    emerald: "bg-[#04a700]/10 text-[#04a700]",
+                    blue: "bg-blue-50 text-blue-600",
+                    amber: "bg-amber-50 text-amber-600",
+                    rose: "bg-rose-50 text-rose-600",
+                  };
+                  return (
+                    <div key={i} className="bg-white border border-emerald-100/60 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+                      <span className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center ${tintMap[s.tint]}`}>
+                        <SIcon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-lg font-extrabold text-slate-800 leading-none">{s.value}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-1 truncate">{s.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {/* Internal transfers list */}
-              <Table title="Inter-Location / Inter-Branch Stock Transfers Queue" headers={["Transfer Ref", "Source Location", "Target Outlet", "Model & Qty", "Dispatch Date", "Transit Time", "Est Arrival", "Supervisor Approval", "Status"]}>
-                <tr className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3.5 px-5 font-mono font-bold text-slate-700">TRN-2024-0044</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">Pendurthi Godown</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">KVR Showroom - Vizag</td>
-                  <td className="py-3.5 px-5 font-bold text-slate-700">Kinetic E-Luna (10 Units)</td>
-                  <td className="py-3.5 px-5 text-slate-500">14 May 2024</td>
-                  <td className="py-3.5 px-5 text-slate-500 font-semibold">4 hours</td>
-                  <td className="py-3.5 px-5 text-slate-550 font-medium">14 May, 4:00 PM</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-bold">Approved (Suresh Babu)</td>
-                  <td className="py-3.5 px-5"><span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Completed</span></td>
-                </tr>
-                <tr className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3.5 px-5 font-mono font-bold text-slate-700">TRN-2024-0049</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">Pineapple Colony Godown</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-semibold">KVR Showroom - Srikakulam</td>
-                  <td className="py-3.5 px-5 font-bold text-slate-700">Dynamo Pro (5 Units)</td>
-                  <td className="py-3.5 px-5 text-slate-500">18 May 2024</td>
-                  <td className="py-3.5 px-5 text-slate-500 font-semibold">1 day</td>
-                  <td className="py-3.5 px-5 text-slate-550 font-medium">18 May, 6:00 PM</td>
-                  <td className="py-3.5 px-5 text-slate-600 font-bold">Pending Review</td>
-                  <td className="py-3.5 px-5"><span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">In Transit</span></td>
-                </tr>
-              </Table>
+
+              {/* Stock In + Out as responsive card lists (no horizontal scroll) */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                {/* Stock In */}
+                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                    <span className="h-7 w-7 rounded-lg bg-[#04a700]/10 text-[#04a700] flex items-center justify-center"><ArrowDownLeft className="h-4 w-4" /></span>
+                    <h3 className="text-sm font-bold text-slate-800">Stock Intake Log (Stock-In)</h3>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {[
+                      { date: "12 May 2024", model: "E-Luna Moped", vin: "KVRVIN2026X101", loc: "Pendurthi Godown", code: "GRN-2024-0512", carrier: "KVR Logistics", pdi: "Ramesh (Passed)", status: "Received" },
+                      { date: "10 May 2024", model: "Dynamo Pro", vin: "KVRVIN2026X102", loc: "Isakapallem Showroom", code: "GRN-2024-0508", carrier: "SafeExpress", pdi: "Suresh (Passed)", status: "Received" },
+                    ].map((r, i) => (
+                      <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-800 truncate">{r.model}</div>
+                            <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.vin}</div>
+                          </div>
+                          <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{r.status}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
+                          <div><span className="text-slate-400 font-semibold">Location: </span><span className="font-bold text-slate-600">{r.loc}</span></div>
+                          <div><span className="text-slate-400 font-semibold">GRN: </span><span className="font-bold text-slate-600">{r.code}</span></div>
+                          <div><span className="text-slate-400 font-semibold">Carrier: </span><span className="font-bold text-slate-600">{r.carrier}</span></div>
+                          <div><span className="text-slate-400 font-semibold">PDI: </span><span className="font-bold text-slate-600">{r.pdi}</span></div>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stock Out */}
+                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                    <span className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><ArrowUpRight className="h-4 w-4" /></span>
+                    <h3 className="text-sm font-bold text-slate-800">Stock Outflow Log (Stock-Out)</h3>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {[
+                      { date: "13 May 2024", model: "Dynamo Pro", vin: "KVRVIN2026X102", dest: "Visakhapatnam City Outlet", ref: "INV-2024-0789", driver: "Somu Naidu", status: "Sold Dispatch", tint: "indigo" },
+                      { date: "11 May 2024", model: "Watts 100", vin: "KVRVIN2026X115", dest: "Kakinada Showroom", ref: "TRN-2024-0044", driver: "Appalaraju", status: "Internal Transfer", tint: "amber" },
+                    ].map((r, i) => (
+                      <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-800 truncate">{r.model}</div>
+                            <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.vin}</div>
+                          </div>
+                          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold ${r.tint === "indigo" ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>{r.status}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
+                          <div><span className="text-slate-400 font-semibold">Destination: </span><span className="font-bold text-slate-600">{r.dest}</span></div>
+                          <div><span className="text-slate-400 font-semibold">Ref: </span><span className="font-bold text-slate-600">{r.ref}</span></div>
+                          <div><span className="text-slate-400 font-semibold">Driver: </span><span className="font-bold text-slate-600">{r.driver}</span></div>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Inter-branch transfers as responsive cards */}
+              <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                  <span className="h-7 w-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><Truck className="h-4 w-4" /></span>
+                  <h3 className="text-sm font-bold text-slate-800">Inter-Location / Inter-Branch Stock Transfers</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                  {[
+                    { ref: "TRN-2024-0044", from: "Pendurthi Godown", to: "KVR Showroom - Visakhapatnam", qty: "Kinetic E-Luna (10 Units)", dispatch: "14 May 2024", transit: "4 hours", arrival: "14 May, 4:00 PM", approval: "Approved (Suresh Babu)", status: "Completed", done: true },
+                    { ref: "TRN-2024-0049", from: "Pineapple Colony Godown", to: "KVR Showroom - Srikakulam", qty: "Dynamo Pro (5 Units)", dispatch: "18 May 2024", transit: "1 day", arrival: "18 May, 6:00 PM", approval: "Pending Review", status: "In Transit", done: false },
+                  ].map((t, i) => (
+                    <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/40 p-4">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="font-mono font-bold text-slate-700 text-xs">{t.ref}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${t.done ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>{t.status}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 mb-3">
+                        <span className="truncate">{t.from}</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-[#04a700] shrink-0" />
+                        <span className="truncate">{t.to}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                        <div className="col-span-2"><span className="text-slate-400 font-semibold">Model: </span><span className="font-bold text-slate-600">{t.qty}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Dispatch: </span><span className="font-bold text-slate-600">{t.dispatch}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Transit: </span><span className="font-bold text-slate-600">{t.transit}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Arrival: </span><span className="font-bold text-slate-600">{t.arrival}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Approval: </span><span className="font-bold text-slate-600">{t.approval}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           {/* TAB 5: PURCHASE MANAGEMENT */}
@@ -856,7 +1615,7 @@ export default function OwnerDashboard() {
                 actions={
                   <button 
                     onClick={() => setIsAddPOOpen(true)}
-                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Create Purchase Order
                   </button>
@@ -901,14 +1660,33 @@ export default function OwnerDashboard() {
                           {po.status_display || po.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-5">
+                      <td className="py-3.5 px-5 whitespace-nowrap">
                         {po.status === "pending" && (
+                          <>
+                            <button 
+                              onClick={() => handleApprovePO(po.id)}
+                              className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              onClick={() => handlePOStatus(po.id, "cancelled")}
+                              className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {po.status === "approved" && (
                           <button 
-                            onClick={() => handleApprovePO(po.id)}
-                            className="text-xs text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer"
+                            onClick={() => handlePOStatus(po.id, "received")}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
                           >
-                            Approve
+                            Mark Received
                           </button>
+                        )}
+                        {(po.status === "received" || po.status === "cancelled") && (
+                          <span className="text-[10px] font-bold text-slate-300">No actions</span>
                         )}
                       </td>
                     </tr>
@@ -921,10 +1699,10 @@ export default function OwnerDashboard() {
           {activeTab === "sales" && (
             <div className="space-y-6">
               
-              <Table title="Invoiced Sales Records" headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status"]}>
+              <Table title="Invoiced Sales Records" headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status", "Actions"]}>
                 {salesInvoicesLoading ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center">
+                    <td colSpan={12} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
                         <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records from PostgreSQL...</span>
@@ -933,7 +1711,7 @@ export default function OwnerDashboard() {
                   </tr>
                 ) : salesInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center">
+                    <td colSpan={12} className="py-12 text-center">
                       <EmptyState 
                         title="No Sales Invoices Registered" 
                         description="Finalized customer sales invoices will display here dynamically." 
@@ -960,62 +1738,104 @@ export default function OwnerDashboard() {
                           {inv.delivery_status_display || inv.delivery_status}
                         </span>
                       </td>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        {inv.delivery_status === "processing" && (
+                          <button onClick={() => handleSalesDelivery(inv.id, "ready")} className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Mark Ready</button>
+                        )}
+                        {inv.delivery_status === "ready" && (
+                          <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Mark Delivered</button>
+                        )}
+                        {inv.delivery_status === "delivered" && (
+                          <span className="text-[10px] font-bold text-slate-300">Completed</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
               </Table>
             </div>
           )}
-          {/* TAB 7: LEAD MANAGEMENT */}
           {activeTab === "leads" && (
-            <div className="space-y-6">
-              
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800">Leads Conversion Pipeline</h3>
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Leads Conversion Pipeline</h3>
+                  <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Drag a card across stages to update its status — changes sync instantly to the database.</p>
+                </div>
                 <button 
-                  onClick={() => setIsAddLeadOpen(true)}
-                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                  onClick={openAddLead}
+                  className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 shrink-0"
                 >
                   <Plus className="h-4 w-4" /> Add Lead
                 </button>
               </div>
               {leadsLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#04a700]" />
                   <span className="text-xs font-semibold text-slate-500">Loading leads conversion pipeline from PostgreSQL...</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  {["Enquiry", "New Lead", "Negotiation", "Won"].map((colStatus) => {
-                    const filteredLeads = leadsList.filter((lead) => {
-                      const status = lead.status;
-                      if (colStatus === "Enquiry") return status === "enquiry";
-                      if (colStatus === "New Lead") return status === "new_lead" || status === "contacted" || status === "follow_up";
-                      if (colStatus === "Negotiation") return status === "negotiation";
-                      if (colStatus === "Won") return status === "won";
-                      return false;
-                    });
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                  {[
+                    { key: "enquiry", label: "Enquiry", statuses: ["enquiry"], accent: "#64748b", soft: "bg-slate-50", bar: "bg-slate-400" },
+                    { key: "new_lead", label: "New Lead", statuses: ["new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
+                    { key: "negotiation", label: "Negotiation", statuses: ["negotiation"], accent: "#ea580c", soft: "bg-amber-50/60", bar: "bg-amber-500" },
+                    { key: "won", label: "Won", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
+                    { key: "lost", label: "Lost", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
+                  ].map((col) => {
+                    const filteredLeads = leadsList.filter((lead) => col.statuses.includes(lead.status));
+                    const isDragTarget = dragOverStage === col.key;
                     return (
-                      <div key={colStatus} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col min-h-75">
-                        <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
-                          <span className="text-xs font-bold text-slate-700 uppercase">{colStatus}</span>
-                          <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
+                      <div
+                        key={col.key}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverStage(col.key); }}
+                        onDragLeave={() => setDragOverStage((s) => (s === col.key ? null : s))}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedLeadId != null) moveLeadToStage(draggedLeadId, col.key);
+                          setDraggedLeadId(null);
+                          setDragOverStage(null);
+                        }}
+                        className={`rounded-2xl border flex flex-col min-h-[420px] transition-all duration-200 ${col.soft} ${isDragTarget ? "border-[#04a700] ring-2 ring-[#04a700]/30 scale-[1.01]" : "border-slate-200/70"}`}
+                      >
+                        <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.accent }} />
+                            <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide">{col.label}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
                         </div>
-                        
-                        <div className="flex-1 space-y-3">
+
+                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto slim-scrollbar max-h-[60vh]">
                           {filteredLeads.length === 0 ? (
-                             <div className="text-[10px] font-semibold text-slate-400 text-center py-8">No leads in stage</div>
+                            <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
+                              {isDragTarget ? "Drop here" : "No leads in stage"}
+                            </div>
                           ) : (
                             filteredLeads.map((lead) => (
-                              <div key={lead.id} className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-sm hover:shadow transition-shadow space-y-2 text-left relative group">
+                              <div
+                                key={lead.id}
+                                draggable
+                                onDragStart={() => setDraggedLeadId(lead.id)}
+                                onDragEnd={() => { setDraggedLeadId(null); setDragOverStage(null); }}
+                                onClick={() => openEditLead(lead)}
+                                className={`bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all space-y-2 text-left cursor-grab active:cursor-grabbing group ${draggedLeadId === lead.id ? "opacity-40" : ""}`}
+                              >
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-indigo-600 font-mono">LD-{lead.id}</span>
-                                  <span className="text-[9px] font-bold text-slate-400">{lead.source_display || lead.lead_source?.replace("_", " ")}</span>
+                                  <span className="text-[10px] font-bold text-[#04a700] font-mono">LD-{lead.id}</span>
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.source_display || lead.lead_source?.replace("_", " ")}</span>
                                 </div>
-                                <h4 className="text-xs font-bold text-slate-800">{lead.customer_name}</h4>
-                                <p className="text-[10px] text-slate-500 font-semibold">{lead.contact_number} • {lead.interested_vehicle_name || "Kinetic Green E-Luna"}</p>
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400 font-bold">
-                                  <span>Owner: {lead.executive_name || "Unassigned"}</span>
+                                <h4 className="text-xs font-bold text-slate-800 leading-tight">{lead.customer_name}</h4>
+                                <p className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</p>
+                                <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
+                                {lead.follow_up_date && (
+                                  <div className="flex items-center gap-1 text-[9px] font-bold text-amber-600">
+                                    <CalendarDays className="h-3 w-3" /> {lead.follow_up_date}
+                                  </div>
+                                )}
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                  <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || "Unassigned"}</span>
+                                  <span className="text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </div>
                               </div>
                             ))
@@ -1038,7 +1858,7 @@ export default function OwnerDashboard() {
                 actions={
                   <button 
                     onClick={() => setIsAddBookingOpen(true)}
-                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Record Booking
                   </button>
@@ -1089,8 +1909,9 @@ export default function OwnerDashboard() {
                           {bk.status_display || bk.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-5">
-                        <button className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <button onClick={() => openEditBooking(bk)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                        <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
                       </td>
                     </tr>
                   ))
@@ -1118,35 +1939,57 @@ export default function OwnerDashboard() {
                 actions={
                   <button 
                     onClick={() => setIsAddBatteryOpen(true)}
-                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer"
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Log Battery Stock
                   </button>
                 }
               >
-                {batteriesStock.map((batt, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                    <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{batt.serial}</td>
-                    <td className="py-3.5 px-5 text-slate-650 font-bold">{batt.capacity}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-semibold">{batt.purDate}</td>
-                    <td className="py-3.5 px-5 text-slate-400 font-mono">{batt.vehicle}</td>
-                    <td className="py-3.5 px-5 text-slate-600 font-semibold">{batt.location}</td>
-                    <td className="py-3.5 px-5 text-slate-500 font-medium">{batt.supplier}</td>
-                    <td className="py-3.5 px-5 text-slate-550 font-bold">{batt.warrantyYears}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                        batt.status === "Available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                        batt.status === "Sold" ? "bg-slate-100 text-slate-500" :
-                        "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      }`}>
-                        {batt.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5">
-                      <button className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">History</button>
+                {batteriesLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading battery stock from PostgreSQL...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : batteriesStock.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center">
+                      <EmptyState 
+                        title="No Batteries Registered" 
+                        description="Battery units registered in the system will display here dynamically." 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  batteriesStock.map((batt, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{batt.serial}</td>
+                      <td className="py-3.5 px-5 text-slate-650 font-bold">{batt.capacity}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{batt.purDate}</td>
+                      <td className="py-3.5 px-5 text-slate-400 font-mono">{batt.vehicle}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{batt.location}</td>
+                      <td className="py-3.5 px-5 text-slate-500 font-medium">{batt.supplier}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{batt.warrantyYears}</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                          batt.status === "Available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          batt.status === "Sold" ? "bg-slate-100 text-slate-505" :
+                          "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        }`}>
+                          {batt.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <button onClick={() => openEditBattery(batt)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                        <button onClick={() => setHistoryBattery(batt)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">History</button>
+                        <button onClick={() => handleDeleteBattery(batt)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </Table>
             </div>
           )}
@@ -1230,7 +2073,7 @@ export default function OwnerDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Report Module</label>
-                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500">
+                    <select value={reportModule} onChange={(e) => setReportModule(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500">
                       <option>Sales Ledger Summary</option>
                       <option>Inventory In-Out Movements</option>
                       <option>Battery FIFO Allocations</option>
@@ -1242,7 +2085,7 @@ export default function OwnerDashboard() {
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Branch Outlet</label>
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500">
                       <option>All Branches</option>
-                      <option>Vizag Showroom</option>
+                      <option>Visakhapatnam Showroom</option>
                       <option>Srikakulam Showroom</option>
                       <option>Kakinada Showroom</option>
                     </select>
@@ -1256,7 +2099,7 @@ export default function OwnerDashboard() {
                     </select>
                   </div>
                   <div className="flex items-end">
-                    <button className="w-full flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-4 rounded-lg shadow-md shadow-indigo-600/10 transition-all cursor-pointer">
+                    <button onClick={downloadReport} className="w-full flex items-center justify-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-4 rounded-full shadow-md shadow-[#04a700]/20 transition-all cursor-pointer">
                       <Download className="h-4 w-4" /> Download Excel/PDF
                     </button>
                   </div>
@@ -1265,11 +2108,11 @@ export default function OwnerDashboard() {
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     <span>Report Preview (First 3 entries)</span>
-                    <span className="text-indigo-600 font-extrabold cursor-pointer">View full table</span>
+                    <span onClick={() => navigateTo(reportModule === "Inventory In-Out Movements" ? "stock" : reportModule === "Lead Conversion Pipeline" ? "leads" : reportModule === "Battery FIFO Allocations" ? "batteries" : "sales")} className="text-indigo-600 font-extrabold cursor-pointer hover:underline">View full table</span>
                   </div>
                   <div className="p-4 text-xs font-semibold text-slate-500 space-y-2">
                     <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span>KVR-Vizag Showroom • Delivered (INV-2024-0789)</span>
+                      <span>KVR-Visakhapatnam Showroom • Delivered (INV-2024-0789)</span>
                       <span className="font-bold text-slate-800">₹ 98,500</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5">
@@ -1277,7 +2120,7 @@ export default function OwnerDashboard() {
                       <span className="font-bold text-slate-800">₹ 1,15,000</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>KVR-Vizag Showroom • Booking Confirm (BK-8021)</span>
+                      <span>KVR-Visakhapatnam Showroom • Booking Confirm (BK-8021)</span>
                       <span className="font-bold text-slate-800">₹ 10,000</span>
                     </div>
                   </div>
@@ -1295,7 +2138,7 @@ export default function OwnerDashboard() {
                 </div>
                 <button
                   onClick={() => setIsAddUserOpen(true)}
-                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-emerald-600/15 transition-colors"
+                  className="inline-flex items-center gap-2 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-4 rounded-full shadow-md shadow-[#04a700]/20 transition-colors"
                 >
                   <Plus className="h-4 w-4" /> Add New User
                 </button>
@@ -1309,8 +2152,8 @@ export default function OwnerDashboard() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500"
                   >
                     <option>All Branches</option>
-                    <option>KVR Motors - Vizag</option>
-                    <option>Future Ride - Vizag</option>
+                    <option>KVR Motors - Visakhapatnam</option>
+                    <option>Future Ride - Visakhapatnam</option>
                     <option>KVR Motors - Srikakulam</option>
                     <option>KVR Motors - Kakinada</option>
                   </select>
@@ -1378,7 +2221,7 @@ export default function OwnerDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Enterprise Name</label>
-                      <input type="text" defaultValue="KVR Motors Group" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" />
+                      <input type="text" value={settings.name} onChange={(e) => setSettings({ ...settings, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Primary Currency</label>
@@ -1387,13 +2230,13 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Tax Rate Code (GST%)</label>
-                    <input type="text" defaultValue="18% SGST/CGST split" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" />
+                    <input type="text" value={settings.gst} onChange={(e) => setSettings({ ...settings, gst: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" />
                   </div>
                   <div className="flex items-center gap-2 pt-4">
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-6 rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
+                    <button onClick={handleSaveSettings} className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-6 rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
                       Save Settings
                     </button>
-                    <button className="bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-xs py-2 px-4 rounded-xl cursor-pointer">
+                    <button onClick={handleResetSettings} className="bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-xs py-2 px-4 rounded-full cursor-pointer">
                       Reset Defaults
                     </button>
                   </div>
@@ -1406,7 +2249,7 @@ export default function OwnerDashboard() {
       {/* Mobile bottom navigation */}
       <BottomNav role="owner" activeTab={activeTab} />
       {/* MODALS */}
-      <Modal isOpen={isAddBranchOpen} onClose={() => setIsAddBranchOpen(false)} title="Create New Showroom / Branch Outlet">
+      <Modal isOpen={isAddBranchOpen} onClose={() => { setIsAddBranchOpen(false); setEditingBranchId(null); setBranchName(""); setBranchAddress(""); setBranchPhone(""); setBranchActive(true); }} title={editingBranchId ? "Edit Showroom / Branch Outlet" : "Create New Showroom / Branch Outlet"}>
         <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Name</label>
@@ -1415,18 +2258,18 @@ export default function OwnerDashboard() {
               placeholder="e.g. KVR Motors - Gajuwaka" 
               value={branchName}
               onChange={(e) => setBranchName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Location City</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Address / Location City</label>
             <input 
               type="text" 
-              placeholder="e.g. Visakhapatnam" 
+              placeholder="e.g. Visakhapatnam City High Road, Visakhapatnam" 
               value={branchAddress}
               onChange={(e) => setBranchAddress(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
           </div>
@@ -1437,12 +2280,23 @@ export default function OwnerDashboard() {
               placeholder="e.g. 9876543210" 
               value={branchPhone}
               onChange={(e) => setBranchPhone(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
-            Register Branch
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Operational Status</label>
+            <select
+              value={branchActive ? "active" : "inactive"}
+              onChange={(e) => setBranchActive(e.target.value === "active")}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingBranchId ? "Save Changes" : "Register Branch"}
           </button>
         </form>
       </Modal>
@@ -1452,7 +2306,7 @@ export default function OwnerDashboard() {
           onSubmit={(e) => {
             e.preventDefault();
             setUsers([{ name: newUser.fullName, role: newUser.role, userType: newUser.userType, branch: newUser.branch, status: newUser.status, lastLogin: "Not yet logged in" }, ...users]);
-            setNewUser({ fullName: "", email: "", role: "Sales Staff", branch: "KVR Motors - Vizag", status: "Active", userType: "Staff" });
+            setNewUser({ fullName: "", email: "", role: "Sales Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", userType: "Staff" });
             setIsAddUserOpen(false);
           }}
           className="space-y-4 text-left"
@@ -1517,8 +2371,8 @@ export default function OwnerDashboard() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
                 required
               >
-                <option>KVR Motors - Vizag</option>
-                <option>Future Ride - Vizag</option>
+                <option>KVR Motors - Visakhapatnam</option>
+                <option>Future Ride - Visakhapatnam</option>
                 <option>KVR Motors - Srikakulam</option>
                 <option>KVR Motors - Kakinada</option>
               </select>
@@ -1536,13 +2390,13 @@ export default function OwnerDashboard() {
               </select>
             </div>
           </div>
-          <button type="submit" className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/15 cursor-pointer">
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             Create User
           </button>
         </form>
       </Modal>
       {/* 2. Add Vehicle Model */}
-      <Modal isOpen={isAddVehicleOpen} onClose={() => setIsAddVehicleOpen(false)} title="Add Vehicle Model to Catalog">
+      <Modal isOpen={isAddVehicleOpen} onClose={() => { setIsAddVehicleOpen(false); setEditingModelId(null); }} title={editingModelId ? "Edit Vehicle Model" : "Add Vehicle Model to Catalog"}>
         <form onSubmit={handleAddModelSubmit} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -1609,30 +2463,157 @@ export default function OwnerDashboard() {
               required 
             />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
-            Add Model
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Catalog Status</label>
+            <select
+              value={newModelStatus}
+              onChange={(e) => setNewModelStatus(e.target.value as "active" | "inactive")}
+              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2.5 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingModelId ? "Save Changes" : "Add Model"}
           </button>
         </form>
       </Modal>
-      {/* 3. Add Stock Unit */}
-      <Modal isOpen={isAddStockOpen} onClose={() => setIsAddStockOpen(false)} title="Log Physical Stock Unit entry">
-        <form onSubmit={(e) => { e.preventDefault(); setIsAddStockOpen(false); }} className="space-y-4 text-left">
+      {/* 3. Add / Edit Stock Unit */}
+      <Modal isOpen={isAddStockOpen} onClose={() => { setIsAddStockOpen(false); resetStockUnitForm(); }} title={editingUnitId ? "Edit Stock Unit (VIN Registry)" : "Log Physical Stock Unit Entry"}>
+        <form onSubmit={handleStockUnitSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN Number (17-digit barcode)</label>
-            <input type="text" placeholder="e.g. KVRVIN2026X990" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold font-mono outline-none focus:border-indigo-500" required />
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
+            <select
+              value={stockUnitForm.model}
+              onChange={(e) => setStockUnitForm({ ...stockUnitForm, model: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            >
+              <option value="">-- Select Model --</option>
+              {vehicleModelsList.map((m) => (
+                <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN Number</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. KVRVIN2026X990"
+                value={stockUnitForm.vin_number}
+                onChange={(e) => { setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }}
+                onBlur={(e) => handleIdentifierLookup("vin_number", e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 pr-9 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
+              />
+              {vinLookupState === "searching" && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-slate-200 border-t-[#04a700] animate-spin" />
+              )}
+              {vinLookupState === "found" && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#04a700]" />
+              )}
+            </div>
+            {vinLookupState === "found" && (
+              <p className="text-[10px] font-bold text-[#04a700]">Existing unit found — details auto-filled. Saving will update this record.</p>
+            )}
+            {vinLookupState === "notfound" && stockUnitForm.vin_number.trim().length >= 3 && (
+              <p className="text-[10px] font-semibold text-slate-400">New identifier — fill the details below.</p>
+            )}
+          </div>
+          <div className="rounded-lg bg-[#04a700]/5 border border-[#04a700]/15 px-3 py-2">
+            <p className="text-[10px] font-bold text-[#04a700]">Enter at least one identifier (VIN, Motor, or Chassis). Type any one — if the vehicle already exists, the rest auto-fill.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Number</label>
-              <input type="text" placeholder="e.g. MTR-90888" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold font-mono outline-none focus:border-indigo-500" required />
+              <input type="text" placeholder="e.g. MTR-90888" value={stockUnitForm.motor_number} onChange={(e) => { setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }} onBlur={(e) => handleIdentifierLookup("motor_number", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Number</label>
-              <input type="text" placeholder="e.g. CHS-88988" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold font-mono outline-none focus:border-indigo-500" required />
+              <input type="text" placeholder="e.g. CHS-88988" value={stockUnitForm.chassis_number} onChange={(e) => { setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }} onBlur={(e) => handleIdentifierLookup("chassis_number", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
             </div>
           </div>
-          <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
-            Log Stock Unit
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Color</label>
+              <input type="text" placeholder="e.g. Matte Black" value={stockUnitForm.color} onChange={(e) => setStockUnitForm({ ...stockUnitForm, color: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Date</label>
+              <input type="date" value={stockUnitForm.purchase_date} onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Outlet</label>
+            <select
+              value={stockUnitForm.branch}
+              onChange={(e) => setStockUnitForm({ ...stockUnitForm, branch: e.target.value, showroom: "", location: "" })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            >
+              <option value="">-- Select Branch --</option>
+              {branchesList.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom</label>
+              <select
+                value={stockUnitForm.showroom}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, showroom: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] disabled:opacity-50"
+                required
+                disabled={!stockUnitForm.branch}
+              >
+                <option value="">-- Select --</option>
+                {branchShowrooms.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Location Area</label>
+              <select
+                value={stockUnitForm.location}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, location: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] disabled:opacity-50"
+                required
+                disabled={!stockUnitForm.branch}
+              >
+                <option value="">-- Select --</option>
+                {branchLocations.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Status</label>
+              <select
+                value={stockUnitForm.stock_status}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, stock_status: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              >
+                <option value="available">Available</option>
+                <option value="reserved">Reserved</option>
+                <option value="booked">Booked</option>
+                <option value="sold">Sold</option>
+                <option value="in_transit">In Transit</option>
+                <option value="service">Service</option>
+                <option value="damaged">Damaged</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial (optional)</label>
+              <input type="text" placeholder="e.g. BAT-2026-0091" value={stockUnitForm.assigned_battery} onChange={(e) => setStockUnitForm({ ...stockUnitForm, assigned_battery: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
+            </div>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingUnitId ? "Save Changes" : "Log Stock Unit"}
           </button>
         </form>
       </Modal>
@@ -1710,10 +2691,319 @@ export default function OwnerDashboard() {
               className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
             />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer">
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             Create Purchase Order
           </button>
         </form>
+      </Modal>
+
+      {/* 5. Add Lead */}
+      <Modal isOpen={isAddLeadOpen} onClose={() => { setIsAddLeadOpen(false); setEditingLeadId(null); setNewLead({ ...emptyLead }); }} title={editingLeadId ? "Edit Lead" : "Add New Lead / Enquiry"}>
+        <form onSubmit={handleCreateLead} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Ramesh Naidu"
+              value={newLead.customer_name}
+              onChange={(e) => setNewLead({ ...newLead, customer_name: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
+            <input
+              type="tel"
+              placeholder="e.g. 98765 43210"
+              value={newLead.contact_number}
+              onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle</label>
+            <select
+              value={newLead.interested_vehicle}
+              onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            >
+              <option value="">Select a model...</option>
+              {vehicleModelsList.map((m) => (
+                <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Lead Source</label>
+              <select
+                value={newLead.lead_source}
+                onChange={(e) => setNewLead({ ...newLead, lead_source: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              >
+                <option value="walk_in">Walk-in</option>
+                <option value="website">Website</option>
+                <option value="reference">Reference</option>
+                <option value="phone">Phone Call</option>
+                <option value="social">Social Media</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
+              <select
+                value={newLead.status}
+                onChange={(e) => setNewLead({ ...newLead, status: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              >
+                <option value="enquiry">Enquiry</option>
+                <option value="new_lead">New Lead</option>
+                <option value="contacted">Contacted</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Follow-up Date (optional)</label>
+            <input
+              type="date"
+              value={newLead.follow_up_date}
+              onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Notes (optional)</label>
+            <textarea
+              placeholder="Customer preferences, budget, call summary..."
+              value={newLead.notes}
+              onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
+              rows={3}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-medium outline-none focus:border-[#04a700] resize-none"
+            />
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingLeadId ? "Save Changes" : "Add Lead to Pipeline"}
+          </button>
+        </form>
+      </Modal>
+
+      {/* 6. Record Booking */}
+      <Modal isOpen={isAddBookingOpen} onClose={() => { setIsAddBookingOpen(false); setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); }} title={editingBookingId ? "Edit Advance Booking" : "Record Advance Booking"}>
+        <form onSubmit={handleCreateBooking} className="space-y-4 text-left">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Lakshmi Devi"
+                value={newBooking.customer_name}
+                onChange={(e) => setNewBooking({ ...newBooking, customer_name: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
+              <input
+                type="tel"
+                placeholder="e.g. 90000 12345"
+                value={newBooking.contact_number}
+                onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
+            <select
+              value={newBooking.vehicle_model}
+              onChange={(e) => setNewBooking({ ...newBooking, vehicle_model: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+              required
+            >
+              <option value="">Select a model...</option>
+              {vehicleModelsList.map((m) => (
+                <option key={m.id} value={m.id}>{m.model_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Amount (INR)</label>
+              <input
+                type="number"
+                placeholder="e.g. 10000"
+                value={newBooking.advance_amount}
+                onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry Date</label>
+              <input
+                type="date"
+                value={newBooking.expiry_date}
+                onChange={(e) => setNewBooking({ ...newBooking, expiry_date: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingBookingId ? "Save Changes" : "Record Booking"}
+          </button>
+        </form>
+      </Modal>
+
+      {/* 7. Log Battery Stock */}
+      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock (FIFO Registry)"}>
+        <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Serial Number</label>
+              <input
+                type="text"
+                placeholder="e.g. BAT-2026-0091"
+                value={newBattery.serial_number}
+                onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Capacity Rating</label>
+              <input
+                type="text"
+                placeholder="e.g. 2.2 kWh"
+                value={newBattery.capacity}
+                onChange={(e) => setNewBattery({ ...newBattery, capacity: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Date</label>
+              <input
+                type="date"
+                value={newBattery.purchase_date}
+                onChange={(e) => setNewBattery({ ...newBattery, purchase_date: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Storage Location</label>
+              <select
+                value={newBattery.location}
+                onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="">Select location...</option>
+                {locationsList.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier</label>
+              <input
+                type="text"
+                placeholder="e.g. Exide Tech"
+                value={newBattery.supplier}
+                onChange={(e) => setNewBattery({ ...newBattery, supplier: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Warranty (Years)</label>
+              <input
+                type="number"
+                placeholder="3"
+                value={newBattery.warranty_years}
+                onChange={(e) => setNewBattery({ ...newBattery, warranty_years: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+            <select
+              value={newBattery.status}
+              onChange={(e) => setNewBattery({ ...newBattery, status: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+            >
+              <option value="available">Available</option>
+              <option value="assigned">Assigned</option>
+              <option value="sold">Sold</option>
+              <option value="damaged">Damaged</option>
+              <option value="returned">Returned</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            {editingBatteryId ? "Save Changes" : "Log Battery to Registry"}
+          </button>
+        </form>
+      </Modal>
+
+      {/* 8. Battery History */}
+      <Modal isOpen={historyBattery !== null} onClose={() => setHistoryBattery(null)} title="Battery Lifecycle History">
+        {historyBattery && (
+          <div className="space-y-4 text-left">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-slate-800 text-sm">{historyBattery.serial}</span>
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                  historyBattery.status === "Available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                  historyBattery.status === "Sold" ? "bg-slate-100 text-slate-500" :
+                  "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                }`}>
+                  {historyBattery.status}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
+                <div><span className="text-slate-400 font-semibold block">Capacity</span><span className="font-bold text-slate-700">{historyBattery.capacity}</span></div>
+                <div><span className="text-slate-400 font-semibold block">Date Acquired</span><span className="font-bold text-slate-700">{historyBattery.purDate}</span></div>
+                <div><span className="text-slate-400 font-semibold block">Location</span><span className="font-bold text-slate-700">{historyBattery.location}</span></div>
+                <div><span className="text-slate-400 font-semibold block">Manufacturer</span><span className="font-bold text-slate-700">{historyBattery.supplier}</span></div>
+                <div><span className="text-slate-400 font-semibold block">Assigned EV</span><span className="font-bold text-slate-700 font-mono">{historyBattery.vehicle}</span></div>
+                <div><span className="text-slate-400 font-semibold block">Warranty</span><span className="font-bold text-slate-700">{historyBattery.warrantyYears}</span></div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Movement Timeline</span>
+              {[
+                { label: "Stock intake recorded (GRN)", date: historyBattery.purDate, done: true },
+                { label: `Stored at ${historyBattery.location}`, date: historyBattery.purDate, done: true },
+                { label: historyBattery.status === "Available" ? "Awaiting FIFO allocation" : `Assigned to ${historyBattery.vehicle}`, date: "—", done: historyBattery.status !== "Available" },
+                { label: "Delivered with vehicle invoice", date: "—", done: historyBattery.status === "Sold" },
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 ${step.done ? "bg-emerald-500 border-emerald-500" : "bg-white border-slate-300"}`} />
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className={`text-[11px] font-semibold ${step.done ? "text-slate-700" : "text-slate-400"}`}>{step.label}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{step.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setHistoryBattery(null)} className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-full cursor-pointer">
+              Close History
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );

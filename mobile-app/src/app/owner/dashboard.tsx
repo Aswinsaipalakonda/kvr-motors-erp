@@ -60,8 +60,8 @@ export default function OwnerDashboard({
   const [leads, setLeads] = useState<any[]>([]);
   const [batteries, setBatteries] = useState<any[]>([]);
   const [pendingPOs, setPendingPOs] = useState<any[]>([
-    { id: 1, invoice: 'PO-2026-8910', showroom: 'Vizag - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
-    { id: 2, invoice: 'PO-2026-9233', showroom: 'Vizag - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
+    { id: 1, invoice: 'PO-2026-8910', showroom: 'Visakhapatnam - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
+    { id: 2, invoice: 'PO-2026-9233', showroom: 'Visakhapatnam - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
     { id: 3, invoice: 'PO-2026-9411', showroom: 'Srikakulam - KVR Showroom', details: '4x Watts Engineering 100', value: '₹ 4,80,000', approved: false },
   ]);
 
@@ -74,15 +74,15 @@ export default function OwnerDashboard({
   ];
 
   const getBranchBackendName = (b: string) => {
-    if (b.includes('Vizag')) return 'KVR Motors - Vizag';
+    if (b.includes('Visakhapatnam')) return 'KVR Motors - Visakhapatnam';
     if (b.includes('Srikakulam')) return 'KVR Motors - Srikakulam';
     if (b.includes('Kakinada')) return 'KVR Motors - Kakinada';
     return null;
   };
 
   const getShowroomBackendName = (b: string) => {
-    if (b === 'Vizag - KVR Showroom') return 'KVR Showroom - Vizag';
-    if (b === 'Vizag - Future Ride') return 'Future Ride - Vizag';
+    if (b === 'Visakhapatnam - KVR Showroom') return 'KVR Showroom - Visakhapatnam';
+    if (b === 'Visakhapatnam - Future Ride') return 'Future Ride - Visakhapatnam';
     if (b === 'Srikakulam - KVR Showroom') return 'KVR Showroom - Srikakulam';
     if (b === 'Kakinada - KVR Showroom') return 'KVR Showroom - Kakinada';
     return null;
@@ -726,7 +726,7 @@ export default function OwnerDashboard({
                     <View style={styles.batteryCardDivider} />
                     
                     <ThemedText style={styles.batteryLocationText} numberOfLines={1}>
-                      {bat.location_name || 'Vizag Godown'}
+                      {bat.location_name || 'Visakhapatnam Godown'}
                     </ThemedText>
                   </View>
                 );

@@ -215,7 +215,9 @@ export default function SalesCheckout() {
     setIsSubmitting(true);
 
     try {
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const payload = {
+        invoice_number: invoiceNumber,
         customer_name: customerName.trim(),
         customer_contact: contactNumber.trim(),
         vehicle_unit: vehicleResult.id,
@@ -224,11 +226,12 @@ export default function SalesCheckout() {
         payment_mode: paymentMode,
         insurance_partner: insurancePartner,
         delivery_status: 'processing',
+        sales_executive: user?.id,
         branch: vehicleResult.branch || user?.branch || 1
       };
 
       await api.post('/sales-invoices/', payload);
-      Alert.alert('Success', 'Sales Invoice created successfully!', [
+      Alert.alert('Success', `Sales Invoice ${invoiceNumber} created successfully!`, [
         { text: 'OK', onPress: () => router.push('/sales/dashboard' as any) }
       ]);
     } catch (err: any) {

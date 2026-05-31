@@ -26,9 +26,9 @@ Redesign the Owner Inventory Screen (inventory.tsx) to match the light viewport 
   - Quick totals row: "Total EVs: 3" and "Total Batteries: 3" with fine borders and green accents.
 - Responsive Cards (Light backdrop area):
   - Card styles: Clean white backgrounds, radius: 18px, thin border (color: '#f1f5f9'), and fine shadows.
-  - Critical Low-Stock Alert: A highlighted alert card featuring a subtle red left border, displaying "Dynamo EV stock in Vizag Showroom is down to 3 units. Reallocation from Pendurthi Godown recommended."
+  - Critical Low-Stock Alert: A highlighted alert card featuring a subtle red left border, displaying "Dynamo EV stock in Visakhapatnam Showroom is down to 3 units. Reallocation from Pendurthi Godown recommended."
   - Active Fleet Color Mix: A beautiful, modern horizontal color percentage distribution bar (Green 45% [#04a700], Red 30% [#d71d22], Blue 15% [#2563eb], Orange 10% [#ea580c]) with small round indicator legends.
-  - Location-wise Stock: Clean cards showing Vizag, Srikakulam, and Kakinada showroom stock levels with status tags ("Critical", "Sufficient").
+  - Location-wise Stock: Clean cards showing Visakhapatnam, Srikakulam, and Kakinada showroom stock levels with status tags ("Critical", "Sufficient").
 - Scrollable Stock Feed: Detailed list showing EV units and batteries featuring filter resets, search criteria, and custom visual listings.
 
 ### Code & UX Architecture:

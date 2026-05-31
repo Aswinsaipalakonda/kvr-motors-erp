@@ -110,28 +110,24 @@ export default function SalesLayout() {
     };
   });
 
-  const renderActiveScreen = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <SalesDashboard />;
-      case 'leads':
-        return <SalesLeads />;
-      case 'followups':
-        return <SalesFollowups />;
-      default:
-        return <SalesDashboard />;
-    }
-  };
-
   if (isSubRoute) {
     return <Slot />;
   }
 
   return (
     <ThemedView style={styles.container}>
-      {/* Active Screen Area */}
+      {/* Persistent screen mounting — toggled via display so tab switches never
+          re-mount a screen (which previously replayed the fade = white blink). */}
       <View style={styles.screenContainer}>
-        {renderActiveScreen()}
+        <View style={[styles.screenLayer, { display: activeTab === 'dashboard' ? 'flex' : 'none' }]}>
+          <SalesDashboard />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
+          <SalesLeads />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'followups' ? 'flex' : 'none' }]}>
+          <SalesFollowups />
+        </View>
       </View>
 
       {/* Dark Glassmorphic Bottom Navigation Bar */}
@@ -162,6 +158,9 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  screenLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   tabBar: {
     flexDirection: 'row',

@@ -40,7 +40,7 @@ The application should support both web dashboards and mobile applications.
 
 ## Branches
 
-### Vizag
+### Visakhapatnam
 
 * KVR Showroom
 * Future Ride Showroom

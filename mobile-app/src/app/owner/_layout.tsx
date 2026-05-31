@@ -237,9 +237,9 @@ export default function OwnerLayout() {
   };
 
   const branchesList = [
-    { id: 'All Branches', label: 'All Branches', sub: 'Vizag, Srikakulam, Kakinada' },
-    { id: 'Vizag - KVR Showroom', label: 'Vizag - KVR Showroom', sub: 'Kinetic Green, Dynamo, Frankly' },
-    { id: 'Vizag - Future Ride', label: 'Vizag - Future Ride', sub: 'Kinetiq, Watts Engineering' },
+    { id: 'All Branches', label: 'All Branches', sub: 'Visakhapatnam, Srikakulam, Kakinada' },
+    { id: 'Visakhapatnam - KVR Showroom', label: 'Visakhapatnam - KVR Showroom', sub: 'Kinetic Green, Dynamo, Frankly' },
+    { id: 'Visakhapatnam - Future Ride', label: 'Visakhapatnam - Future Ride', sub: 'Kinetiq, Watts Engineering' },
     { id: 'Srikakulam - KVR Showroom', label: 'Srikakulam - KVR Showroom', sub: 'Kinetic Green, Others' },
     { id: 'Kakinada - KVR Showroom', label: 'Kakinada - KVR Showroom', sub: 'Kinetic Green, Dynamo' }
   ];
@@ -318,7 +318,7 @@ export default function OwnerLayout() {
               </View>
               <ThemedText style={styles.profileDeckName}>{user?.full_name || 'Ravi Varma'}</ThemedText>
               <ThemedText style={styles.profileDeckRole}>
-                {user?.role?.toUpperCase() || 'OWNER'} • Vizag HQ
+                {user?.role?.toUpperCase() || 'OWNER'} • Visakhapatnam HQ
               </ThemedText>
             </View>
           </View>
