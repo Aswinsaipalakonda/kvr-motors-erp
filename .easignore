@@ -12,15 +12,19 @@ dashboards/
 .vscode/
 .claude/
 
-# Exclude large archive files
-*.tar.gz
-*.zip
-*.png
+# Exclude large archive files at root
+/project.tar.gz
+/project.zip
 
-# Exclude documentation
-*.md
-prompts.md
-roadmap.md
+# Exclude root-level images (not mobile-app assets)
+/Visual Architecture.png
+/UI Dashboards.png
+
+# Exclude root documentation (but not mobile-app files)
+/prompts.md
+/roadmap.md
+/kiro_prompts.md
+/README.md
 
 # Exclude mobile-app build artifacts and caches
 node_modules/
