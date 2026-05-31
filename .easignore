@@ -1,0 +1,14 @@
+# Exclude backend and dashboards from mobile EAS builds
+backend/
+dashboards/
+.git/
+.agents/
+.kiro/
+project.zip
+project.tar.gz
+
+# Exclude local mobile app build caches and node_modules
+mobile-app/node_modules/
+mobile-app/.expo/
+mobile-app/dist/
+mobile-app/web-build/

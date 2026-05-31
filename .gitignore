@@ -22,3 +22,7 @@ node_modules/
 
 # Mac
 .DS_Store
+
+# Archives
+project.tar.gz
+project.zip
