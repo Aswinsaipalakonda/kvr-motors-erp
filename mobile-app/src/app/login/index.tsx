@@ -130,6 +130,45 @@ export default function LoginScreen() {
                   <ThemedText style={styles.supportHint}>
                     Need help? <ThemedText style={styles.supportLink} onPress={() => Alert.alert('Contact Support', 'Email support at support@kvrmotors.com')}>Contact Support</ThemedText>
                   </ThemedText>
+
+                  {/* Developer Quick Switcher */}
+                  <View style={styles.devContainer}>
+                    <View style={styles.devDividerRow}>
+                      <View style={styles.devLine} />
+                      <ThemedText style={styles.devDividerText}>DEVELOPER BYPASS</ThemedText>
+                      <View style={styles.devLine} />
+                    </View>
+                    
+                    <View style={styles.devButtonsRow}>
+                      <Pressable 
+                        onPress={() => {
+                          setUsername('owner');
+                          setPassword('owner123');
+                        }}
+                        style={styles.devBtn}
+                      >
+                        <ThemedText style={styles.devBtnText}>Owner</ThemedText>
+                      </Pressable>
+                      <Pressable 
+                        onPress={() => {
+                          setUsername('supervisor');
+                          setPassword('super123');
+                        }}
+                        style={styles.devBtn}
+                      >
+                        <ThemedText style={styles.devBtnText}>Supervisor</ThemedText>
+                      </Pressable>
+                      <Pressable 
+                        onPress={() => {
+                          setUsername('sales');
+                          setPassword('sales123');
+                        }}
+                        style={styles.devBtn}
+                      >
+                        <ThemedText style={styles.devBtnText}>Sales</ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
                 </View>
               </View>
             </FadeScaleTransition>
@@ -262,5 +301,46 @@ const styles = StyleSheet.create({
   supportLink: {
     color: '#04a700',
     fontWeight: '600',
+  },
+  devContainer: {
+    marginTop: 18,
+    gap: 12,
+  },
+  devDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  devLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  devDividerText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#64748b',
+    letterSpacing: 1.5,
+  },
+  devButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  devBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 9999, // Pill shape
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  devBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#cbd5e1',
   },
 });
