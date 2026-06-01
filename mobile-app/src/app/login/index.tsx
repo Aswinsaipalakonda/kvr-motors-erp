@@ -167,6 +167,15 @@ export default function LoginScreen() {
                       >
                         <ThemedText style={styles.devBtnText}>Sales</ThemedText>
                       </Pressable>
+                      <Pressable 
+                        onPress={() => {
+                          setUsername('staff');
+                          setPassword('staff123');
+                        }}
+                        style={styles.devBtn}
+                      >
+                        <ThemedText style={styles.devBtnText}>Staff</ThemedText>
+                      </Pressable>
                     </View>
                   </View>
                 </View>

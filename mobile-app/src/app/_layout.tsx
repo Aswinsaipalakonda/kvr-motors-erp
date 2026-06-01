@@ -19,7 +19,7 @@ function RootLayoutNav() {
       // Redirect to appropriate dashboard if already logged in
       if (user.role === 'owner') {
         router.replace('/owner/dashboard');
-      } else if (user.role === 'sales') {
+      } else if (user.role === 'sales' || user.role === 'sales_executive') {
         router.replace('/sales/dashboard');
       } else if (user.role === 'supervisor') {
         router.replace('/supervisor/dashboard');
