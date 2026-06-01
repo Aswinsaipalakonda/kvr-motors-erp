@@ -5,10 +5,6 @@
 
 import { Platform } from 'react-native';
 
-if (Platform.OS === 'web') {
-  require('@/global.css');
-}
-
 export const Colors = {
   light: {
     text: '#000000',
