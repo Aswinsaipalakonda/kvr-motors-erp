@@ -12,7 +12,7 @@ from sales.views import SalesInvoiceViewSet
 from purchases.views import PurchaseOrderViewSet
 from ledger.views import LedgerEntryViewSet
 from inventory.views import StockTransferViewSet
-from users.views import UserViewSet
+from users.views import UserViewSet, CurrentUserView
 from activity_logs.views import ActivityLogViewSet
 
 router = DefaultRouter()
@@ -38,6 +38,7 @@ urlpatterns = [
     
     # Custom API endpoints
     path('api/auth/', include('users.urls')),
+    path('api/v1/auth/me/', CurrentUserView.as_view(), name='current_user_v1'),
     path('api/v1/', include(router.urls)),
     
     # OpenAPI Schema & API Documentation views

@@ -10,11 +10,17 @@ export interface UserProfile {
   username: string;
   email: string;
   full_name: string;
-  role: "admin" | "owner" | "supervisor" | "sales_executive" | "sales" | "telecaller";
+  role: "admin" | "owner" | "supervisor" | "sales_executive" | "sales" | "telecaller" | "staff";
   branch: string | null;
   showroom: string | null;
   phone_number: string | null;
   is_active: boolean;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string | null;
+  country?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
 }
 
 interface AuthContextType {
@@ -23,6 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<UserProfile>;
   logout: () => void;
+  updateUser: (updatedUser: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,12 +113,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
+  const updateUser = (updatedUser: UserProfile) => {
+    setCookie("user_profile", JSON.stringify(updatedUser), 1);
+    setUser(updatedUser);
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
