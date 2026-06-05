@@ -32,6 +32,7 @@ import {
   Layers,
   Sparkles,
   Download,
+  Printer,
   Calendar,
   XCircle,
   FileSpreadsheet,
@@ -776,6 +777,150 @@ export default function SupervisorDashboard() {
     showToast("Report exported as CSV.");
   };
 
+  const printReport = () => {
+    let headers: string[] = [];
+    let rows: string[][] = [];
+    if (reportModule === "Inventory In-Out Movements") {
+      headers = ["VIN", "Model", "Color", "Branch", "Status"];
+      rows = vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status]);
+    } else if (reportModule === "Lead Conversion Pipeline") {
+      headers = ["Lead ID", "Customer", "Contact", "Vehicle", "Status"];
+      rows = leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status]);
+    } else if (reportModule === "Battery FIFO Allocations") {
+      headers = ["Serial", "Capacity", "Acquired", "Status", "Location"];
+      rows = batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location]);
+    } else {
+      headers = ["Invoice", "Customer", "Model", "Sale Price", "Date"];
+      rows = salesInvoices.map(s => [s.invoice_number, s.customer_name, s.model_name, `₹ ${parseFloat(s.sale_price || 0).toLocaleString("en-IN")}`, s.sale_date]);
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Pop-up blocker prevented printing. Please allow pop-ups for this site.", "error");
+      return;
+    }
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${reportModule}</title>
+          <style>
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 20mm;
+              }
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #334155;
+              margin: 0;
+              padding: 20px;
+            }
+            .header {
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 15px;
+              margin-bottom: 25px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header h1 {
+              font-size: 20px;
+              margin: 0 0 5px 0;
+              color: #0f172a;
+            }
+            .header .meta {
+              font-size: 11px;
+              color: #64748b;
+              font-weight: 600;
+              text-align: right;
+            }
+            .brand-title {
+              text-align: left;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+              margin-top: 15px;
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            th {
+              background-color: #f8fafc;
+              border-bottom: 2px solid #e2e8f0;
+              color: #475569;
+              font-weight: 700;
+              text-align: left;
+              padding: 8px 10px;
+              text-transform: uppercase;
+              font-size: 9px;
+              letter-spacing: 0.5px;
+            }
+            td {
+              padding: 8px 10px;
+              border-bottom: 1px solid #edf2f7;
+              color: #334155;
+            }
+            .footer {
+              margin-top: 40px;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 10px;
+              font-size: 9px;
+              color: #94a3b8;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="brand-title">
+              <h1>KVR MOTORS GROUP</h1>
+              <div style="font-size: 11px; color: #64748b; font-weight: 600;">Enterprise ERP System</div>
+            </div>
+            <div class="meta">
+              <span>Report: ${reportModule}</span><br/>
+              <span>Generated: ${new Date().toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${cell ?? "—"}</td>`).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            KVR Motors Group Confidential Report Document. All rights reserved.
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   // Aggregates & Charts
   const stockByLocationData = React.useMemo(() => {
     const locations: Record<string, number> = {};
@@ -933,7 +1078,7 @@ export default function SupervisorDashboard() {
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution in Visakhapatnam cluster</p>
                   </div>
                   <div className="h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={stockByLocationData} barSize={26}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="location" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
@@ -1029,7 +1174,7 @@ export default function SupervisorDashboard() {
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5">Intake inflow vs sales outflow per warehouse</p>
                   </div>
                   <div className="h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={stockMovementData} barGap={4}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9 }} />
@@ -1143,7 +1288,7 @@ export default function SupervisorDashboard() {
                     <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                        <span>Loading models from PostgreSQL...</span>
+                        <span>Loading models...</span>
                       </div>
                     </td>
                   </tr>
@@ -1560,6 +1705,12 @@ export default function SupervisorDashboard() {
                     className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-6 rounded-full shadow-md cursor-pointer transition-colors w-full sm:w-auto justify-center"
                   >
                     <Download className="h-4 w-4" /> Download Report (CSV)
+                  </button>
+                  <button 
+                    onClick={printReport}
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-3 px-6 rounded-full shadow-md cursor-pointer transition-colors w-full sm:w-auto justify-center"
+                  >
+                    <Printer className="h-4 w-4" /> Print Report
                   </button>
                 </div>
               </div>

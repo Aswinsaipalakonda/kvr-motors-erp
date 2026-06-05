@@ -36,7 +36,7 @@ const ROLE_THEME: Record<string, { color: string; bg: string }> = {
   Admin: { color: '#04a700', bg: 'rgba(4, 167, 0, 0.1)' },
   Supervisor: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   'Sales Executive': { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
-  'Sales Staff': { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
+  Staff: { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
 };
 const roleTheme = (role: string) => ROLE_THEME[role] || { color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' };
 
@@ -69,14 +69,14 @@ export default function OwnerUsers({
   // Role action sheet
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
 
-  const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Sales Staff'];
+  const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Staff'];
   const branchesList = [
     'KVR Motors - Visakhapatnam',
     'Future Ride - Visakhapatnam',
     'KVR Motors - Srikakulam',
     'KVR Motors - Kakinada',
   ];
-  const roleFilters = ['All', 'Owner', 'Supervisor', 'Sales Executive'];
+  const roleFilters = ['All', 'Owner', 'Supervisor', 'Sales Executive', 'Staff'];
 
   // Graceful fallback roster used when the directory API is unavailable or
   // the session lacks directory read access (avoids a blank screen + red overlay).
@@ -85,7 +85,7 @@ export default function OwnerUsers({
     { id: 2, name: 'Suresh Babu', role: 'Supervisor', userType: 'Staff', branch: 'KVR Motors - Visakhapatnam', email: 'suresh@kvrmotors.in', phone: '+91 90325 44781', status: 'Active' },
     { id: 3, name: 'Anil Kumar', role: 'Sales Executive', userType: 'Staff', branch: 'KVR Motors - Srikakulam', email: 'anil@kvrmotors.in', phone: '+91 91827 33910', status: 'Active' },
     { id: 4, name: 'Priya Sharma', role: 'Sales Executive', userType: 'Staff', branch: 'Future Ride - Visakhapatnam', email: 'priya@kvrmotors.in', phone: '+91 99512 88204', status: 'Active' },
-    { id: 5, name: 'Gopal Rao', role: 'Sales Staff', userType: 'Staff', branch: 'KVR Motors - Kakinada', email: 'gopal@kvrmotors.in', phone: '+91 90001 56372', status: 'Inactive' },
+    { id: 5, name: 'Gopal Rao', role: 'Staff', userType: 'Staff', branch: 'KVR Motors - Kakinada', email: 'gopal@kvrmotors.in', phone: '+91 90001 56372', status: 'Inactive' },
   ];
 
   const loadUsers = async () => {
@@ -93,11 +93,12 @@ export default function OwnerUsers({
       setIsLoading(true);
       const res = await api.get('/users/');
       const mapped: StaffUser[] = res.data.map((u: any) => {
-        let displayRole = 'Sales Staff';
+        let displayRole = 'Staff';
         if (u.role === 'owner') displayRole = 'Owner';
         else if (u.role === 'supervisor') displayRole = 'Supervisor';
-        else if (u.role === 'sales_executive') displayRole = 'Sales Executive';
+        else if (u.role === 'sales_executive' || u.role === 'sales') displayRole = 'Sales Executive';
         else if (u.role === 'admin') displayRole = 'Admin';
+        else if (u.role === 'staff') displayRole = 'Staff';
 
         return {
           id: u.id,
@@ -191,10 +192,11 @@ export default function OwnerUsers({
   const handleAddUserSubmit = async () => {
     if (!validate()) return;
 
-    let backendRole = 'sales';
+    let backendRole = 'staff';
     if (role === 'Owner') backendRole = 'owner';
     else if (role === 'Supervisor') backendRole = 'supervisor';
     else if (role === 'Sales Executive') backendRole = 'sales_executive';
+    else if (role === 'Staff') backendRole = 'staff';
 
     const username =
       fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '') + Math.floor(100 + Math.random() * 900);
@@ -208,7 +210,7 @@ export default function OwnerUsers({
         phone: phone.trim(),
         role: backendRole,
         branch,
-        password: 'Welcome@123',
+        password: 'password123',
       });
       Alert.alert('Personnel Added', `${fullName.trim()} has been registered with a temporary password.`);
       setIsModalOpen(false);

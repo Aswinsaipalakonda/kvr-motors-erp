@@ -13,6 +13,7 @@ from purchases.views import PurchaseOrderViewSet
 from ledger.views import LedgerEntryViewSet
 from inventory.views import StockTransferViewSet
 from users.views import UserViewSet
+from activity_logs.views import ActivityLogViewSet
 
 router = DefaultRouter()
 router.register(r'branches', BranchViewSet, basename='branch')
@@ -30,6 +31,7 @@ router.register(r'purchase-orders', PurchaseOrderViewSet, basename='purchaseorde
 router.register(r'ledger-entries', LedgerEntryViewSet, basename='ledgerentry')
 router.register(r'stock-transfers', StockTransferViewSet, basename='stocktransfer')
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'activity-logs', ActivityLogViewSet, basename='activitylog')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

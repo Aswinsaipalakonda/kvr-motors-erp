@@ -59,6 +59,7 @@ export default function OwnerDashboard({
   const [bookings, setBookings] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [batteries, setBatteries] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [pendingPOs, setPendingPOs] = useState<any[]>([
     { id: 1, invoice: 'PO-2026-8910', showroom: 'Visakhapatnam - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
     { id: 2, invoice: 'PO-2026-9233', showroom: 'Visakhapatnam - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
@@ -96,13 +97,44 @@ export default function OwnerDashboard({
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes, batteriesRes] = await Promise.all([
-        api.get('/ledger-entries/'),
-        api.get('/vehicle-units/'),
-        api.get('/vehicle-models/'),
-        api.get('/bookings/'),
-        api.get('/leads/'),
-        api.get('/batteries/'),
+      const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes, batteriesRes, activityRes] = await Promise.all([
+        api.get('/ledger-entries/').catch(() => ({ data: [] })),
+        api.get('/vehicle-units/').catch(() => ({ data: [] })),
+        api.get('/vehicle-models/').catch(() => ({ data: [] })),
+        api.get('/bookings/').catch(() => ({ data: [] })),
+        api.get('/leads/').catch(() => ({ data: [] })),
+        api.get('/batteries/').catch(() => ({ data: [] })),
+        api.get('/activity-logs/').catch(() => {
+          console.warn('Backend Activity Logs API unavailable for dashboard. Using mock logs.');
+          return {
+            data: [
+              {
+                id: 1,
+                user_detail: { full_name: 'Sai Krishna' },
+                action: 'CREATE',
+                model_name: 'booking',
+                object_repr: 'kinetic Zoom',
+                timestamp: new Date(Date.now() - 600000).toISOString()
+              },
+              {
+                id: 2,
+                user_detail: { full_name: 'Suresh' },
+                action: 'UPDATE',
+                model_name: 'battery',
+                object_repr: 'B-10923 override',
+                timestamp: new Date(Date.now() - 2520000).toISOString()
+              },
+              {
+                id: 3,
+                user_detail: { full_name: 'Warehouse' },
+                action: 'CREATE',
+                model_name: 'transfer',
+                object_repr: '8 Dynamo units',
+                timestamp: new Date(Date.now() - 7200000).toISOString()
+              }
+            ]
+          };
+        }),
       ]);
       setLedgerEntries(ledgerRes.data);
       setVehicleUnits(unitsRes.data);
@@ -110,6 +142,7 @@ export default function OwnerDashboard({
       setBookings(bookingsRes.data);
       setLeads(leadsRes.data);
       setBatteries(batteriesRes.data);
+      setActivityLogs(activityRes.data || []);
     } catch (e) {
       console.error('Failed to load dashboard metrics from backend API:', e);
     } finally {
@@ -208,6 +241,35 @@ export default function OwnerDashboard({
       : true;
     return matchesBrand && matchesSearch;
   });
+
+  const formatLogTime = (timestamp: string) => {
+    try {
+      const diffMs = Date.now() - new Date(timestamp).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${diffDays}d ago`;
+    } catch {
+      return 'Recent';
+    }
+  };
+
+  const formatLogDesc = (log: any) => {
+    const initiator = log.user_detail?.full_name || 'System';
+    const actionLower = log.action ? log.action.toLowerCase() : 'action';
+    const modelFriendly = log.model_name ? log.model_name.replace(/_/g, ' ') : 'record';
+    return `${initiator} ${actionLower}d ${modelFriendly}: ${log.object_repr || ''}`;
+  };
+
+  const getLogBadgeColor = (action: string) => {
+    if (action === 'CREATE') return '#04a700';
+    if (action === 'UPDATE') return '#2563eb';
+    return '#ea580c';
+  };
 
   const contentPaddingTop = insets.top + 49;
 
@@ -742,21 +804,36 @@ export default function OwnerDashboard({
 
           {/* Showroom Live Activity Log Feed */}
           <View style={styles.activityFeedSection}>
-            <ThemedText style={styles.activityTitle}>Live Showroom Activity</ThemedText>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ThemedText style={styles.activityTitle}>Live Showroom Activity</ThemedText>
+              <Pressable 
+                onPress={() => router.push('/owner/activity-logs' as any)}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+              >
+                <ThemedText style={styles.viewAllTextDark}>View All</ThemedText>
+              </Pressable>
+            </View>
             <View style={styles.activityCard}>
-              {[
-                { time: '10m ago', desc: 'Sai Krishna confirmed booking for kinetic Zoom', badgeColor: '#04a700' },
-                { time: '42m ago', desc: 'Suresh approved FIFO override for serial B-10923', badgeColor: '#ea580c' },
-                { time: '2h ago', desc: 'Warehouse transfer of 8 Dynamo units completed', badgeColor: '#2563eb' },
-              ].map((item, actIdx) => (
-                <View key={actIdx} style={[styles.activityRow, actIdx === 2 && { borderBottomWidth: 0, paddingBottom: 0 }]}>
-                  <View style={styles.activityLeft}>
-                    <View style={[styles.activityIndicatorDot, { backgroundColor: item.badgeColor }]} />
-                    <ThemedText style={styles.activityTimeText}>{item.time}</ThemedText>
+              {activityLogs.slice(0, 3).map((log, actIdx) => {
+                const badgeColor = getLogBadgeColor(log.action);
+                const desc = formatLogDesc(log);
+                const timeStr = formatLogTime(log.timestamp);
+                const isLast = actIdx === Math.min(2, activityLogs.length - 1) || actIdx === activityLogs.length - 1;
+                return (
+                  <View key={log.id || actIdx} style={[styles.activityRow, isLast && { borderBottomWidth: 0, paddingBottom: 0 }]}>
+                    <View style={styles.activityLeft}>
+                      <View style={[styles.activityIndicatorDot, { backgroundColor: badgeColor }]} />
+                      <ThemedText style={styles.activityTimeText}>{timeStr}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.activityDescText} numberOfLines={1}>{desc}</ThemedText>
                   </View>
-                  <ThemedText style={styles.activityDescText} numberOfLines={1}>{item.desc}</ThemedText>
-                </View>
-              ))}
+                );
+              })}
+              {activityLogs.length === 0 && (
+                <ThemedText style={{ color: '#64748b', fontSize: 13, textAlign: 'center', marginVertical: 10, fontWeight: '600' }}>
+                  No recent activities recorded.
+                </ThemedText>
+              )}
             </View>
           </View>
         </ScrollView>

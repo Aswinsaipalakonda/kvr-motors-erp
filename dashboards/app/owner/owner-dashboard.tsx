@@ -16,6 +16,7 @@ import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
 import { getLedgerEntries } from "../services/ledger";
 import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
+import { getActivityLogs, ActivityLog } from "../services/activityLogs";
 import {
   TrendingUp,
   Percent,
@@ -31,6 +32,7 @@ import {
   Layers,
   Sparkles,
   Download,
+  Printer,
   Calendar,
   XCircle,
   FileSpreadsheet,
@@ -114,6 +116,12 @@ export default function OwnerDashboard() {
 
   const [batteriesStock, setBatteriesStock] = useState<any[]>([]);
   const [batteriesLoading, setBatteriesLoading] = useState(true);
+
+  // Activity logs states
+  const [activityLogsList, setActivityLogsList] = useState<ActivityLog[]>([]);
+  const [activityLogsLoading, setActivityLogsLoading] = useState(true);
+  const [selectedLogDetail, setSelectedLogDetail] = useState<ActivityLog | null>(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   // New PO form state
   const [newPOSupplier, setNewPOSupplier] = useState("");
@@ -381,6 +389,18 @@ export default function OwnerDashboard() {
     }
   };
 
+  const loadActivityLogs = async () => {
+    try {
+      setActivityLogsLoading(true);
+      const logs = await getActivityLogs();
+      setActivityLogsList(logs);
+    } catch (e) {
+      console.error("Failed to load activity logs from Django REST API:", e);
+    } finally {
+      setActivityLogsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
@@ -391,6 +411,7 @@ export default function OwnerDashboard() {
     loadPurchases();
     loadLedger();
     loadBatteries();
+    loadActivityLogs();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
   }, []);
@@ -818,9 +839,26 @@ export default function OwnerDashboard() {
     if (reportModule === "Inventory In-Out Movements") {
       rows = [["VIN", "Model", "Color", "Branch", "Status"], ...vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status])];
     } else if (reportModule === "Lead Conversion Pipeline") {
-      rows = [["Lead", "Customer", "Contact", "Vehicle", "Status"], ...leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status])];
+      rows = [["Lead ID", "Customer", "Contact", "Vehicle", "Status"], ...leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status])];
     } else if (reportModule === "Battery FIFO Allocations") {
       rows = [["Serial", "Capacity", "Acquired", "Status", "Location"], ...batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location])];
+    } else if (reportModule === "Executive Sales Commission") {
+      const execData: Record<string, { count: number; total: number }> = {};
+      salesInvoices.forEach(s => {
+        const exec = s.executive_name || "Unassigned";
+        if (!execData[exec]) execData[exec] = { count: 0, total: 0 };
+        execData[exec].count += 1;
+        execData[exec].total += parseFloat(s.sale_price || 0);
+      });
+      rows = [
+        ["Executive Name", "Total Sales Count", "Total Revenue", "Estimated Commission"],
+        ...Object.entries(execData).map(([exec, data]) => [
+          exec,
+          String(data.count),
+          String(data.total),
+          String(data.count * 2000)
+        ])
+      ];
     } else {
       rows = [["Invoice", "Customer", "Model", "Sale Price", "Date"], ...salesInvoices.map(s => [s.invoice_number, s.customer_name, s.model_name, s.sale_price, s.sale_date])];
     }
@@ -833,6 +871,165 @@ export default function OwnerDashboard() {
     a.click();
     URL.revokeObjectURL(url);
     showToast("Report exported as CSV.");
+  };
+
+  const printReport = () => {
+    let headers: string[] = [];
+    let rows: string[][] = [];
+    if (reportModule === "Inventory In-Out Movements") {
+      headers = ["VIN", "Model", "Color", "Branch", "Status"];
+      rows = vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status]);
+    } else if (reportModule === "Lead Conversion Pipeline") {
+      headers = ["Lead ID", "Customer", "Contact", "Vehicle", "Status"];
+      rows = leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status]);
+    } else if (reportModule === "Battery FIFO Allocations") {
+      headers = ["Serial", "Capacity", "Acquired", "Status", "Location"];
+      rows = batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location]);
+    } else if (reportModule === "Executive Sales Commission") {
+      headers = ["Executive Name", "Total Sales Count", "Total Revenue", "Estimated Commission"];
+      const execData: Record<string, { count: number; total: number }> = {};
+      salesInvoices.forEach(s => {
+        const exec = s.executive_name || "Unassigned";
+        if (!execData[exec]) execData[exec] = { count: 0, total: 0 };
+        execData[exec].count += 1;
+        execData[exec].total += parseFloat(s.sale_price || 0);
+      });
+      rows = Object.entries(execData).map(([exec, data]) => [
+        exec,
+        `${data.count} units`,
+        `₹ ${data.total.toLocaleString("en-IN")}`,
+        `₹ ${(data.count * 2000).toLocaleString("en-IN")}`
+      ]);
+    } else {
+      headers = ["Invoice", "Customer", "Model", "Sale Price", "Date"];
+      rows = salesInvoices.map(s => [s.invoice_number, s.customer_name, s.model_name, `₹ ${parseFloat(s.sale_price || 0).toLocaleString("en-IN")}`, s.sale_date]);
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Pop-up blocker prevented printing. Please allow pop-ups for this site.", "error");
+      return;
+    }
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${reportModule}</title>
+          <style>
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 20mm;
+              }
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #334155;
+              margin: 0;
+              padding: 20px;
+            }
+            .header {
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 15px;
+              margin-bottom: 25px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header h1 {
+              font-size: 20px;
+              margin: 0 0 5px 0;
+              color: #0f172a;
+            }
+            .header .meta {
+              font-size: 11px;
+              color: #64748b;
+              font-weight: 600;
+              text-align: right;
+            }
+            .brand-title {
+              text-align: left;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+              margin-top: 15px;
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            th {
+              background-color: #f8fafc;
+              border-bottom: 2px solid #e2e8f0;
+              color: #475569;
+              font-weight: 700;
+              text-align: left;
+              padding: 8px 10px;
+              text-transform: uppercase;
+              font-size: 9px;
+              letter-spacing: 0.5px;
+            }
+            td {
+              padding: 8px 10px;
+              border-bottom: 1px solid #edf2f7;
+              color: #334155;
+            }
+            .footer {
+              margin-top: 40px;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 10px;
+              font-size: 9px;
+              color: #94a3b8;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="brand-title">
+              <h1>KVR MOTORS GROUP</h1>
+              <div style="font-size: 11px; color: #64748b; font-weight: 600;">Enterprise ERP System</div>
+            </div>
+            <div class="meta">
+              <span>Report: ${reportModule}</span><br/>
+              <span>Generated: ${new Date().toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${cell ?? "—"}</td>`).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            KVR Motors Group Confidential Report Document. All rights reserved.
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   // DYNAMIC COMPUTATIONS & MEMOIZED AGGREGATES
@@ -1117,7 +1314,7 @@ export default function OwnerDashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-sm font-black text-slate-800 tracking-tight">Sales Analytics Overview</h3>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Real-time cumulative sales volume dynamically fetched from PostgreSQL</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Real-time cumulative sales volume dynamically updated</p>
                     </div>
                     <div className="flex items-center gap-3.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
                       <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#04a700]" /> This Month</span>
@@ -1126,7 +1323,7 @@ export default function OwnerDashboard() {
                   </div>
                   
                   <div className="h-[320px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={salesOverviewData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                         <defs>
                           <linearGradient id="glowBrandGreen" x1="0" y1="0" x2="0" y2="1">
@@ -1148,14 +1345,14 @@ export default function OwnerDashboard() {
                 <div className="bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col h-full min-h-[440px] justify-between hover:shadow-md transition-shadow duration-300">
                   <div className="mb-4">
                     <h3 className="text-sm font-black text-slate-800 tracking-tight">Vehicle Stock Status</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution loaded from PostgreSQL</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution loaded from database</p>
                   </div>
                   <div className="h-[220px] w-full flex flex-col justify-center items-center relative">
                     <div className="absolute flex flex-col items-center">
                       <span className="text-2xl font-black text-slate-800 font-mono">{vehiclesLoading ? "..." : vehicleUnitsList.length}</span>
                       <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total units</span>
                     </div>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <PieChart>
                         <Pie
                           data={stockStatusData}
@@ -1303,7 +1500,7 @@ export default function OwnerDashboard() {
                     <td colSpan={9} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading branch outlets from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading branch outlets...</span>
                       </div>
                     </td>
                   </tr>
@@ -1375,7 +1572,7 @@ export default function OwnerDashboard() {
                     <td colSpan={10} className="py-8 text-center text-xs text-slate-405 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
-                        <span>Loading model catalog from PostgreSQL...</span>
+                         <span>Loading model catalog...</span>
                       </div>
                     </td>
                   </tr>
@@ -1626,7 +1823,7 @@ export default function OwnerDashboard() {
                     <td colSpan={10} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading purchase orders from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading purchase orders...</span>
                       </div>
                     </td>
                   </tr>
@@ -1705,7 +1902,7 @@ export default function OwnerDashboard() {
                     <td colSpan={12} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records...</span>
                       </div>
                     </td>
                   </tr>
@@ -1772,7 +1969,7 @@ export default function OwnerDashboard() {
               {leadsLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#04a700]" />
-                  <span className="text-xs font-semibold text-slate-500">Loading leads conversion pipeline from PostgreSQL...</span>
+                  <span className="text-xs font-semibold text-slate-500">Loading leads conversion pipeline...</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -1869,7 +2066,7 @@ export default function OwnerDashboard() {
                     <td colSpan={10} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading advance bookings from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading advance bookings...</span>
                       </div>
                     </td>
                   </tr>
@@ -1950,7 +2147,7 @@ export default function OwnerDashboard() {
                     <td colSpan={9} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading battery stock from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading battery stock...</span>
                       </div>
                     </td>
                   </tr>
@@ -2032,7 +2229,7 @@ export default function OwnerDashboard() {
                     <td colSpan={9} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading ledger transaction records from PostgreSQL...</span>
+                        <span className="text-xs font-semibold text-slate-400">Loading ledger transaction records...</span>
                       </div>
                     </td>
                   </tr>
@@ -2098,9 +2295,12 @@ export default function OwnerDashboard() {
                       <option>Year to Date (2026)</option>
                     </select>
                   </div>
-                  <div className="flex items-end">
-                    <button onClick={downloadReport} className="w-full flex items-center justify-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-4 rounded-full shadow-md shadow-[#04a700]/20 transition-all cursor-pointer">
-                      <Download className="h-4 w-4" /> Download Excel/PDF
+                  <div className="flex items-end gap-2">
+                    <button onClick={downloadReport} className="flex-1 flex items-center justify-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-3 rounded-full shadow-md shadow-[#04a700]/20 transition-all cursor-pointer truncate">
+                      <Download className="h-4 w-4 shrink-0" /> CSV
+                    </button>
+                    <button onClick={printReport} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-3 px-3 rounded-full shadow-md transition-all cursor-pointer truncate">
+                      <Printer className="h-4 w-4 shrink-0" /> Print
                     </button>
                   </div>
                 </div>
@@ -2209,6 +2409,199 @@ export default function OwnerDashboard() {
                     </tr>
                   ))}
               </Table>
+            </div>
+          )}
+          {/* TAB 12.5: ACTIVITY LOGS */}
+          {activeTab === "activity-logs" && (
+            <div className="space-y-6">
+              <Table
+                title="Activity Logs & System Audits"
+                headers={["Timestamp", "User Initiator", "Action", "Model / Object Type", "Target Record", "IP Address", "Actions"]}
+                setSearchQuery={setSearchQuery}
+                actions={
+                  <button
+                    onClick={loadActivityLogs}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 font-bold text-xs py-2 px-4 rounded-full cursor-pointer transition-colors"
+                  >
+                    Refresh Audit Trail
+                  </button>
+                }
+              >
+                {activityLogsLoading ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
+                        <span className="text-xs font-semibold text-slate-400">Loading audit trail logs from database...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : activityLogsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center">
+                      <EmptyState
+                        title="No Activities Logged"
+                        description="Audit logs will appear here as users perform updates, additions, or deletions across the ERP system."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  activityLogsList
+                    .filter((log) => {
+                      if (!searchQuery.trim()) return true;
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        (log.user_detail?.full_name || "System").toLowerCase().includes(q) ||
+                        log.model_name.toLowerCase().includes(q) ||
+                        log.object_repr.toLowerCase().includes(q) ||
+                        log.action.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500">
+                          {new Date(log.timestamp).toLocaleString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <div className="flex flex-col text-left">
+                            <span className="font-bold text-slate-800">
+                              {log.user_detail?.full_name || "System Automated"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                              {log.user_detail?.role || "System Action"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider ${
+                              log.action === "CREATE"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : log.action === "UPDATE"
+                                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}
+                          >
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 font-bold text-slate-600 uppercase tracking-wide text-[10px]">
+                          {log.model_name}
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-700 font-semibold">{log.object_repr}</td>
+                        <td className="py-3.5 px-5 font-mono text-[11px] text-slate-400">{log.ip_address || "127.0.0.1"}</td>
+                        <td className="py-3.5 px-5">
+                          <button
+                            onClick={() => {
+                              setSelectedLogDetail(log);
+                              setIsLogModalOpen(true);
+                            }}
+                            className="text-xs text-[#04a700] hover:text-[#038a00] font-black cursor-pointer"
+                          >
+                            Inspect Diff
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </Table>
+
+              {/* Inspect Log details Modal */}
+              <Modal
+                isOpen={isLogModalOpen}
+                onClose={() => {
+                  setIsLogModalOpen(false);
+                  setSelectedLogDetail(null);
+                }}
+                title="System Audit - Inspect Record Differences"
+              >
+                {selectedLogDetail && (
+                  <div className="space-y-4 text-left text-xs text-slate-700">
+                    <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Object</span>
+                        <span className="font-bold text-slate-800 uppercase text-sm mt-0.5 block">
+                          {selectedLogDetail.model_name}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Record Repr</span>
+                        <span className="font-bold text-slate-800 text-sm mt-0.5 block">{selectedLogDetail.object_repr}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Initiator</span>
+                        <span className="font-bold text-slate-800 mt-0.5 block">
+                          {selectedLogDetail.user_detail?.full_name || "System"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IP Address</span>
+                        <span className="font-mono text-slate-600 mt-0.5 block">{selectedLogDetail.ip_address || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Timestamp</span>
+                        <span className="font-mono text-slate-600 mt-0.5 block">
+                          {new Date(selectedLogDetail.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Field Modification Diff</span>
+                      {Object.keys(selectedLogDetail.changes).length === 0 ? (
+                        <div className="bg-slate-50 rounded-xl p-4 text-center text-slate-450 font-semibold italic">
+                          No specific fields recorded or record was deleted.
+                        </div>
+                      ) : (
+                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200 font-black text-slate-500 uppercase text-[9px] tracking-widest">
+                                <th className="py-2.5 px-4">Field Name</th>
+                                <th className="py-2.5 px-4">Previous Value</th>
+                                <th className="py-2.5 px-4 text-[#04a700]">New Modified Value</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {Object.entries(selectedLogDetail.changes).map(([field, diff]) => (
+                                <tr key={field} className="hover:bg-slate-50/50">
+                                  <td className="py-2.5 px-4 font-bold text-slate-800 uppercase tracking-wide text-[10px]">
+                                    {field}
+                                  </td>
+                                  <td className="py-2.5 px-4 font-mono text-slate-500 truncate max-w-[150px]" title={diff.before || "None"}>
+                                    {diff.before === null || diff.before === "None" ? (
+                                      <span className="text-slate-400 italic font-sans">empty</span>
+                                    ) : (
+                                      diff.before
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-4 font-mono text-[#04a700] font-bold truncate max-w-[150px]" title={diff.after || "None"}>
+                                    {diff.after === null || diff.after === "None" ? (
+                                      <span className="text-slate-300 italic font-sans font-normal">empty</span>
+                                    ) : (
+                                      diff.after
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Modal>
             </div>
           )}
           {/* TAB 13: SYSTEM SETTINGS */}

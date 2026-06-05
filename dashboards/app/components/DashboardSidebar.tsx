@@ -62,6 +62,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "ledger", label: "Ledger Management", icon: BookOpen },
         { id: "reports", label: "Reports & Analytics", icon: BarChart2 },
         { id: "users", label: "Users & Roles", icon: Users },
+        { id: "activity-logs", label: "Activity Logs", icon: ActivitySquare },
         { id: "settings", label: "Settings", icon: Settings },
       ]
     },

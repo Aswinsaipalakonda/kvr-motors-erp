@@ -14,7 +14,8 @@ import {
   Home, Landmark, Package, UserCheck, TrendingUp, 
   Menu as HamburgerIcon, X, CalendarDays, ShoppingBag, 
   Users, LogOut, ChevronRight, Shield, Sparkles,
-  MapPin, ChevronDown, MoreVertical, Check, User, Building
+  MapPin, ChevronDown, MoreVertical, Check, User, Building,
+  FileText
 } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -281,6 +282,12 @@ export default function OwnerLayout() {
       route: '/owner/branches',
       icon: Building,
       color: '#04a700',
+    },
+    {
+      title: 'Activity Logs',
+      route: '/owner/activity-logs',
+      icon: FileText,
+      color: '#10b981',
     },
   ];
 
