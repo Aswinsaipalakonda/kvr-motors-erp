@@ -2739,6 +2739,7 @@ export default function OwnerDashboard() {
                 <option>Supervisor</option>
                 <option>Sales Executive</option>
                 <option>Sales Staff</option>
+                <option>Telecaller</option>
               </select>
             </div>
             <div className="space-y-1.5">

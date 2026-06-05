@@ -8,6 +8,7 @@ export interface LeadInput {
   assigned_executive?: number | null;
   status?: string;
   notes?: string;
+  follow_up_date?: string;
 }
 
 export const getLeads = async () => {

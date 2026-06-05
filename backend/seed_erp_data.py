@@ -213,6 +213,16 @@ def seed_erp_data():
             "branch": "KVR Motors - Visakhapatnam",
             "showroom": "KVR Showroom - Visakhapatnam",
             "phone_number": "9876543212"
+        },
+        {
+            "username": "telecaller",
+            "password": "tele123",
+            "email": "telecaller@kvrmotors.com",
+            "full_name": "Lakshmi Narayana",
+            "role": "telecaller",
+            "branch": "KVR Motors - Visakhapatnam",
+            "showroom": "KVR Showroom - Visakhapatnam",
+            "phone_number": "9876543214"
         }
     ]
 

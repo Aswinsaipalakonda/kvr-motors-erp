@@ -13,6 +13,7 @@ import EmptyState from "../components/EmptyState";
 import { getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit } from "../services/vehicles";
 import { getLeads, createLead, updateLead } from "../services/leads";
+import { getUsers } from "../services/users";
 import { getBookings, createBooking, updateBooking } from "../services/bookings";
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getBatteries, createBattery, updateBattery, deleteBattery, getFifoOverrides, updateFifoOverride } from "../services/batteries";
@@ -170,7 +171,8 @@ export default function SupervisorDashboard() {
   const [vinLookupState, setVinLookupState] = useState<"idle" | "searching" | "found" | "notfound">("idle");
 
   // 3. Lead CRUD & Kanban
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "", assigned_executive: "" as string | number | null };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -220,6 +222,15 @@ export default function SupervisorDashboard() {
       console.error("Failed to load leads:", e);
     } finally {
       setLeadsLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await getUsers();
+      setUsersList(data);
+    } catch (e) {
+      console.error("Failed to load staff list:", e);
     }
   };
 
@@ -317,6 +328,7 @@ export default function SupervisorDashboard() {
     loadBatteries();
     loadOverrides();
     loadTransfers();
+    loadUsers();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
 
@@ -328,6 +340,7 @@ export default function SupervisorDashboard() {
       loadVehicles();
       loadBatteries();
       loadTransfers();
+      loadUsers();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -546,6 +559,7 @@ export default function SupervisorDashboard() {
       status: lead.status || "new_lead",
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
+      assigned_executive: lead.assigned_executive || "",
     });
     setIsAddLeadOpen(true);
   };
@@ -561,6 +575,7 @@ export default function SupervisorDashboard() {
       status: newLead.status,
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
+      assigned_executive: newLead.assigned_executive ? parseInt(String(newLead.assigned_executive)) : null,
     };
     try {
       if (editingLeadId) {
@@ -591,9 +606,8 @@ export default function SupervisorDashboard() {
     }
   };
 
-  const handleAssignLead = async (leadId: number, execName: string) => {
+  const handleAssignLead = async (leadId: number, assignedId: number | null) => {
     try {
-      const assignedId = execName === "Unassigned" ? null : 3; // 3 matches Anil Kumar
       await updateLead(leadId, {
         assigned_executive: assignedId,
         status: assignedId ? "new_lead" : "enquiry"
@@ -1517,12 +1531,20 @@ export default function SupervisorDashboard() {
                                 
                                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
                                   <select 
-                                    value={lead.assigned_executive ? "Anil Kumar" : "Unassigned"}
-                                    onChange={(e) => handleAssignLead(lead.id, e.target.value)}
-                                    className="text-[9px] bg-slate-50 border border-slate-150 rounded px-1.5 py-0.5 font-semibold text-slate-600 outline-none"
+                                    value={lead.assigned_executive || "Unassigned"}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
+                                    }}
+                                    className="text-[9px] bg-slate-50 border border-slate-150 rounded px-1.5 py-0.5 font-semibold text-slate-650 outline-none"
                                   >
                                     <option value="Unassigned">Unassigned</option>
-                                    <option value="Anil Kumar">Anil Kumar</option>
+                                    {usersList
+                                      .filter(u => u.role === "sales_executive" || u.role === "sales" || u.role === "telecaller")
+                                      .map(u => (
+                                        <option key={u.id} value={u.id}>{u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales"})</option>
+                                      ))
+                                    }
                                   </select>
                                   <button onClick={() => openEditLead(lead)} className="text-[9px] font-extrabold text-[#04a700] cursor-pointer">Edit</button>
                                 </div>
@@ -1923,6 +1945,22 @@ export default function SupervisorDashboard() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Next Follow-up Date</label>
             <input type="date" value={newLead.follow_up_date} onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Executive / Telecaller</label>
+            <select 
+              value={newLead.assigned_executive || ""} 
+              onChange={(e) => setNewLead({ ...newLead, assigned_executive: e.target.value || null })} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none"
+            >
+              <option value="">Unassigned</option>
+              {usersList
+                .filter(u => u.role === "sales_executive" || u.role === "sales" || u.role === "telecaller")
+                .map(u => (
+                  <option key={u.id} value={u.id}>{u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales"})</option>
+                ))
+              }
+            </select>
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
             Save Lead

@@ -27,7 +27,11 @@ class IsOwnerOrAdmin(BasePermission):
 
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsOwnerOrAdmin()]
 
     def get_queryset(self):
         return User.objects.all().order_by('-id')

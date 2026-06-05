@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 interface BottomNavProps {
-  role: "owner" | "supervisor" | "sales";
+  role: "owner" | "supervisor" | "sales" | "telecaller";
   activeTab?: string;
 }
 
@@ -48,6 +48,10 @@ const navConfig: Record<BottomNavProps["role"], NavItem[]> = {
     { id: "customers", label: "Customers", icon: UsersRound },
     { id: "sales_bookings", label: "Sales", icon: CreditCard },
     { id: "followups", label: "Follow-ups", icon: UserCheck2 },
+  ],
+  telecaller: [
+    { id: "dashboard", label: "Home", icon: LayoutDashboard },
+    { id: "leads", label: "Leads", icon: Compass },
   ],
 };
 

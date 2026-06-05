@@ -10,7 +10,7 @@ export interface UserProfile {
   username: string;
   email: string;
   full_name: string;
-  role: "admin" | "owner" | "supervisor" | "sales_executive" | "sales";
+  role: "admin" | "owner" | "supervisor" | "sales_executive" | "sales" | "telecaller";
   branch: string | null;
   showroom: string | null;
   phone_number: string | null;
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supervisor: "/supervisor",
         sales_executive: "/sales",
         sales: "/sales",
+        telecaller: "/telecaller",
       };
 
       const redirectPath = roleRedirectMap[userProfile.role as keyof typeof roleRedirectMap] || "/";

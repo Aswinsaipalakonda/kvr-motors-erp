@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 interface SidebarProps {
-  role: "owner" | "supervisor" | "sales";
+  role: "owner" | "supervisor" | "sales" | "telecaller";
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
 }
@@ -96,6 +96,17 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "sales_bookings", label: "Sales & Bookings", icon: CreditCard },
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
+      ]
+    },
+    telecaller: {
+      profile: {
+        name: "Lakshmi Narayana",
+        roleName: "Telecaller",
+        initials: "LN"
+      },
+      items: [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "leads", label: "Leads", icon: Compass },
       ]
     }
   };
@@ -177,7 +188,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
             <div className="flex flex-col text-left">
               <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans">KVR Motors</span>
               <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
-                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : "Sales Terminal"}
+                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
               </span>
             </div>
           </div>

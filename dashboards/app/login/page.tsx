@@ -52,7 +52,8 @@ function LoginForm() {
     const credentials: Record<string, { u: string; p: string }> = {
       owner: { u: "owner", p: "owner123" },
       supervisor: { u: "supervisor", p: "super123" },
-      sales: { u: "sales", p: "sales123" }
+      sales: { u: "sales", p: "sales123" },
+      telecaller: { u: "telecaller", p: "tele123" }
     };
     
     const cred = credentials[role];
@@ -142,7 +143,7 @@ function LoginForm() {
         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800/80 uppercase tracking-widest mb-3 bg-emerald-50 border border-emerald-100/50 px-2 py-1 rounded-full">
           <Sparkles className="h-3 w-3" /> Quick Demo Autoloaders
         </span>
-        <div className="grid grid-cols-3 gap-2 mt-1">
+        <div className="grid grid-cols-4 gap-2 mt-1">
           <button
             type="button"
             onClick={() => handleQuickLogin("owner")}
@@ -163,6 +164,13 @@ function LoginForm() {
             className="py-2 px-1 text-[10px] font-bold bg-teal-50 border border-teal-100 hover:bg-teal-500/10 active:scale-95 text-teal-950 rounded-lg transition-all duration-150 cursor-pointer"
           >
             Sales Exec
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin("telecaller")}
+            className="py-2 px-1 text-[10px] font-bold bg-purple-50 border border-purple-100 hover:bg-purple-500/10 active:scale-95 text-purple-950 rounded-lg transition-all duration-150 cursor-pointer"
+          >
+            Telecaller
           </button>
         </div>
         <p className="text-[9px] font-medium text-slate-400 mt-3 italic">

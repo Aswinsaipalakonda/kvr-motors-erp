@@ -19,7 +19,7 @@ import {
 
 interface NavbarProps {
   title: string;
-  role: "owner" | "supervisor" | "sales";
+  role: "owner" | "supervisor" | "sales" | "telecaller";
 }
 
 interface SearchModule {
@@ -61,6 +61,10 @@ const ROLE_MODULES: Record<NavbarProps["role"], SearchModule[]> = {
     { label: "Customers", route: "/sales/customers" },
     { label: "Bookings", route: "/sales/sales_bookings" },
     { label: "Reports", route: "/sales/reports" },
+  ],
+  telecaller: [
+    { label: "Dashboard", route: "/telecaller" },
+    { label: "Leads", route: "/telecaller/leads" },
   ],
 };
 
@@ -148,7 +152,7 @@ export default function Navbar({ title, role }: NavbarProps) {
   };
 
   const displayName =
-    user?.full_name || (role === "owner" ? "Ravi Varma" : role === "supervisor" ? "Suresh Babu" : "Anil Kumar");
+    user?.full_name || (role === "owner" ? "Ravi Varma" : role === "supervisor" ? "Suresh Babu" : role === "telecaller" ? "Lakshmi Narayana" : "Anil Kumar");
   const initials = displayName
     .split(" ")
     .map((w) => w[0])

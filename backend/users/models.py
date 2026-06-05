@@ -9,6 +9,7 @@ class User(AbstractUser):
         ('sales_executive', 'Sales Executive'),
         ('sales', 'Sales'),
         ('staff', 'Operations Staff'),
+        ('telecaller', 'Telecaller'),
     )
 
     full_name = models.CharField(max_length=255, blank=True)

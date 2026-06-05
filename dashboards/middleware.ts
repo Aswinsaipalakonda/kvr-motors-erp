@@ -9,9 +9,10 @@ export function middleware(request: NextRequest) {
   const isOwnerRoute = pathname.startsWith("/owner");
   const isSupervisorRoute = pathname.startsWith("/supervisor");
   const isSalesRoute = pathname.startsWith("/sales");
+  const isTelecallerRoute = pathname.startsWith("/telecaller");
 
   // 1. If visiting a protected dashboard path, verify authentication
-  if (isOwnerRoute || isSupervisorRoute || isSalesRoute) {
+  if (isOwnerRoute || isSupervisorRoute || isSalesRoute || isTelecallerRoute) {
     if (!token || !role) {
       // Direct unauthorized anonymous session to login screen
       const loginUrl = new URL("/login", request.url);
@@ -32,6 +33,10 @@ export function middleware(request: NextRequest) {
     if (isSalesRoute && role !== "sales_executive" && role !== "sales" && role !== "owner" && role !== "admin") {
       return redirectToRoleDashboard(role, request);
     }
+
+    if (isTelecallerRoute && role !== "telecaller" && role !== "owner" && role !== "admin") {
+      return redirectToRoleDashboard(role, request);
+    }
   }
 
   // 2. If visiting /login while already active, bounce back to dashboard
@@ -49,6 +54,7 @@ function redirectToRoleDashboard(role: string, request: NextRequest) {
     supervisor: "/supervisor",
     sales_executive: "/sales",
     sales: "/sales",
+    telecaller: "/telecaller",
   };
 
   const targetPath = roleRedirectMap[role] || "/";
@@ -61,6 +67,7 @@ export const config = {
     "/owner/:path*",
     "/supervisor/:path*",
     "/sales/:path*",
+    "/telecaller/:path*",
     "/login",
   ],
 };
