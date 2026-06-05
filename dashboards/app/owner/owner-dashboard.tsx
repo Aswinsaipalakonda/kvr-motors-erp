@@ -8,15 +8,18 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
-import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms } from "../services/branches";
-import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit } from "../services/vehicles";
-import { getLeads, createLead, updateLead } from "../services/leads";
-import { getBookings, createBooking, updateBooking } from "../services/bookings";
+import ProfileView from "../components/ProfileView";
+import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch } from "../services/branches";
+import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
+import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
+import { getBookings, createBooking, updateBooking, deleteBooking } from "../services/bookings";
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
 import { getLedgerEntries } from "../services/ledger";
 import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
 import { getActivityLogs, ActivityLog } from "../services/activityLogs";
+import { getUsers, createUser, updateUser, deleteUser } from "../services/users";
 import {
   TrendingUp,
   Percent,
@@ -401,6 +404,18 @@ export default function OwnerDashboard() {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const list = await getUsers();
+      setUsersList(list);
+    } catch (e) {
+      console.error("Failed to load staff users:", e);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
@@ -412,17 +427,10 @@ export default function OwnerDashboard() {
     loadLedger();
     loadBatteries();
     loadActivityLogs();
+    loadUsers();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
   }, []);
-  const systemUsers = [
-    { name: "Ravi Varma", role: "Owner", userType: "Admin", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 09:30 AM" },
-    { name: "Suresh Babu", role: "Supervisor", userType: "Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 08:15 AM" },
-    { name: "Anil Kumar", role: "Sales Executive", userType: "Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 09:10 AM" },
-    { name: "Venkatesh", role: "Sales Staff", userType: "Staff", branch: "Future Ride - Visakhapatnam", status: "Active", lastLogin: "13 May 2024 07:45 AM" },
-    { name: "Prasad", role: "Sales Executive", userType: "Staff", branch: "KVR Motors - Srikakulam", status: "Active", lastLogin: "12 May 2024 05:20 PM" },
-    { name: "Mahesh", role: "Sales Staff", userType: "Staff", branch: "KVR Motors - Kakinada", status: "Inactive", lastLogin: "10 May 2024 04:35 PM" },
-  ];
   
   // Modals state
   const [isAddBranchOpen, setIsAddBranchOpen] = useState(false);
@@ -437,14 +445,31 @@ export default function OwnerDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState("All Roles");
   const [userTypeFilter, setUserTypeFilter] = useState("All Types");
   const [newUser, setNewUser] = useState({
+    username: "",
     fullName: "",
     email: "",
-    role: "Sales Staff",
-    branch: "KVR Motors - Visakhapatnam",
-    status: "Active",
-    userType: "Staff"
+    phoneNumber: "",
+    password: "",
+    role: "sales",
+    branch: "",
+    showroom: ""
   });
-  const [users, setUsers] = useState(systemUsers);
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  // Edit user state hooks
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editUserForm, setEditUserForm] = useState({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    role: "sales",
+    branch: "",
+    showroom: "",
+    isActive: true,
+    password: ""
+  });
 
   // Lightweight feedback toast
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
@@ -476,6 +501,138 @@ export default function OwnerDashboard() {
       showToast(`Branch ${branch.is_active ? "deactivated" : "activated"}.`);
       loadBranches();
     } catch { showToast("Failed to update branch.", "error"); }
+  };
+
+  const handleDeleteBranch = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this branch outlet? This action cannot be undone.")) return;
+    try {
+      await deleteBranch(id);
+      showToast("Branch outlet deleted successfully.");
+      loadBranches();
+    } catch {
+      showToast("Failed to delete branch. Ensure there are no active stock or transactions linked.", "error");
+    }
+  };
+
+  const handleDeleteModel = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this vehicle model? This will affect stock catalog.")) return;
+    try {
+      await deleteVehicleModel(id);
+      showToast("Vehicle model deleted from catalog.");
+      loadVehicles();
+    } catch {
+      showToast("Failed to delete vehicle model. Ensure no active inventory units are linked.", "error");
+    }
+  };
+
+  const handleDeleteLead = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this lead?")) return;
+    try {
+      await deleteLead(id);
+      showToast("Lead removed from pipeline.");
+      setIsAddLeadOpen(false);
+      loadLeads();
+    } catch {
+      showToast("Failed to delete lead.", "error");
+    }
+  };
+
+  const handleDeleteBooking = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this booking record?")) return;
+    try {
+      await deleteBooking(id);
+      showToast("Booking record deleted.");
+      loadBookings();
+    } catch {
+      showToast("Failed to delete booking.", "error");
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this user account?")) return;
+    try {
+      await deleteUser(id);
+      showToast("User account deleted.");
+      loadUsers();
+    } catch {
+      showToast("Failed to delete user.", "error");
+    }
+  };
+
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUser.username.trim() || !newUser.fullName.trim() || !newUser.email.trim() || !newUser.password) {
+      showToast("Please fill all required fields.", "error");
+      return;
+    }
+    try {
+      await createUser({
+        username: newUser.username.trim(),
+        full_name: newUser.fullName.trim(),
+        email: newUser.email.trim(),
+        phone_number: newUser.phoneNumber.trim() || null,
+        password: newUser.password,
+        role: newUser.role,
+        branch: newUser.branch ? newUser.branch.trim() : null,
+        showroom: newUser.showroom ? newUser.showroom.trim() : null,
+      });
+      showToast("User account created successfully.");
+      setNewUser({
+        username: "",
+        fullName: "",
+        email: "",
+        phoneNumber: "",
+        password: "",
+        role: "sales",
+        branch: "",
+        showroom: ""
+      });
+      setIsAddUserOpen(false);
+      loadUsers();
+    } catch {
+      showToast("Failed to create user account. Ensure username or email is unique.", "error");
+    }
+  };
+
+  const openEditUser = (usr: any) => {
+    setEditingUser(usr);
+    setEditUserForm({
+      fullName: usr.full_name || "",
+      email: usr.email || "",
+      phoneNumber: usr.phone_number || "",
+      role: usr.role || "sales",
+      branch: usr.branch ? String(usr.branch) : "",
+      showroom: usr.showroom ? String(usr.showroom) : "",
+      isActive: usr.is_active !== false,
+      password: "",
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      const payload: any = {
+        full_name: editUserForm.fullName.trim(),
+        email: editUserForm.email.trim(),
+        phone_number: editUserForm.phoneNumber.trim() || null,
+        role: editUserForm.role,
+        branch: editUserForm.branch ? editUserForm.branch.trim() : null,
+        showroom: editUserForm.showroom ? editUserForm.showroom.trim() : null,
+        is_active: editUserForm.isActive,
+      };
+      if (editUserForm.password.trim()) {
+        payload.password = editUserForm.password;
+      }
+      await updateUser(editingUser.id, payload);
+      showToast("User account updated.");
+      setEditingUser(null);
+      setIsEditUserOpen(false);
+      loadUsers();
+    } catch {
+      showToast("Failed to update user account.", "error");
+    }
   };
 
   // --- Vehicle model edit ---
@@ -1167,6 +1324,7 @@ export default function OwnerDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
+      <DashboardSmoothScroll />
       
       {/* Sidebar - Leaves existing Sidebar.tsx alone, uses DashboardSidebar */}
       <DashboardSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -1175,7 +1333,7 @@ export default function OwnerDashboard() {
         {/* Navbar */}
         <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
         {/* Dashboard Views */}
-        <main data-lenis-prevent className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -1541,7 +1699,8 @@ export default function OwnerDashboard() {
                         </td>
                         <td className="py-3.5 px-5">
                           <button onClick={() => openEditBranch(branch)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
-                          <button onClick={() => handleToggleBranch(branch)} className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer">Toggle Status</button>
+                          <button onClick={() => handleToggleBranch(branch)} className="text-xs text-slate-450 hover:text-slate-600 font-bold cursor-pointer mr-3">Toggle Status</button>
+                          <button onClick={() => handleDeleteBranch(branch.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
                         </td>
                       </tr>
                     );
@@ -1600,8 +1759,9 @@ export default function OwnerDashboard() {
                           {model.status === "active" ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="py-3.5 px-5">
-                        <button onClick={() => openEditModel(model)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit Model</button>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <button onClick={() => openEditModel(model)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit Model</button>
+                        <button onClick={() => handleDeleteModel(model.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
                       </td>
                     </tr>
                   ))
@@ -2108,7 +2268,8 @@ export default function OwnerDashboard() {
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
                         <button onClick={() => openEditBooking(bk)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
-                        <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                        <button onClick={() => handleCancelBooking(bk)} className="text-xs text-amber-600 hover:text-amber-800 font-bold mr-3 cursor-pointer">Cancel</button>
+                        <button onClick={() => handleDeleteBooking(bk.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
                       </td>
                     </tr>
                   ))
@@ -2349,13 +2510,12 @@ export default function OwnerDashboard() {
                   <select
                     value={userBranchFilter}
                     onChange={(e) => setUserBranchFilter(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-[#04a700]"
                   >
                     <option>All Branches</option>
-                    <option>KVR Motors - Visakhapatnam</option>
-                    <option>Future Ride - Visakhapatnam</option>
-                    <option>KVR Motors - Srikakulam</option>
-                    <option>KVR Motors - Kakinada</option>
+                    {branchesList.map((b) => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -2363,7 +2523,7 @@ export default function OwnerDashboard() {
                   <select
                     value={userTypeFilter}
                     onChange={(e) => setUserTypeFilter(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-[#04a700]"
                   >
                     <option>All Types</option>
                     <option>Admin</option>
@@ -2375,39 +2535,71 @@ export default function OwnerDashboard() {
                   <select
                     value={userRoleFilter}
                     onChange={(e) => setUserRoleFilter(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-[#04a700]"
                   >
                     <option>All Roles</option>
                     <option>Owner</option>
                     <option>Supervisor</option>
                     <option>Sales Executive</option>
-                    <option>Sales Staff</option>
+                    <option>Telecaller</option>
                   </select>
                 </div>
               </div>
-              <Table title="Staff Directory & Role Assignments" headers={["Full Name", "Assigned Role", "User Type", "Branch Outlet", "Account Status", "Last Active Login"]}>
-                {users
-                  .filter((user) =>
-                    (userBranchFilter === "All Branches" || user.branch === userBranchFilter) &&
-                    (userTypeFilter === "All Types" || user.userType === userTypeFilter) &&
-                    (userRoleFilter === "All Roles" || user.role === userRoleFilter)
-                  )
-                  .map((user, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{user.name}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{user.role}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{user.userType}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{user.branch}</td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          user.status === "Active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                        }`}>
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-slate-400 font-medium">{user.lastLogin}</td>
-                    </tr>
-                  ))}
+              <Table title="Staff Directory & Role Assignments" headers={["Full Name", "Username / Email", "Assigned Role", "Branch Outlet / Showroom", "Account Status", "Actions"]}>
+                {usersLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-xs text-slate-405 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
+                        <span>Loading user accounts...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : usersList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center">
+                      <EmptyState title="No Users Registered" description="User accounts will display here dynamically." />
+                    </td>
+                  </tr>
+                ) : (
+                  usersList
+                    .filter((u) => {
+                      const branchMatch = userBranchFilter === "All Branches" || !u.branch || u.branch.toLowerCase() === userBranchFilter.toLowerCase();
+                      const roleMatch = userRoleFilter === "All Roles" ||
+                        (userRoleFilter === "Owner" && u.role === "owner") ||
+                        (userRoleFilter === "Supervisor" && u.role === "supervisor") ||
+                        (userRoleFilter === "Sales Executive" && (u.role === "sales_executive" || u.role === "sales")) ||
+                        (userRoleFilter === "Telecaller" && u.role === "telecaller");
+                      
+                      const typeMatch = userTypeFilter === "All Types" ||
+                        (userTypeFilter === "Admin" && u.role === "owner") ||
+                        (userTypeFilter === "Staff" && u.role !== "owner");
+                      
+                      return branchMatch && roleMatch && typeMatch;
+                    })
+                    .map((usr, idx) => (
+                      <tr key={usr.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{usr.full_name || usr.username}</td>
+                        <td className="py-3.5 px-5 text-slate-605">
+                          <div className="font-bold">{usr.username}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">{usr.email}</div>
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold uppercase">{usr.role}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{usr.branch || "—"}{usr.showroom ? ` / ${usr.showroom}` : ""}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            usr.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}>
+                            {usr.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          <button onClick={() => openEditUser(usr)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleDeleteUser(usr.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                        </td>
+                      </tr>
+                    ))
+                )}
               </Table>
             </div>
           )}
@@ -2637,6 +2829,9 @@ export default function OwnerDashboard() {
               </div>
             </div>
           )}
+          {activeTab === "profile" && (
+            <ProfileView />
+          )}
         </main>
       </div>
       {/* Mobile bottom navigation */}
@@ -2695,25 +2890,53 @@ export default function OwnerDashboard() {
       </Modal>
       {/* 2. Add User */}
       <Modal isOpen={isAddUserOpen} onClose={() => setIsAddUserOpen(false)} title="Add New User Account">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setUsers([{ name: newUser.fullName, role: newUser.role, userType: newUser.userType, branch: newUser.branch, status: newUser.status, lastLogin: "Not yet logged in" }, ...users]);
-            setNewUser({ fullName: "", email: "", role: "Sales Staff", branch: "KVR Motors - Visakhapatnam", status: "Active", userType: "Staff" });
-            setIsAddUserOpen(false);
-          }}
-          className="space-y-4 text-left"
-        >
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
-            <input
-              type="text"
-              value={newUser.fullName}
-              onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-              placeholder="e.g. Nikhil Rao"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
-              required
-            />
+        <form onSubmit={handleCreateUserSubmit} className="space-y-4 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Username (Unique)</label>
+              <input
+                type="text"
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                placeholder="e.g. nikhil_sales"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Password</label>
+              <input
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="••••••••"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
+              <input
+                type="text"
+                value={newUser.fullName}
+                onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                placeholder="e.g. Nikhil Rao"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
+              <input
+                type="tel"
+                value={newUser.phoneNumber}
+                onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+                placeholder="e.g. 9876543210"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
@@ -2722,39 +2945,23 @@ export default function OwnerDashboard() {
               value={newUser.email}
               onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
               placeholder="e.g. nikhil@kvrmotors.com"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               required
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
-              <select
-                value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
-                required
-              >
-                <option>Owner</option>
-                <option>Supervisor</option>
-                <option>Sales Executive</option>
-                <option>Sales Staff</option>
-                <option>Telecaller</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">User Type</label>
-              <select
-                value={newUser.userType}
-                onChange={(e) => setNewUser({ ...newUser, userType: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
-                required
-              >
-                <option>Admin</option>
-                <option>Staff</option>
-                <option>Customer</option>
-              </select>
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            >
+              <option value="owner">Owner</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="sales_executive">Sales Executive</option>
+              <option value="telecaller">Telecaller</option>
+            </select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -2762,30 +2969,143 @@ export default function OwnerDashboard() {
               <select
                 value={newUser.branch}
                 onChange={(e) => setNewUser({ ...newUser, branch: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
                 required
               >
-                <option>KVR Motors - Visakhapatnam</option>
-                <option>Future Ride - Visakhapatnam</option>
-                <option>KVR Motors - Srikakulam</option>
-                <option>KVR Motors - Kakinada</option>
+                <option value="">Select branch...</option>
+                {branchesList.map((branch) => (
+                  <option key={branch.id} value={branch.name}>{branch.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Assignment</label>
+              <select
+                value={newUser.showroom}
+                onChange={(e) => setNewUser({ ...newUser, showroom: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="">Select showroom...</option>
+                {showroomsList.map((showroom) => (
+                  <option key={showroom.id} value={showroom.name}>{showroom.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+            Create User Account
+          </button>
+        </form>
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal isOpen={isEditUserOpen} onClose={() => setIsEditUserOpen(false)} title="Edit User Account">
+        <form onSubmit={handleEditUserSubmit} className="space-y-4 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
+              <input
+                type="text"
+                value={editUserForm.fullName}
+                onChange={(e) => setEditUserForm({ ...editUserForm, fullName: e.target.value })}
+                placeholder="e.g. Nikhil Rao"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
+              <input
+                type="tel"
+                value={editUserForm.phoneNumber}
+                onChange={(e) => setEditUserForm({ ...editUserForm, phoneNumber: e.target.value })}
+                placeholder="e.g. 9876543210"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
+            <input
+              type="email"
+              value={editUserForm.email}
+              onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+              placeholder="e.g. nikhil@kvrmotors.com"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
+              <select
+                value={editUserForm.role}
+                onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="owner">Owner</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="sales_executive">Sales Executive</option>
+                <option value="telecaller">Telecaller</option>
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Account Status</label>
               <select
-                value={newUser.status}
-                onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+                value={editUserForm.isActive ? "active" : "inactive"}
+                onChange={(e) => setEditUserForm({ ...editUserForm, isActive: e.target.value === "active" })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
                 required
               >
-                <option>Active</option>
-                <option>Inactive</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Assignment</label>
+              <select
+                value={editUserForm.branch}
+                onChange={(e) => setEditUserForm({ ...editUserForm, branch: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="">Select branch...</option>
+                {branchesList.map((branch) => (
+                  <option key={branch.id} value={branch.name}>{branch.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Assignment</label>
+              <select
+                value={editUserForm.showroom}
+                onChange={(e) => setEditUserForm({ ...editUserForm, showroom: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="">Select showroom...</option>
+                {showroomsList.map((showroom) => (
+                  <option key={showroom.id} value={showroom.name}>{showroom.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">New Password (leave blank to keep current)</label>
+            <input
+              type="password"
+              value={editUserForm.password}
+              onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+              placeholder="••••••••"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+            />
+          </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
-            Create User
+            Save User Changes
           </button>
         </form>
       </Modal>
@@ -2897,7 +3217,11 @@ export default function OwnerDashboard() {
                 type="text"
                 placeholder="e.g. KVRVIN2026X990"
                 value={stockUnitForm.vin_number}
-                onChange={(e) => { setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  if (vinLookupState !== "idle") setVinLookupState("idle");
+                }}
                 onBlur={(e) => handleIdentifierLookup("vin_number", e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 pr-9 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
               />
@@ -2921,11 +3245,33 @@ export default function OwnerDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Number</label>
-              <input type="text" placeholder="e.g. MTR-90888" value={stockUnitForm.motor_number} onChange={(e) => { setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }} onBlur={(e) => handleIdentifierLookup("motor_number", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
+              <input
+                type="text"
+                placeholder="e.g. MTR-90888"
+                value={stockUnitForm.motor_number}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  if (vinLookupState !== "idle") setVinLookupState("idle");
+                }}
+                onBlur={(e) => handleIdentifierLookup("motor_number", e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Number</label>
-              <input type="text" placeholder="e.g. CHS-88988" value={stockUnitForm.chassis_number} onChange={(e) => { setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value }); if (vinLookupState !== "idle") setVinLookupState("idle"); }} onBlur={(e) => handleIdentifierLookup("chassis_number", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
+              <input
+                type="text"
+                placeholder="e.g. CHS-88988"
+                value={stockUnitForm.chassis_number}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  if (vinLookupState !== "idle") setVinLookupState("idle");
+                }}
+                onBlur={(e) => handleIdentifierLookup("chassis_number", e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -3182,9 +3528,20 @@ export default function OwnerDashboard() {
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-medium outline-none focus:border-[#04a700] resize-none"
             />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
-            {editingLeadId ? "Save Changes" : "Add Lead to Pipeline"}
-          </button>
+          <div className={editingLeadId ? "grid grid-cols-2 gap-4" : "w-full"}>
+            <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
+              {editingLeadId ? "Save Changes" : "Add Lead to Pipeline"}
+            </button>
+            {editingLeadId && (
+              <button
+                type="button"
+                onClick={() => handleDeleteLead(editingLeadId)}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-md shadow-rose-600/20 cursor-pointer"
+              >
+                Delete Lead
+              </button>
+            )}
+          </div>
         </form>
       </Modal>
 

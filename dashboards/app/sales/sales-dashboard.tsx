@@ -9,6 +9,8 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import ProfileView from "../components/ProfileView";
+import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 
 import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
@@ -489,6 +491,7 @@ export default function SalesDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
+      <DashboardSmoothScroll />
       
       {/* Unified Sidebar */}
       <DashboardSidebar role="sales" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -499,42 +502,11 @@ export default function SalesDashboard() {
         <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
         {/* Dashboard Views */}
-        <main data-lenis-prevent className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Premium Welcome Hero */}
-              <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#04a700]/[0.07] to-transparent" />
-                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#04a700]/10 blur-3xl" />
-                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#04a700] to-emerald-600" />
-
-                <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#04a700]/30 bg-[#04a700]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#04a700]">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#04a700] opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#04a700]" />
-                        </span>
-                        Sales Terminal Live
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500">
-                        <CalendarDays className="h-3 w-3" /> Sales Executive Hub
-                      </span>
-                    </div>
-                    <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-                      Welcome back, Anil Kumar
-                      <Sparkles className="h-5 w-5 text-[#04a700]" />
-                    </h2>
-                    <p className="mt-1.5 max-w-xl text-xs font-medium leading-relaxed text-slate-500 sm:text-sm">
-                      Check your active leads pipelines, follow up with customers, record bookings and checkout completed sales.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Quick Actions Bar */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -1148,7 +1120,9 @@ export default function SalesDashboard() {
               </div>
             </div>
           )}
-
+          {activeTab === "profile" && (
+            <ProfileView />
+          )}
         </main>
       </div>
 

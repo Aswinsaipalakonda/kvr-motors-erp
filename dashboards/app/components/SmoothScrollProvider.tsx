@@ -2,22 +2,29 @@
 
 import { useEffect } from "react";
 import Lenis from "lenis";
+import { usePathname } from "next/navigation";
 
 /**
  * Mounts a global Lenis instance for buttery window-level smooth scrolling
- * (landing page, login, and any document-flow pages).
+ * on non-dashboard routes (landing page, login, etc.).
  *
- * Dashboard pages scroll inside their own `<main>` containers and rely on
- * native momentum scrolling (see the `smooth-scroll` utility class) so we do
- * not hijack touch gestures there — Lenis simply idles when there is no
- * window-level overflow.
+ * For dashboard pages, we destroy this window-level instance so it does
+ * not hijack scroll gestures on the inner scroll panels.
  */
 export default function SmoothScrollProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    const isDashboard = pathname.startsWith("/owner") || 
+                        pathname.startsWith("/supervisor") || 
+                        pathname.startsWith("/sales") || 
+                        pathname.startsWith("/telecaller");
+    if (isDashboard) return;
+
     // Respect users who prefer reduced motion.
     const prefersReduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -28,7 +35,6 @@ export default function SmoothScrollProvider({
       duration: 1.1,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      // Keep native touch scrolling on mobile (avoids input lag on inner panels).
       syncTouch: false,
       touchMultiplier: 1.5,
     });
@@ -44,7 +50,7 @@ export default function SmoothScrollProvider({
       cancelAnimationFrame(rafId);
       lenis.destroy();
     };
-  }, []);
+  }, [pathname]);
 
   return <>{children}</>;
 }

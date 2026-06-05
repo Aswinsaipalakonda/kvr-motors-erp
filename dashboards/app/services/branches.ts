@@ -41,3 +41,13 @@ export const updateStockTransfer = async (id: number, data: any) => {
   const response = await api.patch(`/stock-transfers/${id}/`, data);
   return response.data;
 };
+
+export const createStockTransfer = async (data: any) => {
+  const response = await api.post("/stock-transfers/", data);
+  return response.data;
+};
+
+export const deleteBranch = async (id: number) => {
+  const response = await api.delete(`/branches/${id}/`);
+  return response.data;
+};

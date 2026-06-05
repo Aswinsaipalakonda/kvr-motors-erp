@@ -9,8 +9,11 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import ProfileView from "../components/ProfileView";
+import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import { useAuth } from "../context/AuthContext";
 
-import { getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer } from "../services/branches";
+import { getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer, createStockTransfer } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit } from "../services/vehicles";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getUsers } from "../services/users";
@@ -69,6 +72,7 @@ import {
 } from "recharts";
 
 export default function SupervisorDashboard() {
+  const { user } = useAuth();
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
   const initialTab = lastSegment === "supervisor" ? "dashboard" : lastSegment;
@@ -101,6 +105,10 @@ export default function SupervisorDashboard() {
   const [isAddBookingOpen, setIsAddBookingOpen] = useState(false);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isAddBatteryOpen, setIsAddBatteryOpen] = useState(false);
+  const [isRequestTransferOpen, setIsRequestTransferOpen] = useState(false);
+  const [selectedTransferUnit, setSelectedTransferUnit] = useState<any>(null);
+  const [requestPriority, setRequestPriority] = useState("Medium");
+  const [requestDestinationLocation, setRequestDestinationLocation] = useState("");
 
   // Live data states
   const [liveOverridesList, setLiveOverridesList] = useState<any[]>([]);
@@ -540,6 +548,48 @@ export default function SupervisorDashboard() {
       showToast("Stock unit removed.");
       loadVehicles();
     } catch { showToast("Failed to delete stock unit.", "error"); }
+  };
+
+  const openRequestTransfer = (unit: any) => {
+    setSelectedTransferUnit(unit);
+    // Auto-select first matching destination location for supervisor's showroom if available
+    const myShowroomObj = showroomsList.find(s => s.name === user?.showroom);
+    const myLocations = locationsList.filter(l => l.showroom === myShowroomObj?.id);
+    if (myLocations.length > 0) {
+      setRequestDestinationLocation(String(myLocations[0].id));
+    } else {
+      setRequestDestinationLocation("");
+    }
+    setRequestPriority("Medium");
+    setIsRequestTransferOpen(true);
+  };
+
+  const handleRequestTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTransferUnit || !requestDestinationLocation) {
+      showToast("Please select a target destination location.", "error");
+      return;
+    }
+    try {
+      const myLocationId = parseInt(requestDestinationLocation);
+      const trfId = "TRF-" + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
+      
+      await createStockTransfer({
+        transfer_id: trfId,
+        vehicle_unit: selectedTransferUnit.id,
+        from_location: selectedTransferUnit.location,
+        to_location: myLocationId,
+        status: "pending",
+        requested_by: user?.id
+      });
+      showToast("Stock transfer request submitted successfully!");
+      setIsRequestTransferOpen(false);
+      setSelectedTransferUnit(null);
+      loadTransfers();
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to request stock transfer.", "error");
+    }
   };
 
   // Leads CRUD & Drag-Drop Kanban
@@ -1005,6 +1055,7 @@ export default function SupervisorDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
+      <DashboardSmoothScroll />
       
       {/* Unified Sidebar */}
       <DashboardSidebar role="supervisor" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -1015,7 +1066,7 @@ export default function SupervisorDashboard() {
         <Navbar role="supervisor" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
         {/* Dashboard Views */}
-        <main data-lenis-prevent className={`flex-1 p-4 pb-24 lg:pb-4 smooth-scroll ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
@@ -1281,125 +1332,204 @@ export default function SupervisorDashboard() {
             </div>
           )}
 
-          {/* TAB 3: VEHICLE MANAGEMENT (WITH CRUD) */}
-          {activeTab === "vehicles" && (
-            <div className="space-y-6">
-              {/* Vehicle Master Models catalog */}
-              <Table 
-                title="Vehicle Master Models Catalog" 
-                headers={["Model Name", "Brand", "Category", "Base Price", "Color Variants", "Battery Spec", "Warranty Period", "Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={() => { setEditingModelId(null); setNewModelBrand(""); setNewModelName(""); setNewModelPrice(""); setNewModelBattery(""); setNewModelColors(""); setNewModelStatus("active"); setIsAddVehicleOpen(true); }}
-                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" /> Add Model
-                  </button>
-                }
-              >
-                {vehiclesLoading ? (
-                  <tr>
-                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                        <span>Loading models...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : vehicleModelsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-8 text-center">
-                      <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
-                    </td>
-                  </tr>
-                ) : (
-                  vehicleModelsList.map((model, idx) => (
-                    <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{model.brand_name || "Kinetic"}</td>
-                      <td className="py-3.5 px-5 text-slate-500">Electric</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Green"}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{model.battery_compatibility || "1.2 kWh"}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-semibold">3 Yrs / 40K km</td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                        }`}>
-                          {model.status === "active" ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <button onClick={() => openEditModel(model)} className="text-xs text-indigo-650 hover:text-indigo-805 font-bold cursor-pointer">Edit</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </Table>
+          {/* TAB 3: VEHICLE MANAGEMENT (WITH CRUD & TRANSFERS) */}
+          {activeTab === "vehicles" && (() => {
+            const myShowroomName = user?.showroom || "KVR Showroom - Visakhapatnam";
+            const myBranchUnits = vehicleUnitsList.filter(u => u.showroom_name === myShowroomName || u.branch_name === user?.branch || (!user?.showroom && !user?.branch));
+            const otherBranchUnits = vehicleUnitsList.filter(u => u.showroom_name !== myShowroomName && u.branch_name !== user?.branch && (user?.showroom || user?.branch));
+            const totalModels = vehicleModelsList.length;
+            const localAvailable = myBranchUnits.filter(u => u.stock_status === "available").length;
+            const otherAvailable = otherBranchUnits.filter(u => u.stock_status === "available").length;
+            const activeRequests = transfers.filter(t => t.status === "Pending Approval").length;
 
-              {/* Physical Stock Units Registry (CRUD) */}
-              <Table 
-                title="Physical Inventory Stock Units (VIN Registry)" 
-                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Showroom", "Battery", "PDI Status", "Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={openAddStockUnit}
-                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
-                  >
-                    <Plus className="h-4 w-4" /> Add Stock Unit
-                  </button>
-                }
-              >
-                {vehiclesLoading ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                        <span>Loading physical units registry...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : vehicleUnitsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center">
-                      <EmptyState title="No Stock Units Found" description="No physical units logged." />
-                    </td>
-                  </tr>
-                ) : (
-                  vehicleUnitsList.map((unit, idx) => (
-                    <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-500">{unit.motor_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-500">{unit.chassis_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
-                      <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.showroom_name || "Visakhapatnam"}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
-                      <td className="py-3.5 px-5">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Passed
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                          "bg-slate-100 text-slate-500 border border-slate-200"
-                        }`}>
-                          {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 whitespace-nowrap">
-                        <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
-                        <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+            return (
+              <div className="space-y-6">
+                {/* Premium KPI Banners */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <DashboardCard title="Active EV Models" value={totalModels} icon={Zap} description="EV Catalog Range" color="indigo" />
+                  <DashboardCard title="Local Showroom Stock" value={`${localAvailable} / ${myBranchUnits.length}`} icon={Boxes} description="Available Units" color="emerald" />
+                  <DashboardCard title="Other Branch Outlets" value={`${otherAvailable} / ${otherBranchUnits.length}`} icon={Compass} description="Units at Other Branches" color="amber" />
+                  <DashboardCard title="Pending Transfers" value={activeRequests} icon={Truck} description="Requests Awaiting Review" color="rose" />
+                </div>
+
+                {/* Vehicle Master Models catalog */}
+                <Table 
+                  title="Vehicle Master Models Catalog" 
+                  headers={["Model Name", "Brand", "Category", "Base Price", "Color Variants", "Battery Spec", "Warranty Period", "Status", "Actions"]}
+                  actions={
+                    <button 
+                      onClick={() => { setEditingModelId(null); setNewModelBrand(""); setNewModelName(""); setNewModelPrice(""); setNewModelBattery(""); setNewModelColors(""); setNewModelStatus("active"); setIsAddVehicleOpen(true); }}
+                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                    >
+                      <Plus className="h-4 w-4" /> Add Model
+                    </button>
+                  }
+                >
+                  {vehiclesLoading ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading models...</span>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </Table>
-            </div>
-          )}
+                  ) : vehicleModelsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center">
+                        <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
+                      </td>
+                    </tr>
+                  ) : (
+                    vehicleModelsList.map((model, idx) => (
+                      <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-605 font-semibold">{model.brand_name || "Kinetic"}</td>
+                        <td className="py-3.5 px-5 text-slate-500 font-semibold">Electric</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
+                        <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Green"}</td>
+                        <td className="py-3.5 px-5 text-slate-550 font-semibold">{model.battery_compatibility || "1.2 kWh"}</td>
+                        <td className="py-3.5 px-5 text-slate-400 font-semibold">3 Yrs / 40K km</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                            model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}>
+                            {model.status === "active" ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <button onClick={() => openEditModel(model)} className="text-xs text-indigo-650 hover:text-indigo-805 font-bold cursor-pointer">Edit</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+
+                {/* Physical Stock Units Registry (CRUD) */}
+                <Table 
+                  title={`Physical Inventory Stock Units (${myShowroomName} Showroom)`} 
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Showroom", "Battery", "PDI Status", "Status", "Actions"]}
+                  actions={
+                    <button 
+                      onClick={openAddStockUnit}
+                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                    >
+                      <Plus className="h-4 w-4" /> Add Stock Unit
+                    </button>
+                  }
+                >
+                  {vehiclesLoading ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading physical units registry...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : myBranchUnits.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center">
+                        <EmptyState title="No Local Stock Units Found" description="No physical units registered for this local showroom." />
+                      </td>
+                    </tr>
+                  ) : (
+                    myBranchUnits.map((unit, idx) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.showroom_name || "Visakhapatnam"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Passed
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                            unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}>
+                            {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+
+                {/* Available Stock at Other Branch Outlets (Transfers Eligible) */}
+                <Table 
+                  title="Available Stock at Other Branch Outlets (Internal Transfers Request)" 
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color Specification", "Current Branch", "PDI Status", "Stock Status", "Actions"]}
+                >
+                  {vehiclesLoading ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading other showroom stocks...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : otherBranchUnits.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center">
+                        <EmptyState title="No Other Branch Stocks Available" description="Vehicle inventory at other branches is currently empty." />
+                      </td>
+                    </tr>
+                  ) : (
+                    otherBranchUnits.map((unit, idx) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
+                        <td className="py-3.5 px-5 text-amber-700 font-bold">{unit.showroom_name || unit.branch_name || "Other"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Passed
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                            unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}>
+                            {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          {unit.stock_status === "available" ? (
+                            <button
+                              onClick={() => openRequestTransfer(unit)}
+                              className="inline-flex items-center gap-1.5 bg-[#04a700]/10 hover:bg-[#04a700]/20 text-[#04a700] font-bold text-[10px] py-1.5 px-3 rounded-full cursor-pointer transition-colors"
+                            >
+                              <Truck className="h-3.5 w-3.5" /> Request Transfer
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-bold">Unavailable for Transfer</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+            );
+          })()}
 
           {/* TAB 4: SALES MONITORING */}
           {activeTab === "sales" && (
@@ -1738,6 +1868,9 @@ export default function SupervisorDashboard() {
               </div>
             </div>
           )}
+          {activeTab === "profile" && (
+            <ProfileView />
+          )}
 
         </main>
       </div>
@@ -1848,7 +1981,7 @@ export default function SupervisorDashboard() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number)</label>
             <div className="relative">
-              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => { setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value }); handleIdentifierLookup("vin_number", e.target.value); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("vin_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
               {vinLookupState === "searching" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-slate-400 animate-pulse">Syncing...</span>}
               {vinLookupState === "found" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-[#04a700]">Synced</span>}
             </div>
@@ -1856,11 +1989,11 @@ export default function SupervisorDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Code</label>
-              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("motor_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Code</label>
-              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("chassis_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
           </div>
 
@@ -2044,6 +2177,67 @@ export default function SupervisorDashboard() {
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
             Save Battery Pack
+          </button>
+        </form>
+      </Modal>
+
+      {/* Request Stock Transfer Modal */}
+      <Modal isOpen={isRequestTransferOpen} onClose={() => { setIsRequestTransferOpen(false); setSelectedTransferUnit(null); }} title="Request Internal Stock Transfer">
+        <form onSubmit={handleRequestTransferSubmit} className="space-y-4 text-left">
+          {selectedTransferUnit && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vehicle Details</h4>
+              <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Model Name</span>
+                  <span className="font-bold text-slate-900">{selectedTransferUnit.model_name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">VIN / Identifier</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedTransferUnit.vin_number || selectedTransferUnit.motor_number || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Color Spec</span>
+                  <span>{selectedTransferUnit.color || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Current Branch</span>
+                  <span className="text-amber-700 font-bold">{selectedTransferUnit.showroom_name || selectedTransferUnit.branch_name || "Other"}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Target Showroom (Auto-assigned)</label>
+            <input
+              type="text"
+              value={user?.showroom || "KVR Showroom - Visakhapatnam"}
+              disabled
+              className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 font-bold outline-none cursor-not-allowed"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Target Storage Location Area</label>
+            <select
+              value={requestDestinationLocation}
+              onChange={(e) => setRequestDestinationLocation(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              required
+            >
+              <option value="">Select location...</option>
+              {locationsList
+                .filter(l => !user?.showroom || l.showroom === showroomsList.find(s => s.name === user?.showroom)?.id)
+                .map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))
+              }
+            </select>
+          </div>
+
+          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer flex items-center justify-center gap-1.5 transition-colors">
+            <Truck className="h-4 w-4" /> Request Branch Transfer
           </button>
         </form>
       </Modal>

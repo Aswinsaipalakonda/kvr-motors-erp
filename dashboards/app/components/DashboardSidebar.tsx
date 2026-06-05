@@ -26,7 +26,8 @@ import {
   Menu,
   X,
   UserCheck2,
-  ActivitySquare
+  ActivitySquare,
+  User
 } from "lucide-react";
 
 interface SidebarProps {
@@ -64,6 +65,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "users", label: "Users & Roles", icon: Users },
         { id: "activity-logs", label: "Activity Logs", icon: ActivitySquare },
         { id: "settings", label: "Settings", icon: Settings },
+        { id: "profile", label: "My Profile", icon: User },
       ]
     },
     supervisor: {
@@ -81,6 +83,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "bookings", label: "Advance Bookings", icon: CalendarDays },
         { id: "batteries", label: "Batteries Management", icon: Battery },
         { id: "reports", label: "Reports", icon: BarChart2 },
+        { id: "profile", label: "My Profile", icon: User },
       ]
     },
     sales: {
@@ -96,6 +99,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "sales_bookings", label: "Sales & Bookings", icon: CreditCard },
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
+        { id: "profile", label: "My Profile", icon: User },
       ]
     },
     telecaller: {
@@ -107,6 +111,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
       items: [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "leads", label: "Leads", icon: Compass },
+        { id: "profile", label: "My Profile", icon: User },
       ]
     }
   };
@@ -195,7 +200,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         </div>
 
         {/* Scrollable menu items */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-4 space-y-1.5 py-4">
+        <div className="flex-1 overflow-y-auto slim-scrollbar px-4 space-y-1.5 py-4">
           <span className="px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left text-slate-400 font-sans">
             Modules
           </span>

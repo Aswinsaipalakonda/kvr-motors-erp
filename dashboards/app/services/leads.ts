@@ -25,3 +25,8 @@ export const updateLead = async (id: number, data: Partial<LeadInput>) => {
   const response = await api.patch(`/leads/${id}/`, data);
   return response.data;
 };
+
+export const deleteLead = async (id: number) => {
+  const response = await api.delete(`/leads/${id}/`);
+  return response.data;
+};

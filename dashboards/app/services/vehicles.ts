@@ -73,3 +73,8 @@ export const lookupVehicleUnit = async (query: string) => {
   const response = await api.get(`/vehicle-units/lookup/?q=${encodeURIComponent(query)}`);
   return response.data;
 };
+
+export const deleteVehicleModel = async (id: number) => {
+  const response = await api.delete(`/vehicle-models/${id}/`);
+  return response.data;
+};

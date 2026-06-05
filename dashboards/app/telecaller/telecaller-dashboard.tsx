@@ -9,6 +9,8 @@ import DashboardCard from "../components/DashboardCard";
 import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import ProfileView from "../components/ProfileView";
+import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getVehicleModels } from "../services/vehicles";
 import { useAuth } from "../context/AuthContext";
@@ -278,6 +280,7 @@ export default function TelecallerDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
+      <DashboardSmoothScroll />
       
       {/* Sidebar Navigation */}
       <DashboardSidebar role="telecaller" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -590,6 +593,9 @@ export default function TelecallerDashboard() {
               </div>
 
             </div>
+          )}
+          {activeTab === "profile" && (
+            <ProfileView />
           )}
 
         </main>
