@@ -50,7 +50,8 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Truck,
-  Phone
+  Phone,
+  Boxes
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -111,6 +112,7 @@ export default function OwnerDashboard() {
 
   const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
   const [salesInvoicesLoading, setSalesInvoicesLoading] = useState(true);
+  const [salesTimeFilter, setSalesTimeFilter] = useState<"day" | "week" | "month" | "six_months">("month");
 
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(true);
@@ -1192,33 +1194,116 @@ export default function OwnerDashboard() {
 
   // DYNAMIC COMPUTATIONS & MEMOIZED AGGREGATES
   const salesOverviewData = React.useMemo(() => {
-    if (salesInvoices.length === 0) {
-      return [
-        { name: "01 May", ThisMonth: 4500000, LastMonth: 4000000 },
-        { name: "06 May", ThisMonth: 7200000, LastMonth: 6100000 },
-        { name: "11 May", ThisMonth: 9500000, LastMonth: 8200000 },
-        { name: "16 May", ThisMonth: 14500000, LastMonth: 12100000 },
-        { name: "21 May", ThisMonth: 19800000, LastMonth: 17200000 },
-        { name: "26 May", ThisMonth: 24580000, LastMonth: 21800000 },
-      ];
+    const now = new Date();
+    const currentPeriodStart = new Date();
+    
+    let daysCount = 30;
+    let isHourly = false;
+
+    if (salesTimeFilter === "day") {
+      daysCount = 1;
+      isHourly = true;
+    } else if (salesTimeFilter === "week") {
+      daysCount = 7;
+    } else if (salesTimeFilter === "month") {
+      daysCount = 30;
+    } else if (salesTimeFilter === "six_months") {
+      daysCount = 180;
     }
-    const grouped: Record<string, number> = {};
-    salesInvoices.forEach((inv) => {
-      const date = new Date(inv.sale_date || inv.created_at);
-      const dayStr = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-      grouped[dayStr] = (grouped[dayStr] || 0) + parseFloat(inv.sale_price || 0);
-    });
-    const sorted = Object.keys(grouped).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    let cumulative = 0;
-    return sorted.map((dateStr) => {
-      cumulative += grouped[dateStr];
-      return {
-        name: dateStr,
-        ThisMonth: cumulative,
-        LastMonth: Math.round(cumulative * 0.9)
-      };
-    });
-  }, [salesInvoices]);
+
+    currentPeriodStart.setDate(now.getDate() - daysCount);
+
+    // If there are no sales invoices in the database, return mockup day-wise unit counts
+    if (salesInvoices.length === 0) {
+      if (isHourly) {
+        return [
+          { name: "08:00", ThisPeriod: 1, PrevPeriod: 0 },
+          { name: "10:00", ThisPeriod: 2, PrevPeriod: 1 },
+          { name: "12:00", ThisPeriod: 3, PrevPeriod: 2 },
+          { name: "14:00", ThisPeriod: 4, PrevPeriod: 2 },
+          { name: "16:00", ThisPeriod: 5, PrevPeriod: 3 },
+          { name: "18:00", ThisPeriod: 3, PrevPeriod: 4 },
+          { name: "20:00", ThisPeriod: 2, PrevPeriod: 2 },
+          { name: "22:00", ThisPeriod: 1, PrevPeriod: 0 },
+        ];
+      } else {
+        const mockPoints = [];
+        const pointCount = salesTimeFilter === "week" ? 7 : salesTimeFilter === "six_months" ? 12 : 15;
+        const step = Math.ceil(daysCount / pointCount);
+        for (let i = pointCount - 1; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(now.getDate() - i * step);
+          const name = d.toLocaleDateString("en-IN", salesTimeFilter === "six_months" ? { month: "short" } : { day: "numeric", month: "short" });
+          const seed = (i + 3) * 7;
+          mockPoints.push({
+            name,
+            ThisPeriod: (seed % 5) + 1,
+            PrevPeriod: ((seed + 2) % 4) + 1
+          });
+        }
+        return mockPoints;
+      }
+    }
+
+    if (isHourly) {
+      const bins = [8, 10, 12, 14, 16, 18, 20, 22, 24];
+      return bins.map(hour => {
+        const name = `${hour.toString().padStart(2, "0")}:00`;
+        let thisCount = 0;
+        let prevCount = 0;
+        
+        salesInvoices.forEach(inv => {
+          const d = new Date(inv.sale_date || inv.created_at);
+          const diffMs = now.getTime() - d.getTime();
+          const diffHours = diffMs / (1000 * 60 * 60);
+          
+          if (diffHours <= 24) {
+            if (d.getHours() >= hour - 2 && d.getHours() < hour) {
+              thisCount++;
+            }
+          } else if (diffHours > 24 && diffHours <= 48) {
+            if (d.getHours() >= hour - 2 && d.getHours() < hour) {
+              prevCount++;
+            }
+          }
+        });
+
+        return { name, ThisPeriod: thisCount, PrevPeriod: prevCount };
+      });
+    } else {
+      const dataPoints = [];
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        d.setHours(0,0,0,0);
+        
+        const label = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        const prevD = new Date(d);
+        prevD.setDate(prevD.getDate() - daysCount);
+
+        let thisCount = 0;
+        let prevCount = 0;
+
+        salesInvoices.forEach(inv => {
+          const invDate = new Date(inv.sale_date || inv.created_at);
+          invDate.setHours(0,0,0,0);
+
+          if (invDate.getTime() === d.getTime()) {
+            thisCount++;
+          } else if (invDate.getTime() === prevD.getTime()) {
+            prevCount++;
+          }
+        });
+
+        dataPoints.push({
+          name: label,
+          ThisPeriod: thisCount,
+          PrevPeriod: prevCount
+        });
+      }
+      return dataPoints;
+    }
+  }, [salesInvoices, salesTimeFilter]);
 
   const stockStatusData = React.useMemo(() => {
     const available = vehicleUnitsList.filter(u => u.stock_status === "available").length;
@@ -1415,12 +1500,12 @@ export default function OwnerDashboard() {
               {/* Grid Metric Cards (clickable) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <DashboardCard 
-                  title="Total Sales" 
-                  value={salesInvoicesLoading ? "..." : "₹ " + totalSalesValue.toLocaleString('en-IN')} 
+                  title="Total Units Sold" 
+                  value={salesInvoicesLoading ? "..." : `${salesInvoices.length} Units`} 
                   trend="↑ 12.8%" 
                   trendType="success" 
-                  description="Dynamic sales volume" 
-                  icon={DollarSign} 
+                  description="Total vehicles invoiced" 
+                  icon={Boxes} 
                   color="emerald" 
                   onClick={() => navigateTo("sales")}
                 />
@@ -1470,32 +1555,62 @@ export default function OwnerDashboard() {
                 
                 {/* Sales Overview Chart (Line) */}
                 <div className="lg:col-span-2 bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm shadow-emerald-950/2 flex flex-col justify-between h-full min-h-[440px] hover:shadow-md transition-shadow duration-300">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                     <div>
-                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Sales Analytics Overview</h3>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Real-time cumulative sales volume dynamically updated</p>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight">Sales Performance (Units Sold)</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Real-time day-wise vehicle sales volume analysis</p>
                     </div>
-                    <div className="flex items-center gap-3.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#04a700]" /> This Month</span>
-                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /> Last Month</span>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Period Filter Buttons */}
+                      <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                        {[
+                          { key: "day", label: "Today" },
+                          { key: "week", label: "Week" },
+                          { key: "month", label: "Month" },
+                          { key: "six_months", label: "6 Months" }
+                        ].map((btn) => (
+                          <button
+                            key={btn.key}
+                            onClick={() => setSalesTimeFilter(btn.key as any)}
+                            className={`px-2.5 py-1 text-[9px] font-bold rounded-md cursor-pointer transition-all ${
+                              salesTimeFilter === btn.key 
+                                ? "bg-white text-slate-800 shadow-sm" 
+                                : "text-slate-500 hover:text-slate-800"
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#04a700]" /> Active Period</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-300" /> Previous Period</span>
+                      </div>
                     </div>
                   </div>
                   
                   <div className="h-[320px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <AreaChart data={salesOverviewData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                      <AreaChart data={salesOverviewData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                         <defs>
                           <linearGradient id="glowBrandGreen" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#04a700" stopOpacity={0.18}/>
+                            <stop offset="5%" stopColor="#04a700" stopOpacity={0.2}/>
                             <stop offset="95%" stopColor="#04a700" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="glowPrevPeriod" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.08}/>
+                            <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₹ ${(val / 100000).toFixed(0)}L`} tick={{ fill: "#94a3b8", fontSize: 9 }} />
-                        <Tooltip formatter={(value: any) => [`₹ ${value.toLocaleString()}`, "Sales"]} />
-                        <Area type="monotone" dataKey="ThisMonth" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="This Month" />
-                        <Area type="monotone" dataKey="LastMonth" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fillOpacity={0} name="Last Month" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} interval="preserveStartEnd" minTickGap={35} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val} Unit${val !== 1 ? 's' : ''}`} tick={{ fill: "#94a3b8", fontSize: 9 }} allowDecimals={false} />
+                        <Tooltip formatter={(value: any) => [`${value} Unit${value !== 1 ? 's' : ''}`, "Units Sold"]} contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }} />
+                        <Area type="monotone" dataKey="ThisPeriod" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="Active Period" activeDot={{ r: 5, strokeWidth: 0, fill: '#04a700' }} />
+                        <Area type="monotone" dataKey="PrevPeriod" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fillOpacity={1} fill="url(#glowPrevPeriod)" name="Previous Period" activeDot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>

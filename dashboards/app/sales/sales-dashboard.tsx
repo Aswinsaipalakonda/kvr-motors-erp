@@ -536,7 +536,7 @@ export default function SalesDashboard() {
                 <DashboardCard title="My Active Leads" value={leadsLoading ? "..." : `${liveLeadsList.length} Leads`} trend="Pipeline" trendType="success" description="Assigned leads status" icon={Compass} color="blue" onClick={() => navigateTo("leads")} />
                 <DashboardCard title="Follow-ups Due" value={leadsLoading ? "..." : `${liveLeadsList.filter(l => l.status === "follow_up").length} Tasks`} trend="Pending Calls" trendType="neutral" description="Awaiting customer callback" icon={CalendarDays} color="amber" onClick={() => navigateTo("followups")} />
                 <DashboardCard title="Personal Bookings" value={bookingsLoading ? "..." : `${liveBookingsList.filter(b => b.status === "confirmed").length} Reserved`} trend="Active lock" trendType="success" description="Stock locked allocations" icon={CreditCard} color="emerald" onClick={() => navigateTo("sales_bookings")} />
-                <DashboardCard title="My Sales Volume" value={salesLoading ? "..." : "₹ " + liveSalesList.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0).toLocaleString('en-IN')} trend="MTD Billing" trendType="success" description="Completed invoice logs" icon={FileCheck} color="indigo" onClick={() => navigateTo("sales_bookings")} />
+                <DashboardCard title="My Units Sold" value={salesLoading ? "..." : `${liveSalesList.length} Units`} trend="MTD Billing" trendType="success" description="Total vehicles invoiced" icon={FileCheck} color="indigo" onClick={() => navigateTo("sales_bookings")} />
               </div>
 
               {/* Charts agenda Section */}

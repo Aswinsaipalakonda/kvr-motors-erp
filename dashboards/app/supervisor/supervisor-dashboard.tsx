@@ -1131,7 +1131,7 @@ export default function SupervisorDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <DashboardCard title="Total Stock Units" value={vehiclesLoading ? "..." : `${vehicleUnitsList.length} Units`} trend="Available" trendType="success" description="Physical warehouse stock" icon={Boxes} color="blue" onClick={() => navigateTo("vehicles")} />
                 <DashboardCard title="Intake received" value={vehiclesLoading ? "..." : `${vehicleUnitsList.filter(u => u.stock_status === "available").length} Units`} trend="↑ 12%" trendType="success" description="Ready for delivery" icon={Boxes} color="emerald" onClick={() => navigateTo("vehicles")} />
-                <DashboardCard title="Stock Out / Sold" value={salesInvoicesLoading ? "..." : `${salesInvoices.length} Invoices`} trend="Dispatched" trendType="success" description="Final customer invoices" icon={Boxes} color="indigo" onClick={() => navigateTo("sales")} />
+                <DashboardCard title="Stock Out / Sold" value={salesInvoicesLoading ? "..." : `${salesInvoices.length} Units`} trend="Dispatched" trendType="success" description="Total vehicles invoiced" icon={Boxes} color="indigo" onClick={() => navigateTo("sales")} />
                 <DashboardCard title="Pending Bookings" value={advanceBookingsLoading ? "..." : `${advanceBookings.filter(b => b.status === "pending").length} Locks`} trend="Review Required" trendType="danger" description="Advance deposits pending" icon={Clock} color="amber" onClick={() => navigateTo("bookings")} />
               </div>
 
