@@ -11,6 +11,7 @@ class Battery(models.Model):
     )
 
     serial_number = models.CharField(max_length=100, unique=True)
+    battery_code = models.CharField(max_length=100, blank=True, null=True, help_text="e.g. BAT-LFP-6030")
     capacity = models.CharField(max_length=50, help_text="e.g. 1.2 kWh, 2.0 kWh")
     purchase_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')

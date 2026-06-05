@@ -192,7 +192,7 @@ export default function SupervisorDashboard() {
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
 
   // 5. Battery CRUD
-  const emptyBattery = { serial_number: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
+  const emptyBattery = { serial_number: "", battery_code: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
   const [newBattery, setNewBattery] = useState({ ...emptyBattery });
   const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
 
@@ -274,6 +274,7 @@ export default function SupervisorDashboard() {
       const mapped = data.map((b: any) => ({
         id: b.id,
         serial: b.serial_number,
+        batteryCode: b.battery_code,
         capacity: b.capacity,
         purDate: b.purchase_date,
         rawStatus: b.status,
@@ -730,6 +731,7 @@ export default function SupervisorDashboard() {
     setEditingBatteryId(batt.id);
     setNewBattery({
       serial_number: batt.serial || "",
+      battery_code: batt.batteryCode || "",
       capacity: batt.capacity || "",
       purchase_date: batt.purDate || "",
       location: batt.locationId ? String(batt.locationId) : "",
@@ -746,6 +748,7 @@ export default function SupervisorDashboard() {
     try {
       const payload = {
         serial_number: newBattery.serial_number.trim(),
+        battery_code: newBattery.battery_code.trim() || undefined,
         capacity: newBattery.capacity.trim(),
         purchase_date: newBattery.purchase_date,
         location: parseInt(newBattery.location),
@@ -1788,7 +1791,7 @@ export default function SupervisorDashboard() {
             <div className="space-y-6">
               <Table 
                 title="Assigned Outlet Battery Stock (FIFO Order Check)" 
-                headers={["Battery Serial", "Capacity Rating", "Acquisition Date", "Warehouse Location", "FIFO Rank", "Health Index (SoH)", "Status", "Actions"]}
+                headers={["Battery Serial", "Battery Code", "Capacity Rating", "Acquisition Date", "Warehouse Location", "FIFO Rank", "Health Index (SoH)", "Status", "Actions"]}
                 actions={
                   <button 
                     onClick={() => { setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); setIsAddBatteryOpen(true); }}
@@ -1800,7 +1803,7 @@ export default function SupervisorDashboard() {
               >
                 {batteriesLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                         <span>Loading batteries...</span>
@@ -1809,7 +1812,7 @@ export default function SupervisorDashboard() {
                   </tr>
                 ) : batteriesStock.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center">
+                    <td colSpan={9} className="py-8 text-center">
                       <EmptyState title="No Batteries Found" description="No batteries registered." />
                     </td>
                   </tr>
@@ -1817,6 +1820,7 @@ export default function SupervisorDashboard() {
                   batteriesStock.map((batt, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3.5 px-5 font-mono font-bold text-slate-805">{batt.serial}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-bold font-mono">{batt.batteryCode || "—"}</td>
                       <td className="py-3.5 px-5 text-slate-600 font-bold">{batt.capacity}</td>
                       <td className="py-3.5 px-5 text-slate-505 font-semibold">{batt.purDate}</td>
                       <td className="py-3.5 px-5 text-slate-605">{batt.location}</td>
@@ -2142,9 +2146,15 @@ export default function SupervisorDashboard() {
       {/* 5. Add / Edit Battery */}
       <Modal isOpen={isAddBatteryOpen} onClose={() => setIsAddBatteryOpen(false)} title={editingBatteryId ? "Edit Battery details" : "Log Battery Pack (FIFO registry)"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial Number</label>
-            <input type="text" placeholder="e.g. BATT-00890" value={newBattery.serial_number} onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" required />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial Number</label>
+              <input type="text" placeholder="e.g. BATT-00890" value={newBattery.serial_number} onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Code</label>
+              <input type="text" placeholder="e.g. BAT-LFP-6030" value={newBattery.battery_code} onChange={(e) => setNewBattery({ ...newBattery, battery_code: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" />
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Capacity spec</label>

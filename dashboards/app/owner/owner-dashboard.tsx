@@ -376,6 +376,7 @@ export default function OwnerDashboard() {
       const mapped = data.map((b: any) => ({
         id: b.id,
         serial: b.serial_number,
+        batteryCode: b.battery_code,
         capacity: b.capacity,
         purDate: b.purchase_date,
         rawStatus: b.status,
@@ -917,7 +918,7 @@ export default function OwnerDashboard() {
 
   // --- Log / Edit Battery ---
   const [locationsList, setLocationsList] = useState<any[]>([]);
-  const emptyBattery = { serial_number: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
+  const emptyBattery = { serial_number: "", battery_code: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
   const [newBattery, setNewBattery] = useState({ ...emptyBattery });
   const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
 
@@ -925,6 +926,7 @@ export default function OwnerDashboard() {
     setEditingBatteryId(batt.id);
     setNewBattery({
       serial_number: batt.serial || "",
+      battery_code: batt.batteryCode || "",
       capacity: batt.capacity || "",
       purchase_date: batt.purDate || "",
       location: batt.locationId ? String(batt.locationId) : "",
@@ -941,6 +943,7 @@ export default function OwnerDashboard() {
     try {
       const payload = {
         serial_number: newBattery.serial_number.trim(),
+        battery_code: newBattery.battery_code.trim() || undefined,
         capacity: newBattery.capacity.trim(),
         purchase_date: newBattery.purchase_date,
         location: parseInt(newBattery.location),
@@ -2419,7 +2422,7 @@ export default function OwnerDashboard() {
               </div>
               <Table 
                 title="Battery Storage Units (FIFO Registry)" 
-                headers={["Battery Serial", "Capacity Rating", "Date Acquired", "Assigned EV", "Location Storage", "Manufacturer Corp", "Warranty Years", "Status", "Actions"]}
+                headers={["Battery Serial", "Battery Code", "Capacity Rating", "Date Acquired", "Assigned EV", "Location Storage", "Manufacturer Corp", "Warranty Years", "Status", "Actions"]}
                 actions={
                   <button 
                     onClick={() => setIsAddBatteryOpen(true)}
@@ -2431,7 +2434,7 @@ export default function OwnerDashboard() {
               >
                 {batteriesLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
                         <span className="text-xs font-semibold text-slate-400">Loading battery stock...</span>
@@ -2440,7 +2443,7 @@ export default function OwnerDashboard() {
                   </tr>
                 ) : batteriesStock.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <EmptyState 
                         title="No Batteries Registered" 
                         description="Battery units registered in the system will display here dynamically." 
@@ -2451,6 +2454,7 @@ export default function OwnerDashboard() {
                   batteriesStock.map((batt, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{batt.serial}</td>
+                      <td className="py-3.5 px-5 text-slate-650 font-bold font-mono">{batt.batteryCode || "—"}</td>
                       <td className="py-3.5 px-5 text-slate-650 font-bold">{batt.capacity}</td>
                       <td className="py-3.5 px-5 text-slate-500 font-semibold">{batt.purDate}</td>
                       <td className="py-3.5 px-5 text-slate-400 font-mono">{batt.vehicle}</td>
@@ -3743,7 +3747,7 @@ export default function OwnerDashboard() {
       {/* 7. Log Battery Stock */}
       <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock (FIFO Registry)"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Serial Number</label>
               <input
@@ -3753,6 +3757,16 @@ export default function OwnerDashboard() {
                 onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
                 required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Code</label>
+              <input
+                type="text"
+                placeholder="e.g. BAT-LFP-6030"
+                value={newBattery.battery_code}
+                onChange={(e) => setNewBattery({ ...newBattery, battery_code: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               />
             </div>
             <div className="space-y-1.5">

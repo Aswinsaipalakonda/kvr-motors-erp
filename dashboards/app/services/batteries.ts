@@ -13,6 +13,7 @@ export const getBatteries = async () => {
 
 export interface BatteryInput {
   serial_number: string;
+  battery_code?: string;
   capacity: string;
   purchase_date: string;
   location: number;
