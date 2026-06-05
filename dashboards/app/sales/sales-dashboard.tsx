@@ -692,7 +692,17 @@ export default function SalesDashboard() {
                                   <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.lead_source?.replace("_", " ")}</span>
                                 </div>
                                 <h4 className="text-xs font-bold text-slate-800 leading-tight">{lead.customer_name}</h4>
-                                <p className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</span>
+                                  <a 
+                                    href={`tel:${lead.contact_number}`} 
+                                    onClick={(e) => e.stopPropagation()} 
+                                    className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" 
+                                    title="Call Customer"
+                                  >
+                                    <Phone className="h-2.5 w-2.5" />
+                                  </a>
+                                </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
                                 <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
                                   <span className="text-[9px] text-slate-400 font-bold">Anil Kumar</span>

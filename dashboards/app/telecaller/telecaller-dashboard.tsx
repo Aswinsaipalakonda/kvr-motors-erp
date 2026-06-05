@@ -369,7 +369,13 @@ export default function TelecallerDashboard() {
                               <h4 className="text-xs font-bold text-slate-800">{lead.customer_name}</h4>
                               <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-100 px-1 py-0.5 rounded">{lead.lead_source?.replace("_", " ")}</span>
                             </div>
-                            <p className="text-[10px] text-slate-500 font-semibold">{lead.contact_number} • {lead.interested_vehicle_name || "EV Vehicle"}</p>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold flex-wrap">
+                              <span>{lead.contact_number}</span>
+                              <a href={`tel:${lead.contact_number}`} className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" title="Call Customer">
+                                <Phone className="h-2.5 w-2.5" />
+                              </a>
+                              <span>• {lead.interested_vehicle_name || "EV Vehicle"}</span>
+                            </div>
                             <p className="text-[10px] text-slate-400 font-medium line-clamp-1 italic">{lead.notes || "No call notes."}</p>
                           </div>
                           <button 
@@ -504,7 +510,12 @@ export default function TelecallerDashboard() {
                                     <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.lead_source?.replace("_", " ")}</span>
                                   </div>
                                   <h4 onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-slate-800 hover:text-purple-600 cursor-pointer transition-colors leading-tight">{lead.customer_name}</h4>
-                                  <p className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</span>
+                                    <a href={`tel:${lead.contact_number}`} className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" title="Call Customer">
+                                      <Phone className="h-2.5 w-2.5" />
+                                    </a>
+                                  </div>
                                   <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
                                   
                                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
@@ -567,7 +578,14 @@ export default function TelecallerDashboard() {
                         <tr key={lead.id} className="hover:bg-slate-50 border-b border-slate-100">
                           <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">LD-{lead.id}</td>
                           <td className="py-3.5 px-5 font-bold text-slate-800">{lead.customer_name}</td>
-                          <td className="py-3.5 px-5 font-semibold text-slate-600">{lead.contact_number}</td>
+                          <td className="py-3.5 px-5 font-semibold text-slate-600">
+                            <div className="flex items-center gap-2">
+                              <span>{lead.contact_number}</span>
+                              <a href={`tel:${lead.contact_number}`} className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" title="Call Customer">
+                                <Phone className="h-2.5 w-2.5" />
+                              </a>
+                            </div>
+                          </td>
                           <td className="py-3.5 px-5 text-slate-700 font-semibold">{lead.interested_vehicle_name || "—"}</td>
                           <td className="py-3.5 px-5 text-[10px] font-bold text-slate-500 uppercase">{lead.lead_source?.replace("_", " ")}</td>
                           <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
