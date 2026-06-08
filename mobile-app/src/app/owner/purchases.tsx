@@ -102,6 +102,38 @@ export default function OwnerPurchases({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Custom Color Addition
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorHex, setNewColorHex] = useState('');
+  const [availableColors, setAvailableColors] = useState(COLORS);
+
+  const handleAddCustomColor = () => {
+    const name = newColorName.trim();
+    let hex = newColorHex.trim();
+    if (!name) {
+      Alert.alert('Validation Error', 'Please enter a color name.');
+      return;
+    }
+    if (!hex.startsWith('#')) {
+      hex = '#' + hex;
+    }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+      const fallbackHexes = ['#eab308', '#ec4899', '#a855f7', '#06b6d4', '#14b8a6', '#3b82f6'];
+      hex = fallbackHexes[Math.floor(Math.random() * fallbackHexes.length)];
+    }
+
+    if (availableColors.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      Alert.alert('Validation Error', 'Color name already exists.');
+      return;
+    }
+
+    const newColor = { name, hex };
+    setAvailableColors(prev => [...prev, newColor]);
+    updateField('color', name);
+    setNewColorName('');
+    setNewColorHex('');
+  };
+
   useEffect(() => {
     if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [isActive]);
@@ -297,7 +329,7 @@ export default function OwnerPurchases({
     return order.indexOf(status);
   };
 
-  const colorHex = (name: string) => COLORS.find((c) => c.name === name)?.hex || '#04a700';
+  const colorHex = (name: string) => availableColors.find((c) => c.name === name)?.hex || '#04a700';
   const contentPaddingBottom = insets.bottom + 36;
 
   return (
@@ -581,7 +613,7 @@ export default function OwnerPurchases({
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>Scooter Colour</ThemedText>
                   <View style={styles.chipWrap}>
-                    {COLORS.map((c) => {
+                    {availableColors.map((c) => {
                       const active = form.color === c.name;
                       return (
                         <Pressable
@@ -594,6 +626,33 @@ export default function OwnerPurchases({
                         </Pressable>
                       );
                     })}
+                  </View>
+                </View>
+
+                {/* Add Custom Color Input Form */}
+                <View style={{ marginTop: 6, marginBottom: 12, padding: 12, backgroundColor: '#f1f5f9', borderRadius: 16, gap: 8 }}>
+                  <ThemedText style={{ fontSize: 11, fontWeight: 'bold', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Add Custom Colour</ThemedText>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput
+                      style={[styles.input, { flex: 1, height: 38, paddingVertical: 0 }]}
+                      placeholder="Colour Name (e.g. Yellow)"
+                      placeholderTextColor="#94a3b8"
+                      value={newColorName}
+                      onChangeText={setNewColorName}
+                    />
+                    <TextInput
+                      style={[styles.input, { width: 110, height: 38, paddingVertical: 0 }]}
+                      placeholder="Hex (e.g. #facc15)"
+                      placeholderTextColor="#94a3b8"
+                      value={newColorHex}
+                      onChangeText={setNewColorHex}
+                    />
+                    <Pressable
+                      onPress={handleAddCustomColor}
+                      style={{ backgroundColor: '#04a700', paddingHorizontal: 12, height: 38, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Plus size={16} color="#ffffff" strokeWidth={3} />
+                    </Pressable>
                   </View>
                 </View>
 
