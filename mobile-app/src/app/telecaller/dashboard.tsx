@@ -8,8 +8,8 @@ import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
-  User, PhoneCall, CalendarDays, UserCheck, CheckCircle2, 
-  MapPin, Clock, ArrowRight, ShieldAlert, Award
+  User, PhoneCall, UserCheck, CheckCircle2, 
+  MapPin, Clock, ArrowRight, ShieldAlert
 } from 'lucide-react-native';
 
 export default function TelecallerDashboard() {
@@ -95,7 +95,7 @@ export default function TelecallerDashboard() {
               <View style={styles.locationSelector}>
                 <MapPin size={14} color="#04a700" />
                 <ThemedText style={styles.locationText} numberOfLines={1}>
-                  {user?.branch_name || 'Visakhapatnam HQ'}
+                  {user?.branch_name || user?.branch || 'Visakhapatnam HQ'}
                 </ThemedText>
               </View>
             </View>
@@ -315,15 +315,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
     borderRadius: 20,
     padding: 14,
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.01,
-    shadowRadius: 4,
-    elevation: 1,
   },
   statIconCircle: {
     width: 32,
@@ -352,7 +347,6 @@ const styles = StyleSheet.create({
     borderColor: '#ffe2e2',
     flexDirection: 'row',
     overflow: 'hidden',
-    boxShadow: '0 6px 16px rgba(215, 29, 34, 0.05)',
   },
   alarmAccent: {
     width: 4,
@@ -401,7 +395,7 @@ const styles = StyleSheet.create({
   emptyCard: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
     borderRadius: 20,
     paddingVertical: 32,
     alignItems: 'center',
@@ -423,13 +417,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
     gap: 8,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 1,
   },
   queueCardHeader: {
     flexDirection: 'row',
@@ -468,7 +457,7 @@ const styles = StyleSheet.create({
   queuePhone: {
     fontSize: 11.5,
     fontWeight: 'bold',
-    color: '#475569',
+    color: '#cbd5e1',
   },
   openLeadsBtn: {
     width: 26,
@@ -487,11 +476,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
     borderColor: 'rgba(4, 167, 0, 0.25)',
-    shadowColor: '#04a700',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   navigationIconCircle: {
     width: 40,

@@ -36,6 +36,7 @@ class Lead(models.Model):
     follow_up_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STAGE_CHOICES, default='new_lead')
     notes = models.TextField(blank=True, null=True)
+    branch = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

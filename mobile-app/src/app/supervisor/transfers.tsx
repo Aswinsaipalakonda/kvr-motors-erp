@@ -14,7 +14,7 @@ import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 
-type TransferStatus = 'pending' | 'in_transit' | 'received';
+type TransferStatus = 'pending' | 'approved' | 'in_transit' | 'received' | 'rejected';
 type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
 
 interface Transfer {
@@ -48,8 +48,10 @@ const PRIORITIES: Priority[] = ['Low', 'Medium', 'High', 'Urgent'];
 
 const STATUS_META: Record<TransferStatus, { label: string; color: string }> = {
   pending: { label: 'Pending Approval', color: '#d97706' },
+  approved: { label: 'Approved', color: '#0284c7' },
   in_transit: { label: 'In Transit', color: '#2563eb' },
   received: { label: 'Received', color: '#04a700' },
+  rejected: { label: 'Rejected', color: '#d71d22' },
 };
 
 const PRIORITY_COLOR: Record<Priority, string> = {
@@ -147,6 +149,8 @@ export default function SupervisorTransfers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [unitSearchQuery, setUnitSearchQuery] = useState('');
+
   // Filter available units at other showroom outlets
   const otherBranchUnits = React.useMemo(() => {
     return vehicleUnits.filter(u => 
@@ -154,6 +158,18 @@ export default function SupervisorTransfers() {
       u.stock_status === 'available'
     );
   }, [vehicleUnits, user]);
+
+  // Filter available units by search query (model, vin, color, showroom)
+  const filteredUnits = React.useMemo(() => {
+    const q = unitSearchQuery.toLowerCase().trim();
+    if (!q) return otherBranchUnits;
+    return otherBranchUnits.filter(u => 
+      (u.vin_number && u.vin_number.toLowerCase().includes(q)) ||
+      (u.model_name && u.model_name.toLowerCase().includes(q)) ||
+      (u.color && u.color.toLowerCase().includes(q)) ||
+      (u.showroom_name && u.showroom_name.toLowerCase().includes(q))
+    );
+  }, [otherBranchUnits, unitSearchQuery]);
 
   // Filter target locations belonging to supervisor's branch
   const targetLocations = React.useMemo(() => {
@@ -234,8 +250,14 @@ export default function SupervisorTransfers() {
   };
 
   const advanceStatus = async (t: Transfer) => {
-    const next: TransferStatus = t.status === 'pending' ? 'in_transit' : 'received';
-    if (t.status === 'received') return;
+    let next: TransferStatus = 'in_transit';
+    if (t.status === 'pending' || t.status === 'approved') {
+      next = 'in_transit';
+    } else if (t.status === 'in_transit') {
+      next = 'received';
+    }
+    if (t.status === 'received' || t.status === 'rejected') return;
+    
     setTransfers((prev) => prev.map((x) => (x.id === t.id ? { ...x, status: next, approvedBy: 'Supervisor Desk' } : x)));
     try {
       await api.patch(`/stock-transfers/${t.id}/`, { status: next });
@@ -326,7 +348,7 @@ export default function SupervisorTransfers() {
               {transfers.map((t) => {
                 const meta = STATUS_META[t.status];
                 const isExpanded = expandedId === t.id;
-                const canAdvance = t.status !== 'received';
+                const canAdvance = t.status !== 'received' && t.status !== 'rejected';
                 return (
                   <View key={t.id} style={styles.card}>
                     <Pressable style={styles.cardTop} onPress={() => setExpandedId(isExpanded ? null : t.id)}>
@@ -363,7 +385,9 @@ export default function SupervisorTransfers() {
                       </View>
                       {canAdvance && (
                         <Pressable onPress={() => advanceStatus(t)} style={({ pressed }) => [styles.advanceBtn, pressed && { opacity: 0.85 }]}>
-                          <ThemedText style={styles.advanceBtnText}>{t.status === 'pending' ? 'Approve & Dispatch' : 'Mark Received'}</ThemedText>
+                          <ThemedText style={styles.advanceBtnText}>
+                            {t.status === 'pending' ? 'Approve & Dispatch' : t.status === 'approved' ? 'Dispatch' : 'Mark Received'}
+                          </ThemedText>
                         </Pressable>
                       )}
                     </View>
@@ -427,22 +451,34 @@ export default function SupervisorTransfers() {
                   
                   {isUnitDropdownOpen && (
                     <View style={styles.dropdownListContainer}>
-                      {otherBranchUnits.length === 0 ? (
-                        <ThemedText style={styles.emptyDropdownText}>No available units at other showroom branches.</ThemedText>
+                      <TextInput
+                        style={styles.dropdownSearchInput}
+                        placeholder="Search by Model, VIN, Color..."
+                        placeholderTextColor="#94a3b8"
+                        value={unitSearchQuery}
+                        onChangeText={setUnitSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      {filteredUnits.length === 0 ? (
+                        <ThemedText style={styles.emptyDropdownText}>No matching units found.</ThemedText>
                       ) : (
                         <ScrollView style={styles.dropdownListScroll} nestedScrollEnabled={true}>
-                          {otherBranchUnits.map((u) => (
+                          {filteredUnits.map((u) => (
                             <Pressable 
                               key={u.id} 
                               onPress={() => {
                                 setSelectedUnit(u);
                                 setIsUnitDropdownOpen(false);
+                                setUnitSearchQuery('');
                                 setErrors(prev => ({ ...prev, vin: undefined }));
                               }}
                               style={styles.dropdownItem}
                             >
                               <ThemedText style={styles.dropdownItemVin}>{u.vin_number}</ThemedText>
-                              <ThemedText style={styles.dropdownItemDetail}>{u.model_name} • {u.showroom_name}</ThemedText>
+                              <ThemedText style={styles.dropdownItemDetail}>
+                                {u.model_name} • {u.color ? `Color: ${u.color}` : 'No Color'} • {u.showroom_name}
+                              </ThemedText>
                             </Pressable>
                           ))}
                         </ScrollView>
@@ -720,6 +756,16 @@ const styles = StyleSheet.create({
   readOnlyInputText: {
     fontSize: 13,
     color: '#64748b',
+    fontWeight: '600',
+  },
+  dropdownSearchInput: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 14,
+    height: 40,
+    fontSize: 13,
+    color: '#0f172a',
     fontWeight: '600',
   },
 });

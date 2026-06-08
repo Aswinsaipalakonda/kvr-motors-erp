@@ -32,7 +32,7 @@ function RootLayoutNav() {
   }, [user, isLoading, segments]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#090d16' } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login/index" />
       <Stack.Screen name="owner" />

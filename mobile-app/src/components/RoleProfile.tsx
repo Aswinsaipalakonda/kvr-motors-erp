@@ -11,7 +11,7 @@ import { useAuth, UserProfile } from '@/context/AuthContext';
 import api from '@/services/api';
 import {
   Edit, Mail, Phone, ArrowLeft, LogOut, Check, X,
-  MapPin, Calendar, Shield, Globe, Landmark
+  MapPin, Shield, Lock, User
 } from 'lucide-react-native';
 
 export interface RoleProfileProps {
@@ -41,24 +41,21 @@ export default function RoleProfile({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Editing states
+  // Editing state
   const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   // Form states
   const [personalInfoForm, setPersonalInfoForm] = useState({
     first_name: '',
     last_name: '',
-    date_of_birth: '',
     email: '',
     phone_number: '',
   });
 
-  const [addressForm, setAddressForm] = useState({
-    country: '',
-    city: '',
-    postal_code: '',
-  });
+  // Password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -70,32 +67,18 @@ export default function RoleProfile({
       setPersonalInfoForm({
         first_name: data.first_name || '',
         last_name: data.last_name || '',
-        date_of_birth: data.date_of_birth || '',
         email: data.email || '',
         phone_number: data.phone_number || '',
       });
-
-      setAddressForm({
-        country: data.country || '',
-        city: data.city || '',
-        postal_code: data.postal_code || '',
-      });
     } catch (err) {
       console.error('Failed to load mobile profile:', err);
-      // Fallback to local auth context user
       if (user) {
         setProfileData(user);
         setPersonalInfoForm({
           first_name: user.first_name || '',
           last_name: user.last_name || '',
-          date_of_birth: user.date_of_birth || '',
           email: user.email || '',
           phone_number: user.phone_number || '',
-        });
-        setAddressForm({
-          country: user.country || '',
-          city: user.city || '',
-          postal_code: user.postal_code || '',
         });
       }
     } finally {
@@ -112,10 +95,6 @@ export default function RoleProfile({
       handleCancelPersonalInfo();
       return true;
     }
-    if (isEditingAddress) {
-      handleCancelAddress();
-      return true;
-    }
     if (onBack) {
       onBack();
       return true;
@@ -127,7 +106,7 @@ export default function RoleProfile({
     }
     router.replace(backFallback as any);
     return true;
-  }, [isEditingPersonalInfo, isEditingAddress, onBack, router, backFallback]);
+  }, [isEditingPersonalInfo, onBack, router, backFallback]);
 
   useEffect(() => {
     if (isActive === false) return;
@@ -145,24 +124,7 @@ export default function RoleProfile({
       .toUpperCase() || 'U';
   };
 
-  const formatDateForDisplay = (dateStr?: string | null) => {
-    if (!dateStr) return '—';
-    const parts = dateStr.split('-');
-    if (parts.length === 3 && parts[0].length === 4) {
-      // YYYY-MM-DD -> DD-MM-YYYY
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return dateStr;
-  };
-
   const handleSavePersonalInfo = async () => {
-    // Validate DOB format if entered
-    const dob = personalInfoForm.date_of_birth.trim();
-    if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-      Alert.alert('Validation Error', 'Date of Birth must be in YYYY-MM-DD format.');
-      return;
-    }
-
     try {
       setIsSaving(true);
       const fullName = `${personalInfoForm.first_name} ${personalInfoForm.last_name}`.trim();
@@ -174,10 +136,10 @@ export default function RoleProfile({
       setProfileData(res.data);
       await updateUser(res.data);
       setIsEditingPersonalInfo(false);
-      Alert.alert('Success', 'Personal Information updated successfully.');
+      Alert.alert('Success', 'Profile details updated successfully.');
     } catch (err: any) {
       console.error('Failed to save personal info:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save personal info changes.');
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save profile changes.');
     } finally {
       setIsSaving(false);
     }
@@ -188,7 +150,6 @@ export default function RoleProfile({
       setPersonalInfoForm({
         first_name: profileData.first_name || '',
         last_name: profileData.last_name || '',
-        date_of_birth: profileData.date_of_birth || '',
         email: profileData.email || '',
         phone_number: profileData.phone_number || '',
       });
@@ -196,31 +157,28 @@ export default function RoleProfile({
     setIsEditingPersonalInfo(false);
   };
 
-  const handleSaveAddress = async () => {
-    try {
-      setIsSaving(true);
-      const res = await api.patch('/auth/me/', addressForm);
-      setProfileData(res.data);
-      await updateUser(res.data);
-      setIsEditingAddress(false);
-      Alert.alert('Success', 'Address details updated successfully.');
-    } catch (err: any) {
-      console.error('Failed to save address info:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save address changes.');
-    } finally {
-      setIsSaving(false);
+  const handleChangePassword = async () => {
+    if (!newPassword.trim()) {
+      Alert.alert('Validation Error', 'New password field cannot be empty.');
+      return;
     }
-  };
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Validation Error', 'New passwords do not match.');
+      return;
+    }
 
-  const handleCancelAddress = () => {
-    if (profileData) {
-      setAddressForm({
-        country: profileData.country || '',
-        city: profileData.city || '',
-        postal_code: profileData.postal_code || '',
-      });
+    try {
+      setIsUpdatingPassword(true);
+      await api.patch('/auth/me/', { password: newPassword.trim() });
+      Alert.alert('Success', 'Your security password was changed successfully.');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error('Failed to update password:', err);
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to update password.');
+    } finally {
+      setIsUpdatingPassword(false);
     }
-    setIsEditingAddress(false);
   };
 
   const handleLogout = useCallback(() => {
@@ -250,7 +208,7 @@ export default function RoleProfile({
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#054E35" />
+        <ActivityIndicator size="large" color="#04a700" />
         <ThemedText style={styles.loaderText}>Syncing profile details...</ThemedText>
       </View>
     );
@@ -276,7 +234,7 @@ export default function RoleProfile({
           style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
           hitSlop={12}
         >
-          <ArrowLeft size={20} color="#054E35" strokeWidth={2.5} />
+          <ArrowLeft size={20} color="#04a700" strokeWidth={2.5} />
         </Pressable>
         <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
         <View style={{ width: 40 }} />
@@ -288,7 +246,7 @@ export default function RoleProfile({
         contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Header Card: Avatar & Overview */}
+        {/* Top Header Card: Centered layout */}
         <View style={styles.profileHeaderCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarInner}>
@@ -296,25 +254,19 @@ export default function RoleProfile({
                 {getInitials(profileData.full_name || profileData.username)}
               </ThemedText>
             </View>
-            {/* Green Edit Overlay Icon */}
-            <View style={styles.cameraOverlay}>
-              <Edit size={11} color="#ffffff" strokeWidth={2.5} />
-            </View>
           </View>
           
           <View style={styles.profileOverviewInfo}>
-            <ThemedText style={styles.profileOverviewName} numberOfLines={1}>
+            <ThemedText style={styles.profileOverviewName}>
               {profileData.full_name || 'Enterprise User'}
             </ThemedText>
             <ThemedText style={styles.profileOverviewRole}>
               {getRoleDisplay(profileData.role)}
             </ThemedText>
             <View style={styles.locationWrapper}>
-              <MapPin size={12} color="#94a3b8" style={{ marginRight: 3 }} />
-              <ThemedText style={styles.profileOverviewLocation} numberOfLines={1}>
-                {profileData.city && profileData.country
-                  ? `${profileData.city}, ${profileData.country}`
-                  : (profileData.country || profileData.city || 'Location not set')}
+              <MapPin size={12} color="#04a700" style={{ marginRight: 4 }} />
+              <ThemedText style={styles.profileOverviewLocation}>
+                Branch: {profileData.branch_name || profileData.branch || locationLabel}
               </ThemedText>
             </View>
           </View>
@@ -323,7 +275,10 @@ export default function RoleProfile({
         {/* Personal Information Card */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <ThemedText style={styles.cardTitle}>Personal Information</ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <User size={16} color="#04a700" />
+              <ThemedText style={styles.cardTitle}>Profile Information</ThemedText>
+            </View>
             
             {isEditingPersonalInfo ? (
               <View style={styles.actionRow}>
@@ -345,9 +300,9 @@ export default function RoleProfile({
             ) : (
               <Pressable
                 onPress={() => setIsEditingPersonalInfo(true)}
-                style={({ pressed }) => [styles.editBtnOrange, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [styles.editBtnOutline, pressed && { opacity: 0.8 }]}
               >
-                <ThemedText style={styles.editBtnOrangeText}>Edit ✎</ThemedText>
+                <ThemedText style={styles.editBtnOutlineText}>Edit Details ✎</ThemedText>
               </Pressable>
             )}
           </View>
@@ -382,22 +337,6 @@ export default function RoleProfile({
                 />
               ) : (
                 <ThemedText style={styles.fieldValue}>{profileData.last_name || '—'}</ThemedText>
-              )}
-            </View>
-
-            {/* Date of Birth */}
-            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
-              <ThemedText style={styles.fieldLabel}>Date of Birth</ThemedText>
-              {isEditingPersonalInfo ? (
-                <TextInput
-                  style={styles.input}
-                  value={personalInfoForm.date_of_birth}
-                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, date_of_birth: t })}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#94a3b8"
-                />
-              ) : (
-                <ThemedText style={styles.fieldValue}>{formatDateForDisplay(profileData.date_of_birth)}</ThemedText>
               )}
             </View>
 
@@ -436,94 +375,72 @@ export default function RoleProfile({
               )}
             </View>
 
+            {/* Assigned Branch (Read only) */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
+              <ThemedText style={styles.fieldValueDisabled}>
+                {profileData.branch_name || profileData.branch || locationLabel}
+              </ThemedText>
+            </View>
+
             {/* User Role (Read only) */}
             <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
-              <ThemedText style={styles.fieldLabel}>User Role</ThemedText>
+              <ThemedText style={styles.fieldLabel}>Account Role</ThemedText>
               <ThemedText style={styles.fieldValueDisabled}>{getRoleDisplay(profileData.role)}</ThemedText>
             </View>
           </View>
         </View>
 
-        {/* Address Card */}
+        {/* Change Password Card */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <ThemedText style={styles.cardTitle}>Address</ThemedText>
-            
-            {isEditingAddress ? (
-              <View style={styles.actionRow}>
-                <Pressable
-                  onPress={handleSaveAddress}
-                  disabled={isSaving}
-                  style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
-                >
-                  {isSaving ? <ActivityIndicator size="small" color="#ffffff" /> : <Check size={14} color="#ffffff" strokeWidth={2.5} />}
-                </Pressable>
-                <Pressable
-                  onPress={handleCancelAddress}
-                  disabled={isSaving}
-                  style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
-                >
-                  <X size={14} color="#64748b" strokeWidth={2.5} />
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setIsEditingAddress(true)}
-                style={({ pressed }) => [styles.editBtnOutline, pressed && { opacity: 0.8 }]}
-              >
-                <ThemedText style={styles.editBtnOutlineText}>Edit ✎</ThemedText>
-              </Pressable>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Lock size={16} color="#ea580c" />
+              <ThemedText style={styles.cardTitle}>Change Password</ThemedText>
+            </View>
           </View>
 
-          <View style={[styles.fieldsContainer, isTablet && styles.fieldsContainerTablet]}>
-            {/* Country */}
-            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
-              <ThemedText style={styles.fieldLabel}>Country</ThemedText>
-              {isEditingAddress ? (
-                <TextInput
-                  style={styles.input}
-                  value={addressForm.country}
-                  onChangeText={(t) => setAddressForm({ ...addressForm, country: t })}
-                  placeholder="Enter country"
-                  placeholderTextColor="#94a3b8"
-                />
-              ) : (
-                <ThemedText style={styles.fieldValue}>{profileData.country || '—'}</ThemedText>
-              )}
+          <View style={styles.passwordForm}>
+            <View style={styles.fieldBlock}>
+              <ThemedText style={styles.fieldLabel}>New Password</ThemedText>
+              <TextInput
+                style={styles.input}
+                secureTextEntry
+                placeholder="Enter new password"
+                placeholderTextColor="#94a3b8"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                autoCapitalize="none"
+              />
             </View>
 
-            {/* City */}
-            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
-              <ThemedText style={styles.fieldLabel}>City</ThemedText>
-              {isEditingAddress ? (
-                <TextInput
-                  style={styles.input}
-                  value={addressForm.city}
-                  onChangeText={(t) => setAddressForm({ ...addressForm, city: t })}
-                  placeholder="Enter city"
-                  placeholderTextColor="#94a3b8"
-                />
-              ) : (
-                <ThemedText style={styles.fieldValue}>{profileData.city || '—'}</ThemedText>
-              )}
+            <View style={[styles.fieldBlock, { marginTop: 12 }]}>
+              <ThemedText style={styles.fieldLabel}>Confirm New Password</ThemedText>
+              <TextInput
+                style={styles.input}
+                secureTextEntry
+                placeholder="Confirm new password"
+                placeholderTextColor="#94a3b8"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                autoCapitalize="none"
+              />
             </View>
 
-            {/* Postal Code */}
-            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
-              <ThemedText style={styles.fieldLabel}>Postal Code</ThemedText>
-              {isEditingAddress ? (
-                <TextInput
-                  style={styles.input}
-                  value={addressForm.postal_code}
-                  onChangeText={(t) => setAddressForm({ ...addressForm, postal_code: t })}
-                  placeholder="Enter postal code"
-                  placeholderTextColor="#94a3b8"
-                />
+            <Pressable
+              onPress={handleChangePassword}
+              disabled={isUpdatingPassword}
+              style={({ pressed }) => [styles.passwordSubmitBtn, pressed && { opacity: 0.85 }]}
+            >
+              {isUpdatingPassword ? (
+                <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <ThemedText style={styles.fieldValue}>{profileData.postal_code || '—'}</ThemedText>
+                <>
+                  <Shield size={14} color="#ffffff" />
+                  <ThemedText style={styles.passwordSubmitBtnText}>Update Password</ThemedText>
+                </>
               )}
-            </View>
+            </Pressable>
           </View>
         </View>
 
@@ -581,7 +498,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#054E35',
+    color: '#04a700',
   },
   body: {
     flex: 1,
@@ -592,95 +509,84 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   profileHeaderCard: {
-    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
+    padding: 24,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    gap: 16,
+    gap: 12,
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 3,
   },
   avatarWrap: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#DFA32E',
-    borderWidth: 2,
-    borderColor: '#DFA32E',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#04a700',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    shadowColor: '#04a700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   avatarInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 33,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '900',
     color: '#ffffff',
   },
-  cameraOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#054E35',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   profileOverviewInfo: {
-    flex: 1,
+    alignItems: 'center',
+    gap: 4,
   },
   profileOverviewName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#054E35',
+    color: '#0f172a',
   },
   profileOverviewRole: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
-    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#04a700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   locationWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
     marginTop: 4,
   },
   profileOverviewLocation: {
     fontSize: 11.5,
-    color: '#94a3b8',
-    fontWeight: '500',
+    color: '#475569',
+    fontWeight: '700',
   },
   infoCard: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
     padding: 20,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
     elevation: 2,
     gap: 16,
   },
@@ -693,9 +599,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   cardTitle: {
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#054E35',
+    color: '#0f172a',
   },
   actionRow: {
     flexDirection: 'row',
@@ -703,7 +609,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveBtn: {
-    backgroundColor: '#054E35',
+    backgroundColor: '#04a700',
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -720,19 +626,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editBtnOrange: {
-    backgroundColor: '#E07A2F',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editBtnOrangeText: {
-    color: '#ffffff',
-    fontSize: 11.5,
-    fontWeight: '700',
-  },
   editBtnOutline: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
     backgroundColor: '#ffffff',
     borderRadius: 8,
@@ -740,7 +635,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   editBtnOutlineText: {
-    color: '#64748b',
+    color: '#04a700',
     fontSize: 11.5,
     fontWeight: '700',
   },
@@ -757,11 +652,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   fieldBlockTablet: {
-    width: '31%',
+    width: '47%',
   },
   fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10.5,
+    fontWeight: '800',
     color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -769,18 +664,18 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#334155',
+    color: '#0f172a',
     paddingVertical: 4,
   },
   fieldValueDisabled: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: '#334155',
+    color: '#475569',
     backgroundColor: '#f8fafc',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
     alignSelf: 'flex-start',
   },
@@ -790,10 +685,28 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
+    height: 44,
     fontSize: 13.5,
     color: '#0f172a',
     fontWeight: '600',
+  },
+  passwordForm: {
+    gap: 8,
+  },
+  passwordSubmitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#ea580c',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  passwordSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   logoutWrapper: {
     marginTop: 8,
