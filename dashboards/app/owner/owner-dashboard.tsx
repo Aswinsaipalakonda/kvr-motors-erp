@@ -73,6 +73,7 @@ export default function OwnerDashboard() {
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
   const initialTab = lastSegment === "owner" ? "dashboard" : lastSegment;
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [selectedBranch, setSelectedBranch] = useState("All Branches");
 
   // Sync state with browser back/forward navigation popstate events
   useEffect(() => {
@@ -1396,12 +1397,32 @@ export default function OwnerDashboard() {
     return sorted.slice(0, 5);
   }, [salesInvoices]);
 
-  const netCashflow = ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0);
-  const totalSalesValue = salesInvoices.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0);
+  const netCashflow = React.useMemo(() => {
+    return ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0);
+  }, [ledgerEntries]);
+
+  const totalSalesValue = React.useMemo(() => {
+    return salesInvoices.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0);
+  }, [salesInvoices]);
 
   // Showrooms / locations filtered by the branch chosen in the stock-unit form
-  const branchShowrooms = showroomsList.filter((s) => String(s.branch) === stockUnitForm.branch);
-  const branchLocations = locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
+  const branchShowrooms = React.useMemo(() => {
+    return showroomsList.filter((s) => String(s.branch) === stockUnitForm.branch);
+  }, [showroomsList, stockUnitForm.branch]);
+
+  const branchLocations = React.useMemo(() => {
+    return locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
+  }, [locationsList, stockUnitForm.branch]);
+
+  const filteredVehicleUnits = React.useMemo(() => {
+    return vehicleUnitsList.filter((unit) => {
+      if (selectedBranch === "All Branches") return true;
+      return (
+        unit.branch_name &&
+        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [vehicleUnitsList, selectedBranch]);
 
   if (!isMounted) {
     return (
@@ -1420,7 +1441,13 @@ export default function OwnerDashboard() {
       {/* Main Panel Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
-        <Navbar role="owner" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
+        <Navbar 
+          role="owner" 
+          title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} 
+          activeBranch={selectedBranch}
+          onBranchChange={setSelectedBranch}
+          branchesList={branchesList}
+        />
         {/* Dashboard Views */}
         <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           {/* TAB 1: OVERVIEW DASHBOARD */}
@@ -1908,14 +1935,17 @@ export default function OwnerDashboard() {
                       </div>
                     </td>
                   </tr>
-                ) : vehicleUnitsList.length === 0 ? (
+                ) : filteredVehicleUnits.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="py-8 text-center">
-                      <EmptyState title="No Stock Units Found" description="No physical stock units registered." />
+                      <EmptyState 
+                        title="No Stock Units Found" 
+                        description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered for the selected branch outlet."} 
+                      />
                     </td>
                   </tr>
                 ) : (
-                  vehicleUnitsList.map((unit, idx) => (
+                  filteredVehicleUnits.map((unit, idx) => (
                     <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
                       <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
@@ -3349,7 +3379,7 @@ export default function OwnerDashboard() {
                 value={stockUnitForm.vin_number}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  setStockUnitForm({ ...stockUnitForm, vin_number: val });
                   if (vinLookupState !== "idle") setVinLookupState("idle");
                 }}
                 onBlur={(e) => handleIdentifierLookup("vin_number", e.target.value)}
@@ -3381,7 +3411,7 @@ export default function OwnerDashboard() {
                 value={stockUnitForm.motor_number}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  setStockUnitForm({ ...stockUnitForm, motor_number: val });
                   if (vinLookupState !== "idle") setVinLookupState("idle");
                 }}
                 onBlur={(e) => handleIdentifierLookup("motor_number", e.target.value)}
@@ -3396,7 +3426,7 @@ export default function OwnerDashboard() {
                 value={stockUnitForm.chassis_number}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val });
+                  setStockUnitForm({ ...stockUnitForm, chassis_number: val });
                   if (vinLookupState !== "idle") setVinLookupState("idle");
                 }}
                 onBlur={(e) => handleIdentifierLookup("chassis_number", e.target.value)}

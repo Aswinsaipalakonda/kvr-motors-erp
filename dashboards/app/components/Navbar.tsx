@@ -20,6 +20,9 @@ import {
 interface NavbarProps {
   title: string;
   role: "owner" | "supervisor" | "sales" | "telecaller";
+  activeBranch?: string;
+  onBranchChange?: (branch: string) => void;
+  branchesList?: any[];
 }
 
 interface SearchModule {
@@ -78,7 +81,7 @@ const DATE_RANGES = [
   "This Year",
 ];
 
-export default function Navbar({ title, role }: NavbarProps) {
+export default function Navbar({ title, role, activeBranch: activeBranchProp, onBranchChange, branchesList }: NavbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
 
@@ -88,7 +91,17 @@ export default function Navbar({ title, role }: NavbarProps) {
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  const [activeBranch, setActiveBranch] = useState("All Branches");
+  const [localActiveBranch, setLocalActiveBranch] = useState("All Branches");
+  const activeBranch = activeBranchProp !== undefined ? activeBranchProp : localActiveBranch;
+  const handleBranchSelect = (branch: string) => {
+    if (onBranchChange) {
+      onBranchChange(branch);
+    } else {
+      setLocalActiveBranch(branch);
+    }
+    setShowBranchDropdown(false);
+  };
+
   const [activeRange, setActiveRange] = useState(DATE_RANGES[0]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasUnread, setHasUnread] = useState(true);
@@ -101,15 +114,21 @@ export default function Navbar({ title, role }: NavbarProps) {
     { id: 3, title: "Stock Transfer", message: "Stock transfer TR-2026-904 completed", time: "1h ago", route: `/${role}/stock` },
   ];
 
-  const branches = [
-    "All Branches",
-    "KVR Motors - Visakhapatnam Showroom",
-    "Future Ride - Visakhapatnam Showroom",
-    "KVR Motors - Srikakulam Showroom",
-    "KVR Motors - Kakinada Showroom",
-    "Pendurthi Godown (Inventory)",
-    "Pineapple Colony Godown (Inventory)",
-  ];
+  const branches = useMemo(() => {
+    const defaultBranches = [
+      "All Branches",
+      "KVR Motors - Visakhapatnam Showroom",
+      "Future Ride - Visakhapatnam Showroom",
+      "KVR Motors - Srikakulam Showroom",
+      "KVR Motors - Kakinada Showroom",
+      "Pendurthi Godown (Inventory)",
+      "Pineapple Colony Godown (Inventory)",
+    ];
+    if (branchesList && branchesList.length > 0) {
+      return ["All Branches", ...branchesList.map((b) => b.name)];
+    }
+    return defaultBranches;
+  }, [branchesList]);
 
   const modules = ROLE_MODULES[role];
 
@@ -322,10 +341,7 @@ export default function Navbar({ title, role }: NavbarProps) {
                   {branches.map((branch, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        setActiveBranch(branch);
-                        setShowBranchDropdown(false);
-                      }}
+                      onClick={() => handleBranchSelect(branch)}
                       className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs text-left hover:bg-slate-50 transition-colors ${
                         activeBranch === branch ? "bg-slate-50 text-emerald-600 font-bold" : "text-slate-600"
                       }`}

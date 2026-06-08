@@ -328,7 +328,7 @@ export default function TelecallerLeads() {
             style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7 }]}
             hitSlop={12}
           >
-            <ArrowLeft size={20} color="#04a700" strokeWidth={2.5} />
+            <ArrowLeft size={20} color="#ffffff" strokeWidth={2.5} />
           </Pressable>
           <ThemedText style={styles.headerTitle}>Leads Telecalling Desk</ThemedText>
           <Pressable 
@@ -761,14 +761,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   customHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 12, backgroundColor: '#ffffff',
-    borderBottomWidth: 1.5, borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 20, paddingBottom: 16, backgroundColor: '#090d16',
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerBackBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#f1f5f9',
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e2e8f0',
+    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#04a700' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#ffffff' },
   headerAddBtn: {
     width: 38, height: 38, borderRadius: 19, backgroundColor: '#04a700',
     alignItems: 'center', justifyContent: 'center',

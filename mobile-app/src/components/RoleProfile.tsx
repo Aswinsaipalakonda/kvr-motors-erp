@@ -289,7 +289,7 @@ export default function RoleProfile({
       <ScrollView
         ref={scrollRef}
         style={styles.body}
-        contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 115 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#04a700" />
@@ -532,9 +532,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: '#054E35',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#033B27',
+    backgroundColor: '#090d16',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerBackBtn: {
     width: 38,

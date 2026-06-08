@@ -1046,8 +1046,13 @@ export default function SupervisorDashboard() {
   }, [salesInvoices]);
 
   // branch locations for stock unit selection
-  const branchShowrooms = showroomsList.filter((s) => String(s.branch) === stockUnitForm.branch);
-  const branchLocations = locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
+  const branchShowrooms = React.useMemo(() => {
+    return showroomsList.filter((s) => String(s.branch) === stockUnitForm.branch);
+  }, [showroomsList, stockUnitForm.branch]);
+
+  const branchLocations = React.useMemo(() => {
+    return locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
+  }, [locationsList, stockUnitForm.branch]);
 
   if (!isMounted) {
     return (
@@ -1991,7 +1996,7 @@ export default function SupervisorDashboard() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number)</label>
             <div className="relative">
-              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("vin_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val }); handleIdentifierLookup("vin_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
               {vinLookupState === "searching" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-slate-400 animate-pulse">Syncing...</span>}
               {vinLookupState === "found" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-[#04a700]">Synced</span>}
             </div>
@@ -1999,11 +2004,11 @@ export default function SupervisorDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Code</label>
-              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("motor_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, motor_number: val }); handleIdentifierLookup("motor_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Code</label>
-              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val, motor_number: val, chassis_number: val }); handleIdentifierLookup("chassis_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, chassis_number: val }); handleIdentifierLookup("chassis_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
           </div>
 
