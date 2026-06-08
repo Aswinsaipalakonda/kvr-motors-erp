@@ -1637,7 +1637,7 @@ export default function OwnerDashboard() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} interval="preserveStartEnd" minTickGap={35} />
                         <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val} Unit${val !== 1 ? 's' : ''}`} tick={{ fill: "#94a3b8", fontSize: 9 }} allowDecimals={false} />
-                        <Tooltip formatter={(value: any) => [`${value} Unit${value !== 1 ? 's' : ''}`, "Units Sold"]} contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }} />
+                        <Tooltip formatter={(value: any, name: any) => [`${value} Unit${value !== 1 ? 's' : ''}`, name]} contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }} />
                         <Area type="monotone" dataKey="ThisPeriod" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="Active Period" activeDot={{ r: 5, strokeWidth: 0, fill: '#04a700' }} />
                         <Area type="monotone" dataKey="PrevPeriod" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fillOpacity={1} fill="url(#glowPrevPeriod)" name="Previous Period" activeDot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }} />
                       </AreaChart>
