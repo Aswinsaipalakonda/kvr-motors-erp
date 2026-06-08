@@ -104,22 +104,13 @@ export default function OwnerPurchases({
 
   // Custom Color Addition
   const [newColorName, setNewColorName] = useState('');
-  const [newColorHex, setNewColorHex] = useState('');
   const [availableColors, setAvailableColors] = useState(COLORS);
 
   const handleAddCustomColor = () => {
     const name = newColorName.trim();
-    let hex = newColorHex.trim();
     if (!name) {
       Alert.alert('Validation Error', 'Please enter a color name.');
       return;
-    }
-    if (!hex.startsWith('#')) {
-      hex = '#' + hex;
-    }
-    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-      const fallbackHexes = ['#eab308', '#ec4899', '#a855f7', '#06b6d4', '#14b8a6', '#3b82f6'];
-      hex = fallbackHexes[Math.floor(Math.random() * fallbackHexes.length)];
     }
 
     if (availableColors.some(c => c.name.toLowerCase() === name.toLowerCase())) {
@@ -127,11 +118,36 @@ export default function OwnerPurchases({
       return;
     }
 
+    // Resolve color name to hex, mapping standard colors correctly
+    const norm = name.toLowerCase();
+    const colorMap: Record<string, string> = {
+      pink: '#ec4899',
+      yellow: '#eab308',
+      black: '#0f172a',
+      white: '#f8fafc',
+      purple: '#a855f7',
+      grey: '#64748b',
+      gray: '#64748b',
+      green: '#04a700',
+      red: '#d71d22',
+      blue: '#2563eb',
+      orange: '#ea580c',
+      gold: '#ca8a04',
+      cyan: '#06b6d4',
+      teal: '#14b8a6',
+    };
+    
+    // Use mapped color, otherwise fall back to a random color from dynamic palette
+    let hex = colorMap[norm];
+    if (!hex) {
+      const fallbackHexes = ['#ca8a04', '#7c3aed', '#0d9488', '#0891b2', '#4b5563', '#b91c1c'];
+      hex = fallbackHexes[Math.floor(Math.random() * fallbackHexes.length)];
+    }
+
     const newColor = { name, hex };
     setAvailableColors(prev => [...prev, newColor]);
     updateField('color', name);
     setNewColorName('');
-    setNewColorHex('');
   };
 
   useEffect(() => {
@@ -635,21 +651,14 @@ export default function OwnerPurchases({
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                     <TextInput
                       style={[styles.input, { flex: 1, height: 38, paddingVertical: 0 }]}
-                      placeholder="Colour Name (e.g. Yellow)"
+                      placeholder="Colour Name (e.g. Pink, Yellow, Purple)"
                       placeholderTextColor="#94a3b8"
                       value={newColorName}
                       onChangeText={setNewColorName}
                     />
-                    <TextInput
-                      style={[styles.input, { width: 110, height: 38, paddingVertical: 0 }]}
-                      placeholder="Hex (e.g. #facc15)"
-                      placeholderTextColor="#94a3b8"
-                      value={newColorHex}
-                      onChangeText={setNewColorHex}
-                    />
                     <Pressable
                       onPress={handleAddCustomColor}
-                      style={{ backgroundColor: '#04a700', paddingHorizontal: 12, height: 38, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}
+                      style={{ backgroundColor: '#04a700', paddingHorizontal: 16, height: 38, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}
                     >
                       <Plus size={16} color="#ffffff" strokeWidth={3} />
                     </Pressable>
