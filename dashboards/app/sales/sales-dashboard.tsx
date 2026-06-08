@@ -197,12 +197,12 @@ export default function SalesDashboard() {
           setFifoWarning(false);
           setOverrideRequested(false);
           setActiveOverrideRequest(null);
-          showToast("FIFO Override APPROVED by Supervisor! Form unlocked.");
+          showToast("Battery Override APPROVED by Supervisor! Form unlocked.");
           clearInterval(interval);
         } else if (activeReq && activeReq.status === "rejected") {
           setActiveOverrideRequest(null);
           setOverrideRequested(false);
-          showToast("FIFO Override REJECTED. Select a FIFO-compliant battery.", "error");
+          showToast("Battery Override REJECTED. Select the recommended battery pack.", "error");
           clearInterval(interval);
         }
       } catch (e) {
@@ -869,7 +869,7 @@ export default function SalesDashboard() {
                           <div className="flex gap-2">
                             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
                             <div>
-                              <h4 className="text-xs font-bold text-amber-800">FIFO Stock Restriction Triggered</h4>
+                              <h4 className="text-xs font-bold text-amber-800">Stock Sequence Warning Triggered</h4>
                               <p className="text-[11px] text-amber-600 font-semibold mt-1">
                                 Selected battery pack ({selectedBattery}) is newer than the oldest available battery in stock ({oldestBatteryInStock}). 
                                 Delivery requires an overriding approval code from a Branch Supervisor.
@@ -881,7 +881,7 @@ export default function SalesDashboard() {
                             {overrideRequested ? (
                               <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
                                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                                Override Request Transmitted to Supervisor Panel...
+                                Bypass Request Transmitted to Supervisor Panel...
                               </span>
                             ) : (
                               <button
@@ -889,7 +889,7 @@ export default function SalesDashboard() {
                                 onClick={handleRequestOverride}
                                 className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3.5 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm"
                               >
-                                Request Supervisor Override
+                                Request Supervisor Battery Bypass
                               </button>
                             )}
                           </div>

@@ -103,11 +103,11 @@ export default function SalesCheckout() {
         if (status === 'approved') {
           setOverrideStatus('approved');
           setFifoWarning(false);
-          Alert.alert('Approved', 'FIFO Override Request APPROVED by Supervisor! Form unlocked.');
+          Alert.alert('Approved', 'Battery Override Request APPROVED by Supervisor! Form unlocked.');
           clearInterval(interval);
-        } else if (status === 'rejected') {
+        } else if (response.data.status === 'rejected') {
           setOverrideStatus('rejected');
-          Alert.alert('Rejected', 'FIFO Override Request REJECTED by Supervisor. Please select a FIFO-compliant battery pack.');
+          Alert.alert('Rejected', 'Battery Override Request REJECTED by Supervisor. Please select the recommended battery pack.');
           clearInterval(interval);
         }
       } catch (err) {
@@ -158,7 +158,7 @@ export default function SalesCheckout() {
       if (response.data.is_oldest === false) {
         setFifoWarning(true);
         setOldestBatterySerial(response.data.oldest_serial_number || 'BATT-00874');
-        setFifMessage(response.data.warning || 'FIFO restriction triggered.');
+        setFifMessage(response.data.warning || 'Battery sequence restriction triggered.');
       } else {
         setFifoWarning(false);
       }
@@ -182,7 +182,7 @@ export default function SalesCheckout() {
       };
       const response = await api.post('/fifo-overrides/', payload);
       setOverrideRequest(response.data);
-      Alert.alert('Transmitted', 'FIFO Override request sent to Supervisor panel. Awaiting approval...');
+      Alert.alert('Transmitted', 'Battery Override request sent to Supervisor panel. Awaiting approval...');
     } catch (err) {
       console.error('Failed to request override:', err);
       setOverrideStatus('none');
@@ -208,7 +208,7 @@ export default function SalesCheckout() {
     }
 
     if (fifoWarning && overrideStatus !== 'approved') {
-      Alert.alert('FIFO Blocked', 'Selected battery violates FIFO order. Please select another battery or obtain supervisor approval.');
+      Alert.alert('Sequence Blocked', 'Selected battery violates sequence rules. Please select another battery or obtain supervisor approval.');
       return;
     }
 
@@ -427,7 +427,7 @@ export default function SalesCheckout() {
               <View style={styles.warningCard}>
                 <View style={styles.warningHeaderRow}>
                   <AlertTriangle size={20} color="#ea580c" />
-                  <ThemedText style={styles.warningTitle}>FIFO Rule Violation Detected</ThemedText>
+                  <ThemedText style={styles.warningTitle}>Out-of-Sequence Battery Selected</ThemedText>
                 </View>
                 <ThemedText style={styles.warningDesc}>
                   Selected battery serial <ThemedText style={{fontWeight: 'bold'}}>{selectedBattery.serial_number}</ThemedText> is newer than the oldest stock battery available in this showroom (<ThemedText style={{fontWeight: 'bold', color: '#ea580c'}}>{oldestBatterySerial}</ThemedText>).
@@ -441,7 +441,7 @@ export default function SalesCheckout() {
                     style={styles.overrideBtn}
                   >
                     <Shield size={14} color="#ffffff" />
-                    <ThemedText style={styles.overrideBtnText}>REQUEST SUPERVISOR OVERRIDE</ThemedText>
+                    <ThemedText style={styles.overrideBtnText}>REQUEST SUPERVISOR BYPASS</ThemedText>
                   </Pressable>
                 )}
 
@@ -454,7 +454,7 @@ export default function SalesCheckout() {
 
                 {overrideStatus === 'rejected' && (
                   <View style={styles.rejectedWrapper}>
-                    <ThemedText style={styles.rejectedText}>Override Rejected. Please select battery: {oldestBatterySerial}</ThemedText>
+                    <ThemedText style={styles.rejectedText}>Bypass Rejected. Please select recommended battery: {oldestBatterySerial}</ThemedText>
                     <Pressable onPress={handleRequestOverride} style={styles.reSubmitBtn}>
                       <ThemedText style={styles.reSubmitText}>Re-Submit Override Request</ThemedText>
                     </Pressable>
@@ -466,7 +466,7 @@ export default function SalesCheckout() {
             {!fifoWarning && selectedBattery && !checkingFifo && (
               <View style={styles.successCard}>
                 <CheckCircle2 size={16} color="#04a700" />
-                <ThemedText style={styles.successCardText}>FIFO Check Passed. Battery is cleared for dispatch.</ThemedText>
+                <ThemedText style={styles.successCardText}>Stock Sequence Passed. Battery is cleared for dispatch.</ThemedText>
               </View>
             )}
           </View>

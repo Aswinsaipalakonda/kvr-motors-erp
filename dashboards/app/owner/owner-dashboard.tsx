@@ -956,7 +956,7 @@ export default function OwnerDashboard() {
         showToast("Battery updated.");
       } else {
         await createBattery(payload);
-        showToast("Battery logged to FIFO registry.");
+        showToast("Battery logged to stock registry.");
       }
       setNewBattery({ ...emptyBattery });
       setEditingBatteryId(null);
@@ -1003,7 +1003,7 @@ export default function OwnerDashboard() {
       rows = [["VIN", "Model", "Color", "Branch", "Status"], ...vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status])];
     } else if (reportModule === "Lead Conversion Pipeline") {
       rows = [["Lead ID", "Customer", "Contact", "Vehicle", "Status"], ...leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status])];
-    } else if (reportModule === "Battery FIFO Allocations") {
+    } else if (reportModule === "Battery Stock Allocations") {
       rows = [["Serial", "Capacity", "Acquired", "Status", "Location"], ...batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location])];
     } else if (reportModule === "Executive Sales Commission") {
       const execData: Record<string, { count: number; total: number }> = {};
@@ -1045,7 +1045,7 @@ export default function OwnerDashboard() {
     } else if (reportModule === "Lead Conversion Pipeline") {
       headers = ["Lead ID", "Customer", "Contact", "Vehicle", "Status"];
       rows = leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status]);
-    } else if (reportModule === "Battery FIFO Allocations") {
+    } else if (reportModule === "Battery Stock Allocations") {
       headers = ["Serial", "Capacity", "Acquired", "Status", "Location"];
       rows = batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location]);
     } else if (reportModule === "Executive Sales Commission") {
@@ -2413,7 +2413,7 @@ export default function OwnerDashboard() {
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left flex items-start gap-4">
                 <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-sm font-bold text-amber-800">FIFO Stock Enforcement Protocol</h4>
+                  <h4 className="text-sm font-bold text-amber-800">Battery Stock Sequence Protocol</h4>
                   <p className="text-xs text-amber-600 font-semibold mt-1">
                     System rules dictate that the oldest batteries purchased must be assigned to customer delivery invoices first.
                     Selecting a battery with a newer purchase date will trigger an override request block requiring Supervisor approval.
@@ -2421,7 +2421,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               <Table 
-                title="Battery Storage Units (FIFO Registry)" 
+                title="Battery Storage Units" 
                 headers={["Battery Serial", "Battery Code", "Capacity Rating", "Date Acquired", "Assigned EV", "Location Storage", "Manufacturer Corp", "Warranty Years", "Status", "Actions"]}
                 actions={
                   <button 
@@ -2564,7 +2564,7 @@ export default function OwnerDashboard() {
                     <select value={reportModule} onChange={(e) => setReportModule(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500">
                       <option>Sales Ledger Summary</option>
                       <option>Inventory In-Out Movements</option>
-                      <option>Battery FIFO Allocations</option>
+                      <option>Battery Stock Allocations</option>
                       <option>Executive Sales Commission</option>
                       <option>Lead Conversion Pipeline</option>
                     </select>
@@ -3745,7 +3745,7 @@ export default function OwnerDashboard() {
       </Modal>
 
       {/* 7. Log Battery Stock */}
-      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock (FIFO Registry)"}>
+      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">

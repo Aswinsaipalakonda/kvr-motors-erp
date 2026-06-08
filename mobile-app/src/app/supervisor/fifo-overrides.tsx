@@ -94,7 +94,7 @@ export default function SupervisorFifoOverrides() {
       Alert.alert(
         decision === 'approved' ? 'Bypass Approved' : 'Request Rejected',
         decision === 'approved'
-          ? `FIFO bypass for ${req.serial} authorized for ${req.executive}.`
+          ? `Battery bypass for ${req.serial} authorized for ${req.executive}.`
           : `Override for ${req.serial} rejected. Oldest stock ${req.olderSerial} must be used.`
       );
     }, 450);
@@ -134,7 +134,7 @@ export default function SupervisorFifoOverrides() {
             </View>
 
             <View style={styles.titleWrapper}>
-              <ThemedText style={styles.mainTitle}>FIFO Battery Exception Queue</ThemedText>
+              <ThemedText style={styles.mainTitle}>Battery Exception Queue</ThemedText>
               <ThemedText style={styles.accentTitle}>Override Reviews.</ThemedText>
             </View>
 
@@ -142,7 +142,7 @@ export default function SupervisorFifoOverrides() {
               <View style={styles.countBadge}>
                 <ThemedText style={styles.countBadgeText}>{requests.length}</ThemedText>
               </View>
-              <ThemedText style={styles.countLabel}>pending override {requests.length === 1 ? 'request' : 'requests'}</ThemedText>
+              <ThemedText style={styles.countLabel}>pending battery {requests.length === 1 ? 'request' : 'requests'}</ThemedText>
             </View>
           </View>
 
@@ -189,7 +189,7 @@ export default function SupervisorFifoOverrides() {
                       <View style={styles.warningBanner}>
                         <AlertTriangle size={14} color="#d97706" />
                         <ThemedText style={styles.warningText}>
-                          <ThemedText style={styles.warningBold}>FIFO Violation: </ThemedText>
+                          <ThemedText style={styles.warningBold}>Stock Sequence Bypass: </ThemedText>
                           A newer battery is being selected while older stock{' '}
                           <ThemedText style={styles.warningBold}>{req.olderSerial}</ThemedText> is still available.
                         </ThemedText>

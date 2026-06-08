@@ -52,7 +52,7 @@ export default function Home() {
       features: [
         { label: "Real-time stock inflows & dispatches", icon: Boxes },
         { label: "Pre-Delivery Inspection (PDI) passes", icon: Car },
-        { label: "Battery FIFO lock authorization overrides", icon: Battery },
+        { label: "Battery lock authorization overrides", icon: Battery },
         { label: "Inter-branch transfer requests queue", icon: ArrowRight }
       ],
       actionText: "Launch Panel"

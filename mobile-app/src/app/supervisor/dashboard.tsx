@@ -99,7 +99,7 @@ export default function SupervisorDashboard() {
         status: action,
         reviewed_by: user?.full_name || user?.username || 'Supervisor'
       });
-      Alert.alert('Success', `FIFO override request has been ${action}.`);
+      Alert.alert('Success', `Battery override request has been ${action}.`);
       loadData();
     } catch (err) {
       console.error(err);
@@ -163,7 +163,7 @@ export default function SupervisorDashboard() {
             <View style={styles.metricsSection}>
               <View style={styles.metricCard}>
                 <ThemedText style={styles.metricVal}>{pendingOverrides.length}</ThemedText>
-                <ThemedText style={styles.metricLabel}>FIFO Overrides</ThemedText>
+                <ThemedText style={styles.metricLabel}>Battery Overrides</ThemedText>
               </View>
               <View style={styles.metricCard}>
                 <ThemedText style={styles.metricVal}>{pendingBookings.length}</ThemedText>
@@ -182,7 +182,7 @@ export default function SupervisorDashboard() {
                   <View style={[styles.quickIcon, { backgroundColor: 'rgba(234, 88, 12, 0.1)' }]}>
                     <ShieldAlert size={18} color="#ea580c" />
                   </View>
-                  <ThemedText style={styles.quickTitle}>FIFO Overrides</ThemedText>
+                  <ThemedText style={styles.quickTitle}>Battery Overrides</ThemedText>
                   <ThemedText style={styles.quickDesc}>Battery exceptions</ThemedText>
                 </Pressable>
                 <Pressable onPress={() => router.push('/supervisor/transfers' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
@@ -209,16 +209,16 @@ export default function SupervisorDashboard() {
               </View>
             </View>
 
-            {/* FIFO Overrides Queue */}
+            {/* Battery Overrides Queue */}
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
                 <ShieldAlert size={18} color="#ea580c" />
-                <ThemedText style={styles.sectionTitle}>FIFO Override Requests ({pendingOverrides.length})</ThemedText>
+                <ThemedText style={styles.sectionTitle}>Battery Override Requests ({pendingOverrides.length})</ThemedText>
               </View>
 
               {pendingOverrides.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <ThemedText style={styles.emptyText}>All FIFO check requests resolved.</ThemedText>
+                  <ThemedText style={styles.emptyText}>All battery check requests resolved.</ThemedText>
                 </View>
               ) : (
                 pendingOverrides.map((override) => (
@@ -226,7 +226,7 @@ export default function SupervisorDashboard() {
                     <View style={styles.itemHeader}>
                       <View style={styles.tagWrapper}>
                         <AlertTriangle size={12} color="#ea580c" />
-                        <ThemedText style={styles.tagText}>FIFO RESTRICTION</ThemedText>
+                        <ThemedText style={styles.tagText}>BATTERY WARNING</ThemedText>
                       </View>
                       <ThemedText style={styles.timeText}>
                         {new Date(override.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

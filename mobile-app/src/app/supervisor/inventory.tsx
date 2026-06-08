@@ -246,7 +246,7 @@ export default function SupervisorInventory() {
                           <View style={{flexDirection: 'row', gap: 6, alignItems: 'center'}}>
                             {isOldest && (
                               <View style={styles.fifoRankBadge}>
-                                <ThemedText style={styles.fifoRankText}>FIFO Rank 1 (Oldest)</ThemedText>
+                                <ThemedText style={styles.fifoRankText}>Recommended (Oldest)</ThemedText>
                               </View>
                             )}
                             <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>

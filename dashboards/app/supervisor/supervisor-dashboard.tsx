@@ -761,7 +761,7 @@ export default function SupervisorDashboard() {
         showToast("Battery details updated.");
       } else {
         await createBattery(payload);
-        showToast("Battery logged to FIFO registry.");
+        showToast("Battery logged to stock registry.");
       }
       setNewBattery({ ...emptyBattery });
       setEditingBatteryId(null);
@@ -829,7 +829,7 @@ export default function SupervisorDashboard() {
       rows = [["VIN", "Model", "Color", "Branch", "Status"], ...vehicleUnitsList.map(u => [u.vin_number, u.model_name, u.color, u.branch_name || "", u.stock_status])];
     } else if (reportModule === "Lead Conversion Pipeline") {
       rows = [["Lead ID", "Customer", "Contact", "Vehicle", "Status"], ...leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status])];
-    } else if (reportModule === "Battery FIFO Allocations") {
+    } else if (reportModule === "Battery Stock Allocations") {
       rows = [["Serial", "Capacity", "Acquired", "Status", "Location"], ...batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location])];
     } else {
       rows = [["Invoice", "Customer", "Model", "Sale Price", "Date"], ...salesInvoices.map(s => [s.invoice_number, s.customer_name, s.model_name, s.sale_price, s.sale_date])];
@@ -854,7 +854,7 @@ export default function SupervisorDashboard() {
     } else if (reportModule === "Lead Conversion Pipeline") {
       headers = ["Lead ID", "Customer", "Contact", "Vehicle", "Status"];
       rows = leadsList.map(l => [`LD-${l.id}`, l.customer_name, l.contact_number, l.interested_vehicle_name || "", l.status]);
-    } else if (reportModule === "Battery FIFO Allocations") {
+    } else if (reportModule === "Battery Stock Allocations") {
       headers = ["Serial", "Capacity", "Acquired", "Status", "Location"];
       rows = batteriesStock.map(b => [b.serial, b.capacity, b.purDate, b.status, b.location]);
     } else {
@@ -1172,7 +1172,7 @@ export default function SupervisorDashboard() {
                       <div key={`live-${override.id}`} className="p-3 bg-rose-50/40 border border-rose-100 rounded-xl space-y-2 relative">
                         <div className="flex items-center justify-between">
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-100 text-rose-700 border border-rose-200">
-                            <AlertTriangle className="h-3 w-3 animate-pulse" /> FIFO Override Request
+                            <AlertTriangle className="h-3 w-3 animate-pulse" /> Battery Override Request
                           </span>
                         </div>
                         <p className="text-[11px] font-bold text-slate-700 leading-snug">
@@ -1790,8 +1790,8 @@ export default function SupervisorDashboard() {
           {activeTab === "batteries" && (
             <div className="space-y-6">
               <Table 
-                title="Assigned Outlet Battery Stock (FIFO Order Check)" 
-                headers={["Battery Serial", "Battery Code", "Capacity Rating", "Acquisition Date", "Warehouse Location", "FIFO Rank", "Health Index (SoH)", "Status", "Actions"]}
+                title="Assigned Outlet Battery Stock (Sequence Check)" 
+                headers={["Battery Serial", "Battery Code", "Capacity Rating", "Acquisition Date", "Warehouse Location", "Stock Priority", "Health Index (SoH)", "Status", "Actions"]}
                 actions={
                   <button 
                     onClick={() => { setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); setIsAddBatteryOpen(true); }}
@@ -1860,7 +1860,7 @@ export default function SupervisorDashboard() {
                     <option>Sales Ledger Summary</option>
                     <option>Inventory In-Out Movements</option>
                     <option>Lead Conversion Pipeline</option>
-                    <option>Battery FIFO Allocations</option>
+                    <option>Battery Stock Allocations</option>
                   </select>
                   <button 
                     onClick={downloadReport}
@@ -2144,7 +2144,7 @@ export default function SupervisorDashboard() {
       </Modal>
 
       {/* 5. Add / Edit Battery */}
-      <Modal isOpen={isAddBatteryOpen} onClose={() => setIsAddBatteryOpen(false)} title={editingBatteryId ? "Edit Battery details" : "Log Battery Pack (FIFO registry)"}>
+      <Modal isOpen={isAddBatteryOpen} onClose={() => setIsAddBatteryOpen(false)} title={editingBatteryId ? "Edit Battery details" : "Log Battery Pack"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
