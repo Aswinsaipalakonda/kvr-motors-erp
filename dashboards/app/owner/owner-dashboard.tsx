@@ -1615,8 +1615,7 @@ export default function OwnerDashboard() {
 
                       {/* Legend */}
                       <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-wider text-slate-500">
-                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#04a700]" /> Active Period</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-300" /> Previous Period</span>
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#04a700]" /> Units Sold</span>
                       </div>
                     </div>
                   </div>
@@ -1629,17 +1628,12 @@ export default function OwnerDashboard() {
                             <stop offset="5%" stopColor="#04a700" stopOpacity={0.2}/>
                             <stop offset="95%" stopColor="#04a700" stopOpacity={0}/>
                           </linearGradient>
-                          <linearGradient id="glowPrevPeriod" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.08}/>
-                            <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
-                          </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} interval="preserveStartEnd" minTickGap={35} />
                         <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val} Unit${val !== 1 ? 's' : ''}`} tick={{ fill: "#94a3b8", fontSize: 9 }} allowDecimals={false} />
-                        <Tooltip formatter={(value: any, name: any) => [`${value} Unit${value !== 1 ? 's' : ''}`, name]} contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }} />
-                        <Area type="monotone" dataKey="ThisPeriod" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="Active Period" activeDot={{ r: 5, strokeWidth: 0, fill: '#04a700' }} />
-                        <Area type="monotone" dataKey="PrevPeriod" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 4" fillOpacity={1} fill="url(#glowPrevPeriod)" name="Previous Period" activeDot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }} />
+                        <Tooltip formatter={(value: any) => [`${value} Unit${value !== 1 ? 's' : ''}`, "Units Sold"]} contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }} />
+                        <Area type="monotone" dataKey="ThisPeriod" stroke="#04a700" strokeWidth={2.5} fillOpacity={1} fill="url(#glowBrandGreen)" name="Units Sold" activeDot={{ r: 5, strokeWidth: 0, fill: '#04a700' }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
