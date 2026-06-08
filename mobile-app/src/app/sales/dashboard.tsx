@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Linking, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Linking, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -28,25 +28,35 @@ export default function SalesDashboard() {
     });
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadData = async () => {
     try {
-      setIsLoading(true);
+      if (!refreshing && leads.length === 0) {
+        setIsLoading(true);
+      }
       const [leadsRes, salesRes] = await Promise.all([
         api.get('/leads/'),
         api.get('/sales-invoices/'),
       ]);
-      setLeads(leadsRes.data);
-      setSales(salesRes.data);
+      setLeads(leadsRes.data || []);
+      setSales(salesRes.data || []);
     } catch (e) {
       console.error('Failed to load sales dashboard data:', e);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   // Filter records for the logged-in Sales Executive
   const myLeads = leads.filter(ld => ld.assigned_executive === user?.id);
@@ -78,25 +88,32 @@ export default function SalesDashboard() {
   return (
     <FadeScaleTransition>
       <View style={styles.mainContainer}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
-          showsVerticalScrollIndicator={false}
-        >
+        {isLoading && leads.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#04a700" />
+            <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
+              Syncing sales metrics...
+            </ThemedText>
+          </View>
+        ) : (
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
+            }
+          >
           {/* Dark Premium Header Section */}
           <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
             <View style={styles.headerRow}>
-              <Pressable
-                onPress={() => router.push('/sales/profile' as any)}
-                style={({ pressed }) => [styles.profileWrapper, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
-                hitSlop={8}
-              >
+              <View style={styles.profileWrapper}>
                 <Image 
                   source={require('@/assets/images/logo.png')} 
                   style={styles.profileImg} 
                   resizeMode="contain"
                 />
-              </Pressable>
+              </View>
               
               <View style={styles.locationSelector}>
                 <MapPin size={14} color="#04a700" />
@@ -240,6 +257,7 @@ export default function SalesDashboard() {
             </>
           )}
         </ScrollView>
+      )}
       </View>
     </FadeScaleTransition>
   );

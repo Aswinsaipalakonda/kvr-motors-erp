@@ -96,9 +96,6 @@ export default function StaffDashboard({ isActive = true }: { isActive?: boolean
                 <Boxes size={12} color="#04a700" />
                 <ThemedText style={styles.badgeText}>YARD OPERATIONS</ThemedText>
               </View>
-              <Pressable onPress={() => router.push('/staff/profile' as any)} style={({ pressed }) => [styles.profileBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]} hitSlop={8}>
-                <User size={18} color="#04a700" />
-              </Pressable>
             </View>
 
             <View style={styles.titleWrapper}>

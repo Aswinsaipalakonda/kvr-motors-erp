@@ -82,16 +82,6 @@ export default function TelecallerDashboard() {
           {/* Obsidian Header Section */}
           <View style={[styles.darkHeader, { paddingTop: insets.top + 16 }]}>
             <View style={styles.headerRow}>
-              <Pressable
-                onPress={() => router.push('/telecaller/profile' as any)}
-                style={({ pressed }) => [styles.profileWrapper, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
-                hitSlop={8}
-              >
-                <View style={styles.avatarCircle}>
-                  <User size={18} color="#04a700" />
-                </View>
-              </Pressable>
-              
               <View style={styles.locationSelector}>
                 <MapPin size={14} color="#04a700" />
                 <ThemedText style={styles.locationText} numberOfLines={1}>

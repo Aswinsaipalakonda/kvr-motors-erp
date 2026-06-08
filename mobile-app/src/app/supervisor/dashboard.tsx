@@ -136,10 +136,6 @@ export default function SupervisorDashboard() {
               <ClipboardCheck size={16} color="#04a700" />
               <ThemedText style={styles.badgeText}>SUPERVISOR OPERATIONS PORTAL</ThemedText>
             </View>
-
-            <Pressable onPress={() => router.push('/supervisor/profile' as any)} style={({ pressed }) => [styles.profileBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}>
-              <User size={18} color="#04a700" />
-            </Pressable>
           </View>
 
           {/* Editorial Title */}

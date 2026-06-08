@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
-  BackHandler, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions,
+  BackHandler, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions, RefreshControl
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,6 +20,7 @@ export interface RoleProfileProps {
   locationLabel?: string;
   isActive?: boolean;
   onBack?: () => void;
+  hideBackButton?: boolean;
 }
 
 export default function RoleProfile({
@@ -28,6 +29,7 @@ export default function RoleProfile({
   locationLabel = 'Visakhapatnam HQ',
   isActive = true,
   onBack,
+  hideBackButton = false,
 }: RoleProfileProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -57,38 +59,67 @@ export default function RoleProfile({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const fetchProfile = async () => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchProfile = async (isSilent = false) => {
     try {
-      setIsLoading(true);
+      if (!isSilent) setIsLoading(true);
       const res = await api.get('/auth/me/');
       const data = res.data;
-      setProfileData(data);
+      
+      const fullName = data.full_name || '';
+      const nameParts = fullName.trim().split(/\s+/);
+      const computedFirstName = data.first_name || nameParts[0] || '';
+      const computedLastName = data.last_name || nameParts.slice(1).join(' ') || '';
+
+      const finalData = {
+        ...data,
+        first_name: computedFirstName,
+        last_name: computedLastName,
+      };
+      setProfileData(finalData);
 
       setPersonalInfoForm({
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
+        first_name: computedFirstName,
+        last_name: computedLastName,
         email: data.email || '',
         phone_number: data.phone_number || '',
       });
     } catch (err) {
       console.error('Failed to load mobile profile:', err);
       if (user) {
-        setProfileData(user);
+        const fullName = user.full_name || '';
+        const nameParts = fullName.trim().split(/\s+/);
+        const computedFirstName = user.first_name || nameParts[0] || '';
+        const computedLastName = user.last_name || nameParts.slice(1).join(' ') || '';
+
+        const finalUser = {
+          ...user,
+          first_name: computedFirstName,
+          last_name: computedLastName,
+        };
+        setProfileData(finalUser);
         setPersonalInfoForm({
-          first_name: user.first_name || '',
-          last_name: user.last_name || '',
+          first_name: computedFirstName,
+          last_name: computedLastName,
           email: user.email || '',
           phone_number: user.phone_number || '',
         });
       }
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile(true);
+    setRefreshing(false);
+  };
 
   const handleBack = useCallback((): boolean => {
     if (isEditingPersonalInfo) {
@@ -133,8 +164,21 @@ export default function RoleProfile({
         full_name: fullName,
       });
 
-      setProfileData(res.data);
-      await updateUser(res.data);
+      const updatedData = res.data;
+      const updatedFullName = updatedData.full_name || fullName;
+      const nameParts = updatedFullName.trim().split(/\s+/);
+      const computedFirstName = updatedData.first_name || personalInfoForm.first_name || nameParts[0] || '';
+      const computedLastName = updatedData.last_name || personalInfoForm.last_name || nameParts.slice(1).join(' ') || '';
+
+      const finalProfileData = {
+        ...updatedData,
+        full_name: updatedFullName,
+        first_name: computedFirstName,
+        last_name: computedLastName,
+      };
+
+      setProfileData(finalProfileData);
+      await updateUser(finalProfileData);
       setIsEditingPersonalInfo(false);
       Alert.alert('Success', 'Profile details updated successfully.');
     } catch (err: any) {
@@ -228,16 +272,18 @@ export default function RoleProfile({
       style={styles.container}
     >
       {/* Title Header */}
-      <View style={[styles.customHeader, { paddingTop: insets.top + 10 }]}>
-        <Pressable
-          onPress={handleBack}
-          style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
-          hitSlop={12}
-        >
-          <ArrowLeft size={20} color="#04a700" strokeWidth={2.5} />
-        </Pressable>
+      <View style={[styles.customHeader, { paddingTop: insets.top + 10, justifyContent: hideBackButton ? 'center' : 'space-between' }]}>
+        {!hideBackButton && (
+          <Pressable
+            onPress={handleBack}
+            style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+            hitSlop={12}
+          >
+            <ArrowLeft size={20} color="#ffffff" strokeWidth={2.5} />
+          </Pressable>
+        )}
         <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
-        <View style={{ width: 40 }} />
+        {!hideBackButton && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView
@@ -245,6 +291,9 @@ export default function RoleProfile({
         style={styles.body}
         contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#04a700" />
+        }
       >
         {/* Top Header Card: Centered layout */}
         <View style={styles.profileHeaderCard}>
@@ -482,23 +531,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingBottom: 16,
+    backgroundColor: '#054E35',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#033B27',
   },
   headerBackBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#04a700',
+    color: '#ffffff',
   },
   body: {
     flex: 1,

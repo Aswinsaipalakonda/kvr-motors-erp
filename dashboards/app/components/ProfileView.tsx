@@ -34,11 +34,22 @@ export default function ProfileView() {
       setIsLoading(true);
       setErrorMsg(null);
       const data = await getCurrentUser();
-      setProfileData(data);
+      
+      const fullName = data.full_name || "";
+      const nameParts = fullName.trim().split(/\s+/);
+      const computedFirstName = data.first_name || nameParts[0] || "";
+      const computedLastName = data.last_name || nameParts.slice(1).join(" ") || "";
+
+      const finalData = {
+        ...data,
+        first_name: computedFirstName,
+        last_name: computedLastName,
+      };
+      setProfileData(finalData);
       
       setPersonalInfoForm({
-        first_name: data.first_name || "",
-        last_name: data.last_name || "",
+        first_name: computedFirstName,
+        last_name: computedLastName,
         email: data.email || "",
         phone_number: data.phone_number || "",
       });
@@ -93,8 +104,20 @@ export default function ProfileView() {
         full_name: fullName,
       });
 
-      setProfileData(updated);
-      updateUser(updated);
+      const updatedFullName = updated.full_name || fullName;
+      const nameParts = updatedFullName.trim().split(/\s+/);
+      const computedFirstName = updated.first_name || personalInfoForm.first_name || nameParts[0] || "";
+      const computedLastName = updated.last_name || personalInfoForm.last_name || nameParts.slice(1).join(" ") || "";
+
+      const finalProfileData = {
+        ...updated,
+        full_name: updatedFullName,
+        first_name: computedFirstName,
+        last_name: computedLastName,
+      };
+
+      setProfileData(finalProfileData);
+      updateUser(finalProfileData);
       setIsEditingPersonalInfo(false);
       setSuccessMsg("Personal information updated successfully.");
       

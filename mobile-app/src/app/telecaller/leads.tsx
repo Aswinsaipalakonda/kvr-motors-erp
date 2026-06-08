@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, StyleSheet, ScrollView, Pressable, TextInput, Modal, 
-  ActivityIndicator, Alert, Linking, BackHandler, KeyboardAvoidingView, Platform 
+  ActivityIndicator, Alert, Linking, BackHandler, KeyboardAvoidingView, Platform, RefreshControl 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import DatePicker from '@/components/DatePicker';
 import { 
   ArrowLeft, Search, X, Users, Phone, 
   CalendarDays, Edit, CheckCircle, Info, Flame,
@@ -95,9 +96,13 @@ export default function TelecallerLeads() {
     { id: 'other', label: 'Other' },
   ];
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadData = async () => {
     try {
-      setIsLoading(true);
+      if (!refreshing && leads.length === 0) {
+        setIsLoading(true);
+      }
       const [leadsRes, modelsRes] = await Promise.all([
         api.get('/leads/'),
         api.get('/vehicle-models/'),
@@ -111,12 +116,18 @@ export default function TelecallerLeads() {
       console.error('Failed to load leads for telecaller:', e);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   const handleBack = useCallback((): boolean => {
     if (isUpdateModalOpen) {
@@ -397,13 +408,19 @@ export default function TelecallerLeads() {
           </ScrollView>
         </View>
 
-        {isLoading ? (
+        {isLoading && leads.length === 0 ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#04a700" />
             <ThemedText style={styles.loaderText}>Syncing lead logs...</ThemedText>
           </View>
         ) : (
-          <ScrollView style={styles.body} contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 16 }}>
+          <ScrollView 
+            style={styles.body} 
+            contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 16 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
+            }
+          >
             {filteredLeads.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Users size={36} color="#94a3b8" />
@@ -530,13 +547,11 @@ export default function TelecallerLeads() {
 
                 {/* Follow-up Date */}
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>Next Callback Date (YYYY-MM-DD)</ThemedText>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 2026-06-15"
-                    placeholderTextColor="#94a3b8"
+                  <ThemedText style={styles.fieldLabel}>Next Callback Date</ThemedText>
+                  <DatePicker
                     value={editFollowUpDate}
-                    onChangeText={setEditFollowUpDate}
+                    onChange={setEditFollowUpDate}
+                    placeholder="Select callback date"
                   />
                 </View>
 
@@ -639,13 +654,11 @@ export default function TelecallerLeads() {
 
                   {/* Follow-up Date */}
                   <View style={styles.field}>
-                    <ThemedText style={styles.fieldLabel}>Initial Follow-up Date (YYYY-MM-DD)</ThemedText>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 2026-06-15"
-                      placeholderTextColor="#94a3b8"
+                    <ThemedText style={styles.fieldLabel}>Initial Follow-up Date</ThemedText>
+                    <DatePicker
                       value={regFollowUpDate}
-                      onChangeText={setRegFollowUpDate}
+                      onChange={setRegFollowUpDate}
+                      placeholder="Select follow-up date"
                     />
                   </View>
 

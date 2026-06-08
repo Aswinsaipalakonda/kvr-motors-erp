@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import DatePicker from '@/components/DatePicker';
 import { 
   Users, UserPlus, PhoneCall, Plus, X, ChevronDown, Check, 
   MapPin, CalendarDays, Edit, Landmark
@@ -80,28 +81,38 @@ export default function SalesLeads() {
     { id: 'lost', label: 'Lost' },
   ];
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadData = async () => {
     try {
-      setIsLoading(true);
+      if (!refreshing && leads.length === 0) {
+        setIsLoading(true);
+      }
       const [leadsRes, modelsRes] = await Promise.all([
         api.get('/leads/'),
         api.get('/vehicle-models/'),
       ]);
-      setLeads(leadsRes.data);
-      setVehicleModels(modelsRes.data);
-      if (modelsRes.data.length > 0) {
+      setLeads(leadsRes.data || []);
+      setVehicleModels(modelsRes.data || []);
+      if (modelsRes.data && modelsRes.data.length > 0) {
         setSelectedVehicle(modelsRes.data[0]);
       }
     } catch (e) {
       console.error('Failed to load leads screen data:', e);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   // Filter leads assigned to this executive
   const myLeads = leads.filter(ld => ld.assigned_executive === user?.id);
@@ -233,7 +244,7 @@ export default function SalesLeads() {
           </Pressable>
         </View>
 
-        {isLoading ? (
+        {isLoading && leads.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#04a700" />
             <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
@@ -245,6 +256,9 @@ export default function SalesLeads() {
             style={styles.scrollView}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
+            }
           >
             <View style={styles.contentSection}>
               {filteredLeads.length === 0 ? (
@@ -434,13 +448,11 @@ export default function SalesLeads() {
 
                 {/* Follow-up Date */}
                 <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>NEXT FOLLOW-UP DATE (YYYY-MM-DD)</ThemedText>
-                  <TextInput 
-                    style={styles.textInput}
-                    placeholder="YYYY-MM-DD (e.g. 2026-06-01)"
-                    placeholderTextColor="#94a3b8"
+                  <ThemedText style={styles.inputLabel}>NEXT FOLLOW-UP DATE</ThemedText>
+                  <DatePicker 
                     value={followUpDate}
-                    onChangeText={setFollowUpDate}
+                    onChange={setFollowUpDate}
+                    placeholder="Select Next Follow-up Date"
                   />
                 </View>
 

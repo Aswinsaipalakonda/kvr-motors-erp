@@ -4,21 +4,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ClipboardCheck, ScanLine, Boxes } from 'lucide-react-native';
+import { ClipboardCheck, ScanLine, Boxes, User } from 'lucide-react-native';
 import { Slot, usePathname } from 'expo-router';
 
 import StaffDashboard from './dashboard';
 import StaffScanner from './godown-scanner';
 import StaffPdi from './pdi-checklist';
+import StaffProfile from './profile';
 
-type ScreenTab = 'dashboard' | 'godown-scanner' | 'pdi-checklist';
+type ScreenTab = 'dashboard' | 'godown-scanner' | 'pdi-checklist' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'godown-scanner', 'pdi-checklist'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'godown-scanner', 'pdi-checklist', 'profile'];
 
 const TABS_CONFIG = [
   { key: 'dashboard', label: 'Queue', icon: Boxes },
   { key: 'godown-scanner', label: 'Scanner', icon: ScanLine },
   { key: 'pdi-checklist', label: 'PDI', icon: ClipboardCheck },
+  { key: 'profile', label: 'Profile', icon: User },
 ] as const;
 
 function AnimatedTabButton({
@@ -86,6 +88,9 @@ export default function StaffLayout() {
         </View>
         <View style={{ flex: 1, display: activeTab === 'pdi-checklist' ? 'flex' : 'none' }}>
           <StaffPdi isActive={activeTab === 'pdi-checklist'} onBack={() => setActiveTab('dashboard')} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 'profile' ? 'flex' : 'none' }}>
+          <StaffProfile />
         </View>
       </View>
 

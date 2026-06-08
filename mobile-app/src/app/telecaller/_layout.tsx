@@ -5,20 +5,22 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { Home, PhoneCall } from 'lucide-react-native';
+import { Home, PhoneCall, User } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 
 // Screen imports
 import TelecallerDashboard from './dashboard';
 import TelecallerLeads from './leads';
+import TelecallerProfile from './profile';
 
-type ScreenTab = 'dashboard' | 'leads';
+type ScreenTab = 'dashboard' | 'leads' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads', 'profile'];
 
 const TABS_CONFIG = [
   { key: 'dashboard', label: 'Home', icon: Home },
   { key: 'leads', label: 'Leads Desk', icon: PhoneCall },
+  { key: 'profile', label: 'Profile', icon: User },
 ] as const;
 
 function AnimatedTabButton({ 
@@ -84,7 +86,7 @@ export default function TelecallerLayout() {
 
   const isSubRoute = pathname !== '/telecaller' && pathname !== '/telecaller/' && !TAB_KEYS.some(tab => pathname.endsWith(tab));
 
-  const tabWidth = screenWidth / 2;
+  const tabWidth = screenWidth / TAB_KEYS.length;
   const activeIndexShared = useSharedValue(0);
 
   useEffect(() => {
@@ -116,6 +118,9 @@ export default function TelecallerLayout() {
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
           <TelecallerLeads />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
+          <TelecallerProfile />
         </View>
       </View>
 

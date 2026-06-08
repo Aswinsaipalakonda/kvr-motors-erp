@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import DatePicker from '@/components/DatePicker';
 import { 
   CalendarDays, PhoneCall, CheckCircle, Clock, X, Save 
 } from 'lucide-react-native';
@@ -41,21 +42,31 @@ export default function SalesFollowups() {
   const [followUpNotes, setFollowUpNotes] = useState('');
   const [nextCallDate, setNextCallDate] = useState('');
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadData = async () => {
     try {
-      setIsLoading(true);
+      if (!refreshing && leads.length === 0) {
+        setIsLoading(true);
+      }
       const res = await api.get('/leads/');
-      setLeads(res.data);
+      setLeads(res.data || []);
     } catch (e) {
       console.error('Failed to load follow-ups data:', e);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   // Filter leads assigned to this executive that have a follow-up scheduled
   const myLeads = leads.filter(ld => ld.assigned_executive === user?.id && ld.status !== 'won' && ld.status !== 'lost');
@@ -122,7 +133,7 @@ export default function SalesFollowups() {
           </View>
         </View>
 
-        {isLoading ? (
+        {isLoading && leads.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#04a700" />
             <ThemedText style={{ color: '#64748b', marginTop: 10, fontSize: 13, fontWeight: 'bold' }}>
@@ -134,6 +145,9 @@ export default function SalesFollowups() {
             style={styles.scrollView}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]} 
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
+            }
           >
             <View style={styles.contentSection}>
               {/* Today / Overdue Section */}
@@ -263,13 +277,11 @@ export default function SalesFollowups() {
 
                 {/* Reschedule Date */}
                 <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>RESCHEDULE NEXT CALL DATE (YYYY-MM-DD)</ThemedText>
-                  <TextInput 
-                    style={styles.textInput}
-                    placeholder="YYYY-MM-DD (e.g. 2026-06-05)"
-                    placeholderTextColor="#94a3b8"
+                  <ThemedText style={styles.inputLabel}>RESCHEDULE NEXT CALL DATE</ThemedText>
+                  <DatePicker 
                     value={nextCallDate}
-                    onChangeText={setNextCallDate}
+                    onChange={setNextCallDate}
+                    placeholder="Select Reschedule Date"
                   />
                 </View>
 
