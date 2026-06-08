@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getCurrentUser, updateCurrentUser, UserProfile } from "../services/users";
-import { Camera, Mail, Phone, Shield, Calendar, MapPin, Loader2, Check, X } from "lucide-react";
+import { getCurrentUser, updateCurrentUser, changePassword, UserProfile } from "../services/users";
+import { Camera, Mail, Phone, Shield, MapPin, Loader2, Check, X, Lock, Building2, User } from "lucide-react";
 
 export default function ProfileView() {
   const { user, updateUser } = useAuth();
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -19,16 +18,16 @@ export default function ProfileView() {
   const [personalInfoForm, setPersonalInfoForm] = useState({
     first_name: "",
     last_name: "",
-    date_of_birth: "",
     email: "",
     phone_number: "",
   });
 
-  const [addressForm, setAddressForm] = useState({
-    country: "",
-    city: "",
-    postal_code: "",
-  });
+  // Password state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   const fetchProfile = async () => {
     try {
@@ -40,15 +39,8 @@ export default function ProfileView() {
       setPersonalInfoForm({
         first_name: data.first_name || "",
         last_name: data.last_name || "",
-        date_of_birth: data.date_of_birth || "",
         email: data.email || "",
         phone_number: data.phone_number || "",
-      });
-
-      setAddressForm({
-        country: data.country || "",
-        city: data.city || "",
-        postal_code: data.postal_code || "",
       });
     } catch (err: any) {
       console.error("Failed to load profile:", err);
@@ -89,16 +81,6 @@ export default function ProfileView() {
       .toUpperCase() || "U";
   };
 
-  const formatDateForDisplay = (dateStr?: string | null) => {
-    if (!dateStr) return "—";
-    const parts = dateStr.split("-");
-    if (parts.length === 3 && parts[0].length === 4) {
-      // YYYY-MM-DD -> DD-MM-YYYY
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return dateStr;
-  };
-
   const handleSavePersonalInfo = async () => {
     try {
       setIsSaving(true);
@@ -131,7 +113,6 @@ export default function ProfileView() {
       setPersonalInfoForm({
         first_name: profileData.first_name || "",
         last_name: profileData.last_name || "",
-        date_of_birth: profileData.date_of_birth || "",
         email: profileData.email || "",
         phone_number: profileData.phone_number || "",
       });
@@ -140,41 +121,38 @@ export default function ProfileView() {
     setErrorMsg(null);
   };
 
-  const handleSaveAddress = async () => {
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!newPassword.trim()) {
+      setPasswordError("New password field cannot be empty.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
     try {
-      setIsSaving(true);
-      setErrorMsg(null);
-      setSuccessMsg(null);
+      setIsUpdatingPassword(true);
+      await changePassword(newPassword.trim());
+      setPasswordSuccess("Your security password was changed successfully.");
+      setNewPassword("");
+      setConfirmPassword("");
 
-      const updated = await updateCurrentUser({
-        ...addressForm,
-      });
-
-      setProfileData(updated);
-      updateUser(updated);
-      setIsEditingAddress(false);
-      setSuccessMsg("Address details updated successfully.");
-      
-      // Clear alert after 3 seconds
-      setTimeout(() => setSuccessMsg(null), 3000);
+      // Clear success after 3 seconds
+      setTimeout(() => setPasswordSuccess(null), 3000);
     } catch (err: any) {
-      console.error("Failed to save address info:", err);
-      setErrorMsg(err.response?.data?.detail || "Failed to update address details.");
+      console.error("Failed to update password:", err);
+      setPasswordError(err.response?.data?.detail || "Failed to update password.");
     } finally {
-      setIsSaving(false);
+      setIsUpdatingPassword(false);
     }
-  };
-
-  const handleCancelAddress = () => {
-    if (profileData) {
-      setAddressForm({
-        country: profileData.country || "",
-        city: profileData.city || "",
-        postal_code: profileData.postal_code || "",
-      });
-    }
-    setIsEditingAddress(false);
-    setErrorMsg(null);
   };
 
   const getRoleDisplay = (role?: string) => {
@@ -222,10 +200,8 @@ export default function ProfileView() {
             {getRoleDisplay(profileData.role)}
           </p>
           <p className="text-xs text-slate-400 mt-1 font-medium flex items-center truncate">
-            <MapPin className="h-3.5 w-3.5 mr-1 text-slate-400 shrink-0" />
-            {profileData.city && profileData.country
-              ? `${profileData.city}, ${profileData.country}`
-              : (profileData.country || profileData.city || "Location not set")}
+            <Building2 className="h-3.5 w-3.5 mr-1 text-[#054E35] shrink-0" />
+            Branch: {profileData.branch || "Not assigned"}
           </p>
         </div>
       </div>
@@ -233,7 +209,10 @@ export default function ProfileView() {
       {/* Personal Information Card */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-150/60">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <h3 className="text-base font-bold text-[#054E35]">Personal Information</h3>
+          <div className="flex items-center space-x-2">
+            <User className="h-4 w-4 text-[#054E35]" />
+            <h3 className="text-base font-bold text-[#054E35]">Profile Information</h3>
+          </div>
           
           {isEditingPersonalInfo ? (
             <div className="flex items-center space-x-2">
@@ -259,7 +238,7 @@ export default function ProfileView() {
               onClick={() => setIsEditingPersonalInfo(true)}
               className="bg-[#E07A2F] text-white hover:bg-[#c6641e] rounded-lg px-4 py-1.5 font-bold text-xs shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
             >
-              <span>Edit</span>
+              <span>Edit Details</span>
               <span className="text-[10px]">✎</span>
             </button>
           )}
@@ -296,21 +275,6 @@ export default function ProfileView() {
             )}
           </div>
 
-          {/* Date of Birth */}
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Date of Birth</span>
-            {isEditingPersonalInfo ? (
-              <input
-                type="date"
-                className="w-full px-3 py-2 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-                value={personalInfoForm.date_of_birth}
-                onChange={(e) => setPersonalInfoForm({ ...personalInfoForm, date_of_birth: e.target.value })}
-              />
-            ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{formatDateForDisplay(profileData.date_of_birth)}</span>
-            )}
-          </div>
-
           {/* Email Address */}
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Email Address</span>
@@ -341,9 +305,20 @@ export default function ProfileView() {
             )}
           </div>
 
-          {/* User Role */}
+          {/* Assigned Branch (Read only) */}
           <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">User Role</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Branch</span>
+            <span className="block text-sm font-bold text-slate-700 p-1 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 select-none w-fit">
+              <span className="flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-[#054E35]" />
+                {profileData.branch || "Not assigned"}
+              </span>
+            </span>
+          </div>
+
+          {/* User Role (Read only) */}
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Account Role</span>
             <span className="block text-sm font-bold text-slate-700 p-1 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 select-none w-fit uppercase text-[10px] tracking-wider text-[#054E35]">
               {getRoleDisplay(profileData.role)}
             </span>
@@ -351,86 +326,68 @@ export default function ProfileView() {
         </div>
       </div>
 
-      {/* Address Card */}
+      {/* Change Password Card */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-150/60">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <h3 className="text-base font-bold text-[#054E35]">Address</h3>
-          
-          {isEditingAddress ? (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleSaveAddress}
-                disabled={isSaving}
-                className="bg-[#054E35] text-white hover:bg-[#033B27] rounded-lg px-3 py-1.5 font-bold text-xs flex items-center space-x-1 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                <span>Save</span>
-              </button>
-              <button
-                onClick={handleCancelAddress}
-                disabled={isSaving}
-                className="border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 font-bold text-xs flex items-center space-x-1 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <X className="h-3.5 w-3.5" />
-                <span>Cancel</span>
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsEditingAddress(true)}
-              className="border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg px-4 py-1.5 font-bold text-xs shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
-            >
-              <span>Edit</span>
-              <span className="text-[10px]">✎</span>
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            <Lock className="h-4 w-4 text-[#E07A2F]" />
+            <h3 className="text-base font-bold text-[#054E35]">Change Password</h3>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-5">
-          {/* Country */}
+        {/* Password Success/Error */}
+        {passwordSuccess && (
+          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-semibold rounded-xl shadow-sm">
+            {passwordSuccess}
+          </div>
+        )}
+        {passwordError && (
+          <div className="mt-4 p-3 bg-rose-50 border border-rose-100 text-rose-800 text-xs font-semibold rounded-xl shadow-sm">
+            {passwordError}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-5">
+          {/* New Password */}
           <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Country</span>
-            {isEditingAddress ? (
-              <input
-                type="text"
-                className="w-full px-3 py-2 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-                value={addressForm.country}
-                onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
-              />
-            ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.country || "—"}</span>
-            )}
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">New Password</span>
+            <input
+              type="password"
+              className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+              placeholder="Enter new password"
+              autoComplete="new-password"
+            />
           </div>
 
-          {/* City */}
+          {/* Confirm Password */}
           <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">City</span>
-            {isEditingAddress ? (
-              <input
-                type="text"
-                className="w-full px-3 py-2 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-                value={addressForm.city}
-                onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-              />
-            ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.city || "—"}</span>
-            )}
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Confirm Password</span>
+            <input
+              type="password"
+              className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+              placeholder="Confirm new password"
+              autoComplete="new-password"
+            />
           </div>
+        </div>
 
-          {/* Postal Code */}
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Postal Code</span>
-            {isEditingAddress ? (
-              <input
-                type="text"
-                className="w-full px-3 py-2 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-                value={addressForm.postal_code}
-                onChange={(e) => setAddressForm({ ...addressForm, postal_code: e.target.value })}
-              />
+        <div className="pt-5">
+          <button
+            onClick={handleChangePassword}
+            disabled={isUpdatingPassword}
+            className="bg-[#054E35] text-white hover:bg-[#033B27] rounded-xl px-5 py-2.5 font-bold text-xs flex items-center space-x-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+          >
+            {isUpdatingPassword ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.postal_code || "—"}</span>
+              <Lock className="h-4 w-4" />
             )}
-          </div>
+            <span>Update Password</span>
+          </button>
         </div>
       </div>
 

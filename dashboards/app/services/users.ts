@@ -47,3 +47,8 @@ export const updateCurrentUser = async (data: Partial<UserProfile>): Promise<Use
   const response = await api.patch("/auth/me/", data);
   return response.data;
 };
+
+export const changePassword = async (newPassword: string): Promise<UserProfile> => {
+  const response = await api.patch("/auth/me/", { password: newPassword });
+  return response.data;
+};
