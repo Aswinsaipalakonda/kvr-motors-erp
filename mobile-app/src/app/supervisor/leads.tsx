@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, 
-  RefreshControl, Alert, Platform 
+  RefreshControl, Alert, Platform, Linking 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
@@ -36,6 +36,13 @@ export default function SupervisorLeads() {
   const [refreshing, setRefreshing] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
+
+  const handleDial = (number: string) => {
+    const cleaned = number.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to initiate call on this device.');
+    });
+  };
 
   const loadLeads = async () => {
     try {
@@ -179,7 +186,16 @@ export default function SupervisorLeads() {
                           <Phone size={11} color="#64748b" />
                           <ThemedText style={styles.gridLabel}>Contact</ThemedText>
                         </View>
-                        <ThemedText style={styles.gridValueMono}>{ld.contact_number}</ThemedText>
+                        <Pressable 
+                          onPress={() => handleDial(ld.contact_number)}
+                          style={({ pressed }) => [
+                            { flexDirection: 'row', alignItems: 'center', gap: 4 },
+                            pressed && { opacity: 0.6 }
+                          ]}
+                          hitSlop={8}
+                        >
+                          <ThemedText style={[styles.gridValueMono, { color: '#04a700' }]}>{ld.contact_number}</ThemedText>
+                        </Pressable>
                       </View>
 
                       <View style={styles.gridItem}>

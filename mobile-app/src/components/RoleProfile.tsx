@@ -1,47 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, StyleSheet, ScrollView, Pressable, Image, Alert, ActivityIndicator,
-  BackHandler, Modal, TextInput, KeyboardAvoidingView, Platform,
+  View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
+  BackHandler, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, UserProfile } from '@/context/AuthContext';
+import api from '@/services/api';
 import {
-  Mail, Phone, Shield, ArrowLeft, LogOut, ChevronRight, X, CheckCircle,
-  Lock, KeyRound, Building, ShieldCheck, Edit,
-  Bell, FileText, Info, HelpCircle,
+  Edit, Mail, Phone, ArrowLeft, LogOut, Check, X,
+  MapPin, Calendar, Shield, Globe, Landmark
 } from 'lucide-react-native';
 
-type EditField = 'name' | 'phone' | 'email' | 'password' | 'pin' | null;
-
-interface EditConfig {
-  title: string;
-  label: string;
-  placeholder: string;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
-  secure?: boolean;
-}
-
-const EDIT_CONFIG: Record<Exclude<EditField, null>, EditConfig> = {
-  name: { title: 'Edit Full Name', label: 'Full Name', placeholder: 'Enter your full name' },
-  phone: { title: 'Edit Telephone', label: 'Phone Number', placeholder: '+91 98765 43210', keyboardType: 'phone-pad' },
-  email: { title: 'Edit Primary Email', label: 'Email Address', placeholder: 'name@kvrmotors.in', keyboardType: 'email-address' },
-  password: { title: 'Change Password', label: 'New Password', placeholder: 'Enter new password', secure: true },
-  pin: { title: 'Set Security PIN', label: '4-Digit PIN', placeholder: '••••', keyboardType: 'numeric', secure: true },
-};
-
 export interface RoleProfileProps {
-  /** Fallback route used when the back-stack is empty (e.g. '/supervisor'). */
   backFallback: string;
-  /** Default role label shown if the auth user has no role (e.g. 'SUPERVISOR'). */
   roleFallback?: string;
-  /** Location / HQ label shown next to the role (e.g. 'Visakhapatnam HQ'). */
   locationLabel?: string;
-  /** Persistent-tab visibility flag (true when this screen is the active tab). */
   isActive?: boolean;
-  /** Optional in-app back handler for persistent-tab usage. */
   onBack?: () => void;
 }
 
@@ -54,37 +31,197 @@ export default function RoleProfile({
 }: RoleProfileProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout, isLoading } = useAuth();
+  const { width } = useWindowDimensions();
+  const { user, logout, updateUser } = useAuth();
   const scrollRef = React.useRef<ScrollView>(null);
 
-  const [profile, setProfile] = useState({
-    name: user?.full_name || 'KVR Team Member',
-    phone: user?.phone_number || '9876543210',
-    email: user?.email || 'team@kvrmotors.com',
+  const isTablet = width > 600;
+
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Editing states
+  const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // Form states
+  const [personalInfoForm, setPersonalInfoForm] = useState({
+    first_name: '',
+    last_name: '',
+    date_of_birth: '',
+    email: '',
+    phone_number: '',
   });
 
-  const [pauseNotifications, setPauseNotifications] = useState(false);
-  const [biometric, setBiometric] = useState(true);
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    country: '',
+    city: '',
+    postal_code: '',
+  });
 
-  const [editField, setEditField] = useState<EditField>(null);
-  const [editValue, setEditValue] = useState('');
-  const [editError, setEditError] = useState<string | undefined>();
+  const fetchProfile = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get('/auth/me/');
+      const data = res.data;
+      setProfileData(data);
 
-  useEffect(() => {
-    if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [isActive]);
+      setPersonalInfoForm({
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        date_of_birth: data.date_of_birth || '',
+        email: data.email || '',
+        phone_number: data.phone_number || '',
+      });
 
-  useEffect(() => {
-    if (user) {
-      setProfile((prev) => ({
-        ...prev,
-        name: user.full_name || prev.name,
-        phone: user.phone_number || prev.phone,
-        email: user.email || prev.email,
-      }));
+      setAddressForm({
+        country: data.country || '',
+        city: data.city || '',
+        postal_code: data.postal_code || '',
+      });
+    } catch (err) {
+      console.error('Failed to load mobile profile:', err);
+      // Fallback to local auth context user
+      if (user) {
+        setProfileData(user);
+        setPersonalInfoForm({
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          date_of_birth: user.date_of_birth || '',
+          email: user.email || '',
+          phone_number: user.phone_number || '',
+        });
+        setAddressForm({
+          country: user.country || '',
+          city: user.city || '',
+          postal_code: user.postal_code || '',
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]);
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleBack = useCallback((): boolean => {
+    if (isEditingPersonalInfo) {
+      handleCancelPersonalInfo();
+      return true;
+    }
+    if (isEditingAddress) {
+      handleCancelAddress();
+      return true;
+    }
+    if (onBack) {
+      onBack();
+      return true;
+    }
+    // @ts-ignore - canGoBack exists at runtime
+    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
+      router.back();
+      return true;
+    }
+    router.replace(backFallback as any);
+    return true;
+  }, [isEditingPersonalInfo, isEditingAddress, onBack, router, backFallback]);
+
+  useEffect(() => {
+    if (isActive === false) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [isActive, handleBack]);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U';
+  };
+
+  const formatDateForDisplay = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      // YYYY-MM-DD -> DD-MM-YYYY
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  const handleSavePersonalInfo = async () => {
+    // Validate DOB format if entered
+    const dob = personalInfoForm.date_of_birth.trim();
+    if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      Alert.alert('Validation Error', 'Date of Birth must be in YYYY-MM-DD format.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const fullName = `${personalInfoForm.first_name} ${personalInfoForm.last_name}`.trim();
+      const res = await api.patch('/auth/me/', {
+        ...personalInfoForm,
+        full_name: fullName,
+      });
+
+      setProfileData(res.data);
+      await updateUser(res.data);
+      setIsEditingPersonalInfo(false);
+      Alert.alert('Success', 'Personal Information updated successfully.');
+    } catch (err: any) {
+      console.error('Failed to save personal info:', err);
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save personal info changes.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelPersonalInfo = () => {
+    if (profileData) {
+      setPersonalInfoForm({
+        first_name: profileData.first_name || '',
+        last_name: profileData.last_name || '',
+        date_of_birth: profileData.date_of_birth || '',
+        email: profileData.email || '',
+        phone_number: profileData.phone_number || '',
+      });
+    }
+    setIsEditingPersonalInfo(false);
+  };
+
+  const handleSaveAddress = async () => {
+    try {
+      setIsSaving(true);
+      const res = await api.patch('/auth/me/', addressForm);
+      setProfileData(res.data);
+      await updateUser(res.data);
+      setIsEditingAddress(false);
+      Alert.alert('Success', 'Address details updated successfully.');
+    } catch (err: any) {
+      console.error('Failed to save address info:', err);
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save address changes.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelAddress = () => {
+    if (profileData) {
+      setAddressForm({
+        country: profileData.country || '',
+        city: profileData.city || '',
+        postal_code: profileData.postal_code || '',
+      });
+    }
+    setIsEditingAddress(false);
+  };
 
   const handleLogout = useCallback(() => {
     Alert.alert('Confirm Log Out', 'Are you sure you want to end your session?', [
@@ -104,398 +241,576 @@ export default function RoleProfile({
     ]);
   }, [logout, router]);
 
-  const handleBack = useCallback((): boolean => {
-    if (editField) {
-      setEditField(null);
-      return true;
-    }
-    if (onBack) {
-      onBack();
-      return true;
-    }
-    // @ts-ignore - canGoBack exists at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
-    router.replace(backFallback as any);
-    return true;
-  }, [editField, onBack, router, backFallback]);
-
-  useEffect(() => {
-    if (isActive === false) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
-    return () => sub.remove();
-  }, [isActive, handleBack]);
-
-  const openEdit = (field: Exclude<EditField, null>) => {
-    setEditError(undefined);
-    if (field === 'name') setEditValue(profile.name);
-    else if (field === 'phone') setEditValue(profile.phone);
-    else if (field === 'email') setEditValue(profile.email);
-    else setEditValue('');
-    setEditField(field);
+  const getRoleDisplay = (role?: string) => {
+    if (!role) return 'User';
+    if (role === 'sales_executive' || role === 'sales') return 'Sales Executive';
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
-  const validateEdit = (field: Exclude<EditField, null>, value: string): string | undefined => {
-    const v = value.trim();
-    if (!v) return 'This field cannot be empty';
-    if (field === 'name' && v.length < 3) return 'Enter at least 3 characters';
-    if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address';
-    if (field === 'phone' && !/^[0-9+\-\s]{7,15}$/.test(v)) return 'Enter a valid phone number';
-    if (field === 'password' && v.length < 6) return 'Password must be at least 6 characters';
-    if (field === 'pin' && !/^[0-9]{4}$/.test(v)) return 'PIN must be exactly 4 digits';
-    return undefined;
-  };
-
-  const handleEditSave = () => {
-    if (!editField) return;
-    const err = validateEdit(editField, editValue);
-    if (err) {
-      setEditError(err);
-      return;
-    }
-    const v = editValue.trim();
-    if (editField === 'name') setProfile((p) => ({ ...p, name: v }));
-    else if (editField === 'phone') setProfile((p) => ({ ...p, phone: v }));
-    else if (editField === 'email') setProfile((p) => ({ ...p, email: v }));
-
-    const savedField = editField;
-    setEditField(null);
-    Alert.alert('Saved', `${EDIT_CONFIG[savedField].title} updated successfully.`);
-  };
-
-  const roleLabel = `${(user?.role || roleFallback).toUpperCase()} • ${locationLabel}`;
-  const usernameHandle = `@${profile.name.toLowerCase().replace(/\s+/g, '')}`;
-
-  const SettingsRow = ({
-    icon: Icon, color, title, value, onPress, isLast,
-  }: {
-    icon: any; color: string; title: string; value?: string; onPress: () => void; isLast?: boolean;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.settingsRow, !isLast && styles.settingsRowBorder, pressed && styles.settingsRowPressed]}
-    >
-      <View style={[styles.rowIconWrap, { backgroundColor: `${color}10` }]}>
-        <Icon size={18} color={color} strokeWidth={2.2} />
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#054E35" />
+        <ThemedText style={styles.loaderText}>Syncing profile details...</ThemedText>
       </View>
-      <View style={styles.rowTextCol}>
-        <ThemedText style={styles.rowTitle}>{title}</ThemedText>
-        {value ? <ThemedText style={styles.rowValue} numberOfLines={1}>{value}</ThemedText> : null}
-      </View>
-      <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
-    </Pressable>
-  );
+    );
+  }
 
-  const ToggleRow = ({
-    icon: Icon, color, title, value, onToggle, isLast,
-  }: {
-    icon: any; color: string; title: string; value: boolean; onToggle: () => void; isLast?: boolean;
-  }) => (
-    <Pressable
-      onPress={onToggle}
-      style={({ pressed }) => [styles.settingsRow, !isLast && styles.settingsRowBorder, pressed && styles.settingsRowPressed]}
-    >
-      <View style={[styles.rowIconWrap, { backgroundColor: `${color}10` }]}>
-        <Icon size={18} color={color} strokeWidth={2.2} />
+  if (!profileData) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ThemedText style={styles.loaderText}>No active profile session found.</ThemedText>
       </View>
-      <View style={styles.rowTextCol}>
-        <ThemedText style={styles.rowTitle}>{title}</ThemedText>
-      </View>
-      <View style={[styles.toggleTrack, value && styles.toggleTrackActive]}>
-        <View style={[styles.toggleThumb, value && styles.toggleThumbActive]} />
-      </View>
-    </Pressable>
-  );
+    );
+  }
 
   return (
-    <FadeScaleTransition>
-      <View style={styles.container}>
-        <View style={[styles.customHeader, { paddingTop: insets.top + 10 }]}>
-          <Pressable
-            onPress={handleBack}
-            style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
-            hitSlop={12}
-          >
-            <ArrowLeft size={20} color="#0f172a" strokeWidth={2.5} />
-          </Pressable>
-          <ThemedText style={styles.headerTitle}>Settings</ThemedText>
-          <View style={{ width: 40 }} />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
+      {/* Title Header */}
+      <View style={[styles.customHeader, { paddingTop: insets.top + 10 }]}>
+        <Pressable
+          onPress={handleBack}
+          style={({ pressed }) => [styles.headerBackBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+          hitSlop={12}
+        >
+          <ArrowLeft size={20} color="#054E35" strokeWidth={2.5} />
+        </Pressable>
+        <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        style={styles.body}
+        contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header Card: Avatar & Overview */}
+        <View style={styles.profileHeaderCard}>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarInner}>
+              <ThemedText style={styles.avatarInitials}>
+                {getInitials(profileData.full_name || profileData.username)}
+              </ThemedText>
+            </View>
+            {/* Green Edit Overlay Icon */}
+            <View style={styles.cameraOverlay}>
+              <Edit size={11} color="#ffffff" strokeWidth={2.5} />
+            </View>
+          </View>
+          
+          <View style={styles.profileOverviewInfo}>
+            <ThemedText style={styles.profileOverviewName} numberOfLines={1}>
+              {profileData.full_name || 'Enterprise User'}
+            </ThemedText>
+            <ThemedText style={styles.profileOverviewRole}>
+              {getRoleDisplay(profileData.role)}
+            </ThemedText>
+            <View style={styles.locationWrapper}>
+              <MapPin size={12} color="#94a3b8" style={{ marginRight: 3 }} />
+              <ThemedText style={styles.profileOverviewLocation} numberOfLines={1}>
+                {profileData.city && profileData.country
+                  ? `${profileData.city}, ${profileData.country}`
+                  : (profileData.country || profileData.city || 'Location not set')}
+              </ThemedText>
+            </View>
+          </View>
         </View>
 
-        <ScrollView
-          ref={scrollRef}
-          style={styles.body}
-          contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 40 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Profile card */}
-          <Pressable
-            onPress={() => openEdit('name')}
-            style={({ pressed }) => [styles.profileCard, pressed && { opacity: 0.96 }]}
-          >
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatarInner}>
-                <Image source={require('@/assets/images/logo.png')} style={styles.avatarImg} resizeMode="contain" />
+        {/* Personal Information Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardHeader}>
+            <ThemedText style={styles.cardTitle}>Personal Information</ThemedText>
+            
+            {isEditingPersonalInfo ? (
+              <View style={styles.actionRow}>
+                <Pressable
+                  onPress={handleSavePersonalInfo}
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
+                >
+                  {isSaving ? <ActivityIndicator size="small" color="#ffffff" /> : <Check size={14} color="#ffffff" strokeWidth={2.5} />}
+                </Pressable>
+                <Pressable
+                  onPress={handleCancelPersonalInfo}
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
+                >
+                  <X size={14} color="#64748b" strokeWidth={2.5} />
+                </Pressable>
               </View>
-            </View>
-            <View style={styles.profileInfo}>
-              <ThemedText style={styles.profileName} numberOfLines={1}>{profile.name}</ThemedText>
-              <ThemedText style={styles.profileHandle} numberOfLines={1}>{usernameHandle}</ThemedText>
-              <ThemedText style={styles.profileRole} numberOfLines={1}>{roleLabel}</ThemedText>
-            </View>
-            <ChevronRight size={18} color="#cbd5e1" strokeWidth={2} />
-          </Pressable>
-
-          {/* Section 1: Notifications & Branch */}
-          <View style={styles.bentoCard}>
-            <ToggleRow
-              icon={Bell}
-              color="#ea580c"
-              title="Pause notifications"
-              value={pauseNotifications}
-              onToggle={() => setPauseNotifications((v) => !v)}
-            />
-            <SettingsRow
-              icon={Building}
-              color="#04a700"
-              title="Assigned Showroom"
-              value={user?.branch_name || 'Visakhapatnam Showroom'}
-              onPress={() => Alert.alert('Assigned Showroom', 'Branch assignments are managed by the Owner / Admin desk.')}
-              isLast
-            />
+            ) : (
+              <Pressable
+                onPress={() => setIsEditingPersonalInfo(true)}
+                style={({ pressed }) => [styles.editBtnOrange, pressed && { opacity: 0.8 }]}
+              >
+                <ThemedText style={styles.editBtnOrangeText}>Edit ✎</ThemedText>
+              </Pressable>
+            )}
           </View>
 
-          {/* Section 2: Account preferences */}
-          <View style={styles.bentoCard}>
-            <SettingsRow
-              icon={Phone}
-              color="#2563eb"
-              title="Telephone Contact"
-              value={profile.phone}
-              onPress={() => openEdit('phone')}
-            />
-            <SettingsRow
-              icon={Mail}
-              color="#8b5cf6"
-              title="Primary Email"
-              value={profile.email}
-              onPress={() => openEdit('email')}
-              isLast
-            />
-          </View>
-
-          {/* Section 3: Security & credentials */}
-          <View style={styles.bentoCard}>
-            <SettingsRow
-              icon={Lock}
-              color="#ec4899"
-              title="Change Password"
-              value="Update account password"
-              onPress={() => openEdit('password')}
-            />
-            <SettingsRow
-              icon={KeyRound}
-              color="#ea580c"
-              title="Security System PIN"
-              value="Set a 4-digit access PIN"
-              onPress={() => openEdit('pin')}
-            />
-            <ToggleRow
-              icon={ShieldCheck}
-              color="#04a700"
-              title="Biometric Unlock"
-              value={biometric}
-              onToggle={() => setBiometric((v) => !v)}
-            />
-            <ToggleRow
-              icon={Shield}
-              color="#2563eb"
-              title="Two-Factor Auth"
-              value={twoFactor}
-              onToggle={() => setTwoFactor((v) => !v)}
-              isLast
-            />
-          </View>
-
-          {/* Section 4: Support & policies */}
-          <View style={styles.bentoCard}>
-            <SettingsRow
-              icon={HelpCircle}
-              color="#64748b"
-              title="FAQ & User Guide"
-              onPress={() => Alert.alert('FAQ & Support', 'Help guides and operator tutorials are linked to the central ERP directory.')}
-            />
-            <SettingsRow
-              icon={FileText}
-              color="#64748b"
-              title="Terms of service"
-              onPress={() => Alert.alert('Terms of Service', 'KVR Motors Enterprise Service Level Agreement. Version 2026.4.')}
-            />
-            <SettingsRow
-              icon={Info}
-              color="#64748b"
-              title="User policy"
-              onPress={() => Alert.alert('User Policy', 'Enterprise data handling, tenant isolation, and strict access control guidelines.')}
-              isLast
-            />
-          </View>
-
-          {/* Log out */}
-          <View style={styles.logoutContainer}>
-            <Pressable
-              onPress={handleLogout}
-              disabled={isLoading}
-              style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#ef4444" />
+          <View style={[styles.fieldsContainer, isTablet && styles.fieldsContainerTablet]}>
+            {/* First Name */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>First Name</ThemedText>
+              {isEditingPersonalInfo ? (
+                <TextInput
+                  style={styles.input}
+                  value={personalInfoForm.first_name}
+                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, first_name: t })}
+                  placeholder="Enter first name"
+                  placeholderTextColor="#94a3b8"
+                />
               ) : (
-                <>
-                  <LogOut size={16} color="#ef4444" strokeWidth={2.5} style={{ marginRight: 6 }} />
-                  <ThemedText style={styles.logoutText}>Log Out</ThemedText>
-                </>
-              )}
-            </Pressable>
-            <ThemedText style={styles.versionText}>KVR Motors ERP • v2.2.0 • Visakhapatnam</ThemedText>
-          </View>
-        </ScrollView>
-
-        {/* Edit field modal */}
-        <Modal visible={editField !== null} transparent animationType="slide" onRequestClose={() => setEditField(null)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalRoot}>
-            <Pressable style={styles.modalBackdrop} onPress={() => setEditField(null)} />
-            <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
-              <View style={styles.modalGrabber} />
-              {editField && (
-                <>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalTitleRow}>
-                      <View style={styles.modalIconWrap}>
-                        <Edit size={16} color="#04a700" strokeWidth={2.5} />
-                      </View>
-                      <ThemedText style={styles.modalTitle}>{EDIT_CONFIG[editField].title}</ThemedText>
-                    </View>
-                    <Pressable onPress={() => setEditField(null)} style={styles.modalCloseBtn} hitSlop={8}>
-                      <X size={18} color="#0f172a" />
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.field}>
-                    <ThemedText style={styles.fieldLabel}>{EDIT_CONFIG[editField].label}</ThemedText>
-                    <TextInput
-                      style={[styles.input, editError && styles.inputError]}
-                      placeholder={EDIT_CONFIG[editField].placeholder}
-                      placeholderTextColor="#94a3b8"
-                      value={editValue}
-                      onChangeText={(t) => {
-                        setEditValue(t);
-                        if (editError) setEditError(undefined);
-                      }}
-                      keyboardType={EDIT_CONFIG[editField].keyboardType || 'default'}
-                      secureTextEntry={EDIT_CONFIG[editField].secure}
-                      autoCapitalize={editField === 'email' ? 'none' : 'sentences'}
-                      maxLength={editField === 'pin' ? 4 : undefined}
-                      autoFocus
-                    />
-                    {editError && <ThemedText style={styles.errorText}>{editError}</ThemedText>}
-                  </View>
-
-                  <Pressable
-                    onPress={handleEditSave}
-                    style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.85 }]}
-                  >
-                    <CheckCircle size={16} color="#ffffff" strokeWidth={2.5} />
-                    <ThemedText style={styles.submitBtnText}>Save Changes</ThemedText>
-                  </Pressable>
-                </>
+                <ThemedText style={styles.fieldValue}>{profileData.first_name || '—'}</ThemedText>
               )}
             </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      </View>
-    </FadeScaleTransition>
+
+            {/* Last Name */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Last Name</ThemedText>
+              {isEditingPersonalInfo ? (
+                <TextInput
+                  style={styles.input}
+                  value={personalInfoForm.last_name}
+                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, last_name: t })}
+                  placeholder="Enter last name"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.last_name || '—'}</ThemedText>
+              )}
+            </View>
+
+            {/* Date of Birth */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Date of Birth</ThemedText>
+              {isEditingPersonalInfo ? (
+                <TextInput
+                  style={styles.input}
+                  value={personalInfoForm.date_of_birth}
+                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, date_of_birth: t })}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{formatDateForDisplay(profileData.date_of_birth)}</ThemedText>
+              )}
+            </View>
+
+            {/* Email Address */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Email Address</ThemedText>
+              {isEditingPersonalInfo ? (
+                <TextInput
+                  style={styles.input}
+                  value={personalInfoForm.email}
+                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, email: t })}
+                  placeholder="Enter email address"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.email || '—'}</ThemedText>
+              )}
+            </View>
+
+            {/* Phone Number */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Phone Number</ThemedText>
+              {isEditingPersonalInfo ? (
+                <TextInput
+                  style={styles.input}
+                  value={personalInfoForm.phone_number}
+                  onChangeText={(t) => setPersonalInfoForm({ ...personalInfoForm, phone_number: t })}
+                  placeholder="Enter phone number"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.phone_number || '—'}</ThemedText>
+              )}
+            </View>
+
+            {/* User Role (Read only) */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>User Role</ThemedText>
+              <ThemedText style={styles.fieldValueDisabled}>{getRoleDisplay(profileData.role)}</ThemedText>
+            </View>
+          </View>
+        </View>
+
+        {/* Address Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardHeader}>
+            <ThemedText style={styles.cardTitle}>Address</ThemedText>
+            
+            {isEditingAddress ? (
+              <View style={styles.actionRow}>
+                <Pressable
+                  onPress={handleSaveAddress}
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
+                >
+                  {isSaving ? <ActivityIndicator size="small" color="#ffffff" /> : <Check size={14} color="#ffffff" strokeWidth={2.5} />}
+                </Pressable>
+                <Pressable
+                  onPress={handleCancelAddress}
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
+                >
+                  <X size={14} color="#64748b" strokeWidth={2.5} />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setIsEditingAddress(true)}
+                style={({ pressed }) => [styles.editBtnOutline, pressed && { opacity: 0.8 }]}
+              >
+                <ThemedText style={styles.editBtnOutlineText}>Edit ✎</ThemedText>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={[styles.fieldsContainer, isTablet && styles.fieldsContainerTablet]}>
+            {/* Country */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Country</ThemedText>
+              {isEditingAddress ? (
+                <TextInput
+                  style={styles.input}
+                  value={addressForm.country}
+                  onChangeText={(t) => setAddressForm({ ...addressForm, country: t })}
+                  placeholder="Enter country"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.country || '—'}</ThemedText>
+              )}
+            </View>
+
+            {/* City */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>City</ThemedText>
+              {isEditingAddress ? (
+                <TextInput
+                  style={styles.input}
+                  value={addressForm.city}
+                  onChangeText={(t) => setAddressForm({ ...addressForm, city: t })}
+                  placeholder="Enter city"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.city || '—'}</ThemedText>
+              )}
+            </View>
+
+            {/* Postal Code */}
+            <View style={[styles.fieldBlock, isTablet && styles.fieldBlockTablet]}>
+              <ThemedText style={styles.fieldLabel}>Postal Code</ThemedText>
+              {isEditingAddress ? (
+                <TextInput
+                  style={styles.input}
+                  value={addressForm.postal_code}
+                  onChangeText={(t) => setAddressForm({ ...addressForm, postal_code: t })}
+                  placeholder="Enter postal code"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <ThemedText style={styles.fieldValue}>{profileData.postal_code || '—'}</ThemedText>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Log Out Option */}
+        <View style={styles.logoutWrapper}>
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.8 }]}
+          >
+            <LogOut size={16} color="#ef4444" strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+          </Pressable>
+        </View>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
-  customHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 12, backgroundColor: '#ffffff',
-    borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  headerBackBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
-  body: { flex: 1 },
-  bodyContent: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, gap: 16 },
-  profileCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 24, padding: 16,
-    borderWidth: 1, borderColor: '#e2e8f0', gap: 16,
-    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2,
+  loaderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  loaderText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#64748b',
+    marginTop: 8,
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#054E35',
+  },
+  body: {
+    flex: 1,
+  },
+  bodyContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 16,
+  },
+  profileHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   avatarWrap: {
-    width: 60, height: 60, borderRadius: 30, borderWidth: 2.5, borderColor: '#4ade80',
-    backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', padding: 2,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#DFA32E',
+    borderWidth: 2,
+    borderColor: '#DFA32E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  avatarInner: { width: '100%', height: '100%', borderRadius: 28, overflow: 'hidden' },
-  avatarImg: { width: '100%', height: '100%' },
-  profileInfo: { flex: 1, gap: 2 },
-  profileName: { fontSize: 16.5, fontWeight: '800', color: '#0f172a' },
-  profileHandle: { fontSize: 12.5, color: '#64748b', fontWeight: '600' },
-  profileRole: { fontSize: 10.5, color: '#04a700', fontWeight: '700', letterSpacing: 0.4, marginTop: 1 },
-  bentoCard: {
-    backgroundColor: '#ffffff', borderRadius: 24, borderWidth: 1, borderColor: '#e2e8f0', overflow: 'hidden',
-    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2,
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 33,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 14, minHeight: 56 },
-  settingsRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  settingsRowPressed: { backgroundColor: '#f8fafc' },
-  rowIconWrap: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  rowTextCol: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
-  rowValue: { fontSize: 11.5, color: '#64748b', fontWeight: '600' },
-  toggleTrack: { width: 48, height: 28, borderRadius: 14, backgroundColor: '#e2e8f0', padding: 3, justifyContent: 'center' },
-  toggleTrackActive: { backgroundColor: '#04a700' },
-  toggleThumb: {
-    width: 22, height: 22, borderRadius: 11, backgroundColor: '#ffffff',
-    shadowColor: '#000000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 2,
+  avatarInitials: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#ffffff',
   },
-  toggleThumbActive: { alignSelf: 'flex-end' },
-  logoutContainer: { marginTop: 12, alignItems: 'stretch', gap: 12 },
-  logoutButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff',
-    borderWidth: 1.5, borderColor: '#fca5a5', borderRadius: 9999, height: 52,
-    shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#054E35',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  logoutButtonPressed: { backgroundColor: '#fef2f2', borderColor: '#f87171' },
-  logoutText: { fontSize: 14.5, fontWeight: '800', color: '#ef4444' },
-  versionText: { textAlign: 'center', fontSize: 11, color: '#94a3b8', fontWeight: '600' },
-  modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(9, 13, 22, 0.45)' },
-  modalSheet: {
-    backgroundColor: '#ffffff', borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    paddingTop: 12, paddingHorizontal: 22, gap: 18, borderTopWidth: 1.5, borderTopColor: '#f1f5f9',
+  profileOverviewInfo: {
+    flex: 1,
   },
-  modalGrabber: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: '#e2e8f0', marginBottom: 6 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  modalIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(4, 167, 0, 0.1)', alignItems: 'center', justifyContent: 'center' },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
-  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
-  field: { gap: 8 },
-  fieldLabel: { fontSize: 12, fontWeight: 'bold', color: '#475569' },
+  profileOverviewName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#054E35',
+  },
+  profileOverviewRole: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 2,
+  },
+  locationWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  profileOverviewLocation: {
+    fontSize: 11.5,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+    gap: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#054E35',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  saveBtn: {
+    backgroundColor: '#054E35',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtn: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnOrange: {
+    backgroundColor: '#E07A2F',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  editBtnOrangeText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  editBtnOutline: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  editBtnOutlineText: {
+    color: '#64748b',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  fieldsContainer: {
+    gap: 14,
+  },
+  fieldsContainerTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 16,
+    rowGap: 14,
+  },
+  fieldBlock: {
+    gap: 4,
+  },
+  fieldBlockTablet: {
+    width: '31%',
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fieldValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+    paddingVertical: 4,
+  },
+  fieldValueDisabled: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignSelf: 'flex-start',
+  },
   input: {
-    backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 9999,
-    paddingHorizontal: 20, height: 50, fontSize: 14, color: '#0f172a', fontWeight: '600',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+    fontSize: 13.5,
+    color: '#0f172a',
+    fontWeight: '600',
   },
-  inputError: { borderColor: '#ef4444', backgroundColor: '#fef2f2' },
-  errorText: { fontSize: 11, color: '#ef4444', fontWeight: '600' },
-  submitBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#04a700',
-    borderRadius: 9999, height: 52,
-    shadowColor: '#04a700', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 12, elevation: 4,
+  logoutWrapper: {
+    marginTop: 8,
   },
-  submitBtnText: { color: '#ffffff', fontSize: 14.5, fontWeight: '800' },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#fca5a5',
+    borderRadius: 9999,
+    height: 48,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ef4444',
+  },
 });

@@ -21,6 +21,8 @@ export default function EntryPoint() {
         router.replace('/supervisor/dashboard');
       } else if (user.role === 'staff' || user.role === 'operations') {
         router.replace('/staff/dashboard');
+      } else if (user.role === 'telecaller') {
+        router.replace('/telecaller/dashboard');
       } else {
         router.replace('/login');
       }

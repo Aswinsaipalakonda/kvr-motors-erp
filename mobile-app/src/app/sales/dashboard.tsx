@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Linking, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +20,13 @@ export default function SalesDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [leads, setLeads] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+
+  const handleDial = (number: string) => {
+    const cleaned = number.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to initiate call on this device.');
+    });
+  };
 
   const loadData = async () => {
     try {
@@ -45,11 +52,9 @@ export default function SalesDashboard() {
   const myLeads = leads.filter(ld => ld.assigned_executive === user?.id);
   const mySales = sales.filter(sl => sl.sales_executive === user?.id);
 
-  // Stats calculation
-  const totalSalesVal = mySales.reduce((sum, curr) => sum + parseFloat(curr.sale_price || 0), 0);
-  const formattedSales = totalSalesVal >= 100000 
-    ? `₹ ${(totalSalesVal / 100000).toFixed(1)} Lakhs` 
-    : `₹ ${totalSalesVal.toLocaleString('en-IN')}`;
+  // Stats calculation (Units Sold instead of total price)
+  const unitsSold = mySales.length;
+  const formattedSales = `${unitsSold} Unit${unitsSold !== 1 ? 's' : ''}`;
 
   const activeLeadsCount = myLeads.filter(ld => ld.status !== 'won' && ld.status !== 'lost').length;
   const wonCount = myLeads.filter(ld => ld.status === 'won').length;
@@ -124,7 +129,7 @@ export default function SalesDashboard() {
                     <TrendingUp size={16} color="#04a700" />
                   </View>
                   <ThemedText style={styles.statValue}>{formattedSales}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Total Sales</ThemedText>
+                  <ThemedText style={styles.statLabel}>Units Sold</ThemedText>
                 </View>
                 <View style={styles.statCard}>
                   <View style={[styles.statIconCircle, { backgroundColor: '#eff6ff' }]}>
@@ -208,7 +213,17 @@ export default function SalesDashboard() {
                             </View>
                           </View>
                           <View style={styles.cardFooter}>
-                            <ThemedText style={styles.contactNum}>{ld.contact_number}</ThemedText>
+                            <Pressable 
+                              onPress={() => handleDial(ld.contact_number)}
+                              style={({ pressed }) => [
+                                { flexDirection: 'row', alignItems: 'center' },
+                                pressed && { opacity: 0.6 }
+                              ]}
+                              hitSlop={8}
+                            >
+                              <PhoneCall size={14} color="#04a700" style={{ marginRight: 6 }} />
+                              <ThemedText style={styles.contactNum}>{ld.contact_number}</ThemedText>
+                            </Pressable>
                             {ld.follow_up_date && (
                               <View style={styles.followUpWrapper}>
                                 <CalendarDays size={12} color="#64748b" />

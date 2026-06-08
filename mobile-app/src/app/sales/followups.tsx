@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -26,6 +26,13 @@ export default function SalesFollowups() {
   const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDial = (number: string) => {
+    const cleaned = number.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to initiate call on this device.');
+    });
+  };
   const [leads, setLeads] = useState<Lead[]>([]);
   
   // Followup state editing
@@ -151,7 +158,14 @@ export default function SalesFollowups() {
                         </ThemedText>
                       </View>
                     </View>
-                    <ThemedText style={styles.contactText}>Phone: {ld.contact_number}</ThemedText>
+                    <Pressable 
+                      onPress={() => handleDial(ld.contact_number)}
+                      style={({ pressed }) => [pressed && { opacity: 0.7 }, { alignSelf: 'flex-start', marginVertical: 2 }]}
+                    >
+                      <ThemedText style={styles.contactText}>
+                        Phone: <ThemedText style={{ color: '#04a700', textDecorationLine: 'underline', fontWeight: 'bold' }}>{ld.contact_number} 📞</ThemedText>
+                      </ThemedText>
+                    </Pressable>
                     {ld.notes && <ThemedText style={styles.notesText} numberOfLines={2}>Notes: {ld.notes}</ThemedText>}
                     <Pressable onPress={() => handleOpenLogModal(ld)} style={styles.logCallBtn}>
                       <PhoneCall size={12} color="#ffffff" />
@@ -183,7 +197,14 @@ export default function SalesFollowups() {
                         </ThemedText>
                       </View>
                     </View>
-                    <ThemedText style={styles.contactText}>Phone: {ld.contact_number}</ThemedText>
+                    <Pressable 
+                      onPress={() => handleDial(ld.contact_number)}
+                      style={({ pressed }) => [pressed && { opacity: 0.7 }, { alignSelf: 'flex-start', marginVertical: 2 }]}
+                    >
+                      <ThemedText style={styles.contactText}>
+                        Phone: <ThemedText style={{ color: '#04a700', textDecorationLine: 'underline', fontWeight: 'bold' }}>{ld.contact_number} 📞</ThemedText>
+                      </ThemedText>
+                    </Pressable>
                     {ld.notes && <ThemedText style={styles.notesText} numberOfLines={2}>Notes: {ld.notes}</ThemedText>}
                     <Pressable onPress={() => handleOpenLogModal(ld)} style={[styles.logCallBtn, { backgroundColor: '#2563eb', shadowColor: '#2563eb' }]}>
                       <PhoneCall size={12} color="#ffffff" />

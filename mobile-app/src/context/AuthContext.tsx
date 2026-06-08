@@ -13,6 +13,12 @@ export interface UserProfile {
   showroom: number | null;
   phone_number: string;
   is_active: boolean;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string | null;
+  country?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
 }
 
 interface AuthContextType {
@@ -21,6 +27,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (updatedUser: UserProfile) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,8 +109,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = async (updatedUser: UserProfile) => {
+    try {
+      await SecureStore.setItemAsync('user_profile', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (err) {
+      console.error('Failed to save updated user profile:', err);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

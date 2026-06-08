@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Modal, ActivityIndicator, Alert, FlatList, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -32,6 +32,13 @@ export default function SalesLeads() {
   const { user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDial = (number: string) => {
+    const cleaned = number.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to initiate call on this device.');
+    });
+  };
   const [leads, setLeads] = useState<Lead[]>([]);
   const [vehicleModels, setVehicleModels] = useState<any[]>([]);
   
@@ -264,11 +271,16 @@ export default function SalesLeads() {
                       </View>
 
                       <View style={styles.detailsRow}>
-                        <View style={styles.detailCol}>
-                          <ThemedText style={styles.detailLabel}>CONTACT NUMBER</ThemedText>
-                          <ThemedText style={styles.detailVal}>{ld.contact_number}</ThemedText>
-                        </View>
-                        <View style={styles.detailCol}>
+                        <Pressable 
+                          onPress={() => handleDial(ld.contact_number)}
+                          style={({ pressed }) => [styles.detailCol, { flex: 1.2 }, pressed && { opacity: 0.7 }]}
+                        >
+                          <ThemedText style={styles.detailLabel}>CONTACT NUMBER 📞</ThemedText>
+                          <ThemedText style={[styles.detailVal, { color: '#04a700', textDecorationLine: 'underline' }]}>
+                            {ld.contact_number}
+                          </ThemedText>
+                        </Pressable>
+                        <View style={[styles.detailCol, { flex: 0.8 }]}>
                           <ThemedText style={styles.detailLabel}>LEAD SOURCE</ThemedText>
                           <ThemedText style={styles.detailVal}>{ld.source_display || ld.lead_source}</ThemedText>
                         </View>

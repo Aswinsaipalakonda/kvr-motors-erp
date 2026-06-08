@@ -12,6 +12,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
 type TransferStatus = 'pending' | 'in_transit' | 'received';
 type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
@@ -58,12 +59,13 @@ const PRIORITY_COLOR: Record<Priority, string> = {
   Urgent: '#d71d22',
 };
 
-const emptyForm = (): TransferForm => ({ vin: '', from: FROM_LOCATIONS[0], to: TO_LOCATIONS[0], priority: 'Medium' });
+const emptyForm = (): TransferForm => ({ vin: '', from: '', to: '', priority: 'Medium' });
 
 export default function SupervisorTransfers() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = React.useRef<ScrollView>(null);
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -73,6 +75,17 @@ export default function SupervisorTransfers() {
   const [form, setForm] = useState<TransferForm>(emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Dynamic API Database states
+  const [vehicleUnits, setVehicleUnits] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  
+  const [selectedUnit, setSelectedUnit] = useState<any>(null);
+  const [selectedToLocation, setSelectedToLocation] = useState<any>(null);
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
+
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [isToLocDropdownOpen, setIsToLocDropdownOpen] = useState(false);
 
   const handleBack = useCallback((): boolean => {
     if (isModalOpen) {
@@ -102,19 +115,25 @@ export default function SupervisorTransfers() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/stock-transfers/');
-      const mapped: Transfer[] = (res.data || []).map((t: any, idx: number) => ({
+      const [transfersRes, unitsRes, locationsRes] = await Promise.all([
+        api.get('/stock-transfers/'),
+        api.get('/vehicle-units/').catch(() => ({ data: [] })),
+        api.get('/inventory-locations/').catch(() => ({ data: [] })),
+      ]);
+      const mapped: Transfer[] = (transfersRes.data || []).map((t: any, idx: number) => ({
         id: t.id ?? idx + 1,
-        code: t.transfer_id || t.transfer_code || t.code || `TR-${idx}`,
-        vin: t.vin_number || t.vehicle_vin || 'VIN-UNKNOWN',
-        from: t.from_location_name || t.from_location || 'Godown',
-        to: t.to_location_name || t.to_location || 'Showroom',
-        priority: (t.priority as Priority) || 'Medium',
+        code: t.transfer_id || `TR-${idx}`,
+        vin: t.vin_number || 'VIN-UNKNOWN',
+        from: t.from_location_name || 'Godown',
+        to: t.to_location_name || 'Showroom',
+        priority: 'Medium', // Default local priority representation
         status: (t.status as TransferStatus) || 'pending',
-        requestedBy: t.requester_name || t.requested_by_name || 'Sales Executive',
-        approvedBy: t.approver_name || t.approved_by_name || (t.status === 'pending' ? 'Awaiting' : 'Supervisor Desk'),
+        requestedBy: t.requester_name || 'Sales Executive',
+        approvedBy: t.approver_name || (t.status === 'pending' ? 'Awaiting' : 'Supervisor Desk'),
       }));
       setTransfers(mapped.length > 0 ? mapped : FALLBACK);
+      setVehicleUnits(unitsRes.data || []);
+      setLocations(locationsRes.data || []);
     } catch (e) {
       console.error('Failed to load transfers:', e);
       setTransfers((prev) => (prev.length > 0 ? prev : FALLBACK));
@@ -128,9 +147,28 @@ export default function SupervisorTransfers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Filter available units at other showroom outlets
+  const otherBranchUnits = React.useMemo(() => {
+    return vehicleUnits.filter(u => 
+      u.showroom !== user?.showroom && 
+      u.stock_status === 'available'
+    );
+  }, [vehicleUnits, user]);
+
+  // Filter target locations belonging to supervisor's branch
+  const targetLocations = React.useMemo(() => {
+    return locations.filter(l => 
+      l.branch === user?.branch
+    );
+  }, [locations, user]);
+
   const openCreate = () => {
-    setForm(emptyForm());
     setErrors({});
+    setSelectedUnit(null);
+    setSelectedToLocation(null);
+    setSelectedPriority('Medium');
+    setIsUnitDropdownOpen(false);
+    setIsToLocDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -143,9 +181,11 @@ export default function SupervisorTransfers() {
 
   const validate = (): boolean => {
     const next: FormErrors = {};
-    if (!form.vin.trim()) next.vin = 'VIN selection is required';
-    else if (form.vin.trim().length < 4) next.vin = 'Enter a valid VIN';
-    if (form.from === form.to) next.to = 'Source and destination must differ';
+    if (!selectedUnit) next.vin = 'Vehicle unit selection is required';
+    if (!selectedToLocation) next.to = 'Target location selection is required';
+    if (selectedUnit && selectedToLocation && selectedUnit.location === selectedToLocation.id) {
+      next.to = 'Source and destination must differ';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -153,31 +193,43 @@ export default function SupervisorTransfers() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
-    const newTransfer: Transfer = {
-      id: Date.now(),
-      code: `TR-2026-${String(Math.floor(100 + Math.random() * 900))}`,
-      vin: form.vin.trim(),
-      from: form.from,
-      to: form.to,
-      priority: form.priority,
-      status: 'pending',
-      requestedBy: 'Supervisor Desk',
-      approvedBy: 'Awaiting',
-    };
-    setTransfers((prev) => [newTransfer, ...prev]);
+    const code = `TR-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
+    
     try {
-      await api.post('/stock-transfers/', {
-        vin_number: newTransfer.vin,
-        from_location: form.from,
-        to_location: form.to,
-        priority: form.priority,
-      });
-    } catch {
-      /* local fallback applied */
+      const payload = {
+        transfer_id: code,
+        vehicle_unit: selectedUnit.id,
+        from_location: selectedUnit.location,
+        to_location: selectedToLocation.id,
+        requested_by: user?.id,
+        status: 'pending'
+      };
+
+      const res = await api.post('/stock-transfers/', payload);
+      
+      const newTransfer: Transfer = {
+        id: res.data.id || Date.now(),
+        code: res.data.transfer_id || code,
+        vin: selectedUnit.vin_number,
+        from: selectedUnit.location_name,
+        to: selectedToLocation.name,
+        priority: selectedPriority,
+        status: 'pending',
+        requestedBy: user?.full_name || 'Supervisor Desk',
+        approvedBy: 'Awaiting',
+      };
+      
+      setTransfers((prev) => [newTransfer, ...prev]);
+      Alert.alert('Transfer Created', `${newTransfer.code} requisition logged.`);
+      setIsModalOpen(false);
+      setSelectedUnit(null);
+      setSelectedToLocation(null);
+    } catch (err: any) {
+      console.error('Failed to create transfer requisition:', err);
+      const errMsg = err.response?.data?.detail || err.message || 'Failed to submit requisition.';
+      Alert.alert('Error', errMsg);
     } finally {
       setIsSubmitting(false);
-      setIsModalOpen(false);
-      Alert.alert('Transfer Created', `${newTransfer.code} requisition logged.`);
     }
   };
 
@@ -359,54 +411,109 @@ export default function SupervisorTransfers() {
 
               <ScrollView style={styles.modalFormScroll} contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>Vehicle Unit (VIN)</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.vin && styles.inputError]}
-                    placeholder="e.g. VIN-KG-44821"
-                    placeholderTextColor="#94a3b8"
-                    value={form.vin}
-                    onChangeText={(t) => updateField('vin', t)}
-                    autoCapitalize="characters"
-                  />
+                  <ThemedText style={styles.fieldLabel}>Select Vehicle Unit to Request</ThemedText>
+                  <Pressable 
+                    onPress={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                    style={[styles.dropdownButton, errors.vin && styles.inputError]}
+                  >
+                    <ThemedText style={styles.dropdownButtonText}>
+                      {selectedUnit 
+                        ? `${selectedUnit.vin_number} - ${selectedUnit.model_name} (${selectedUnit.showroom_name})` 
+                        : 'Choose available unit from other showrooms...'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
                   {errors.vin && <ThemedText style={styles.errorText}>{errors.vin}</ThemedText>}
+                  
+                  {isUnitDropdownOpen && (
+                    <View style={styles.dropdownListContainer}>
+                      {otherBranchUnits.length === 0 ? (
+                        <ThemedText style={styles.emptyDropdownText}>No available units at other showroom branches.</ThemedText>
+                      ) : (
+                        <ScrollView style={styles.dropdownListScroll} nestedScrollEnabled={true}>
+                          {otherBranchUnits.map((u) => (
+                            <Pressable 
+                              key={u.id} 
+                              onPress={() => {
+                                setSelectedUnit(u);
+                                setIsUnitDropdownOpen(false);
+                                setErrors(prev => ({ ...prev, vin: undefined }));
+                              }}
+                              style={styles.dropdownItem}
+                            >
+                              <ThemedText style={styles.dropdownItemVin}>{u.vin_number}</ThemedText>
+                              <ThemedText style={styles.dropdownItemDetail}>{u.model_name} • {u.showroom_name}</ThemedText>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>From Location</ThemedText>
-                  <View style={styles.chipWrap}>
-                    {FROM_LOCATIONS.map((loc) => {
-                      const active = form.from === loc;
-                      return (
-                        <Pressable key={loc} onPress={() => updateField('from', loc)} style={[styles.optionChip, active && styles.optionChipActive]}>
-                          <ThemedText style={[styles.optionChipText, active && styles.optionChipTextActive]}>{loc}</ThemedText>
-                        </Pressable>
-                      );
-                    })}
+                  <ThemedText style={styles.fieldLabel}>From Location (Resolved automatically)</ThemedText>
+                  <View style={styles.readOnlyInput}>
+                    <ThemedText style={styles.readOnlyInputText}>
+                      {selectedUnit ? selectedUnit.location_name : 'Choose a vehicle unit first'}
+                    </ThemedText>
                   </View>
                 </View>
 
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>To Location</ThemedText>
-                  <View style={styles.chipWrap}>
-                    {TO_LOCATIONS.map((loc) => {
-                      const active = form.to === loc;
-                      return (
-                        <Pressable key={loc} onPress={() => updateField('to', loc)} style={[styles.optionChip, active && styles.optionChipActive]}>
-                          <ThemedText style={[styles.optionChipText, active && styles.optionChipTextActive]}>{loc}</ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                  <ThemedText style={styles.fieldLabel}>To Location (Your Branch Outlets)</ThemedText>
+                  <Pressable 
+                    onPress={() => setIsToLocDropdownOpen(!isToLocDropdownOpen)}
+                    style={[styles.dropdownButton, errors.to && styles.inputError]}
+                  >
+                    <ThemedText style={styles.dropdownButtonText}>
+                      {selectedToLocation 
+                        ? selectedToLocation.name 
+                        : 'Choose branch target location...'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
                   {errors.to && <ThemedText style={styles.errorText}>{errors.to}</ThemedText>}
+                  
+                  {isToLocDropdownOpen && (
+                    <View style={styles.dropdownListContainer}>
+                      {targetLocations.length === 0 ? (
+                        <ThemedText style={styles.emptyDropdownText}>No active locations configured for your branch.</ThemedText>
+                      ) : (
+                        <ScrollView style={styles.dropdownListScroll} nestedScrollEnabled={true}>
+                          {targetLocations.map((l) => (
+                            <Pressable 
+                              key={l.id} 
+                              onPress={() => {
+                                setSelectedToLocation(l);
+                                setIsToLocDropdownOpen(false);
+                                setErrors(prev => ({ ...prev, to: undefined }));
+                              }}
+                              style={styles.dropdownItem}
+                            >
+                              <ThemedText style={styles.dropdownItemText}>{l.name}</ThemedText>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>Priority</ThemedText>
+                  <ThemedText style={styles.fieldLabel}>Requisition Priority</ThemedText>
                   <View style={styles.chipWrap}>
                     {PRIORITIES.map((p) => {
-                      const active = form.priority === p;
+                      const active = selectedPriority === p;
                       return (
-                        <Pressable key={p} onPress={() => updateField('priority', p)} style={[styles.priorityChipOption, active && { backgroundColor: `${PRIORITY_COLOR[p]}14`, borderColor: PRIORITY_COLOR[p] }]}>
+                        <Pressable 
+                          key={p} 
+                          onPress={() => setSelectedPriority(p)} 
+                          style={[
+                            styles.priorityChipOption, 
+                            active && { backgroundColor: `${PRIORITY_COLOR[p]}14`, borderColor: PRIORITY_COLOR[p] }
+                          ]}
+                        >
                           <ThemedText style={[styles.optionChipText, active && { color: PRIORITY_COLOR[p] }]}>{p}</ThemedText>
                         </Pressable>
                       );
@@ -537,4 +644,82 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 18px rgba(4, 167, 0, 0.28)',
   },
   submitBtnText: { color: '#ffffff', fontSize: 14.5, fontWeight: 'bold' },
+  dropdownButton: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownButtonText: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownListContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dropdownListScroll: {
+    padding: 6,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemVin: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    fontFamily: 'monospace',
+  },
+  dropdownItemDetail: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  emptyDropdownText: {
+    padding: 16,
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  readOnlyInput: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+    justifyContent: 'center',
+  },
+  readOnlyInputText: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+  },
 });

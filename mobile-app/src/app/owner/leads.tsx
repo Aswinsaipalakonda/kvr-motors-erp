@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
   RefreshControl, BackHandler, Modal, TextInput, KeyboardAvoidingView, Platform,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -258,7 +259,10 @@ export default function OwnerLeads({
   };
 
   const handleDial = (lead: Lead) => {
-    Alert.alert('Quick Dial', `Calling ${lead.customer_name} — ${lead.contact_number}`);
+    const cleaned = lead.contact_number.replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to initiate call on this device.');
+    });
   };
 
   // ---------- Derived ----------
