@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
@@ -125,7 +125,7 @@ export default function TelecallerLayout() {
       </View>
 
       {/* Dark Glassmorphic Bottom Navigation Bar */}
-      <View style={[styles.tabBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10 }]}>
+      <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
         <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
           <View style={styles.activeTopLine} />
         </Animated.View>
@@ -158,8 +158,6 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#090d16', 
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingTop: 8,
     paddingHorizontal: 0,
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -203,7 +201,7 @@ const styles = StyleSheet.create({
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
     zIndex: 10,
   },
   tabLabel: {

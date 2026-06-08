@@ -13,6 +13,7 @@ from users.models import User
 from inventory.models import StockTransfer
 from booking.models import AdvanceBooking
 from sales.models import SalesInvoice
+from leads.models import Lead
 
 def seed_erp_data():
     print("--- Seeding Branches & Locations ---")
@@ -54,6 +55,82 @@ def seed_erp_data():
             "is_active": True
         }
     )
+
+    # Add Srikakulam branch and showroom
+    branch_srikakulam, _ = Branch.objects.get_or_create(
+        name="KVR Motors - Srikakulam",
+        defaults={
+            "address": "Srikakulam Highway Junction",
+            "phone_number": "9876543215",
+            "is_active": True
+        }
+    )
+    showroom_srikakulam, _ = Showroom.objects.get_or_create(
+        branch=branch_srikakulam,
+        name="KVR Showroom - Srikakulam",
+        defaults={"is_active": True}
+    )
+    location_srikakulam, _ = InventoryLocation.objects.get_or_create(
+        branch=branch_srikakulam,
+        name="Srikakulam Godown",
+        defaults={
+            "showroom": showroom_srikakulam,
+            "is_active": True
+        }
+    )
+
+    # Add Kakinada branch and showroom
+    branch_kakinada, _ = Branch.objects.get_or_create(
+        name="KVR Motors - Kakinada",
+        defaults={
+            "address": "Kakinada Main Road",
+            "phone_number": "9876543216",
+            "is_active": True
+        }
+    )
+    showroom_kakinada, _ = Showroom.objects.get_or_create(
+        branch=branch_kakinada,
+        name="KVR Showroom - Kakinada",
+        defaults={"is_active": True}
+    )
+    location_kakinada, _ = InventoryLocation.objects.get_or_create(
+        branch=branch_kakinada,
+        name="Kakinada Godown",
+        defaults={
+            "showroom": showroom_kakinada,
+            "is_active": True
+        }
+    )
+
+    # Add Vizag branch and showrooms
+    branch_vizag, _ = Branch.objects.get_or_create(
+        name="KVR Motors - Vizag",
+        defaults={
+            "address": "Vizag City High Road",
+            "phone_number": "9876543217",
+            "is_active": True
+        }
+    )
+    showroom_vizag, _ = Showroom.objects.get_or_create(
+        branch=branch_vizag,
+        name="KVR Showroom - Vizag",
+        defaults={"is_active": True}
+    )
+    showroom_future_vizag, _ = Showroom.objects.get_or_create(
+        branch=branch_vizag,
+        name="Future Ride - Vizag",
+        defaults={"is_active": True}
+    )
+    location_vizag, _ = InventoryLocation.objects.get_or_create(
+        branch=branch_vizag,
+        name="Vizag Center Godown",
+        defaults={
+            "showroom": showroom_vizag,
+            "is_active": True
+        }
+    )
+
+
 
     print("--- Seeding Vehicle Brands & Models ---")
     brand_kinetic, _ = VehicleBrand.objects.get_or_create(name="Kinetic Green", defaults={"is_active": True})
@@ -310,6 +387,100 @@ def seed_erp_data():
         }
     )
     
+    # Seed batteries for other branches first
+    for s_num in ["BATT-00801", "BATT-00802", "BATT-00803"]:
+        Battery.objects.get_or_create(
+            serial_number=s_num,
+            defaults={
+                "capacity": "2.0 kWh",
+                "purchase_date": date(2024, 1, 10),
+                "status": "available",
+                "location": location_pineapple,
+                "supplier": "Future Batteries Ltd",
+                "warranty_years": 3
+            }
+        )
+
+    # Seed physical units for other branches
+    unit_sri_luna, _ = VehicleUnit.objects.get_or_create(
+        vin_number="KVRVIN2026X201",
+        defaults={
+            "model": model_luna,
+            "branch": branch_srikakulam,
+            "showroom": showroom_srikakulam,
+            "location": location_srikakulam,
+            "motor_number": "MTR-70801",
+            "chassis_number": "CHS-68901",
+            "color": "Green",
+            "purchase_date": date(2024, 5, 12),
+            "stock_status": "available",
+            "assigned_battery": "BATT-00801"
+        }
+    )
+
+    unit_kak_dynamo, _ = VehicleUnit.objects.get_or_create(
+        vin_number="KVRVIN2026X301",
+        defaults={
+            "model": model_dynamo,
+            "branch": branch_kakinada,
+            "showroom": showroom_kakinada,
+            "location": location_kakinada,
+            "motor_number": "MTR-70802",
+            "chassis_number": "CHS-68902",
+            "color": "Blue",
+            "purchase_date": date(2024, 5, 12),
+            "stock_status": "available",
+            "assigned_battery": "BATT-00802"
+        }
+    )
+
+    unit_viz_watts, _ = VehicleUnit.objects.get_or_create(
+        vin_number="KVRVIN2026X401",
+        defaults={
+            "model": model_watts,
+            "branch": branch_vizag,
+            "showroom": showroom_future_vizag,
+            "location": location_vizag,
+            "motor_number": "MTR-70803",
+            "chassis_number": "CHS-68903",
+            "color": "Red",
+            "purchase_date": date(2024, 5, 12),
+            "stock_status": "available",
+            "assigned_battery": "BATT-00803"
+        }
+    )
+
+    # Seed bookings for other branches
+    AdvanceBooking.objects.get_or_create(
+        booking_id="BK-8033",
+        defaults={
+            "customer_name": "K. Ramu",
+            "contact_number": "9876543220",
+            "vehicle_model": model_luna,
+            "vehicle_unit": unit_sri_luna,
+            "advance_amount": 6000.00,
+            "expiry_date": date(2026, 6, 25),
+            "status": "confirmed",
+            "assigned_executive": sales_user,
+            "pdi_verified": "yes"
+        }
+    )
+
+    AdvanceBooking.objects.get_or_create(
+        booking_id="BK-8044",
+        defaults={
+            "customer_name": "P. Kiran",
+            "contact_number": "9876543221",
+            "vehicle_model": model_watts,
+            "vehicle_unit": unit_viz_watts,
+            "advance_amount": 15000.00,
+            "expiry_date": date(2026, 6, 28),
+            "status": "confirmed",
+            "assigned_executive": sales_user,
+            "pdi_verified": "yes"
+        }
+    )
+
     # Seed sales invoices
     SalesInvoice.objects.get_or_create(
         invoice_number="INV-2026-0789",
@@ -327,7 +498,161 @@ def seed_erp_data():
         }
     )
 
+    SalesInvoice.objects.get_or_create(
+        invoice_number="INV-2026-0801",
+        defaults={
+            "customer_name": "T. Apparao",
+            "customer_contact": "9876543222",
+            "vehicle_unit": unit_sri_luna,
+            "assigned_battery": Battery.objects.get(serial_number="BATT-00801"),
+            "sale_price": 74999.00,
+            "payment_mode": "HDFC Finance",
+            "insurance_partner": "HDFC Ergo",
+            "delivery_status": "ready",
+            "sales_executive": sales_user,
+            "branch": branch_srikakulam
+        }
+    )
+
+    SalesInvoice.objects.get_or_create(
+        invoice_number="INV-2026-0802",
+        defaults={
+            "customer_name": "G. Vasu",
+            "customer_contact": "9876543223",
+            "vehicle_unit": unit_kak_dynamo,
+            "assigned_battery": Battery.objects.get(serial_number="BATT-00802"),
+            "sale_price": 98500.00,
+            "payment_mode": "Cash",
+            "insurance_partner": "Reliance General",
+            "delivery_status": "ready",
+            "sales_executive": sales_user,
+            "branch": branch_kakinada
+        }
+    )
+
+    SalesInvoice.objects.get_or_create(
+        invoice_number="INV-2026-0803",
+        defaults={
+            "customer_name": "Y. Prakash",
+            "customer_contact": "9876543224",
+            "vehicle_unit": unit_viz_watts,
+            "assigned_battery": Battery.objects.get(serial_number="BATT-00803"),
+            "sale_price": 145000.00,
+            "payment_mode": "ICICI Finance",
+            "insurance_partner": "ICICI Lombard",
+            "delivery_status": "ready",
+            "sales_executive": sales_user,
+            "branch": branch_vizag
+        }
+    )
+
+    # Seed Leads for different branches
+    Lead.objects.get_or_create(
+        customer_name="Srikakulam Buyer",
+        contact_number="9876543225",
+        defaults={
+            "interested_vehicle": model_luna,
+            "status": "new_lead",
+            "lead_source": "walk_in",
+            "branch": "KVR Motors - Srikakulam"
+        }
+    )
+
+    Lead.objects.get_or_create(
+        customer_name="Kakinada Buyer",
+        contact_number="9876543226",
+        defaults={
+            "interested_vehicle": model_dynamo,
+            "status": "negotiation",
+            "lead_source": "reference",
+            "branch": "KVR Motors - Kakinada"
+        }
+    )
+
+    Lead.objects.get_or_create(
+        customer_name="Vizag Future Buyer",
+        contact_number="9876543227",
+        defaults={
+            "interested_vehicle": model_watts,
+            "status": "won",
+            "lead_source": "social_media",
+            "branch": "KVR Motors - Vizag"
+        }
+    )
+
+    # Seed Ledger entries for different branches
+    from ledger.models import LedgerEntry
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-SRI-001",
+        defaults={
+            "ledger_type": "sales_income",
+            "branch": branch_srikakulam,
+            "detail": "Luna Sale Income - Apparao",
+            "income": 74999.00,
+            "expense": 0.00,
+            "payment_mode": "HDFC Finance"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-SRI-002",
+        defaults={
+            "ledger_type": "operational_expense",
+            "branch": branch_srikakulam,
+            "detail": "Srikakulam Office Rent",
+            "income": 0.00,
+            "expense": 15000.00,
+            "payment_mode": "Bank Transfer"
+        }
+    )
+
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-KAK-001",
+        defaults={
+            "ledger_type": "sales_income",
+            "branch": branch_kakinada,
+            "detail": "Dynamo Pro Sale Income - Vasu",
+            "income": 98500.00,
+            "expense": 0.00,
+            "payment_mode": "Cash"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-KAK-002",
+        defaults={
+            "ledger_type": "operational_expense",
+            "branch": branch_kakinada,
+            "detail": "Kakinada Office Rent",
+            "income": 0.00,
+            "expense": 12000.00,
+            "payment_mode": "Bank Transfer"
+        }
+    )
+
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-VIZ-001",
+        defaults={
+            "ledger_type": "sales_income",
+            "branch": branch_vizag,
+            "detail": "Watts 100 Sale Income - Prakash",
+            "income": 145000.00,
+            "expense": 0.00,
+            "payment_mode": "ICICI Finance"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-VIZ-002",
+        defaults={
+            "ledger_type": "operational_expense",
+            "branch": branch_vizag,
+            "detail": "Vizag Future Ride Rent",
+            "income": 0.00,
+            "expense": 25000.00,
+            "payment_mode": "Bank Transfer"
+        }
+    )
+
     print("=== All ERP Inventory Seeding Complete! ===")
+
 
 if __name__ == "__main__":
     seed_erp_data()

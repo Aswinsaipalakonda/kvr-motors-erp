@@ -204,9 +204,9 @@ export default function SupervisorDashboard() {
   };
 
   // API loaders
-  const loadVehicles = async () => {
+  const loadVehicles = async (isSilent = false) => {
     try {
-      setVehiclesLoading(true);
+      if (!isSilent) setVehiclesLoading(true);
       const [brands, models, units] = await Promise.all([
         getVehicleBrands(),
         getVehicleModels(),
@@ -218,19 +218,19 @@ export default function SupervisorDashboard() {
     } catch (e) {
       console.error("Failed to load vehicle catalog:", e);
     } finally {
-      setVehiclesLoading(false);
+      if (!isSilent) setVehiclesLoading(false);
     }
   };
 
-  const loadLeads = async () => {
+  const loadLeads = async (isSilent = false) => {
     try {
-      setLeadsLoading(true);
+      if (!isSilent) setLeadsLoading(true);
       const data = await getLeads();
       setLeadsList(data);
     } catch (e) {
       console.error("Failed to load leads:", e);
     } finally {
-      setLeadsLoading(false);
+      if (!isSilent) setLeadsLoading(false);
     }
   };
 
@@ -243,33 +243,33 @@ export default function SupervisorDashboard() {
     }
   };
 
-  const loadBookings = async () => {
+  const loadBookings = async (isSilent = false) => {
     try {
-      setAdvanceBookingsLoading(true);
+      if (!isSilent) setAdvanceBookingsLoading(true);
       const data = await getBookings();
       setAdvanceBookings(data);
     } catch (e) {
       console.error("Failed to load bookings:", e);
     } finally {
-      setAdvanceBookingsLoading(false);
+      if (!isSilent) setAdvanceBookingsLoading(false);
     }
   };
 
-  const loadSales = async () => {
+  const loadSales = async (isSilent = false) => {
     try {
-      setSalesInvoicesLoading(true);
+      if (!isSilent) setSalesInvoicesLoading(true);
       const data = await getSalesInvoices();
       setSalesInvoices(data);
     } catch (e) {
       console.error("Failed to load sales invoices:", e);
     } finally {
-      setSalesInvoicesLoading(false);
+      if (!isSilent) setSalesInvoicesLoading(false);
     }
   };
 
-  const loadBatteries = async () => {
+  const loadBatteries = async (isSilent = false) => {
     try {
-      setBatteriesLoading(true);
+      if (!isSilent) setBatteriesLoading(true);
       const data = await getBatteries();
       const mapped = data.map((b: any) => ({
         id: b.id,
@@ -290,25 +290,25 @@ export default function SupervisorDashboard() {
     } catch (e) {
       console.error("Failed to load batteries:", e);
     } finally {
-      setBatteriesLoading(false);
+      if (!isSilent) setBatteriesLoading(false);
     }
   };
 
-  const loadOverrides = async () => {
+  const loadOverrides = async (isSilent = false) => {
     try {
-      setLiveOverridesLoading(true);
+      if (!isSilent) setLiveOverridesLoading(true);
       const data = await getFifoOverrides();
       setLiveOverridesList(data);
     } catch (e) {
       console.error("Failed to load FIFO overrides:", e);
     } finally {
-      setLiveOverridesLoading(false);
+      if (!isSilent) setLiveOverridesLoading(false);
     }
   };
 
-  const loadTransfers = async () => {
+  const loadTransfers = async (isSilent = false) => {
     try {
-      setTransfersLoading(true);
+      if (!isSilent) setTransfersLoading(true);
       const data = await getStockTransfers();
       const mapped = data.map((t: any) => ({
         id: t.id,
@@ -325,7 +325,7 @@ export default function SupervisorDashboard() {
     } catch (e) {
       console.error("Failed to load stock transfers:", e);
     } finally {
-      setTransfersLoading(false);
+      if (!isSilent) setTransfersLoading(false);
     }
   };
 
@@ -343,13 +343,13 @@ export default function SupervisorDashboard() {
     getShowrooms().then(setShowroomsList).catch(() => {});
 
     const interval = setInterval(() => {
-      loadOverrides();
-      loadLeads();
-      loadBookings();
-      loadSales();
-      loadVehicles();
-      loadBatteries();
-      loadTransfers();
+      loadOverrides(true);
+      loadLeads(true);
+      loadBookings(true);
+      loadSales(true);
+      loadVehicles(true);
+      loadBatteries(true);
+      loadTransfers(true);
       loadUsers();
     }, 5000);
     return () => clearInterval(interval);
@@ -1684,9 +1684,9 @@ export default function SupervisorDashboard() {
                                   >
                                     <option value="Unassigned">Unassigned</option>
                                     {usersList
-                                      .filter(u => u.role === "sales_executive" || u.role === "sales" || u.role === "telecaller")
+                                      .filter(u => u.role === "telecaller")
                                       .map(u => (
-                                        <option key={u.id} value={u.id}>{u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales"})</option>
+                                        <option key={u.id} value={u.id}>{u.full_name} (Telecaller)</option>
                                       ))
                                     }
                                   </select>
@@ -1996,7 +1996,20 @@ export default function SupervisorDashboard() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number)</label>
             <div className="relative">
-              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, vin_number: val }); handleIdentifierLookup("vin_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => {
+                const val = e.target.value;
+                setStockUnitForm((prev) => {
+                  const updates: any = { ...prev, vin_number: val };
+                  if (!prev.motor_number || prev.motor_number === prev.vin_number) {
+                    updates.motor_number = val;
+                  }
+                  if (!prev.chassis_number || prev.chassis_number === prev.vin_number) {
+                    updates.chassis_number = val;
+                  }
+                  return updates;
+                });
+                handleIdentifierLookup("vin_number", val);
+              }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
               {vinLookupState === "searching" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-slate-400 animate-pulse">Syncing...</span>}
               {vinLookupState === "found" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-[#04a700]">Synced</span>}
             </div>
@@ -2103,9 +2116,9 @@ export default function SupervisorDashboard() {
             >
               <option value="">Unassigned</option>
               {usersList
-                .filter(u => u.role === "sales_executive" || u.role === "sales" || u.role === "telecaller")
+                .filter(u => u.role === "telecaller")
                 .map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales"})</option>
+                  <option key={u.id} value={u.id}>{u.full_name} (Telecaller)</option>
                 ))
               }
             </select>

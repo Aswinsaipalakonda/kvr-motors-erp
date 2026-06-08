@@ -20,7 +20,10 @@ interface UnassignedLead {
   date: string;
 }
 
-const EXECUTIVES = ['Anil Kumar', 'Suresh Babu', 'Ravi Varma', 'Lakshmi Prasad'];
+interface TelecallerUser {
+  id: number;
+  name: string;
+}
 
 export default function SupervisorLeadsAssignment() {
   const insets = useSafeAreaInsets();
@@ -29,6 +32,7 @@ export default function SupervisorLeadsAssignment() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [leads, setLeads] = useState<UnassignedLead[]>([]);
+  const [telecallers, setTelecallers] = useState<TelecallerUser[]>([]);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [selectedLead, setSelectedLead] = useState<UnassignedLead | null>(null);
 
@@ -61,6 +65,22 @@ export default function SupervisorLeadsAssignment() {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      
+      // Fetch telecallers dynamically
+      try {
+        const usersRes = await api.get('/users/');
+        const filtered = (usersRes.data || [])
+          .filter((u: any) => u.role === 'telecaller')
+          .map((u: any) => ({
+            id: u.id,
+            name: u.full_name || u.username,
+          }));
+        setTelecallers(filtered.length > 0 ? filtered : [{ id: 4, name: 'Lakshmi Narayana' }]);
+      } catch (err) {
+        console.error('Failed to fetch telecallers:', err);
+        setTelecallers([{ id: 4, name: 'Lakshmi Narayana' }]);
+      }
+
       const res = await api.get('/leads/');
       const mapped: UnassignedLead[] = (res.data || [])
         .filter((l: any) => !l.executive_name && !l.assigned_executive)
@@ -85,20 +105,23 @@ export default function SupervisorLeadsAssignment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const assignExecutive = async (exec: string) => {
+  const assignExecutive = async (telecaller: TelecallerUser) => {
     if (!selectedLead) return;
     const lead = selectedLead;
     setSelectedLead(null);
     setProcessingId(lead.id);
     try {
-      await api.patch(`/leads/${lead.id}/`, { executive_name: exec, status: 'contacted' });
+      await api.patch(`/leads/${lead.id}/`, { 
+        assigned_executive: telecaller.id, 
+        status: 'new_lead' 
+      });
     } catch {
       /* local fallback applied */
     }
     setTimeout(() => {
       setLeads((prev) => prev.filter((l) => l.id !== lead.id));
       setProcessingId(null);
-      Alert.alert('Lead Allocated', `${lead.customer} assigned to ${exec}.`);
+      Alert.alert('Lead Allocated', `${lead.customer} assigned to ${telecaller.name}.`);
     }, 450);
   };
 
@@ -226,20 +249,20 @@ export default function SupervisorLeadsAssignment() {
                     </Pressable>
                   </View>
 
-                  <ThemedText style={styles.rosterLabel}>CHECKED-IN SALES EXECUTIVES</ThemedText>
+                  <ThemedText style={styles.rosterLabel}>CHECKED-IN TELECALLERS</ThemedText>
                   <View style={styles.rosterList}>
-                    {EXECUTIVES.map((exec) => (
+                    {telecallers.map((t) => (
                       <Pressable
-                        key={exec}
-                        onPress={() => assignExecutive(exec)}
+                        key={t.id}
+                        onPress={() => assignExecutive(t)}
                         style={({ pressed }) => [styles.rosterItem, pressed && { opacity: 0.85, backgroundColor: '#f1f5f9' }]}
                       >
                         <View style={styles.rosterAvatar}>
                           <ThemedText style={styles.rosterAvatarText}>
-                            {exec.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()}
+                            {t.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()}
                           </ThemedText>
                         </View>
-                        <ThemedText style={styles.rosterName}>{exec}</ThemedText>
+                        <ThemedText style={styles.rosterName}>{t.name}</ThemedText>
                         <View style={styles.onlineDot} />
                       </Pressable>
                     ))}

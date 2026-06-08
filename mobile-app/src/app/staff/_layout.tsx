@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
@@ -94,7 +94,7 @@ export default function StaffLayout() {
         </View>
       </View>
 
-      <View style={[styles.tabBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 10 }]}>
+      <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
         {TABS_CONFIG.map((tab) => (
           <AnimatedTabButton
             key={tab.key}
@@ -115,8 +115,6 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#090d16',
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingTop: 8,
     justifyContent: 'space-around',
     alignItems: 'center',
     shadowColor: '#000000',
@@ -132,7 +130,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', zIndex: 10 },
-  iconContainer: { width: 44, height: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 4, zIndex: 10 },
+  iconContainer: { width: 44, height: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 2, zIndex: 10 },
   tabLabel: { fontSize: 10.5, fontWeight: '500', color: 'rgba(255, 255, 255, 0.45)' },
   activeTabLabel: { color: '#04a700', fontWeight: '700' },
 });

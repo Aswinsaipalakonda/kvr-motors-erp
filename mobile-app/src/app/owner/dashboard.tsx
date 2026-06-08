@@ -50,7 +50,7 @@ export default function OwnerDashboard({
   const router = useRouter();
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [salesTimeFilter, setSalesTimeFilter] = useState<'day' | 'week' | 'month' | 'six_months'>('day');
+  const [salesTimeFilter, setSalesTimeFilter] = useState<'week' | 'month' | 'six_months'>('week');
 
   // Live database states
   const [isLoading, setIsLoading] = useState(true);
@@ -80,20 +80,37 @@ export default function OwnerDashboard({
     if (b.includes('Visakhapatnam')) return 'KVR Motors - Visakhapatnam';
     if (b.includes('Srikakulam')) return 'KVR Motors - Srikakulam';
     if (b.includes('Kakinada')) return 'KVR Motors - Kakinada';
+    if (b.includes('Vizag')) return 'KVR Motors - Vizag';
     return null;
   };
 
   const getShowroomBackendName = (b: string) => {
-    if (b === 'Visakhapatnam - KVR Showroom') return 'KVR Showroom - Visakhapatnam';
+    if (b === 'Visakhapatnam - KVR' || b === 'Visakhapatnam - KVR Showroom') return 'KVR Showroom - Visakhapatnam';
     if (b === 'Visakhapatnam - Future Ride') return 'Future Ride - Visakhapatnam';
-    if (b === 'Srikakulam - KVR Showroom') return 'KVR Showroom - Srikakulam';
-    if (b === 'Kakinada - KVR Showroom') return 'KVR Showroom - Kakinada';
+    if (b === 'Srikakulam - KVR' || b === 'Srikakulam - KVR Showroom') return 'KVR Showroom - Srikakulam';
+    if (b === 'Kakinada - KVR' || b === 'Kakinada - KVR Showroom') return 'KVR Showroom - Kakinada';
+    if (b === 'Vizag - KVR' || b === 'Vizag - KVR Showroom') return 'KVR Showroom - Vizag';
+    if (b === 'Vizag - Future Ride') return 'Future Ride - Vizag';
     return null;
   };
 
   const handleApprovePO = (poId: number) => {
     setPendingPOs(prev => prev.map(po => po.id === poId ? { ...po, approved: true } : po));
     Alert.alert('PO Approved', 'Purchase Order successfully signed off and queued for delivery!');
+  };
+
+  // Brand/category matching helper – maps the UI brand id to backend brand_name patterns
+  const isMatchBrand = (brandName: string | undefined, categoryId: string | null): boolean => {
+    if (!categoryId) return true;
+    if (!brandName) return false;
+    const bn = brandName.toLowerCase();
+    switch (categoryId) {
+      case 'Kinetic': return bn.includes('kinetic');
+      case 'Future':  return bn.includes('kinetiq') || bn.includes('watts') || bn.includes('future');
+      case 'Dynamo':  return bn.includes('dynamo');
+      case 'Watts':   return bn.includes('watts');
+      default: return true;
+    }
   };
 
   const loadData = async () => {
@@ -158,38 +175,40 @@ export default function OwnerDashboard({
     loadData();
   }, []);
 
-  // Filter ledger entries by selected branch
-  const filteredLedger = ledgerEntries.filter(row => {
-    const targetBranch = getBranchBackendName(branch);
-    if (!targetBranch) return true;
-    return row.branch_name === targetBranch;
-  });
+  // Filter ledger entries by selected branch + brand category
+  const filteredLedger = React.useMemo(() => {
+    return ledgerEntries.filter(row => {
+      const targetBranch = getBranchBackendName(branch);
+      if (targetBranch && row.branch_name !== targetBranch) return false;
+      // Brand filter on ledger detail text (best-effort match)
+      if (selectedBrand) {
+        const detail = (row.detail || '').toLowerCase();
+        switch (selectedBrand) {
+          case 'Kinetic': if (!detail.includes('kinetic') && !detail.includes('luna')) return false; break;
+          case 'Future':  if (!detail.includes('future') && !detail.includes('kinetiq') && !detail.includes('watts')) return false; break;
+          case 'Dynamo':  if (!detail.includes('dynamo') && !detail.includes('pro')) return false; break;
+          case 'Watts':   if (!detail.includes('watts') && !detail.includes('100')) return false; break;
+        }
+      }
+      return true;
+    });
+  }, [ledgerEntries, branch, selectedBrand]);
 
-  // Filter sales invoices by selected branch
+  // Filter sales invoices by selected branch + brand category
   const filteredSalesInvoices = React.useMemo(() => {
     return salesInvoices.filter(row => {
       const targetBranch = getBranchBackendName(branch);
-      if (!targetBranch) return true;
-      return row.branch_name === targetBranch;
+      if (targetBranch && row.branch_name !== targetBranch) return false;
+      if (!isMatchBrand(row.model_brand_name || row.brand_name, selectedBrand)) return false;
+      return true;
     });
-  }, [salesInvoices, branch]);
+  }, [salesInvoices, branch, selectedBrand]);
 
   // Calculate binned sales data points based on salesTimeFilter
   const chartData = React.useMemo(() => {
     // If no sales invoices are present in database, return seed mockup day-wise unit counts for parity
     if (salesInvoices.length === 0) {
-      if (salesTimeFilter === 'day') {
-        return [
-          { label: '08:00', value: 1 },
-          { label: '10:00', value: 2 },
-          { label: '12:00', value: 3 },
-          { label: '14:00', value: 4 },
-          { label: '16:00', value: 5 },
-          { label: '18:00', value: 3 },
-          { label: '20:00', value: 2 },
-          { label: '22:00', value: 1 },
-        ];
-      } else if (salesTimeFilter === 'week') {
+      if (salesTimeFilter === 'week') {
         return [
           { label: 'Mon', value: 2 },
           { label: 'Tue', value: 4 },
@@ -220,21 +239,6 @@ export default function OwnerDashboard({
     }
 
     const now = new Date();
-    if (salesTimeFilter === 'day') {
-      const bins = [8, 10, 12, 14, 16, 18, 20, 22];
-      return bins.map(hour => {
-        const label = `${hour.toString().padStart(2, '0')}:00`;
-        let count = 0;
-        filteredSalesInvoices.forEach(inv => {
-          const d = new Date(inv.sale_date || inv.created_at);
-          const isToday = d.toDateString() === now.toDateString();
-          if (isToday && d.getHours() >= hour - 2 && d.getHours() < hour) {
-            count++;
-          }
-        });
-        return { label, value: count };
-      });
-    }
     
     if (salesTimeFilter === 'week') {
       const data = [];
@@ -314,22 +318,61 @@ export default function OwnerDashboard({
     ? `₹ ${(mtdRevenue / 100000).toFixed(1)} Lakhs`
     : `₹ ${mtdRevenue.toLocaleString('en-IN')}`;
 
-  // Filter vehicle units by showroom
-  const filteredUnits = vehicleUnits.filter(unit => {
-    const targetShowroom = getShowroomBackendName(branch);
-    if (!targetShowroom) return true;
-    return unit.showroom_name === targetShowroom;
-  });
+  // Filter vehicle units by showroom + brand category
+  const filteredUnits = React.useMemo(() => {
+    return vehicleUnits.filter(unit => {
+      const targetShowroom = getShowroomBackendName(branch);
+      if (targetShowroom && unit.showroom_name !== targetShowroom) return false;
+      // Also match by branch if showroom isn't specific
+      if (!targetShowroom && branch !== 'All Branches') {
+        const targetBranch = getBranchBackendName(branch);
+        if (targetBranch && unit.branch_name !== targetBranch) return false;
+      }
+      if (!isMatchBrand(unit.brand_name || unit.model_brand_name, selectedBrand)) return false;
+      return true;
+    });
+  }, [vehicleUnits, branch, selectedBrand]);
 
-  // Filter bookings
-  const filteredBookings = bookings.filter(bk => {
-    const targetShowroom = getShowroomBackendName(branch);
-    if (!targetShowroom) return true;
-    return bk.vin_number ? vehicleUnits.find(u => u.vin_number === bk.vin_number)?.showroom_name === targetShowroom : true;
-  });
+  // Filter bookings by branch + brand category
+  const filteredBookings = React.useMemo(() => {
+    return bookings.filter(bk => {
+      const targetShowroom = getShowroomBackendName(branch);
+      if (targetShowroom) {
+        if (bk.vin_number) {
+          const unit = vehicleUnits.find(u => u.vin_number === bk.vin_number);
+          if (!unit || unit.showroom_name !== targetShowroom) return false;
+          if (!isMatchBrand(unit.brand_name || unit.model_brand_name, selectedBrand)) return false;
+        }
+      } else if (branch !== 'All Branches') {
+        const targetBranch = getBranchBackendName(branch);
+        if (targetBranch && bk.vin_number) {
+          const unit = vehicleUnits.find(u => u.vin_number === bk.vin_number);
+          if (!unit || unit.branch_name !== targetBranch) return false;
+          if (!isMatchBrand(unit.brand_name || unit.model_brand_name, selectedBrand)) return false;
+        }
+      }
+      return true;
+    });
+  }, [bookings, vehicleUnits, branch, selectedBrand]);
 
-  // Filter leads
-  const filteredLeads = leads;
+  // Filter leads by branch + brand category
+  const filteredLeads = React.useMemo(() => {
+    return leads.filter(ld => {
+      const targetBranch = getBranchBackendName(branch);
+      if (targetBranch && ld.branch !== targetBranch) return false;
+      // Brand filter on the interested vehicle model name
+      if (selectedBrand) {
+        const vName = (ld.interested_vehicle_name || '').toLowerCase();
+        switch (selectedBrand) {
+          case 'Kinetic': if (!vName.includes('kinetic') && !vName.includes('luna')) return false; break;
+          case 'Future':  if (!vName.includes('future') && !vName.includes('kinetiq') && !vName.includes('watts')) return false; break;
+          case 'Dynamo':  if (!vName.includes('dynamo') && !vName.includes('pro')) return false; break;
+          case 'Watts':   if (!vName.includes('watts') && !vName.includes('100')) return false; break;
+        }
+      }
+      return true;
+    });
+  }, [leads, branch, selectedBrand]);
 
   // Calculate won leads percentage
   const totalLeadsCount = filteredLeads.length;
@@ -524,9 +567,8 @@ export default function OwnerDashboard({
 
                   {/* Filter Pills */}
                   <View style={styles.chartFiltersRow}>
-                    {(['day', 'week', 'month', 'six_months'] as const).map((filter) => {
+                    {(['week', 'month', 'six_months'] as const).map((filter) => {
                       const labels = {
-                        day: 'Today',
                         week: 'Week',
                         month: 'Month',
                         six_months: '6 Months',
@@ -632,17 +674,17 @@ export default function OwnerDashboard({
                   </View>
                   <View style={styles.funnelPipelineRow}>
                     <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'new' || l.status === 'lead').length || 18}</ThemedText>
+                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'new' || l.status === 'lead' || l.status === 'new_lead').length || 0}</ThemedText>
                       <ThemedText style={styles.funnelStageLabel}>Cold</ThemedText>
                     </View>
                     <View style={styles.funnelStageDivider} />
                     <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'contacted' || l.status === 'active').length || 12}</ThemedText>
+                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'contacted' || l.status === 'active' || l.status === 'follow_up').length || 0}</ThemedText>
                       <ThemedText style={styles.funnelStageLabel}>Warm</ThemedText>
                     </View>
                     <View style={styles.funnelStageDivider} />
                     <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{leads.filter(l => l.status === 'qualified' || l.status === 'hot').length || 8}</ThemedText>
+                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'qualified' || l.status === 'hot' || l.status === 'negotiation').length || 0}</ThemedText>
                       <ThemedText style={styles.funnelStageLabel}>Hot</ThemedText>
                     </View>
                     <View style={styles.funnelStageDivider} />

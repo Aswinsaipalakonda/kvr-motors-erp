@@ -36,6 +36,7 @@ const ROLE_THEME: Record<string, { color: string; bg: string }> = {
   Admin: { color: '#04a700', bg: 'rgba(4, 167, 0, 0.1)' },
   Supervisor: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   'Sales Executive': { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
+  Telecaller: { color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
   Staff: { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
 };
 const roleTheme = (role: string) => ROLE_THEME[role] || { color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' };
@@ -69,14 +70,14 @@ export default function OwnerUsers({
   // Role action sheet
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
 
-  const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Staff'];
+  const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Telecaller', 'Staff'];
   const branchesList = [
     'KVR Motors - Visakhapatnam',
     'Future Ride - Visakhapatnam',
     'KVR Motors - Srikakulam',
     'KVR Motors - Kakinada',
   ];
-  const roleFilters = ['All', 'Owner', 'Supervisor', 'Sales Executive', 'Staff'];
+  const roleFilters = ['All', 'Owner', 'Supervisor', 'Sales Executive', 'Telecaller', 'Staff'];
 
   // Graceful fallback roster used when the directory API is unavailable or
   // the session lacks directory read access (avoids a blank screen + red overlay).
@@ -97,6 +98,7 @@ export default function OwnerUsers({
         if (u.role === 'owner') displayRole = 'Owner';
         else if (u.role === 'supervisor') displayRole = 'Supervisor';
         else if (u.role === 'sales_executive' || u.role === 'sales') displayRole = 'Sales Executive';
+        else if (u.role === 'telecaller') displayRole = 'Telecaller';
         else if (u.role === 'admin') displayRole = 'Admin';
         else if (u.role === 'staff') displayRole = 'Staff';
 
@@ -196,6 +198,7 @@ export default function OwnerUsers({
     if (role === 'Owner') backendRole = 'owner';
     else if (role === 'Supervisor') backendRole = 'supervisor';
     else if (role === 'Sales Executive') backendRole = 'sales_executive';
+    else if (role === 'Telecaller') backendRole = 'telecaller';
     else if (role === 'Staff') backendRole = 'staff';
 
     const username =

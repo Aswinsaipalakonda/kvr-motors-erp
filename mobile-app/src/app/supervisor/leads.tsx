@@ -35,6 +35,7 @@ export default function SupervisorLeads() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [telecallers, setTelecallers] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
 
   const handleDial = (number: string) => {
@@ -49,6 +50,14 @@ export default function SupervisorLeads() {
       setIsLoading(true);
       const response = await api.get('/leads/');
       setLeads(response.data);
+
+      try {
+        const usersRes = await api.get('/users/');
+        const filtered = (usersRes.data || []).filter((u: any) => u.role === 'telecaller');
+        setTelecallers(filtered);
+      } catch (err) {
+        console.error('Failed to load telecallers:', err);
+      }
     } catch (e) {
       console.error('Failed to load supervisor leads list:', e);
     } finally {
@@ -66,7 +75,7 @@ export default function SupervisorLeads() {
     loadLeads();
   };
 
-  const handleAssignLead = async (leadId: number, execId: number | null) => {
+  const handleAssignLead = async (leadId: number, execId: number | null, execName?: string) => {
     try {
       setIsLoading(true);
       const payload = {
@@ -74,12 +83,42 @@ export default function SupervisorLeads() {
         status: execId ? 'new_lead' : 'enquiry'
       };
       await api.patch(`/leads/${leadId}/`, payload);
-      Alert.alert('Success', execId ? 'Lead routed to Anil Kumar.' : 'Lead unassigned.');
+      Alert.alert('Success', execId ? `Lead routed to ${execName || 'Telecaller'}.` : 'Lead unassigned.');
       loadLeads();
     } catch (err) {
       console.error('Failed to update lead assignment:', err);
       Alert.alert('Error', 'Failed to update lead assignment.');
       setIsLoading(false);
+    }
+  };
+
+  const startAssignment = (leadId: number) => {
+    if (telecallers.length === 0) {
+      Alert.alert('No Telecallers', 'No registered telecallers found to assign.');
+      return;
+    }
+    if (telecallers.length === 1) {
+      const tc = telecallers[0];
+      Alert.alert(
+        'Confirm Assignment',
+        `Route this lead to ${tc.full_name || tc.username}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Assign', onPress: () => handleAssignLead(leadId, tc.id, tc.full_name || tc.username) }
+        ]
+      );
+    } else {
+      const buttons = telecallers.map(tc => ({
+        text: tc.full_name || tc.username,
+        onPress: () => handleAssignLead(leadId, tc.id, tc.full_name || tc.username)
+      }));
+      buttons.push({ text: 'Cancel', style: 'cancel' } as any);
+      
+      Alert.alert(
+        'Select Telecaller',
+        'Choose a telecaller to assign this lead to:',
+        buttons as any
+      );
     }
   };
 
@@ -230,11 +269,11 @@ export default function SupervisorLeads() {
                     <View style={styles.cardActions}>
                       {!ld.assigned_executive ? (
                         <Pressable 
-                          onPress={() => handleAssignLead(ld.id, 3)} // ID 3 = Anil Kumar (Sales Partner)
+                          onPress={() => startAssignment(ld.id)}
                           style={styles.assignBtn}
                         >
                           <UserCheck size={14} color="#ffffff" />
-                          <ThemedText style={styles.assignBtnText}>ROUTE TO ANIL KUMAR (SALES)</ThemedText>
+                          <ThemedText style={styles.assignBtnText}>ROUTE TO TELECALLER</ThemedText>
                         </Pressable>
                       ) : (
                         <Pressable 
@@ -242,7 +281,7 @@ export default function SupervisorLeads() {
                           style={styles.deassignBtn}
                         >
                           <UserX size={14} color="#64748b" />
-                          <ThemedText style={styles.deassignBtnText}>DE-ROUTE EXECUTIVE</ThemedText>
+                          <ThemedText style={styles.deassignBtnText}>DE-ROUTE TELECALLER</ThemedText>
                         </Pressable>
                       )}
                     </View>

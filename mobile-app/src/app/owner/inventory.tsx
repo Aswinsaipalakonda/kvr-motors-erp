@@ -96,13 +96,35 @@ export default function OwnerInventory({
     return () => sub.remove();
   }, [isActive, handleBack]);
 
+  const getBranchBackendName = (b: string) => {
+    if (b.includes('Visakhapatnam')) return 'KVR Motors - Visakhapatnam';
+    if (b.includes('Srikakulam')) return 'KVR Motors - Srikakulam';
+    if (b.includes('Kakinada')) return 'KVR Motors - Kakinada';
+    if (b.includes('Vizag')) return 'KVR Motors - Vizag';
+    return null;
+  };
+
+  const getShowroomBackendName = (b: string) => {
+    if (b === 'Visakhapatnam - KVR' || b === 'Visakhapatnam - KVR Showroom') return 'KVR Showroom - Visakhapatnam';
+    if (b === 'Visakhapatnam - Future Ride') return 'Future Ride - Visakhapatnam';
+    if (b === 'Srikakulam - KVR' || b === 'Srikakulam - KVR Showroom') return 'KVR Showroom - Srikakulam';
+    if (b === 'Kakinada - KVR' || b === 'Kakinada - KVR Showroom') return 'KVR Showroom - Kakinada';
+    if (b === 'Vizag - KVR' || b === 'Vizag - KVR Showroom') return 'KVR Showroom - Vizag';
+    if (b === 'Vizag - Future Ride') return 'Future Ride - Vizag';
+    return null;
+  };
+
   // ---- Location-wise stock breakdown ----
   const showroomStock: any[] = [];
+  const targetBranch = getBranchBackendName(branch);
+  const targetShowroom = getShowroomBackendName(branch);
+
   branchesList.forEach((branchItem) => {
+    if (branch !== 'All Branches' && targetBranch && branchItem.name !== targetBranch) return;
+
     branchItem.showrooms?.forEach((sr: any) => {
       if (branch !== 'All Branches') {
-        const cleaned = branch.replace('Visakhapatnam - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
-        if (!sr.name.toLowerCase().includes(cleaned)) return;
+        if (targetShowroom && sr.name !== targetShowroom) return;
       }
       const vehicles = vehicleUnits.filter((u) => u.showroom_name === sr.name);
       const batteriesInShowroom = batteries.filter((b) => b.location_name && b.location_name.includes(sr.name));
@@ -112,8 +134,10 @@ export default function OwnerInventory({
 
     branchItem.inventory_locations?.forEach((loc: any) => {
       if (branch !== 'All Branches') {
-        const cleaned = branch.replace('Visakhapatnam - ', '').replace('Srikakulam - ', '').replace('Kakinada - ', '').toLowerCase();
-        if (!loc.name.toLowerCase().includes(cleaned) && !branchItem.name.toLowerCase().includes(cleaned)) return;
+        if (targetShowroom) {
+          const activeSr = branchItem.showrooms?.find((s: any) => s.name === targetShowroom);
+          if (activeSr && loc.showroom !== activeSr.id) return;
+        }
       }
       const vehicles = vehicleUnits.filter((u) => u.location_name === loc.name);
       const batteriesInLoc = batteries.filter((b) => b.location_name === loc.name);

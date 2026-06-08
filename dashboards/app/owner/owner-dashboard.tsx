@@ -113,7 +113,7 @@ export default function OwnerDashboard() {
 
   const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
   const [salesInvoicesLoading, setSalesInvoicesLoading] = useState(true);
-  const [salesTimeFilter, setSalesTimeFilter] = useState<"day" | "week" | "month" | "six_months">("month");
+  const [salesTimeFilter, setSalesTimeFilter] = useState<"week" | "month" | "six_months">("month");
 
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(true);
@@ -1197,17 +1197,66 @@ export default function OwnerDashboard() {
   };
 
   // DYNAMIC COMPUTATIONS & MEMOIZED AGGREGATES
+  const filteredVehicleUnits = React.useMemo(() => {
+    return vehicleUnitsList.filter((unit) => {
+      if (selectedBranch === "All Branches") return true;
+      return (
+        unit.branch_name &&
+        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [vehicleUnitsList, selectedBranch]);
+
+  const filteredSalesInvoices = React.useMemo(() => {
+    return salesInvoices.filter((inv) => {
+      if (selectedBranch === "All Branches") return true;
+      return (
+        inv.branch_name &&
+        inv.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [salesInvoices, selectedBranch]);
+
+  const filteredLedgerEntries = React.useMemo(() => {
+    return ledgerEntries.filter((entry) => {
+      if (selectedBranch === "All Branches") return true;
+      return (
+        entry.branch_name &&
+        entry.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [ledgerEntries, selectedBranch]);
+
+  const filteredLeadsList = React.useMemo(() => {
+    return leadsList.filter((lead) => {
+      if (selectedBranch === "All Branches") return true;
+      return (
+        lead.branch &&
+        lead.branch.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [leadsList, selectedBranch]);
+
+  const filteredAdvanceBookings = React.useMemo(() => {
+    return advanceBookings.filter((booking) => {
+      if (selectedBranch === "All Branches") return true;
+      if (!booking.vin_number) return true;
+      const unit = vehicleUnitsList.find((u) => u.vin_number === booking.vin_number);
+      return (
+        unit &&
+        unit.branch_name &&
+        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+      );
+    });
+  }, [advanceBookings, vehicleUnitsList, selectedBranch]);
+
   const salesOverviewData = React.useMemo(() => {
     const now = new Date();
     const currentPeriodStart = new Date();
     
     let daysCount = 30;
-    let isHourly = false;
 
-    if (salesTimeFilter === "day") {
-      daysCount = 1;
-      isHourly = true;
-    } else if (salesTimeFilter === "week") {
+    if (salesTimeFilter === "week") {
       daysCount = 7;
     } else if (salesTimeFilter === "month") {
       daysCount = 30;
@@ -1218,102 +1267,62 @@ export default function OwnerDashboard() {
     currentPeriodStart.setDate(now.getDate() - daysCount);
 
     // If there are no sales invoices in the database, return mockup day-wise unit counts
-    if (salesInvoices.length === 0) {
-      if (isHourly) {
-        return [
-          { name: "08:00", ThisPeriod: 1, PrevPeriod: 0 },
-          { name: "10:00", ThisPeriod: 2, PrevPeriod: 1 },
-          { name: "12:00", ThisPeriod: 3, PrevPeriod: 2 },
-          { name: "14:00", ThisPeriod: 4, PrevPeriod: 2 },
-          { name: "16:00", ThisPeriod: 5, PrevPeriod: 3 },
-          { name: "18:00", ThisPeriod: 3, PrevPeriod: 4 },
-          { name: "20:00", ThisPeriod: 2, PrevPeriod: 2 },
-          { name: "22:00", ThisPeriod: 1, PrevPeriod: 0 },
-        ];
-      } else {
-        const mockPoints = [];
-        const pointCount = salesTimeFilter === "week" ? 7 : salesTimeFilter === "six_months" ? 12 : 15;
-        const step = Math.ceil(daysCount / pointCount);
-        for (let i = pointCount - 1; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(now.getDate() - i * step);
-          const name = d.toLocaleDateString("en-IN", salesTimeFilter === "six_months" ? { month: "short" } : { day: "numeric", month: "short" });
-          const seed = (i + 3) * 7;
-          mockPoints.push({
-            name,
-            ThisPeriod: (seed % 5) + 1,
-            PrevPeriod: ((seed + 2) % 4) + 1
-          });
-        }
-        return mockPoints;
-      }
-    }
-
-    if (isHourly) {
-      const bins = [8, 10, 12, 14, 16, 18, 20, 22, 24];
-      return bins.map(hour => {
-        const name = `${hour.toString().padStart(2, "0")}:00`;
-        let thisCount = 0;
-        let prevCount = 0;
-        
-        salesInvoices.forEach(inv => {
-          const d = new Date(inv.sale_date || inv.created_at);
-          const diffMs = now.getTime() - d.getTime();
-          const diffHours = diffMs / (1000 * 60 * 60);
-          
-          if (diffHours <= 24) {
-            if (d.getHours() >= hour - 2 && d.getHours() < hour) {
-              thisCount++;
-            }
-          } else if (diffHours > 24 && diffHours <= 48) {
-            if (d.getHours() >= hour - 2 && d.getHours() < hour) {
-              prevCount++;
-            }
-          }
-        });
-
-        return { name, ThisPeriod: thisCount, PrevPeriod: prevCount };
-      });
-    } else {
-      const dataPoints = [];
-      for (let i = daysCount - 1; i >= 0; i--) {
+    if (filteredSalesInvoices.length === 0) {
+      const mockPoints = [];
+      const pointCount = salesTimeFilter === "week" ? 7 : salesTimeFilter === "six_months" ? 12 : 15;
+      const step = Math.ceil(daysCount / pointCount);
+      for (let i = pointCount - 1; i >= 0; i--) {
         const d = new Date();
-        d.setDate(now.getDate() - i);
-        d.setHours(0,0,0,0);
-        
-        const label = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-        const prevD = new Date(d);
-        prevD.setDate(prevD.getDate() - daysCount);
-
-        let thisCount = 0;
-        let prevCount = 0;
-
-        salesInvoices.forEach(inv => {
-          const invDate = new Date(inv.sale_date || inv.created_at);
-          invDate.setHours(0,0,0,0);
-
-          if (invDate.getTime() === d.getTime()) {
-            thisCount++;
-          } else if (invDate.getTime() === prevD.getTime()) {
-            prevCount++;
-          }
-        });
-
-        dataPoints.push({
-          name: label,
-          ThisPeriod: thisCount,
-          PrevPeriod: prevCount
+        d.setDate(now.getDate() - i * step);
+        const name = d.toLocaleDateString("en-IN", salesTimeFilter === "six_months" ? { month: "short" } : { day: "numeric", month: "short" });
+        const seed = (i + 3) * 7;
+        mockPoints.push({
+          name,
+          ThisPeriod: (seed % 5) + 1,
+          PrevPeriod: ((seed + 2) % 4) + 1
         });
       }
-      return dataPoints;
+      return mockPoints;
     }
-  }, [salesInvoices, salesTimeFilter]);
+
+    const dataPoints = [];
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      d.setHours(0,0,0,0);
+      
+      const label = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      const prevD = new Date(d);
+      prevD.setDate(prevD.getDate() - daysCount);
+
+      let thisCount = 0;
+      let prevCount = 0;
+
+      filteredSalesInvoices.forEach(inv => {
+        const invDate = new Date(inv.sale_date || inv.created_at);
+        invDate.setHours(0,0,0,0);
+
+        if (invDate.getTime() === d.getTime()) {
+          thisCount++;
+        } else if (invDate.getTime() === prevD.getTime()) {
+          prevCount++;
+        }
+      });
+
+      dataPoints.push({
+        name: label,
+        ThisPeriod: thisCount,
+        PrevPeriod: prevCount
+      });
+    }
+    return dataPoints;
+  }, [filteredSalesInvoices, salesTimeFilter]);
 
   const stockStatusData = React.useMemo(() => {
-    const available = vehicleUnitsList.filter(u => u.stock_status === "available").length;
-    const booked = vehicleUnitsList.filter(u => u.stock_status === "booked").length;
-    const reserved = vehicleUnitsList.filter(u => u.stock_status === "reserved").length;
-    const sold = vehicleUnitsList.filter(u => u.stock_status === "sold").length;
+    const available = filteredVehicleUnits.filter(u => u.stock_status === "available").length;
+    const booked = filteredVehicleUnits.filter(u => u.stock_status === "booked").length;
+    const reserved = filteredVehicleUnits.filter(u => u.stock_status === "reserved").length;
+    const sold = filteredVehicleUnits.filter(u => u.stock_status === "sold").length;
     
     // If all stats are zero, fallback to visual mock parameters
     if (available + booked + reserved + sold === 0) {
@@ -1330,12 +1339,12 @@ export default function OwnerDashboard() {
       { name: "In Transit / Reserved", value: reserved, color: "#f59e0b" },
       { name: "Sold", value: sold, color: "#64748b" }
     ];
-  }, [vehicleUnitsList]);
+  }, [filteredVehicleUnits]);
 
-  const enquiryCount = leadsList.filter(l => l.status === "enquiry").length;
-  const leadCount = leadsList.filter(l => l.status === "new_lead" || l.status === "contacted" || l.status === "follow_up").length;
-  const negoCount = leadsList.filter(l => l.status === "negotiation").length;
-  const wonCount = leadsList.filter(l => l.status === "won").length;
+  const enquiryCount = filteredLeadsList.filter(l => l.status === "enquiry").length;
+  const leadCount = filteredLeadsList.filter(l => l.status === "new_lead" || l.status === "contacted" || l.status === "follow_up").length;
+  const negoCount = filteredLeadsList.filter(l => l.status === "negotiation").length;
+  const wonCount = filteredLeadsList.filter(l => l.status === "won").length;
 
   const leadsFunnelData = [
     { name: "Enquiries", count: enquiryCount, color: "#3b82f6" },
@@ -1346,7 +1355,7 @@ export default function OwnerDashboard() {
 
   const recentActivities = React.useMemo(() => {
     const list: any[] = [];
-    salesInvoices.forEach((inv) => {
+    filteredSalesInvoices.forEach((inv) => {
       list.push({
         id: `sales-${inv.id}`,
         action: "Sale Invoice Created",
@@ -1375,11 +1384,11 @@ export default function OwnerDashboard() {
       ];
     }
     return list.slice(0, 4);
-  }, [salesInvoices, purchaseOrders]);
+  }, [filteredSalesInvoices, purchaseOrders]);
 
   const topSellingModels = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    salesInvoices.forEach((inv) => {
+    filteredSalesInvoices.forEach((inv) => {
       const model = inv.model_name || "Kinetic Green E-Luna";
       counts[model] = (counts[model] || 0) + 1;
     });
@@ -1395,15 +1404,16 @@ export default function OwnerDashboard() {
       ];
     }
     return sorted.slice(0, 5);
-  }, [salesInvoices]);
+  }, [filteredSalesInvoices]);
 
   const netCashflow = React.useMemo(() => {
-    return ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0);
-  }, [ledgerEntries]);
+    return filteredLedgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0);
+  }, [filteredLedgerEntries]);
 
   const totalSalesValue = React.useMemo(() => {
-    return salesInvoices.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0);
-  }, [salesInvoices]);
+    return filteredSalesInvoices.reduce((acc, curr) => acc + parseFloat(curr.sale_price || 0), 0);
+  }, [filteredSalesInvoices]);
+
 
   // Showrooms / locations filtered by the branch chosen in the stock-unit form
   const branchShowrooms = React.useMemo(() => {
@@ -1413,16 +1423,6 @@ export default function OwnerDashboard() {
   const branchLocations = React.useMemo(() => {
     return locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
   }, [locationsList, stockUnitForm.branch]);
-
-  const filteredVehicleUnits = React.useMemo(() => {
-    return vehicleUnitsList.filter((unit) => {
-      if (selectedBranch === "All Branches") return true;
-      return (
-        unit.branch_name &&
-        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
-      );
-    });
-  }, [vehicleUnitsList, selectedBranch]);
 
   if (!isMounted) {
     return (
@@ -1531,7 +1531,7 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <DashboardCard 
                   title="Total Units Sold" 
-                  value={salesInvoicesLoading ? "..." : `${salesInvoices.length} Units`} 
+                  value={salesInvoicesLoading ? "..." : `${filteredSalesInvoices.length} Units`} 
                   trend="↑ 12.8%" 
                   trendType="success" 
                   description="Total vehicles invoiced" 
@@ -1551,7 +1551,7 @@ export default function OwnerDashboard() {
                 />
                 <DashboardCard 
                   title="Vehicles in Stock" 
-                  value={vehiclesLoading ? "..." : `${vehicleUnitsList.filter(u => u.stock_status === "available").length} Units`} 
+                  value={vehiclesLoading ? "..." : `${filteredVehicleUnits.filter(u => u.stock_status === "available").length} Units`} 
                   trend="↑ 8.4%" 
                   trendType="success" 
                   description="Available units" 
@@ -1561,7 +1561,7 @@ export default function OwnerDashboard() {
                 />
                 <DashboardCard 
                   title="Total Leads" 
-                  value={`${leadsLoading ? "..." : leadsList.length} Leads`} 
+                  value={`${leadsLoading ? "..." : filteredLeadsList.length} Leads`} 
                   trend="↑ 15.3%" 
                   trendType="success" 
                   description="Inflow conversion pace" 
@@ -1571,7 +1571,7 @@ export default function OwnerDashboard() {
                 />
                 <DashboardCard 
                   title="Receivables" 
-                  value={advanceBookingsLoading ? "..." : "₹ " + advanceBookings.filter(b => b.status === "confirmed").reduce((acc, curr) => acc + parseFloat(curr.advance_amount || 0), 0).toLocaleString('en-IN')} 
+                  value={advanceBookingsLoading ? "..." : "₹ " + filteredAdvanceBookings.filter(b => b.status === "confirmed").reduce((acc, curr) => acc + parseFloat(curr.advance_amount || 0), 0).toLocaleString('en-IN')} 
                   trend="↓ 3.7%" 
                   trendType="danger" 
                   description="Deposit pipeline" 
@@ -1595,7 +1595,6 @@ export default function OwnerDashboard() {
                       {/* Period Filter Buttons */}
                       <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
                         {[
-                          { key: "day", label: "Today" },
                           { key: "week", label: "Week" },
                           { key: "month", label: "Month" },
                           { key: "six_months", label: "6 Months" }
@@ -1653,7 +1652,7 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="h-[220px] w-full flex flex-col justify-center items-center relative">
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-2xl font-black text-slate-800 font-mono">{vehiclesLoading ? "..." : vehicleUnitsList.length}</span>
+                      <span className="text-2xl font-black text-slate-800 font-mono">{vehiclesLoading ? "..." : filteredVehicleUnits.length}</span>
                       <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total units</span>
                     </div>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -3379,7 +3378,16 @@ export default function OwnerDashboard() {
                 value={stockUnitForm.vin_number}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, vin_number: val });
+                  setStockUnitForm((prev) => {
+                    const updates: any = { ...prev, vin_number: val };
+                    if (!prev.motor_number || prev.motor_number === prev.vin_number) {
+                      updates.motor_number = val;
+                    }
+                    if (!prev.chassis_number || prev.chassis_number === prev.vin_number) {
+                      updates.chassis_number = val;
+                    }
+                    return updates;
+                  });
                   if (vinLookupState !== "idle") setVinLookupState("idle");
                 }}
                 onBlur={(e) => handleIdentifierLookup("vin_number", e.target.value)}

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
 
 // Import Owner Screens
 import OwnerDashboard from './dashboard';
@@ -96,6 +97,18 @@ export default function OwnerLayout() {
   
   const [activeTab, setActiveTab] = useState<ScreenTab>('dashboard');
   const [branch, setBranch] = useState('All Branches');
+  const [dbBranches, setDbBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/branches/')
+      .then(res => {
+        setDbBranches(res.data || []);
+      })
+      .catch(err => {
+        console.warn("Failed to load branches in owner layout:", err);
+      });
+  }, []);
+
   const [isDrawerOpenState, setIsDrawerOpenState] = useState(false);
   const [isBranchModalVisible, setIsBranchModalVisible] = useState(false);
   
@@ -237,13 +250,31 @@ export default function OwnerLayout() {
     }
   };
 
-  const branchesList = [
-    { id: 'All Branches', label: 'All Branches', sub: 'Visakhapatnam, Srikakulam, Kakinada' },
-    { id: 'Visakhapatnam - KVR Showroom', label: 'Visakhapatnam - KVR Showroom', sub: 'Kinetic Green, Dynamo, Frankly' },
-    { id: 'Visakhapatnam - Future Ride', label: 'Visakhapatnam - Future Ride', sub: 'Kinetiq, Watts Engineering' },
-    { id: 'Srikakulam - KVR Showroom', label: 'Srikakulam - KVR Showroom', sub: 'Kinetic Green, Others' },
-    { id: 'Kakinada - KVR Showroom', label: 'Kakinada - KVR Showroom', sub: 'Kinetic Green, Dynamo' }
-  ];
+  const branchesList = React.useMemo(() => {
+    const list = [
+      { id: 'All Branches', label: 'All Branches', sub: dbBranches.length > 0 ? dbBranches.map(b => b.name.replace('KVR Motors - ', '')).join(', ') : 'Visakhapatnam, Srikakulam, Kakinada' }
+    ];
+    dbBranches.forEach(b => {
+      const branchCity = b.name.replace('KVR Motors - ', '');
+      if (b.showrooms && b.showrooms.length > 0) {
+        b.showrooms.forEach((s: any) => {
+          let cleanShowroomName = s.name;
+          const suffixIndex = cleanShowroomName.indexOf(' - ');
+          if (suffixIndex !== -1) {
+            cleanShowroomName = cleanShowroomName.substring(0, suffixIndex);
+          }
+          cleanShowroomName = cleanShowroomName.replace(' Showroom', '');
+          list.push({
+            id: `${branchCity} - ${cleanShowroomName}`,
+            label: `${branchCity} - ${cleanShowroomName}`,
+            sub: cleanShowroomName === 'Future Ride' ? 'Kinetiq, Watts Engineering' : 'Kinetic Green, Dynamo, Frankly'
+          });
+        });
+      }
+    });
+    return list;
+  }, [dbBranches]);
+
 
   // Nav items inside the drawer
   const drawerMenuItems = [
