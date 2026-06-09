@@ -131,11 +131,8 @@ export default function SupervisorVerifyAttendance() {
           <View style={styles.topRow}>
             <Pressable 
               onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace('/supervisor/dashboard');
-                }
+                // Always navigate deterministically to supervisor main layout
+                router.replace('/supervisor/' as any);
               }} 
               style={styles.backButton} 
               hitSlop={8}

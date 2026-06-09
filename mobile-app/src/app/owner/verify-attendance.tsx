@@ -180,11 +180,10 @@ export default function OwnerVerifyAttendance() {
           <View style={styles.topRow}>
             <Pressable 
               onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace('/owner/dashboard');
-                }
+                // Always navigate deterministically to owner main layout
+                // router.back() is unreliable — it follows history stack and may land
+                // on unrelated screens (e.g. leads pipeline) depending on navigation history
+                router.replace('/owner/' as any);
               }} 
               style={styles.backButton} 
               hitSlop={8}

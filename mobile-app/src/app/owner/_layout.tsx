@@ -126,7 +126,7 @@ export default function OwnerLayout() {
     }
   }, [pathname]);
 
-  const isSubRoute = pathname !== '/owner' && pathname !== '/owner/' && !TAB_KEYS.some(tab => pathname.endsWith(tab));
+  const isSubRoute = pathname !== '/owner' && pathname !== '/owner/' && !TAB_KEYS.some(tab => pathname === `/owner/${tab}` || pathname === `/owner/${tab}/`);
 
   // Shared value for Drawer slide and Main Screen shift/scale animation
   const drawerProgress = useSharedValue(0);

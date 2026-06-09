@@ -91,7 +91,7 @@ export default function SupervisorLayout() {
     }
   }, [pathname]);
 
-  const isSubRoute = pathname !== '/supervisor' && pathname !== '/supervisor/' && !TAB_KEYS.some(tab => pathname.endsWith(tab));
+  const isSubRoute = pathname !== '/supervisor' && pathname !== '/supervisor/' && !TAB_KEYS.some(tab => pathname === `/supervisor/${tab}` || pathname === `/supervisor/${tab}/`);
 
   // Tab indicator sliding animation setup
   const tabWidth = screenWidth / TAB_KEYS.length;

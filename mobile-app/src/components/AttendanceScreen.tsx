@@ -32,9 +32,10 @@ export default function AttendanceScreen({ role }: { role: string }) {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView>(null);
 
-  // Permissions state
+  // Permissions state — check silently on mount, prompt only when user taps a feature
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [locationStatus, setLocationStatus] = useState<Location.PermissionStatus | null>(null);
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
 
   // Core capture state
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -48,7 +49,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
   const [todayLog, setTodayLog] = useState<AttendanceLog | null>(null);
-  const [activeCamera, setActiveCamera] = useState(true);
+  const [activeCamera, setActiveCamera] = useState(false);
 
   // Load existing attendance logs and check-in state
   const loadAttendanceData = async () => {
@@ -73,16 +74,46 @@ export default function AttendanceScreen({ role }: { role: string }) {
     }
   };
 
+  // Silently check existing permissions on mount (no prompts)
   useEffect(() => {
     loadAttendanceData();
-    checkLocationPermission();
+    silentPermissionCheck();
   }, []);
 
-  const checkLocationPermission = async () => {
+  // Silently check permissions without prompting — like Instagram/WhatsApp
+  const silentPermissionCheck = async () => {
+    try {
+      const { status: locStatus } = await Location.getForegroundPermissionsAsync();
+      setLocationStatus(locStatus);
+      if (locStatus === Location.PermissionStatus.GRANTED) {
+        resolveCurrentLocation();
+      }
+      // Camera permission is already tracked by useCameraPermissions hook
+      // We just need to know if it's granted to show camera view
+      if (cameraPermission?.granted) {
+        setActiveCamera(true);
+      }
+    } finally {
+      setPermissionsChecked(true);
+    }
+  };
+
+  // When camera permission changes (e.g. user grants it), activate camera
+  useEffect(() => {
+    if (cameraPermission?.granted && !isCheckedInToday) {
+      setActiveCamera(true);
+    }
+  }, [cameraPermission?.granted]);
+
+  // This is now only called when user explicitly taps "Grant Location Access"
+  const checkAndRequestLocationPermission = async () => {
     const { status } = await Location.getForegroundPermissionsAsync();
     setLocationStatus(status);
     if (status === Location.PermissionStatus.GRANTED) {
       resolveCurrentLocation();
+    } else {
+      // Only prompt if not already granted
+      await requestLocationPermission();
     }
   };
 
@@ -279,11 +310,9 @@ export default function AttendanceScreen({ role }: { role: string }) {
           <View style={styles.topRow}>
             <Pressable 
               onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace('/');
-                }
+                // Navigate deterministically based on user role
+                const roleRoot = `/${role}/` as any;
+                router.replace(roleRoot);
               }} 
               style={styles.backButton} 
               hitSlop={8}
