@@ -1,2 +1,2 @@
 import '@/global.css';
-export * from './theme';
+export * from './theme-constants';
