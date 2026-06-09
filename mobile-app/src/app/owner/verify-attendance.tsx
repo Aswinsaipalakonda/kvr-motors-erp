@@ -178,7 +178,17 @@ export default function OwnerVerifyAttendance() {
         {/* Dark Branded Header */}
         <View style={[styles.headerCanvas, { paddingTop: insets.top + 8 }]}>
           <View style={styles.topRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
+            <Pressable 
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/owner/dashboard');
+                }
+              }} 
+              style={styles.backButton} 
+              hitSlop={8}
+            >
               <ArrowLeft size={20} color="#cbd5e1" />
             </Pressable>
             <View style={styles.badgeWrapper}>
@@ -214,9 +224,19 @@ export default function OwnerVerifyAttendance() {
           </View>
 
           {activeTab === 'pending' && pendingRecords.length > 0 && (
-            <Pressable onPress={toggleSelectAll} style={styles.selectAllBtn}>
+            <Pressable 
+              onPress={toggleSelectAll} 
+              style={styles.selectAllBtn}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: allSelected }}
+            >
+              {allSelected ? (
+                <CheckSquare size={16} color="#04a700" />
+              ) : (
+                <Square size={16} color="#64748b" />
+              )}
               <ThemedText style={styles.selectAllText}>
-                {allSelected ? "Deselect All" : "Select All"}
+                Select All
               </ThemedText>
             </Pressable>
           )}
@@ -455,9 +475,15 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: 'bold', color: '#64748b' },
   activeTabText: { color: '#04a700' },
   selectAllBtn: {
-    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#f1f5f9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
   },
-  selectAllText: { fontSize: 11, fontWeight: 'bold', color: '#475569' },
+  selectAllText: { fontSize: 11.5, fontWeight: 'bold', color: '#475569' },
   bulkActionBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#e2f5e1', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#c5e8c3',

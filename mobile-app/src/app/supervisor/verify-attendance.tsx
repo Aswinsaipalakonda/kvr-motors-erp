@@ -129,7 +129,17 @@ export default function SupervisorVerifyAttendance() {
         {/* Dark Branded Header */}
         <View style={[styles.headerCanvas, { paddingTop: insets.top + 8 }]}>
           <View style={styles.topRow}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
+            <Pressable 
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/supervisor/dashboard');
+                }
+              }} 
+              style={styles.backButton} 
+              hitSlop={8}
+            >
               <ArrowLeft size={20} color="#cbd5e1" />
             </Pressable>
             <View style={styles.badgeWrapper}>
