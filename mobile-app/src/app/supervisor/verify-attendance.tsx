@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   employeeInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   employeeName: { fontSize: 14.5, fontWeight: 'bold', color: '#0f172a' },
   roleBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  roleText: { fontSize: 9, fontWeight: 'extrabold', color: '#475569' },
+  roleText: { fontSize: 9, fontWeight: '800', color: '#475569' },
   timeInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   timeText: { fontSize: 12, color: '#475569', fontWeight: 'bold' },
   captureLayout: { flexDirection: 'row', gap: 14 },
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   dateLabel: { fontSize: 11.5, color: '#64748b', fontWeight: '500' },
   dateValue: { fontSize: 11.5, color: '#334155', fontWeight: 'bold' },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginTop: 2 },
-  statusText: { fontSize: 9, fontWeight: 'extrabold', letterSpacing: 0.5 },
+  statusText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   actionPanel: { gap: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
   remarksInput: {
     backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10,

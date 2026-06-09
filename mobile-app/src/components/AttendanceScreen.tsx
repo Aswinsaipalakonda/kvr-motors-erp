@@ -185,7 +185,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
       // 3. Post to backend
       const res = await api.post('/attendance/', formData, {
         headers: {
-          'Content-Type': 'multipart/form-tdata', // Axios multipart override helper
+          'Content-Type': 'multipart/form-data', // Axios multipart override helper
         }
       });
 
@@ -441,14 +441,14 @@ const styles = StyleSheet.create({
   },
   submittingText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
   successCard: {
-    backgroundColor: '#ffffff', borderRadius: 24, borderHeight: 1, borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff', borderRadius: 24, borderWidth: 1, borderColor: '#e2e8f0',
     alignItems: 'center', paddingVertical: 36, paddingHorizontal: 20, gap: 10,
     boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
   },
   successTitle: { fontSize: 20, fontWeight: 'bold', color: '#04a700' },
   successTime: { fontSize: 14, color: '#475569', fontWeight: '600' },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6 },
-  statusText: { fontSize: 11, fontWeight: 'extrabold', letterSpacing: 0.5 },
+  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   remarksText: { fontSize: 12.5, color: '#64748b', fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 12 },
   locationCard: {
     backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, gap: 12,
