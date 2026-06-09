@@ -120,7 +120,7 @@ export default function TelecallerDashboard() {
                     <Clock size={16} color="#d71d22" />
                   </View>
                   <ThemedText style={styles.statValue}>{todayReminders.length}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Today's Calls</ThemedText>
+                  <ThemedText style={styles.statLabel}>Today&apos;s Calls</ThemedText>
                 </View>
                 <View style={styles.statCard}>
                   <View style={[styles.statIconCircle, { backgroundColor: '#eefde8' }]}>
@@ -151,7 +151,7 @@ export default function TelecallerDashboard() {
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeaderRow}>
                   <PhoneCall size={16} color="#04a700" />
-                  <ThemedText style={styles.sectionTitle}>Today's Callback Queue</ThemedText>
+                  <ThemedText style={styles.sectionTitle}>Today&apos;s Callback Queue</ThemedText>
                 </View>
                 
                 {todayReminders.length === 0 ? (

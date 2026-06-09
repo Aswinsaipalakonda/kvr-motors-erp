@@ -255,7 +255,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
           </View>
           {todayLog?.remarks && (
             <ThemedText style={styles.remarksText}>
-              Remarks: "{todayLog.remarks}"
+              Remarks: &quot;{todayLog.remarks}&quot;
             </ThemedText>
           )}
         </View>

@@ -5,11 +5,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
-  ArrowLeft, CheckCircle2, XCircle, MapPin, Clock, FileText, RefreshCw, 
-  UsersRound, ShieldCheck 
+  ArrowLeft, CheckCircle2, XCircle, MapPin, Clock, FileText,
+  UsersRound, ShieldCheck, CheckSquare, Square
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api, { baseHostUrl } from '@/services/api';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -41,6 +40,8 @@ export default function SupervisorVerifyAttendance() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [remarks, setRemarks] = useState<{ [id: number]: string }>({});
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const loadAttendance = async () => {
@@ -91,6 +92,34 @@ export default function SupervisorVerifyAttendance() {
     }
   };
 
+  const handleBulkVerify = async (status: 'verified' | 'rejected') => {
+    if (selectedIds.length === 0) return;
+    
+    try {
+      setIsSubmitting(true);
+      await api.post('/attendance/bulk-verify/', {
+        ids: selectedIds,
+        status,
+        remarks: `Bulk processed by Supervisor`
+      });
+      
+      Alert.alert('Success', `Successfully updated ${selectedIds.length} records to ${status}.`);
+      setSelectedIds([]);
+      loadAttendance();
+    } catch (err) {
+      console.error('Bulk verification failed:', err);
+      Alert.alert('Error', 'Failed to submit bulk verification.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
   const getImageUrl = (path: string) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
@@ -114,6 +143,22 @@ export default function SupervisorVerifyAttendance() {
   const pendingRecords = records.filter(r => r.status === 'pending');
   const historyRecords = records.filter(r => r.status !== 'pending');
   const displayedRecords = activeTab === 'pending' ? pendingRecords : historyRecords;
+
+  const allSelected = pendingRecords.length > 0 && pendingRecords.every(r => selectedIds.includes(r.id));
+  
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !pendingRecords.map(r => r.id).includes(id)));
+    } else {
+      setSelectedIds(prev => {
+        const next = [...prev];
+        pendingRecords.forEach(r => {
+          if (!next.includes(r.id)) next.push(r.id);
+        });
+        return next;
+      });
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -150,25 +195,72 @@ export default function SupervisorVerifyAttendance() {
           </View>
         </View>
 
-        {/* Tab Selector */}
-        <View style={styles.tabBar}>
-          <Pressable 
-            onPress={() => setActiveTab('pending')} 
-            style={[styles.tabItem, activeTab === 'pending' && styles.activeTabItem]}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-              Pending ({pendingRecords.length})
-            </ThemedText>
-          </Pressable>
-          <Pressable 
-            onPress={() => setActiveTab('history')} 
-            style={[styles.tabItem, activeTab === 'history' && styles.activeTabItem]}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-              History ({historyRecords.length})
-            </ThemedText>
-          </Pressable>
+        {/* Tab Selector & Select All Control */}
+        <View style={styles.tabBarRow}>
+          <View style={styles.tabBar}>
+            <Pressable 
+              onPress={() => setActiveTab('pending')} 
+              style={[styles.tabItem, activeTab === 'pending' && styles.activeTabItem]}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+                Pending ({pendingRecords.length})
+              </ThemedText>
+            </Pressable>
+            <Pressable 
+              onPress={() => setActiveTab('history')} 
+              style={[styles.tabItem, activeTab === 'history' && styles.activeTabItem]}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+                History ({historyRecords.length})
+              </ThemedText>
+            </Pressable>
+          </View>
+
+          {activeTab === 'pending' && pendingRecords.length > 0 && (
+            <Pressable 
+              onPress={toggleSelectAll} 
+              style={styles.selectAllBtn}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: allSelected }}
+            >
+              {allSelected ? (
+                <CheckSquare size={16} color="#04a700" />
+              ) : (
+                <Square size={16} color="#64748b" />
+              )}
+              <ThemedText style={styles.selectAllText}>
+                Select All
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
+
+        {/* Bulk Action Floating Overlay Bar */}
+        {selectedIds.length > 0 && activeTab === 'pending' && (
+          <View style={styles.bulkActionBar}>
+            <ThemedText style={styles.bulkActionText}>
+              Selected: {selectedIds.length} record(s)
+            </ThemedText>
+            <View style={styles.bulkActionButtons}>
+              <Pressable 
+                onPress={() => handleBulkVerify('rejected')}
+                style={[styles.bulkBtn, styles.bulkRejectBtn]}
+                disabled={isSubmitting}
+              >
+                <XCircle size={14} color="#ffffff" />
+                <ThemedText style={styles.bulkBtnText}>Reject</ThemedText>
+              </Pressable>
+              <Pressable 
+                onPress={() => handleBulkVerify('verified')}
+                style={[styles.bulkBtn, styles.bulkApproveBtn]}
+                disabled={isSubmitting}
+              >
+                <CheckCircle2 size={14} color="#ffffff" />
+                <ThemedText style={styles.bulkBtnText}>Approve</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {isLoading ? (
           <View style={styles.loaderContainer}>
@@ -178,7 +270,7 @@ export default function SupervisorVerifyAttendance() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
@@ -195,125 +287,144 @@ export default function SupervisorVerifyAttendance() {
               </View>
             ) : (
               <View style={styles.recordsList}>
-                {displayedRecords.map((record) => (
-                  <View key={record.id} style={styles.recordCard}>
-                    {/* User Profile Info */}
-                    <View style={styles.cardHeader}>
-                      <View style={styles.employeeInfo}>
-                        <ThemedText style={styles.employeeName}>
-                          {record.user_details?.full_name || record.user_details?.username || 'Unknown Employee'}
-                        </ThemedText>
-                        <View style={styles.roleBadge}>
-                          <ThemedText style={styles.roleText}>
-                            {getRoleBadgeLabel(record.user_details?.role || '').toUpperCase()}
-                          </ThemedText>
-                        </View>
-                      </View>
-                      <View style={styles.timeInfo}>
-                        <Clock size={12} color="#64748b" />
-                        <ThemedText style={styles.timeText}>
-                          {new Date(record.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </ThemedText>
-                      </View>
-                    </View>
+                {displayedRecords.map((record) => {
+                  const isSelected = selectedIds.includes(record.id);
+                  return (
+                    <View key={record.id} style={[styles.recordCard, isSelected && styles.recordCardSelected]}>
+                      {/* Checkbox selector for Pending tab */}
+                      {activeTab === 'pending' && (
+                        <Pressable 
+                          onPress={() => toggleSelect(record.id)} 
+                          style={styles.checkboxContainer}
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={20} color="#04a700" />
+                          ) : (
+                            <Square size={20} color="#64748b" />
+                          )}
+                        </Pressable>
+                      )}
 
-                    {/* Workplace capture details (Image & Maps details) */}
-                    <View style={styles.captureLayout}>
-                      <View style={styles.photoContainer}>
-                        {record.photo ? (
-                          <Image 
-                            source={{ uri: getImageUrl(record.photo) }} 
-                            style={styles.capturedPhoto} 
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={styles.photoFallback}>
-                            <UsersRound size={28} color="#cbd5e1" />
+                      <View style={{ flex: 1, gap: 12 }}>
+                        {/* User Profile Info */}
+                        <View style={styles.cardHeader}>
+                          <View style={styles.employeeInfo}>
+                            <ThemedText style={styles.employeeName}>
+                              {record.user_details?.full_name || record.user_details?.username || 'Unknown Employee'}
+                            </ThemedText>
+                            <View style={styles.roleBadge}>
+                              <ThemedText style={styles.roleText}>
+                                {getRoleBadgeLabel(record.user_details?.role || '').toUpperCase()}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <View style={styles.timeInfo}>
+                            <Clock size={12} color="#64748b" />
+                            <ThemedText style={styles.timeText}>
+                              {new Date(record.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </ThemedText>
+                          </View>
+                        </View>
+
+                        {/* Workplace capture details (Image & Maps details) */}
+                        <View style={styles.captureLayout}>
+                          <View style={styles.photoContainer}>
+                            {record.photo ? (
+                              <Image 
+                                source={{ uri: getImageUrl(record.photo) }} 
+                                style={styles.capturedPhoto} 
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <View style={styles.photoFallback}>
+                                <UsersRound size={28} color="#cbd5e1" />
+                              </View>
+                            )}
+                          </View>
+                          
+                          <View style={styles.locationDetails}>
+                            <View style={styles.locRow}>
+                              <MapPin size={14} color="#04a700" style={{ marginTop: 2 }} />
+                              <View style={{ flex: 1 }}>
+                                <ThemedText style={styles.locationValue} numberOfLines={2}>
+                                  {record.location_name || 'Showroom Workplace'}
+                                </ThemedText>
+                                <ThemedText style={styles.coordinates}>
+                                  Lat: {Number(record.latitude).toFixed(5)}, Lng: {Number(record.longitude).toFixed(5)}
+                                </ThemedText>
+                              </View>
+                            </View>
+
+                            <View style={styles.dateRow}>
+                              <ThemedText style={styles.dateLabel}>Date: </ThemedText>
+                              <ThemedText style={styles.dateValue}>
+                                {new Date(record.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </ThemedText>
+                            </View>
+
+                            {/* Status Label for History logs */}
+                            {record.status !== 'pending' && (
+                              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(record.status)}12` }]}>
+                                <ThemedText style={[styles.statusText, { color: getStatusColor(record.status) }]}>
+                                  {record.status.toUpperCase()}
+                                </ThemedText>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Verification Action Panel for Pending logs */}
+                        {record.status === 'pending' && (
+                          <View style={styles.actionPanel}>
+                            <TextInput
+                              style={styles.remarksInput}
+                              placeholder="Optional remarks (e.g. Approved / On-time)"
+                              placeholderTextColor="#94a3b8"
+                              value={remarks[record.id] || ''}
+                              onChangeText={(text) => setRemarks(prev => ({ ...prev, [record.id]: text }))}
+                            />
+                            
+                            <View style={styles.btnRow}>
+                              <Pressable 
+                                onPress={() => handleVerify(record.id, 'rejected')}
+                                disabled={processingId === record.id}
+                                style={({ pressed }) => [
+                                  styles.rejectBtn,
+                                  pressed && { opacity: 0.8 }
+                                ]}
+                              >
+                                <XCircle size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                                <ThemedText style={styles.actionBtnText}>Reject</ThemedText>
+                              </Pressable>
+
+                              <Pressable 
+                                onPress={() => handleVerify(record.id, 'verified')}
+                                disabled={processingId === record.id}
+                                style={({ pressed }) => [
+                                  styles.approveBtn,
+                                  pressed && { opacity: 0.8 }
+                                ]}
+                              >
+                                <CheckCircle2 size={15} color="#ffffff" style={{ marginRight: 6 }} />
+                                <ThemedText style={styles.actionBtnText}>Approve</ThemedText>
+                              </Pressable>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* History details display */}
+                        {record.status !== 'pending' && record.remarks && (
+                          <View style={styles.historyRemarksBox}>
+                            <FileText size={12} color="#64748b" />
+                            <ThemedText style={styles.historyRemarksText}>
+                              Remarks: &quot;{record.remarks}&quot;
+                            </ThemedText>
                           </View>
                         )}
                       </View>
-                      
-                      <View style={styles.locationDetails}>
-                        <View style={styles.locRow}>
-                          <MapPin size={14} color="#04a700" style={{ marginTop: 2 }} />
-                          <View style={{ flex: 1 }}>
-                            <ThemedText style={styles.locationValue} numberOfLines={2}>
-                              {record.location_name || 'Showroom Workplace'}
-                            </ThemedText>
-                            <ThemedText style={styles.coordinates}>
-                              Lat: {Number(record.latitude).toFixed(5)}, Lng: {Number(record.longitude).toFixed(5)}
-                            </ThemedText>
-                          </View>
-                        </View>
-
-                        <View style={styles.dateRow}>
-                          <ThemedText style={styles.dateLabel}>Date: </ThemedText>
-                          <ThemedText style={styles.dateValue}>
-                            {new Date(record.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </ThemedText>
-                        </View>
-
-                        {/* Status Label for History logs */}
-                        {record.status !== 'pending' && (
-                          <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(record.status)}12` }]}>
-                            <ThemedText style={[styles.statusText, { color: getStatusColor(record.status) }]}>
-                              {record.status.toUpperCase()}
-                            </ThemedText>
-                          </View>
-                        )}
-                      </View>
                     </View>
-
-                    {/* Verification Action Panel for Pending logs */}
-                    {record.status === 'pending' && (
-                      <View style={styles.actionPanel}>
-                        <TextInput
-                          style={styles.remarksInput}
-                          placeholder="Optional remarks (e.g. Approved / On-time)"
-                          placeholderTextColor="#94a3b8"
-                          value={remarks[record.id] || ''}
-                          onChangeText={(text) => setRemarks(prev => ({ ...prev, [record.id]: text }))}
-                        />
-                        
-                        <View style={styles.btnRow}>
-                          <Pressable 
-                            onPress={() => handleVerify(record.id, 'rejected')}
-                            disabled={processingId === record.id}
-                            style={({ pressed }) => [
-                              styles.rejectBtn,
-                              pressed && { opacity: 0.8 }
-                            ]}
-                          >
-                            <XCircle size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                            <ThemedText style={styles.actionBtnText}>Reject</ThemedText>
-                          </Pressable>
-
-                          <Pressable 
-                            onPress={() => handleVerify(record.id, 'verified')}
-                            disabled={processingId === record.id}
-                            style={({ pressed }) => [
-                              styles.approveBtn,
-                              pressed && { opacity: 0.8 }
-                            ]}
-                          >
-                            <CheckCircle2 size={15} color="#ffffff" style={{ marginRight: 6 }} />
-                            <ThemedText style={styles.actionBtnText}>Approve</ThemedText>
-                          </Pressable>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* History details display */}
-                    {record.status !== 'pending' && record.remarks && (
-                      <View style={styles.historyRemarksBox}>
-                        <FileText size={12} color="#64748b" />
-                        <ThemedText style={styles.historyRemarksText}>
-                          Remarks: "{record.remarks}"
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
           </ScrollView>
@@ -342,17 +453,43 @@ const styles = StyleSheet.create({
   titleWrapper: { marginTop: 22, marginBottom: 6 },
   mainTitle: { fontSize: 26, lineHeight: 34, fontWeight: '300', color: '#ffffff', letterSpacing: -0.5 },
   accentTitle: { fontSize: 28, lineHeight: 36, fontWeight: 'bold', color: '#04a700', letterSpacing: -0.5 },
-  tabBar: {
+  tabBarRow: {
     flexDirection: 'row', backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'space-between', paddingRight: 16,
+  },
+  tabBar: {
+    flexDirection: 'row', flex: 1,
   },
   tabItem: {
-    flex: 1, alignItems: 'center', paddingVertical: 14, borderBottomWidth: 2.5, borderBottomColor: 'transparent',
+    paddingHorizontal: 20, alignItems: 'center', paddingVertical: 14, borderBottomWidth: 2.5, borderBottomColor: 'transparent',
   },
   activeTabItem: {
     borderBottomColor: '#04a700',
   },
   tabText: { fontSize: 13, fontWeight: 'bold', color: '#64748b' },
   activeTabText: { color: '#04a700' },
+  selectAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+  },
+  selectAllText: { fontSize: 11.5, fontWeight: 'bold', color: '#475569' },
+  bulkActionBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#e2f5e1', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#c5e8c3',
+  },
+  bulkActionText: { fontSize: 12, fontWeight: 'bold', color: '#046c02' },
+  bulkActionButtons: { flexDirection: 'row', gap: 8 },
+  bulkBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+  },
+  bulkApproveBtn: { backgroundColor: '#04a700' },
+  bulkRejectBtn: { backgroundColor: '#ef4444' },
+  bulkBtnText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold' },
   loaderContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 80 },
   loaderText: { fontSize: 12.5, color: '#64748b', fontWeight: 'bold' },
   scrollView: { flex: 1 },
@@ -361,8 +498,14 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13.5, color: '#64748b', fontWeight: '600', textAlign: 'center' },
   recordsList: { gap: 16 },
   recordCard: {
-    backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, gap: 12,
+    flexDirection: 'row', backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, gap: 12,
     boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  recordCardSelected: {
+    borderColor: '#04a700', backgroundColor: '#fafdfa',
+  },
+  checkboxContainer: {
+    justifyContent: 'center', paddingRight: 4,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   employeeInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
