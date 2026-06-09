@@ -116,7 +116,7 @@ export default function OwnerDashboard() {
 
   const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
   const [salesInvoicesLoading, setSalesInvoicesLoading] = useState(true);
-  const [salesTimeFilter, setSalesTimeFilter] = useState<"week" | "month" | "six_months">("month");
+  const [salesTimeFilter, setSalesTimeFilter] = useState<"week" | "month" | "six_months">("week");
 
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [purchaseOrdersLoading, setPurchaseOrdersLoading] = useState(true);
