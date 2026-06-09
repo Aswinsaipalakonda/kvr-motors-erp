@@ -26,3 +26,7 @@ node_modules/
 # Archives
 project.tar.gz
 project.zip
+
+# Django Media
+backend/media/
+
