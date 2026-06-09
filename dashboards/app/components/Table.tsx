@@ -5,7 +5,7 @@ import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TableProps {
   title?: string;
-  headers: string[];
+  headers: React.ReactNode[];
   children: React.ReactNode;
   searchPlaceholder?: string;
   searchQuery?: string;

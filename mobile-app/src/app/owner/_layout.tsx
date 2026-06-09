@@ -315,6 +315,12 @@ export default function OwnerLayout() {
       color: '#04a700',
     },
     {
+      title: 'Verify Attendance',
+      route: '/owner/verify-attendance',
+      icon: Shield,
+      color: '#04a700',
+    },
+    {
       title: 'Activity Logs',
       route: '/owner/activity-logs',
       icon: FileText,

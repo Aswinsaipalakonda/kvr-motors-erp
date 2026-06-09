@@ -79,3 +79,49 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(attendance)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='bulk-verify')
+    def bulk_verify_attendance(self, request):
+        ids = request.data.get('ids', [])
+        new_status = request.data.get('status')
+        remarks = request.data.get('remarks', '')
+        user = request.user
+
+        if new_status not in ['verified', 'rejected']:
+            return Response(
+                {"detail": "Invalid status. Must be 'verified' or 'rejected'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not ids:
+            return Response(
+                {"detail": "No attendance IDs provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Retrieve records
+        queryset = self.get_queryset().filter(id__in=ids, status='pending')
+        updated_count = 0
+
+        for attendance in queryset:
+            is_authorized = False
+            if user.role in ['owner', 'admin'] or user.is_staff:
+                is_authorized = True
+            elif user.role == 'supervisor':
+                if (attendance.user.branch == user.branch and 
+                    attendance.user.role in ['staff', 'sales', 'sales_executive', 'telecaller']):
+                    is_authorized = True
+
+            if is_authorized:
+                attendance.status = new_status
+                attendance.verified_by = user
+                attendance.verified_at = timezone.now()
+                attendance.remarks = remarks
+                attendance.save()
+                updated_count += 1
+
+        return Response(
+            {"detail": f"Successfully updated {updated_count} attendance records."},
+            status=status.HTTP_200_OK
+        )
+

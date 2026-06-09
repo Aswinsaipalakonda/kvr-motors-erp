@@ -15,6 +15,7 @@
 7. [Staff](#staff)
 8. [Branch & Showroom Structure](#branch--showroom-structure)
 9. [Showroom Categories (Brands)](#showroom-categories-brands)
+10. [Staff Management & Attendance Verification](#staff-management--attendance-verification)
 
 ---
 
@@ -71,6 +72,7 @@ The Owner has **unrestricted access** to the entire enterprise across all branch
 | User Management      | Create staff accounts, assign roles/branches, activate/deactivate          |
 | Activity Logs        | Monitor all system actions (CREATE/UPDATE/DELETE) across users             |
 | Reports              | Export CSV, print A4 reports for Sales, Inventory, Leads, Commissions      |
+| Staff Attendance     | Verify/reject supervisor and staff check-ins, bulk approve/reject check-ins, view history |
 | Settings             | Configure enterprise name, GST parameters                                |
 
 ### Step-by-Step: Owner Workflows
@@ -123,6 +125,16 @@ The Owner has **unrestricted access** to the entire enterprise across all branch
 2. Select report type: Sales Ledger Summary, Inventory Movements, Lead Pipeline, Battery Allocations, or Executive Commissions
 3. Click **Download CSV** for spreadsheet export or **Print** for A4-formatted printable report
 
+#### 8. Verify Staff Attendance
+1. Log in as Owner (via Mobile App or Web Dashboard)
+2. On **Web**: Navigate to **Attendance** from the sidebar to view check-ins awaiting review.
+3. On **Mobile**: Open the navigation drawer and tap **"Verify Attendance"**.
+4. To verify individual check-ins: write remarks (optional) and click **"Approve"** (or **"Verify"** on mobile) or **"Reject"**.
+5. To bulk-verify multiple check-ins:
+   - Check the boxes next to the employees' check-in records.
+   - Click the bulk **"Approve"** or **"Reject"** buttons in the floating action bar.
+6. Toggle between the **"Pending"** and **"History"** tabs to review verified logs.
+
 ---
 
 ## Supervisor
@@ -139,6 +151,7 @@ Supervisors manage a specific branch or set of showrooms. They have elevated acc
 | Leads                | Full lead management with Kanban view for their branch                   |
 | Bookings             | View, confirm, cancel advance bookings for their branch                  |
 | Team                 | View team members assigned to their branch                               |
+| Attendance           | Verify check-ins of branch staff, sales, telecallers; bulk approve/reject check-ins |
 
 ### Step-by-Step: Supervisor Workflows
 
@@ -167,6 +180,13 @@ Supervisors manage a specific branch or set of showrooms. They have elevated acc
 3. Update delivery status (Ready → Dispatched → Delivered)
 4. Monitor executive-wise sales performance
 
+#### 5. Verify Branch Employee Attendance
+1. Log in as Supervisor
+2. Go to the **Attendance** tab/screen
+3. Review branch-level check-ins awaiting review (staff, sales, telecallers)
+4. Verify or reject records individually, or check multiple records to bulk-approve/reject them
+5. View verified check-in history in the **History** tab
+
 ---
 
 ## Sales Executive
@@ -182,6 +202,7 @@ Sales Executives handle direct customer interactions, test drives, quotations, a
 | Sales                | Create sales invoices, process payments, manage deliveries         |
 | Leads                | Manage assigned leads, update follow-up notes, convert to sales    |
 | Bookings             | Record advance bookings for customers                              |
+| Attendance           | Check-in daily using device camera and auto-captured GPS location   |
 
 ### Step-by-Step: Sales Executive Workflows
 
@@ -214,6 +235,13 @@ Sales Executives handle direct customer interactions, test drives, quotations, a
 4. Log any new walk-in customers as fresh leads
 5. Check inventory before promising specific models/colors to customers
 
+#### 5. Daily Attendance Check-In
+1. Log in as Sales Executive on the Mobile App
+2. Open the **Attendance** screen
+3. Grant camera and location permissions if prompted
+4. Take a selfie in the workplace — the app automatically captures your GPS coordinates and location name
+5. Tap **Submit Check-in** to log attendance for the day (awaiting supervisor verification)
+
 ---
 
 ## Telecaller
@@ -227,6 +255,7 @@ Telecallers focus on lead generation, cold calling, and appointment scheduling.
 | Dashboard            | Call metrics, leads generated, conversion rate                     |
 | Leads                | Create new leads, update call outcomes, schedule follow-ups        |
 | Bookings             | View existing bookings (read-only)                                 |
+| Attendance           | Check-in daily using device camera and auto-captured GPS location   |
 
 ### Step-by-Step: Telecaller Workflows
 
@@ -264,6 +293,10 @@ Telecallers focus on lead generation, cold calling, and appointment scheduling.
 4. Log every call outcome in the lead notes
 5. Create new leads from any inbound enquiry calls
 
+#### 5. Daily Attendance Check-In
+1. Log in as Telecaller on the Mobile App
+2. Follow the same check-in procedure as a Sales Executive using camera selfie and GPS verification
+
 ---
 
 ## Staff
@@ -277,6 +310,7 @@ Staff members handle warehouse operations, stock management, and physical invent
 | Dashboard            | Warehouse metrics, pending transfers, stock levels                 |
 | Inventory            | Full stock management, receive goods, process transfers            |
 | Battery Registry     | Log new batteries, assign to vehicles, update status               |
+| Attendance           | Check-in daily using device camera and auto-captured GPS location   |
 
 ### Step-by-Step: Staff Workflows
 
@@ -310,6 +344,10 @@ Staff members handle warehouse operations, stock management, and physical invent
 3. Process any incoming deliveries (GRN — Goods Receipt Notes)
 4. Prepare vehicles for delivery (PDI check, cleaning)
 5. Update stock status for any reserved or sold units
+
+#### 5. Daily Attendance Check-In
+1. Log in as Staff on the Mobile App
+2. Follow the check-in procedure using camera selfie and GPS location logging to register daily attendance
 
 ---
 
@@ -395,4 +433,29 @@ The following test data has been seeded across branches for testing:
 
 ---
 
+## Staff Management & Attendance Verification
+
+### Features & Architecture
+The Staff Attendance tracking and verification system operates across three tiers:
+1. **Marking Attendance (Staff, Sales, Telecallers, Supervisors)**:
+   - Performed exclusively on the **Mobile App**.
+   - Requires granting **Camera** and **Location** permissions.
+   - Users take a real-time camera snapshot at their workplace.
+   - The app auto-captures the current GPS Coordinates (Latitude & Longitude) and looks up the location name.
+   - Check-ins are submitted in `PENDING` status.
+2. **Branch Verification (Supervisors)**:
+   - Supervisors verify check-ins of all employees assigned to their branch (excluding other supervisors and owners).
+   - Can verify/reject records individually or use **multi-select** to bulk-update check-in statuses at once.
+3. **Enterprise Verification (Owner)**:
+   - Owner verifies all supervisor check-ins as well as any branch employee check-ins.
+   - Available on **Next.js Web Dashboard** (`/owner/attendance`) and **Mobile App** (`/owner/verify-attendance`).
+   - Supports **multi-select checkboxes** and **Select All** features to bulk approve/reject pending records with a single click.
+
+### Camera & GPS Permissions in Mobile App
+- **Camera Access**: Used to verify presence at the showroom/godown via a real-time selfie. Camera scanning permissions have also been fixed across all modules (including sales scanner utility).
+- **Location Access**: Resolves device GPS coordinates to ensure verification of physical presence in the designated showroom area.
+
+---
+
 *Document generated for KVR Motors ERP v1.0 — June 2026*
+

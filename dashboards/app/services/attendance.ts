@@ -42,3 +42,13 @@ export const verifyAttendance = async (
   const res = await api.post(`/attendance/${id}/verify/`, { status, remarks });
   return res.data;
 };
+
+export const bulkVerifyAttendance = async (
+  ids: number[],
+  status: "verified" | "rejected",
+  remarks: string = ""
+): Promise<{ detail: string }> => {
+  const res = await api.post("/attendance/bulk-verify/", { ids, status, remarks });
+  return res.data;
+};
+

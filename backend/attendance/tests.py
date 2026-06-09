@@ -126,3 +126,55 @@ class AttendanceTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         att_sup_a.refresh_from_db()
         self.assertEqual(att_sup_a.status, 'verified')
+
+    def test_bulk_verification_permissions(self):
+        # Create multiple check-ins
+        att_staff_a = Attendance.objects.create(
+            user=self.staff_a, latitude='17.6868', longitude='83.2185', location_name='Vizag', status='pending'
+        )
+        att_staff_b = Attendance.objects.create(
+            user=self.staff_b, latitude='16.5062', longitude='80.6480', location_name='Vijayawada', status='pending'
+        )
+        att_sup_a = Attendance.objects.create(
+            user=self.supervisor_a, latitude='17.6868', longitude='83.2185', location_name='Vizag', status='pending'
+        )
+
+        # Supervisor A bulk verifying staff_a (Vizag, staff) and supervisor_a (Vizag, supervisor - forbidden for supervisor) and staff_b (Vijayawada - different branch)
+        self.client.force_authenticate(user=self.supervisor_a)
+        url = reverse('attendance-bulk-verify-attendance')
+        data = {
+            'ids': [att_staff_a.id, att_staff_b.id, att_sup_a.id],
+            'status': 'verified',
+            'remarks': 'Bulk verified'
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        att_staff_a.refresh_from_db()
+        att_staff_b.refresh_from_db()
+        att_sup_a.refresh_from_db()
+        
+        # Only staff_a should be verified (same branch and appropriate role)
+        self.assertEqual(att_staff_a.status, 'verified')
+        self.assertEqual(att_staff_a.verified_by, self.supervisor_a)
+        self.assertEqual(att_staff_b.status, 'pending')
+        self.assertEqual(att_sup_a.status, 'pending')
+
+        # Owner bulk verifying all remaining pending
+        self.client.force_authenticate(user=self.owner)
+        data = {
+            'ids': [att_staff_b.id, att_sup_a.id],
+            'status': 'verified',
+            'remarks': 'Bulk verified by Owner'
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        att_staff_b.refresh_from_db()
+        att_sup_a.refresh_from_db()
+        
+        self.assertEqual(att_staff_b.status, 'verified')
+        self.assertEqual(att_staff_b.verified_by, self.owner)
+        self.assertEqual(att_sup_a.status, 'verified')
+        self.assertEqual(att_sup_a.verified_by, self.owner)
+
