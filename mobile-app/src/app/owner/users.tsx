@@ -210,7 +210,7 @@ export default function OwnerUsers({
         username,
         email: email.trim(),
         full_name: fullName.trim(),
-        phone: phone.trim(),
+        phone_number: phone.trim(),
         role: backendRole,
         branch,
         password: 'password123',
@@ -219,25 +219,10 @@ export default function OwnerUsers({
       setIsModalOpen(false);
       resetForm();
       loadUsers();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create user:', err);
-      // Optimistic local add so the directory stays functional offline/dev.
-      setUsers((prev) => [
-        {
-          id: Date.now(),
-          name: fullName.trim(),
-          role,
-          userType: role === 'Owner' ? 'Admin' : 'Staff',
-          branch,
-          email: email.trim(),
-          phone: phone.trim() || '—',
-          status: 'Active',
-        },
-        ...prev,
-      ]);
-      setIsModalOpen(false);
-      resetForm();
-      Alert.alert('Personnel Added', 'Registered locally. Backend sync will retry when available.');
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to create user: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
     }

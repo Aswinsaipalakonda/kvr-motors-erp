@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, ArrowLeft, ShieldCheck, Plus, X,
-  CheckCircle, Search, IndianRupee, RotateCcw, Landmark,
+  CheckCircle, Search, IndianRupee, RotateCcw, Landmark, ChevronDown,
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -81,6 +81,11 @@ export default function OwnerLedger({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Branches state
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+
   useEffect(() => {
     if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [isActive]);
@@ -129,8 +134,11 @@ export default function OwnerLedger({
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/ledger-entries/');
-      const mapped: Transaction[] = (res.data || []).map((entry: any, idx: number) => {
+      const [ledgerRes, branchesRes] = await Promise.all([
+        api.get('/ledger-entries/'),
+        api.get('/branches/'),
+      ]);
+      const mapped: Transaction[] = (ledgerRes.data || []).map((entry: any, idx: number) => {
         const income = parseFloat(entry.income || 0);
         const expense = parseFloat(entry.expense || 0);
         const isInc = income > 0;
@@ -142,13 +150,19 @@ export default function OwnerLedger({
           amount: isInc ? income : expense,
           date: formatDate(entry.created_at || entry.date),
           details: entry.detail || 'Journal Ledger Entry',
-          account: entry.account_name || 'KVR SBI Showroom A/C',
+          account: entry.payment_mode || 'KVR SBI Showroom A/C',
           gst: 18,
         };
       });
       setTransactions(mapped.length > 0 ? mapped : FALLBACK_TX);
+      
+      const loadedBranches = branchesRes.data || [];
+      setBranches(loadedBranches);
+      if (loadedBranches.length > 0) {
+        setSelectedBranchId(String(loadedBranches[0].id));
+      }
     } catch (e) {
-      console.error('Failed to load ledger entries:', e);
+      console.error('Failed to load ledger entries or branches:', e);
       setTransactions((prev) => (prev.length > 0 ? prev : FALLBACK_TX));
     } finally {
       setIsLoading(false);
@@ -188,35 +202,47 @@ export default function OwnerLedger({
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (!selectedBranchId) {
+      Alert.alert('Error', 'Please select a branch.');
+      return;
+    }
     setIsSubmitting(true);
     const amt = parseFloat(form.amount);
-    const newTx: Transaction = {
-      id: Date.now(),
-      ref: form.ref,
-      type: form.type,
-      category: form.type === 'inflow' ? 'Sales Income' : 'Operational Expense',
-      amount: amt,
-      date: formatDate(new Date().toISOString()),
-      details: form.details.trim(),
-      account: form.account,
-      gst: parseFloat(form.gst) || 0,
+    const resolvedType = form.type === 'inflow' ? 'sales_income' : 'operational_expense';
+    const transactionId = `TXN-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const payload = {
+      transaction_id: transactionId,
+      ledger_type: resolvedType,
+      branch: parseInt(selectedBranchId, 10),
+      detail: form.details.trim(),
+      income: form.type === 'inflow' ? amt : 0,
+      expense: form.type === 'outflow' ? amt : 0,
+      payment_mode: form.account,
     };
-    setTransactions((prev) => [newTx, ...prev]);
+
     try {
-      await api.post('/ledger-entries/', {
-        transaction_id: newTx.ref,
-        income: form.type === 'inflow' ? amt : 0,
-        expense: form.type === 'outflow' ? amt : 0,
-        detail: newTx.details,
-        account_name: newTx.account,
-        gst_bracket: newTx.gst,
-      });
-    } catch {
-      /* local fallback applied */
-    } finally {
-      setIsSubmitting(false);
+      const res = await api.post('/ledger-entries/', payload);
+      const newTx: Transaction = {
+        id: res.data.id || Date.now(),
+        ref: res.data.transaction_id || transactionId,
+        type: form.type,
+        category: res.data.ledger_type_display || (form.type === 'inflow' ? 'Sales Income' : 'Operational Expense'),
+        amount: amt,
+        date: formatDate(res.data.created_at || new Date().toISOString()),
+        details: form.details.trim(),
+        account: form.account,
+        gst: parseFloat(form.gst) || 0,
+      };
+      setTransactions((prev) => [newTx, ...prev]);
       setIsModalOpen(false);
       Alert.alert('Transaction Registered', `${newTx.ref} posted to the journal.`);
+    } catch (err: any) {
+      console.error('Failed to register ledger transaction:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to register transaction: ${errMsg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -232,28 +258,39 @@ export default function OwnerLedger({
           text: 'Post Reversal',
           style: 'destructive',
           onPress: async () => {
-            const reversal: Transaction = {
-              id: Date.now(),
-              ref: `${tx.ref}-REV`,
-              type: tx.type === 'inflow' ? 'outflow' : 'inflow',
-              category: 'Reversal Entry',
-              amount: tx.amount,
-              date: formatDate(new Date().toISOString()),
-              details: `Reversal of ${tx.ref} — ${tx.details}`,
-              account: tx.account,
-              gst: tx.gst,
+            const resolvedType = tx.type === 'inflow' ? 'operational_expense' : 'sales_income';
+            const reversalId = `${tx.ref}-REV`;
+            const origBranch = branches.length > 0 ? branches[0].id : 1;
+
+            const payload = {
+              transaction_id: reversalId,
+              ledger_type: resolvedType,
+              branch: origBranch,
+              detail: `Reversal of ${tx.ref} — ${tx.details}`,
+              income: tx.type === 'inflow' ? 0 : tx.amount,
+              expense: tx.type === 'outflow' ? 0 : tx.amount,
+              payment_mode: tx.account,
             };
-            setTransactions((prev) => [reversal, ...prev.map((t) => (t.id === tx.id ? { ...t, voided: true } : t))]);
+
             try {
-              await api.post('/ledger-entries/', {
-                transaction_id: reversal.ref,
-                income: reversal.type === 'inflow' ? reversal.amount : 0,
-                expense: reversal.type === 'outflow' ? reversal.amount : 0,
-                detail: reversal.details,
-                account_name: reversal.account,
-              });
-            } catch {
-              /* local fallback applied */
+              const res = await api.post('/ledger-entries/', payload);
+              const reversal: Transaction = {
+                id: res.data.id || Date.now(),
+                ref: res.data.transaction_id || reversalId,
+                type: tx.type === 'inflow' ? 'outflow' : 'inflow',
+                category: res.data.ledger_type_display || 'Reversal Entry',
+                amount: tx.amount,
+                date: formatDate(res.data.created_at || new Date().toISOString()),
+                details: payload.detail,
+                account: tx.account,
+                gst: tx.gst,
+              };
+              setTransactions((prev) => [reversal, ...prev.map((t) => (t.id === tx.id ? { ...t, voided: true } : t))]);
+              Alert.alert('Reversal Posted', `Reversal transaction ${reversalId} successfully logged.`);
+            } catch (err: any) {
+              console.error('Failed to post reversal ledger:', err);
+              const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+              Alert.alert('Error', `Failed to post reversal: ${errMsg}`);
             }
           },
         },
@@ -557,6 +594,38 @@ export default function OwnerLedger({
                       <ThemedText style={[styles.typeToggleText, form.type === 'outflow' && { color: '#ea580c' }]}>Outflow (Debit)</ThemedText>
                     </Pressable>
                   </View>
+                </View>
+
+                {/* Showroom Branch */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Showroom Branch</ThemedText>
+                  <Pressable
+                    onPress={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                    style={styles.dropdownTrigger}
+                  >
+                    <ThemedText style={selectedBranchId ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {selectedBranchId
+                        ? branches.find((b) => String(b.id) === selectedBranchId)?.name || 'Select Branch'
+                        : 'Select Branch'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {isBranchDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {branches.map((b) => (
+                        <Pressable
+                          key={b.id}
+                          onPress={() => {
+                            setSelectedBranchId(String(b.id));
+                            setIsBranchDropdownOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{b.name}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
                 {/* Description */}
@@ -1258,5 +1327,46 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  dropdownVal: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });

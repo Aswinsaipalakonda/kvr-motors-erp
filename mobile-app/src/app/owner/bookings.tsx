@@ -36,7 +36,7 @@ type StatusFilter = 'all' | 'pending' | 'confirmed' | 'converted' | 'cancelled';
 interface BookingForm {
   customer_name: string;
   contact_number: string;
-  vehicle_model_name: string;
+  vehicle_model_id: string;
   advance_amount: string;
   expiry_date: string;
 }
@@ -44,7 +44,7 @@ interface BookingForm {
 interface FormErrors {
   customer_name?: string;
   contact_number?: string;
-  vehicle_model_name?: string;
+  vehicle_model_id?: string;
   advance_amount?: string;
   expiry_date?: string;
 }
@@ -52,10 +52,11 @@ interface FormErrors {
 const EMPTY_FORM: BookingForm = {
   customer_name: '',
   contact_number: '',
-  vehicle_model_name: '',
+  vehicle_model_id: '',
   advance_amount: '',
   expiry_date: '',
 };
+
 
 export default function OwnerBookings({
   isActive = true,
@@ -82,6 +83,9 @@ export default function OwnerBookings({
   const [form, setForm] = useState<BookingForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [vehicleModels, setVehicleModels] = useState<{ id: number; model_name: string }[]>([]);
+  const [isModelOpen, setIsModelOpen] = useState(false);
+
 
   // Scroll-to-top sync when this screen becomes active.
   useEffect(() => {
@@ -116,10 +120,14 @@ export default function OwnerBookings({
   const loadBookings = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/bookings/');
-      setBookings(res.data);
+      const [bookingsRes, modelsRes] = await Promise.all([
+        api.get('/bookings/'),
+        api.get('/vehicle-models/'),
+      ]);
+      setBookings(bookingsRes.data || []);
+      setVehicleModels(modelsRes.data || []);
     } catch (e) {
-      console.error('Failed to load bookings:', e);
+      console.error('Failed to load bookings or models:', e);
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +136,7 @@ export default function OwnerBookings({
   useEffect(() => {
     loadBookings();
   }, []);
+
 
   const toNum = (v: string | number | null | undefined) => {
     const n = parseFloat(String(v ?? 0));
@@ -147,7 +156,7 @@ export default function OwnerBookings({
     setForm({
       customer_name: bk.customer_name,
       contact_number: bk.contact_number,
-      vehicle_model_name: bk.vehicle_model_name,
+      vehicle_model_id: String(bk.vehicle_model),
       advance_amount: String(toNum(bk.advance_amount)),
       expiry_date: bk.expiry_date,
     });
@@ -168,7 +177,7 @@ export default function OwnerBookings({
     if (!form.contact_number.trim()) next.contact_number = 'Contact number is required';
     else if (!/^[0-9+\-\s]{7,15}$/.test(form.contact_number.trim())) next.contact_number = 'Enter a valid phone number';
 
-    if (!form.vehicle_model_name.trim()) next.vehicle_model_name = 'Vehicle model is required';
+    if (!form.vehicle_model_id) next.vehicle_model_id = 'Vehicle model is required';
 
     const amt = parseFloat(form.advance_amount);
     if (!form.advance_amount.trim()) next.advance_amount = 'Token deposit is required';
@@ -186,12 +195,11 @@ export default function OwnerBookings({
     if (!validate()) return;
     setIsSubmitting(true);
 
-    const today = new Date().toISOString().slice(0, 10);
     const expiry = form.expiry_date.trim() || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
     const payload = {
       customer_name: form.customer_name.trim(),
       contact_number: form.contact_number.trim(),
-      vehicle_model_name: form.vehicle_model_name.trim(),
+      vehicle_model: parseInt(form.vehicle_model_id, 10),
       advance_amount: parseFloat(form.advance_amount),
       expiry_date: expiry,
     };
@@ -199,44 +207,20 @@ export default function OwnerBookings({
     try {
       if (editingId !== null) {
         // UPDATE
-        try {
-          const res = await api.patch(`/bookings/${editingId}/`, payload);
-          setBookings((prev) => prev.map((b) => (b.id === editingId ? { ...b, ...res.data } : b)));
-        } catch {
-          setBookings((prev) =>
-            prev.map((b) =>
-              b.id === editingId
-                ? { ...b, ...payload, advance_amount: String(payload.advance_amount) }
-                : b
-            )
-          );
-        }
+        const res = await api.patch(`/bookings/${editingId}/`, payload);
+        setBookings((prev) => prev.map((b) => (b.id === editingId ? { ...b, ...res.data } : b)));
         Alert.alert('Booking Updated', `Reservation for ${payload.customer_name} has been updated.`);
       } else {
         // CREATE
-        const optimistic: Booking = {
-          id: Date.now(),
-          booking_id: `BK-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
-          customer_name: payload.customer_name,
-          contact_number: payload.contact_number,
-          vehicle_model: 0,
-          vehicle_model_name: payload.vehicle_model_name,
-          advance_amount: String(payload.advance_amount),
-          booking_date: today,
-          expiry_date: expiry,
-          status: 'pending',
-          pdi_verified: 'pending',
-          executive_name: 'Owner Desk',
-        };
-        try {
-          const res = await api.post('/bookings/', payload);
-          setBookings((prev) => [res.data, ...prev]);
-        } catch {
-          setBookings((prev) => [optimistic, ...prev]);
-        }
+        const res = await api.post('/bookings/', payload);
+        setBookings((prev) => [res.data, ...prev]);
         Alert.alert('Booking Created', `New reservation for ${payload.customer_name} added to the registry.`);
       }
       setIsModalOpen(false);
+    } catch (err: any) {
+      console.error('Failed to save booking:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to save booking: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -257,22 +241,24 @@ export default function OwnerBookings({
   const advanceStatus = async (bk: Booking) => {
     const ns = nextStatus(bk.status);
     if (!ns) return;
-    setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, status: ns } : b)));
     try {
       await api.patch(`/bookings/${bk.id}/`, { status: ns });
-    } catch {
-      // local fallback already applied
+      setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, status: ns } : b)));
+    } catch (err: any) {
+      console.error('Failed to advance status:', err);
+      Alert.alert('Error', 'Failed to update booking status.');
     }
   };
 
   // ---------- UPDATE: toggle PDI ----------
   const togglePdi = async (bk: Booking) => {
     const newVal: Booking['pdi_verified'] = bk.pdi_verified === 'yes' ? 'pending' : 'yes';
-    setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, pdi_verified: newVal } : b)));
     try {
       await api.patch(`/bookings/${bk.id}/`, { pdi_verified: newVal });
-    } catch {
-      // local fallback already applied
+      setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, pdi_verified: newVal } : b)));
+    } catch (err: any) {
+      console.error('Failed to toggle PDI:', err);
+      Alert.alert('Error', 'Failed to update PDI status.');
     }
   };
 
@@ -284,11 +270,12 @@ export default function OwnerBookings({
         text: 'Confirm Cancel',
         style: 'destructive',
         onPress: async () => {
-          setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, status: 'cancelled' } : b)));
           try {
             await api.patch(`/bookings/${bk.id}/`, { status: 'cancelled' });
-          } catch {
-            // local fallback already applied
+            setBookings((prev) => prev.map((b) => (b.id === bk.id ? { ...b, status: 'cancelled' } : b)));
+          } catch (err: any) {
+            console.error('Failed to cancel booking:', err);
+            Alert.alert('Error', 'Failed to cancel booking.');
           }
         },
       },
@@ -306,14 +293,16 @@ export default function OwnerBookings({
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            setBookings((prev) => prev.filter((b) => b.id !== bk.id));
-            if (expandedBookingId === bk.id) setExpandedBookingId(null);
             try {
               await api.delete(`/bookings/${bk.id}/`);
-            } catch {
-              // local fallback already applied
+              setBookings((prev) => prev.filter((b) => b.id !== bk.id));
+              if (expandedBookingId === bk.id) setExpandedBookingId(null);
+            } catch (err: any) {
+              console.error('Failed to delete booking:', err);
+              Alert.alert('Error', 'Failed to delete booking.');
             }
           },
+
         },
       ]
     );
@@ -741,15 +730,35 @@ export default function OwnerBookings({
                 {/* Vehicle model */}
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>Vehicle Model</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.vehicle_model_name && styles.inputError]}
-                    placeholder="e.g. Kinetic Green Zoom"
-                    placeholderTextColor="#94a3b8"
-                    value={form.vehicle_model_name}
-                    onChangeText={(t) => updateField('vehicle_model_name', t)}
-                    autoCapitalize="words"
-                  />
-                  {errors.vehicle_model_name && <ThemedText style={styles.errorText}>{errors.vehicle_model_name}</ThemedText>}
+                  <Pressable
+                    onPress={() => setIsModelOpen(!isModelOpen)}
+                    style={[styles.dropdownTrigger, errors.vehicle_model_id && styles.inputError]}
+                  >
+                    <ThemedText style={form.vehicle_model_id ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.vehicle_model_id
+                        ? vehicleModels.find((m) => String(m.id) === form.vehicle_model_id)?.model_name || 'Select Model'
+                        : 'Select Model'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.vehicle_model_id && <ThemedText style={styles.errorText}>{errors.vehicle_model_id}</ThemedText>}
+
+                  {isModelOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {vehicleModels.map((m) => (
+                        <Pressable
+                          key={m.id}
+                          onPress={() => {
+                            updateField('vehicle_model_id', String(m.id));
+                            setIsModelOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{m.model_name}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
                 {/* Token deposit */}
@@ -1490,5 +1499,46 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  dropdownVal: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });

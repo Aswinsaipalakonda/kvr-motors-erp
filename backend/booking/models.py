@@ -42,5 +42,12 @@ class AdvanceBooking(models.Model):
         default='pending'
     )
 
+    def save(self, *args, **kwargs):
+        if not self.booking_id:
+            import datetime, random
+            self.booking_id = f"BK-{datetime.date.today().strftime('%Y')}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.booking_id} - {self.customer_name} ({self.get_status_display()})"
+

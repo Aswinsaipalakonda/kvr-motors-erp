@@ -32,11 +32,11 @@ KVR Motors ERP is a multi-branch, multi-showroom EV dealership management platfo
 
 | Username       | Password    | Role        |
 |----------------|-------------|-------------|
-| `ravi_varma`   | `owner123`  | Owner       |
-| `suresh_babu`  | `super123`  | Supervisor  |
-| `anil_kumar`   | `sales123`  | Sales       |
-| `lakshmi`      | `tele123`   | Telecaller  |
-| `ramesh`       | `staff123`  | Staff       |
+| `owner`        | `owner123`  | Owner       |
+| `supervisor`   | `super123`  | Supervisor  |
+| `sales`        | `sales123`  | Sales       |
+| `telecaller`   | `tele123`   | Telecaller  |
+| `staff`        | `staff123`  | Staff       |
 
 ---
 
@@ -454,6 +454,21 @@ The Staff Attendance tracking and verification system operates across three tier
 ### Camera & GPS Permissions in Mobile App
 - **Camera Access**: Used to verify presence at the showroom/godown via a real-time selfie. Camera scanning permissions have also been fixed across all modules (including sales scanner utility).
 - **Location Access**: Resolves device GPS coordinates to ensure verification of physical presence in the designated showroom area.
+
+---
+
+## Dynamic Form Controls & Data Persistence Pipeline
+
+To prevent transaction failures and ensure data validation is transparent and bulletproof, all input creation forms in the Mobile App have been refactored with native dropdown pickers and strict error gating:
+
+1. **Bookings Form**: Replaced vehicle model string text inputs with dynamic models list dropdown pickers mapping `vehicle_model_id`. Unique booking reference numbers are automatically generated backend-side.
+2. **Leads Form**: Replaced scooter model text input with vehicle models list dropdown picker (`interested_vehicle`), and assigned sales representative with dynamic user dropdown picker (`assigned_executive`).
+3. **Ledger Form**: Replaced branch text inputs with dynamic branch selector dropdown mapping selection to required branch foreign keys. Removed deprecated fields to prevent serializer failures.
+4. **Purchases Form (PO)**: Replaced model input with vehicle models list dropdown mapping to `vehicle_model_id`. Unique purchase order references are generated backend-side.
+5. **Sales Invoices Form**: Replaced model string text inputs with an available stock units dropdown picker. Automatically resolves matching branch mapping, includes customer contact input, and maps payment modes dynamically.
+
+### Explicit Error Handling
+All form submit operations gate success indicators on response status codes (2xx). Any network or database serialization validation error is explicitly shown to the user in a pop-up alert dialog to prevent silent failures.
 
 ---
 

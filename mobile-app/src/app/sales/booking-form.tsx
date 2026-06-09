@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator,
-  BackHandler, Modal, KeyboardAvoidingView, Platform,
+  BackHandler, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -28,7 +28,7 @@ interface FormErrors {
   advance?: string;
 }
 
-const MODELS = ['Kinetic Green Zoom', 'Dynamo EV Pro', 'Watts 100', 'Kinetic E-Luna'];
+const MODELS = ['Kinetic Green E-Luna', 'Dynamo Pro', 'Watts 100', 'Lima'];
 const COLORS = [
   { name: 'Green', hex: '#04a700' },
   { name: 'Red', hex: '#d71d22' },
@@ -114,7 +114,6 @@ export default function SalesBookingForm() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
-    const bookingId = `BK-${String(Math.floor(8000 + Math.random() * 999))}`;
     // Resolve a real vehicle_model FK id when available (required by backend).
     const matchedModel = models.find((m) => m.model_name === form.model);
     const expiry = new Date();
@@ -122,7 +121,6 @@ export default function SalesBookingForm() {
     const expiryDate = expiry.toISOString().split('T')[0];
     try {
       const payload: Record<string, any> = {
-        booking_id: bookingId,
         customer_name: form.customer_name.trim(),
         contact_number: form.customer_phone.trim(),
         color: form.color,
@@ -131,18 +129,25 @@ export default function SalesBookingForm() {
         expiry_date: expiryDate,
         status: 'pending',
       };
-      if (matchedModel) payload.vehicle_model = matchedModel.id;
-      else payload.vehicle_model_name = form.model;
-      await api.post('/bookings/', payload);
-    } catch {
-      /* local fallback applied */
-    } finally {
-      setIsSubmitting(false);
+      if (matchedModel) {
+        payload.vehicle_model = matchedModel.id;
+      } else {
+        Alert.alert('Validation Error', 'Selected vehicle model is not registered in the system.');
+        setIsSubmitting(false);
+        return;
+      }
+      const res = await api.post('/bookings/', payload);
       setSuccessData({
-        bookingId,
+        bookingId: res.data.booking_id || `BK-${String(Math.floor(8000 + Math.random() * 999))}`,
         name: form.customer_name.trim(),
         amount: parseFloat(form.advance).toLocaleString('en-IN'),
       });
+    } catch (err: any) {
+      console.error('Failed to submit booking:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Submission Failed', `Failed to register booking: ${errMsg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

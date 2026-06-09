@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
   Users, UserPlus, PhoneCall, Award, Zap, ArrowLeft, X, Trash2,
-  CheckCircle, Search, Snowflake, Sun, Flame, ArrowRight, Phone,
+  CheckCircle, Search, Snowflake, Sun, Flame, ArrowRight, Phone, ChevronDown,
 } from 'lucide-react-native';
 import api from '@/services/api';
 
@@ -29,15 +29,15 @@ interface Lead {
 interface LeadForm {
   customer_name: string;
   contact_number: string;
-  executive_name: string;
-  model: string;
+  assigned_executive_id: string;
+  interested_vehicle_id: string;
 }
 
 interface FormErrors {
   customer_name?: string;
   contact_number?: string;
-  executive_name?: string;
-  model?: string;
+  assigned_executive_id?: string;
+  interested_vehicle_id?: string;
 }
 
 type HeatFilter = 'all' | Heat;
@@ -45,8 +45,8 @@ type HeatFilter = 'all' | Heat;
 const EMPTY_FORM: LeadForm = {
   customer_name: '',
   contact_number: '',
-  executive_name: '',
-  model: '',
+  assigned_executive_id: '',
+  interested_vehicle_id: '',
 };
 
 const HEAT_META: Record<Heat, { label: string; color: string; icon: any }> = {
@@ -100,6 +100,12 @@ export default function OwnerLeads({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Dropdown options and visibility states
+  const [vehicleModels, setVehicleModels] = useState<{ id: number; model_name: string }[]>([]);
+  const [salesReps, setSalesReps] = useState<{ id: number; full_name: string; role: string; username: string }[]>([]);
+  const [isModelOpen, setIsModelOpen] = useState(false);
+  const [isRepOpen, setIsRepOpen] = useState(false);
+
   useEffect(() => {
     if (isActive) scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [isActive]);
@@ -138,8 +144,12 @@ export default function OwnerLeads({
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/leads/');
-      const mapped: Lead[] = (res.data || []).map((l: any, idx: number) => ({
+      const [leadsRes, modelsRes, usersRes] = await Promise.all([
+        api.get('/leads/'),
+        api.get('/vehicle-models/'),
+        api.get('/users/'),
+      ]);
+      const mapped: Lead[] = (leadsRes.data || []).map((l: any, idx: number) => ({
         id: l.id ?? idx + 1,
         customer_name: l.customer_name || 'Enquiry Customer',
         contact_number: l.phone_number || l.contact_number || '+91 00000 00000',
@@ -149,8 +159,14 @@ export default function OwnerLeads({
         followUp: l.follow_up_date || 'Pending',
       }));
       setLeads(mapped.length > 0 ? mapped : FALLBACK_LEADS);
+      setVehicleModels(modelsRes.data || []);
+      const allUsers = usersRes.data || [];
+      const filtered = allUsers.filter((u: any) => 
+        ['sales_executive', 'sales', 'telecaller'].includes(u.role)
+      );
+      setSalesReps(filtered.length > 0 ? filtered : allUsers);
     } catch (e) {
-      console.error('Failed to load leads data:', e);
+      console.error('Failed to load leads, models, or users:', e);
       setLeads((prev) => (prev.length > 0 ? prev : FALLBACK_LEADS));
     } finally {
       setIsLoading(false);
@@ -180,8 +196,8 @@ export default function OwnerLeads({
     else if (form.customer_name.trim().length < 3) next.customer_name = 'Enter at least 3 characters';
     if (!form.contact_number.trim()) next.contact_number = 'Phone number is required';
     else if (!/^[0-9+\-\s]{7,15}$/.test(form.contact_number.trim())) next.contact_number = 'Enter a valid phone number';
-    if (!form.executive_name.trim()) next.executive_name = 'Allocated sales rep is required';
-    if (!form.model.trim()) next.model = 'Scooter model is required';
+    if (!form.assigned_executive_id) next.assigned_executive_id = 'Allocated sales rep is required';
+    if (!form.interested_vehicle_id) next.interested_vehicle_id = 'Scooter model is required';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -189,30 +205,33 @@ export default function OwnerLeads({
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
-    const newLead: Lead = {
-      id: Date.now(),
+    const payload = {
       customer_name: form.customer_name.trim(),
       contact_number: form.contact_number.trim(),
-      model: form.model.trim(),
-      executive_name: form.executive_name.trim(),
-      heat: 'cold',
-      followUp: 'Today',
+      assigned_executive: parseInt(form.assigned_executive_id, 10),
+      interested_vehicle: parseInt(form.interested_vehicle_id, 10),
+      status: 'new_lead',
     };
-    setLeads((prev) => [newLead, ...prev]);
     try {
-      await api.post('/leads/', {
-        customer_name: newLead.customer_name,
-        contact_number: newLead.contact_number,
-        executive_name: newLead.executive_name,
-        model_name: newLead.model,
-        status: 'enquiry',
-      });
-    } catch {
-      /* local fallback applied */
-    } finally {
-      setIsSubmitting(false);
+      const res = await api.post('/leads/', payload);
+      const newLead: Lead = {
+        id: res.data.id || Date.now(),
+        customer_name: res.data.customer_name,
+        contact_number: res.data.contact_number,
+        model: res.data.interested_vehicle_name || vehicleModels.find(m => String(m.id) === form.interested_vehicle_id)?.model_name || 'EV Model',
+        executive_name: res.data.executive_name || salesReps.find(u => String(u.id) === form.assigned_executive_id)?.full_name || 'Sales Desk',
+        heat: 'cold',
+        followUp: res.data.follow_up_date || 'Today',
+      };
+      setLeads((prev) => [newLead, ...prev]);
       setIsModalOpen(false);
       Alert.alert('Enquiry Logged', `New enquiry for ${newLead.customer_name} added to the funnel.`);
+    } catch (err: any) {
+      console.error('Failed to submit lead:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to log enquiry: ${errMsg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -221,20 +240,23 @@ export default function OwnerLeads({
     if (lead.heat === 'won' || lead.heat === 'lost') return;
     const i = HEAT_ORDER.indexOf(lead.heat);
     const next = HEAT_ORDER[Math.min(i + 1, HEAT_ORDER.length - 1)];
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, heat: next } : l)));
+    const apiStatus = next === 'won' ? 'won' : next === 'hot' ? 'negotiation' : 'contacted';
     try {
-      await api.patch(`/leads/${lead.id}/`, { status: next === 'won' ? 'won' : next === 'hot' ? 'negotiation' : 'contacted' });
-    } catch {
-      /* local fallback applied */
+      await api.patch(`/leads/${lead.id}/`, { status: apiStatus });
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, heat: next } : l)));
+    } catch (err: any) {
+      console.error('Failed to advance heat:', err);
+      Alert.alert('Error', 'Failed to update lead status.');
     }
   };
 
   const markLost = async (lead: Lead) => {
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, heat: 'lost' } : l)));
     try {
       await api.patch(`/leads/${lead.id}/`, { status: 'lost' });
-    } catch {
-      /* local fallback applied */
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, heat: 'lost' } : l)));
+    } catch (err: any) {
+      console.error('Failed to mark lost:', err);
+      Alert.alert('Error', 'Failed to update lead status.');
     }
   };
 
@@ -246,12 +268,13 @@ export default function OwnerLeads({
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          setLeads((prev) => prev.filter((l) => l.id !== lead.id));
-          if (expandedId === lead.id) setExpandedId(null);
           try {
             await api.delete(`/leads/${lead.id}/`);
-          } catch {
-            /* local fallback applied */
+            setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+            if (expandedId === lead.id) setExpandedId(null);
+          } catch (err: any) {
+            console.error('Failed to delete lead:', err);
+            Alert.alert('Error', 'Failed to delete lead.');
           }
         },
       },
@@ -660,30 +683,72 @@ export default function OwnerLeads({
                   {errors.contact_number && <ThemedText style={styles.errorText}>{errors.contact_number}</ThemedText>}
                 </View>
 
+                {/* Allocated sales rep */}
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>Allocated Sales Rep</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.executive_name && styles.inputError]}
-                    placeholder="e.g. Sai Krishna"
-                    placeholderTextColor="#94a3b8"
-                    value={form.executive_name}
-                    onChangeText={(t) => updateField('executive_name', t)}
-                    autoCapitalize="words"
-                  />
-                  {errors.executive_name && <ThemedText style={styles.errorText}>{errors.executive_name}</ThemedText>}
+                  <Pressable
+                    onPress={() => setIsRepOpen(!isRepOpen)}
+                    style={[styles.dropdownTrigger, errors.assigned_executive_id && styles.inputError]}
+                  >
+                    <ThemedText style={form.assigned_executive_id ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.assigned_executive_id
+                        ? salesReps.find((u) => String(u.id) === form.assigned_executive_id)?.full_name || 'Select Executive'
+                        : 'Select Executive'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.assigned_executive_id && <ThemedText style={styles.errorText}>{errors.assigned_executive_id}</ThemedText>}
+
+                  {isRepOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {salesReps.map((u) => (
+                        <Pressable
+                          key={u.id}
+                          onPress={() => {
+                            updateField('assigned_executive_id', String(u.id));
+                            setIsRepOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{u.full_name || u.username}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
+                {/* Scooter model */}
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>Electric Scooter Model</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.model && styles.inputError]}
-                    placeholder="e.g. Kinetic Green Zoom"
-                    placeholderTextColor="#94a3b8"
-                    value={form.model}
-                    onChangeText={(t) => updateField('model', t)}
-                    autoCapitalize="words"
-                  />
-                  {errors.model && <ThemedText style={styles.errorText}>{errors.model}</ThemedText>}
+                  <Pressable
+                    onPress={() => setIsModelOpen(!isModelOpen)}
+                    style={[styles.dropdownTrigger, errors.interested_vehicle_id && styles.inputError]}
+                  >
+                    <ThemedText style={form.interested_vehicle_id ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.interested_vehicle_id
+                        ? vehicleModels.find((m) => String(m.id) === form.interested_vehicle_id)?.model_name || 'Select Model'
+                        : 'Select Model'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.interested_vehicle_id && <ThemedText style={styles.errorText}>{errors.interested_vehicle_id}</ThemedText>}
+
+                  {isModelOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {vehicleModels.map((m) => (
+                        <Pressable
+                          key={m.id}
+                          onPress={() => {
+                            updateField('interested_vehicle_id', String(m.id));
+                            setIsModelOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{m.model_name}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
                 <Pressable
@@ -1340,5 +1405,46 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  dropdownVal: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });

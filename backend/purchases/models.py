@@ -22,8 +22,12 @@ class PurchaseOrder(models.Model):
     actual_delivery = models.DateField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        if not self.po_number:
+            import datetime, random
+            self.po_number = f"PO-{datetime.date.today().strftime('%Y')}-{random.randint(1000, 9999)}"
         self.total_price = self.quantity * self.unit_price
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.po_number} - {self.supplier_name} ({self.get_status_display()})"

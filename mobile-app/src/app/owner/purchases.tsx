@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ShoppingBag, ArrowLeft, Plus, CheckCircle, X, Trash2, IndianRupee,
-  Warehouse, Truck, PackageCheck, Boxes, Search,
+  Warehouse, Truck, PackageCheck, Boxes, Search, ChevronDown,
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -33,18 +33,20 @@ type POFilter = 'all' | 'pending' | 'approved' | 'in_transit' | 'received';
 
 interface POForm {
   supplier_name: string;
-  model_name: string;
+  vehicle_model_id: string;
   color: string;
   quantity: string;
   unit_price: string;
   godown: string;
+  payment_terms: string;
 }
 
 interface FormErrors {
   supplier_name?: string;
-  model_name?: string;
+  vehicle_model_id?: string;
   quantity?: string;
   unit_price?: string;
+  payment_terms?: string;
 }
 
 const COLORS = [
@@ -57,11 +59,12 @@ const GODOWNS = ['Pendurthi Godown', 'Pineapple Colony Godown', 'KVR Showroom - 
 
 const emptyForm = (): POForm => ({
   supplier_name: '',
-  model_name: '',
+  vehicle_model_id: '',
   color: 'Green',
   quantity: '',
   unit_price: '',
   godown: GODOWNS[0],
+  payment_terms: 'Net 30 Days',
 });
 
 // Transit phases for the timeline feed
@@ -101,6 +104,10 @@ export default function OwnerPurchases({
   const [form, setForm] = useState<POForm>(emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Models dropdown state
+  const [vehicleModels, setVehicleModels] = useState<{ id: number; model_name: string }[]>([]);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
   // Custom Color Addition
   const [newColorName, setNewColorName] = useState('');
@@ -187,7 +194,10 @@ export default function OwnerPurchases({
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [poRes] = await Promise.all([api.get('/purchase-orders/')]);
+      const [poRes, modelsRes] = await Promise.all([
+        api.get('/purchase-orders/'),
+        api.get('/vehicle-models/'),
+      ]);
       const mapped: PurchaseOrder[] = (poRes.data || []).map((po: any, idx: number) => ({
         id: po.id ?? idx + 1,
         po_number: po.po_number || `PO-${idx}`,
@@ -202,8 +212,9 @@ export default function OwnerPurchases({
         order_date: po.order_date || '—',
       }));
       setOrders(mapped.length > 0 ? mapped : FALLBACK_PO);
+      setVehicleModels(modelsRes.data || []);
     } catch (e) {
-      console.error('Failed to load purchase orders data:', e);
+      console.error('Failed to load purchase orders data or models:', e);
       setOrders((prev) => (prev.length > 0 ? prev : FALLBACK_PO));
     } finally {
       setIsLoading(false);
@@ -238,11 +249,12 @@ export default function OwnerPurchases({
   const validate = (): boolean => {
     const next: FormErrors = {};
     if (!form.supplier_name.trim()) next.supplier_name = 'Supplier name is required';
-    if (!form.model_name.trim()) next.model_name = 'Model is required';
+    if (!form.vehicle_model_id) next.vehicle_model_id = 'Model selection is required';
     if (!form.quantity.trim()) next.quantity = 'Quantity is required';
     else if (qtyNum <= 0) next.quantity = 'Enter a quantity greater than 0';
     if (!form.unit_price.trim()) next.unit_price = 'Unit price is required';
     else if (priceNum <= 0) next.unit_price = 'Enter a valid price';
+    if (!form.payment_terms.trim()) next.payment_terms = 'Payment terms are required';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -250,47 +262,52 @@ export default function OwnerPurchases({
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
-    const newPO: PurchaseOrder = {
-      id: Date.now(),
-      po_number: `PO-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
+    const payload = {
       supplier_name: form.supplier_name.trim(),
-      model_name: form.model_name.trim(),
+      vehicle_model: parseInt(form.vehicle_model_id, 10),
       color: form.color,
       quantity: qtyNum,
       unit_price: priceNum,
-      total_price: discountedTotal,
       godown: form.godown,
-      status: 'pending',
-      order_date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      payment_terms: form.payment_terms.trim(),
     };
-    setOrders((prev) => [newPO, ...prev]);
     try {
-      await api.post('/purchase-orders/', {
-        supplier_name: newPO.supplier_name,
-        model_name: newPO.model_name,
-        color: newPO.color,
-        quantity: newPO.quantity,
-        unit_price: newPO.unit_price,
-        godown: newPO.godown,
-      });
-    } catch {
-      /* local fallback applied */
-    } finally {
-      setIsSubmitting(false);
+      const res = await api.post('/purchase-orders/', payload);
+      const newPO: PurchaseOrder = {
+        id: res.data.id || Date.now(),
+        po_number: res.data.po_number || `PO-${Date.now()}`,
+        supplier_name: res.data.supplier_name,
+        model_name: res.data.vehicle_model_name || vehicleModels.find(m => String(m.id) === form.vehicle_model_id)?.model_name || 'EV Model',
+        color: res.data.color,
+        quantity: parseInt(res.data.quantity, 10),
+        unit_price: parseFloat(res.data.unit_price),
+        total_price: parseFloat(res.data.total_price),
+        godown: res.data.godown,
+        status: res.data.status || 'pending',
+        order_date: res.data.order_date || new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+      setOrders((prev) => [newPO, ...prev]);
       setIsModalOpen(false);
       Alert.alert('PO Placed', `${newPO.po_number} sent to factory queue.`);
+    } catch (err: any) {
+      console.error('Failed to place PO:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to place PO: ${errMsg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // ---------- UPDATE: sign-off ----------
   const handleSignOff = async (po: PurchaseOrder) => {
-    setOrders((prev) => prev.map((p) => (p.id === po.id ? { ...p, status: 'approved' } : p)));
     try {
       await api.patch(`/purchase-orders/${po.id}/`, { status: 'approved' });
-    } catch {
-      /* local fallback applied */
+      setOrders((prev) => prev.map((p) => (p.id === po.id ? { ...p, status: 'approved' } : p)));
+      Alert.alert('PO Signed Off', `${po.po_number} approved — capital balance debit allocated.`);
+    } catch (err: any) {
+      console.error('Failed to sign off PO:', err);
+      Alert.alert('Error', 'Failed to approve PO.');
     }
-    Alert.alert('PO Signed Off', `${po.po_number} approved — capital balance debit allocated.`);
   };
 
   // ---------- DELETE / void ----------
@@ -301,11 +318,12 @@ export default function OwnerPurchases({
         text: 'Void PO',
         style: 'destructive',
         onPress: async () => {
-          setOrders((prev) => prev.filter((p) => p.id !== po.id));
           try {
             await api.delete(`/purchase-orders/${po.id}/`);
-          } catch {
-            /* local fallback applied */
+            setOrders((prev) => prev.filter((p) => p.id !== po.id));
+          } catch (err: any) {
+            console.error('Failed to void PO:', err);
+            Alert.alert('Error', 'Failed to void PO.');
           }
         },
       },
@@ -614,15 +632,35 @@ export default function OwnerPurchases({
 
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>EV Model</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.model_name && styles.inputError]}
-                    placeholder="e.g. Kinetic Green Zoom"
-                    placeholderTextColor="#94a3b8"
-                    value={form.model_name}
-                    onChangeText={(t) => updateField('model_name', t)}
-                    autoCapitalize="words"
-                  />
-                  {errors.model_name && <ThemedText style={styles.errorText}>{errors.model_name}</ThemedText>}
+                  <Pressable
+                    onPress={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                    style={[styles.dropdownTrigger, errors.vehicle_model_id && styles.inputError]}
+                  >
+                    <ThemedText style={form.vehicle_model_id ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.vehicle_model_id
+                        ? vehicleModels.find((m) => String(m.id) === form.vehicle_model_id)?.model_name || 'Select Model'
+                        : 'Select Model'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.vehicle_model_id && <ThemedText style={styles.errorText}>{errors.vehicle_model_id}</ThemedText>}
+
+                  {isModelDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {vehicleModels.map((m) => (
+                        <Pressable
+                          key={m.id}
+                          onPress={() => {
+                            updateField('vehicle_model_id', String(m.id));
+                            setIsModelDropdownOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{m.model_name}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
                 {/* Color options */}
@@ -728,6 +766,19 @@ export default function OwnerPurchases({
                       );
                     })}
                   </View>
+                </View>
+
+                {/* Payment Terms */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Payment Terms</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.payment_terms && styles.inputError]}
+                    placeholder="e.g. Net 30 Days"
+                    placeholderTextColor="#94a3b8"
+                    value={form.payment_terms}
+                    onChangeText={(t) => updateField('payment_terms', t)}
+                  />
+                  {errors.payment_terms && <ThemedText style={styles.errorText}>{errors.payment_terms}</ThemedText>}
                 </View>
 
                 {/* Computed total */}
@@ -1471,5 +1522,46 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  dropdownVal: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import AdvanceBooking
 
 class AdvanceBookingSerializer(serializers.ModelSerializer):
+    booking_id = serializers.CharField(required=False, allow_blank=True)
     vehicle_model_name = serializers.CharField(source='vehicle_model.model_name', read_only=True)
     vin_number = serializers.CharField(source='vehicle_unit.vin_number', read_only=True)
     executive_name = serializers.CharField(source='assigned_executive.full_name', read_only=True)
@@ -11,3 +12,4 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceBooking
         fields = '__all__'
+

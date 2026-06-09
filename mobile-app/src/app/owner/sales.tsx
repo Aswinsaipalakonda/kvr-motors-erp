@@ -33,14 +33,18 @@ interface SalesInvoice {
 
 interface NewInvoiceForm {
   customer_name: string;
-  model_name: string;
+  customer_contact: string;
+  vehicle_unit_id: string;
   sale_price: string;
+  payment_mode: string;
 }
 
 interface FormErrors {
   customer_name?: string;
-  model_name?: string;
+  customer_contact?: string;
+  vehicle_unit_id?: string;
   sale_price?: string;
+  payment_mode?: string;
 }
 
 export default function OwnerSales({
@@ -66,17 +70,35 @@ export default function OwnerSales({
 
   // Create invoice modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [form, setForm] = useState<NewInvoiceForm>({ customer_name: '', model_name: '', sale_price: '' });
+  const [form, setForm] = useState<NewInvoiceForm>({
+    customer_name: '',
+    customer_contact: '',
+    vehicle_unit_id: '',
+    sale_price: '',
+    payment_mode: 'UPI / NetBanking',
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Vehicle units state
+  const [vehicleUnits, setVehicleUnits] = useState<{ id: number; model_name: string; vin_number: string; branch: number; color: string; base_price: string }[]>([]);
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [isPaymentDropdownOpen, setIsPaymentDropdownOpen] = useState(false);
+  
+  const paymentModes = ['UPI / NetBanking', 'SBI Finance', 'HDFC Bank Loan', 'Self-Finance Cash'];
 
   const loadInvoices = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/sales-invoices/');
-      setInvoices(res.data);
+      const [invoicesRes, unitsRes] = await Promise.all([
+        api.get('/sales-invoices/'),
+        api.get('/vehicle-units/'),
+      ]);
+      setInvoices(invoicesRes.data || []);
+      const units = (unitsRes.data || []).filter((u: any) => u.stock_status === 'available');
+      setVehicleUnits(units);
     } catch (e) {
-      console.error('Failed to load sales invoices:', e);
+      console.error('Failed to load sales invoices or units:', e);
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +176,13 @@ export default function OwnerSales({
 
   // ---- Create invoice handlers ----
   const openModal = () => {
-    setForm({ customer_name: '', model_name: '', sale_price: '' });
+    setForm({
+      customer_name: '',
+      customer_contact: '',
+      vehicle_unit_id: '',
+      sale_price: '',
+      payment_mode: 'UPI / NetBanking',
+    });
     setErrors({});
     setIsModalVisible(true);
   };
@@ -164,11 +192,16 @@ export default function OwnerSales({
     if (!form.customer_name.trim()) next.customer_name = 'Client name is required';
     else if (form.customer_name.trim().length < 3) next.customer_name = 'Enter at least 3 characters';
 
-    if (!form.model_name.trim()) next.model_name = 'Vehicle model is required';
+    if (!form.customer_contact.trim()) next.customer_contact = 'Contact number is required';
+    else if (!/^[0-9+\-\s]{7,15}$/.test(form.customer_contact.trim())) next.customer_contact = 'Enter a valid phone number';
+
+    if (!form.vehicle_unit_id) next.vehicle_unit_id = 'Vehicle unit selection is required';
 
     const price = parseFloat(form.sale_price);
     if (!form.sale_price.trim()) next.sale_price = 'Sale price is required';
     else if (isNaN(price) || price <= 0) next.sale_price = 'Enter a valid amount greater than 0';
+
+    if (!form.payment_mode) next.payment_mode = 'Payment mode is required';
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -177,40 +210,35 @@ export default function OwnerSales({
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
+
+    const matchedUnit = vehicleUnits.find((u) => String(u.id) === form.vehicle_unit_id);
+    if (!matchedUnit) {
+      Alert.alert('Validation Error', 'Selected vehicle unit is not available.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const payload = {
+      invoice_number: invoiceNumber,
+      customer_name: form.customer_name.trim(),
+      customer_contact: form.customer_contact.trim(),
+      vehicle_unit: matchedUnit.id,
+      sale_price: parseFloat(form.sale_price),
+      payment_mode: form.payment_mode,
+      branch: matchedUnit.branch,
+      delivery_status: 'processing',
+    };
+
     try {
-      const payload = {
-        customer_name: form.customer_name.trim(),
-        model_name: form.model_name.trim(),
-        sale_price: parseFloat(form.sale_price),
-      };
-      // Optimistic local invoice so the feed updates instantly.
-      const optimistic: SalesInvoice = {
-        id: Date.now(),
-        invoice_number: `INV-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
-        customer_name: payload.customer_name,
-        customer_contact: '—',
-        vehicle_model: 0,
-        model_name: payload.model_name,
-        vehicle_unit: 0,
-        vin_number: 'PENDING-ASSIGNMENT',
-        battery_serial: null,
-        sale_price: String(payload.sale_price),
-        sale_date: new Date().toISOString().slice(0, 10),
-        payment_mode: 'cash',
-        delivery_status: 'pending',
-        executive_name: 'Owner Desk',
-      };
-
-      try {
-        const res = await api.post('/sales-invoices/', payload);
-        setInvoices((prev) => [res.data, ...prev]);
-      } catch {
-        // Backend may require richer payload; keep optimistic entry so the UX stays functional.
-        setInvoices((prev) => [optimistic, ...prev]);
-      }
-
+      const res = await api.post('/sales-invoices/', payload);
+      setInvoices((prev) => [res.data, ...prev]);
       setIsModalVisible(false);
-      Alert.alert('Invoice Created', `New invoice for ${payload.customer_name} has been added to the registry.`);
+      Alert.alert('Invoice Created', `New invoice ${invoiceNumber} has been added to the registry.`);
+    } catch (err: any) {
+      console.error('Failed to create sales invoice:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to create invoice: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -446,68 +474,146 @@ export default function OwnerSales({
                 </Pressable>
               </View>
 
-              {/* Client name */}
-              <View style={styles.field}>
-                <ThemedText style={styles.fieldLabel}>Client Name</ThemedText>
-                <TextInput
-                  style={[styles.input, errors.customer_name && styles.inputError]}
-                  placeholder="e.g. Sai Krishna"
-                  placeholderTextColor="#94a3b8"
-                  value={form.customer_name}
-                  onChangeText={(t) => updateField('customer_name', t)}
-                  autoCapitalize="words"
-                />
-                {errors.customer_name && <ThemedText style={styles.errorText}>{errors.customer_name}</ThemedText>}
-              </View>
-
-              {/* Vehicle model */}
-              <View style={styles.field}>
-                <ThemedText style={styles.fieldLabel}>Vehicle Model</ThemedText>
-                <TextInput
-                  style={[styles.input, errors.model_name && styles.inputError]}
-                  placeholder="e.g. Kinetic Green Zoom"
-                  placeholderTextColor="#94a3b8"
-                  value={form.model_name}
-                  onChangeText={(t) => updateField('model_name', t)}
-                  autoCapitalize="words"
-                />
-                {errors.model_name && <ThemedText style={styles.errorText}>{errors.model_name}</ThemedText>}
-              </View>
-
-              {/* Sale price */}
-              <View style={styles.field}>
-                <ThemedText style={styles.fieldLabel}>Sale Price (₹)</ThemedText>
-                <View style={[styles.priceInputWrap, errors.sale_price && styles.inputError]}>
-                  <IndianRupee size={15} color="#64748b" />
-                  <TextInput
-                    style={styles.priceInput}
-                    placeholder="112000"
-                    placeholderTextColor="#94a3b8"
-                    value={form.sale_price}
-                    onChangeText={(t) => updateField('sale_price', t.replace(/[^0-9.]/g, ''))}
-                    keyboardType="numeric"
-                  />
-                </View>
-                {errors.sale_price && <ThemedText style={styles.errorText}>{errors.sale_price}</ThemedText>}
-              </View>
-
-              <Pressable
-                onPress={handleSubmit}
-                disabled={isSubmitting}
-                style={({ pressed }) => [
-                  styles.submitBtn,
-                  (pressed || isSubmitting) && { opacity: 0.85 },
-                ]}
+              <ScrollView
+                style={styles.modalFormScroll}
+                contentContainerStyle={styles.modalFormContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <CheckCircle size={17} color="#ffffff" />
-                    <ThemedText style={styles.submitBtnText}>Save Invoice</ThemedText>
-                  </>
-                )}
-              </Pressable>
+                {/* Client name */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Client Name</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.customer_name && styles.inputError]}
+                    placeholder="e.g. Sai Krishna"
+                    placeholderTextColor="#94a3b8"
+                    value={form.customer_name}
+                    onChangeText={(t) => updateField('customer_name', t)}
+                    autoCapitalize="words"
+                  />
+                  {errors.customer_name && <ThemedText style={styles.errorText}>{errors.customer_name}</ThemedText>}
+                </View>
+
+                {/* Customer Contact */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Customer Contact</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.customer_contact && styles.inputError]}
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor="#94a3b8"
+                    value={form.customer_contact}
+                    onChangeText={(t) => updateField('customer_contact', t)}
+                    keyboardType="phone-pad"
+                  />
+                  {errors.customer_contact && <ThemedText style={styles.errorText}>{errors.customer_contact}</ThemedText>}
+                </View>
+
+                {/* Available Vehicle Unit */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Available Vehicle Unit</ThemedText>
+                  <Pressable
+                    onPress={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                    style={[styles.dropdownTrigger, errors.vehicle_unit_id && styles.inputError]}
+                  >
+                    <ThemedText style={form.vehicle_unit_id ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.vehicle_unit_id
+                        ? (() => {
+                            const selectedUnit = vehicleUnits.find((u) => String(u.id) === form.vehicle_unit_id);
+                            return selectedUnit ? `${selectedUnit.model_name} (${selectedUnit.vin_number})` : 'Select Available Unit';
+                          })()
+                        : 'Select Available Unit'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.vehicle_unit_id && <ThemedText style={styles.errorText}>{errors.vehicle_unit_id}</ThemedText>}
+
+                  {isUnitDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
+                        {vehicleUnits.map((u) => (
+                          <Pressable
+                            key={u.id}
+                            onPress={() => {
+                              updateField('vehicle_unit_id', String(u.id));
+                              setIsUnitDropdownOpen(false);
+                            }}
+                            style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                          >
+                            <ThemedText style={styles.dropdownItemText}>{u.model_name} ({u.vin_number})</ThemedText>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {/* Sale price */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Sale Price (₹)</ThemedText>
+                  <View style={[styles.priceInputWrap, errors.sale_price && styles.inputError]}>
+                    <IndianRupee size={15} color="#64748b" />
+                    <TextInput
+                      style={styles.priceInput}
+                      placeholder="112000"
+                      placeholderTextColor="#94a3b8"
+                      value={form.sale_price}
+                      onChangeText={(t) => updateField('sale_price', t.replace(/[^0-9.]/g, ''))}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  {errors.sale_price && <ThemedText style={styles.errorText}>{errors.sale_price}</ThemedText>}
+                </View>
+
+                {/* Payment Mode */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Payment Mode</ThemedText>
+                  <Pressable
+                    onPress={() => setIsPaymentDropdownOpen(!isPaymentDropdownOpen)}
+                    style={[styles.dropdownTrigger, errors.payment_mode && styles.inputError]}
+                  >
+                    <ThemedText style={form.payment_mode ? styles.dropdownVal : styles.dropdownPlaceholder}>
+                      {form.payment_mode || 'Select Payment Mode'}
+                    </ThemedText>
+                    <ChevronDown size={16} color="#64748b" />
+                  </Pressable>
+                  {errors.payment_mode && <ThemedText style={styles.errorText}>{errors.payment_mode}</ThemedText>}
+
+                  {isPaymentDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {paymentModes.map((pm) => (
+                        <Pressable
+                          key={pm}
+                          onPress={() => {
+                            updateField('payment_mode', pm);
+                            setIsPaymentDropdownOpen(false);
+                          }}
+                          style={({ pressed }) => [styles.dropdownItem, pressed && { backgroundColor: '#f1f5f9' }]}
+                        >
+                          <ThemedText style={styles.dropdownItemText}>{pm}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                <Pressable
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                  style={({ pressed }) => [
+                    styles.submitBtn,
+                    (pressed || isSubmitting) && { opacity: 0.85 },
+                  ]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <CheckCircle size={17} color="#ffffff" />
+                      <ThemedText style={styles.submitBtnText}>Save Invoice</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </Modal>
@@ -956,7 +1062,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     paddingTop: 12,
     paddingHorizontal: 22,
-    gap: 16,
+    maxHeight: '88%',
   },
   modalGrabber: {
     alignSelf: 'center',
@@ -1064,5 +1170,53 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14.5,
     fontWeight: 'bold',
+  },
+  modalFormScroll: {
+    marginTop: 4,
+  },
+  modalFormContent: {
+    paddingBottom: 20,
+    gap: 14,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  dropdownVal: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    marginTop: 4,
+    maxHeight: 180,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600',
   },
 });
