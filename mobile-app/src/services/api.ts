@@ -5,17 +5,91 @@ import { router } from 'expo-router';
 
 export let baseHostUrl = 'https://kvr.thehps.in';
 
-if (__DEV__) {
-  baseHostUrl = 'http://127.0.0.1:8000';
-  // Automatically resolve localhost to host IP in Expo Go development
+// Helper to race promises safely in React Native
+const safePromiseAny = async <T>(promises: Promise<T>[]): Promise<T> => {
+  if (typeof Promise.any === 'function') {
+    return Promise.any(promises);
+  }
+  return new Promise<T>((resolve, reject) => {
+    let rejectedCount = 0;
+    if (promises.length === 0) {
+      reject(new Error('No promises to race'));
+      return;
+    }
+    promises.forEach((p) => {
+      p.then(resolve).catch(() => {
+        rejectedCount++;
+        if (rejectedCount === promises.length) {
+          reject(new Error('All promises failed'));
+        }
+      });
+    });
+  });
+};
+
+const pingUrl = async (url: string): Promise<string> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 1200);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return url;
+  } catch (err) {
+    throw err;
+  } finally {
+    clearTimeout(id);
+  }
+};
+
+let resolvedBaseUrl: string | null = null;
+let resolvePromise: Promise<string> | null = null;
+
+export const getBaseHostUrl = async (): Promise<string> => {
+  if (resolvedBaseUrl) return resolvedBaseUrl;
+  if (!__DEV__) {
+    resolvedBaseUrl = 'https://kvr.thehps.in';
+    return resolvedBaseUrl;
+  }
+  if (resolvePromise) return resolvePromise;
+
+  const candidates: string[] = [];
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
-    baseHostUrl = `http://${ip}:8000`;
-  } else {
-    baseHostUrl = 'http://10.0.2.2:8000'; // Android emulator fallback
+    if (ip) {
+      candidates.push(`http://${ip}:8000`);
+    }
   }
-}
+
+  // Include known developer machine IPs and emulator default subnets
+  const developerIps = ['192.168.1.33', '192.168.1.45', '192.168.1.35', '10.0.2.2', '127.0.0.1'];
+  developerIps.forEach((ip) => {
+    const url = `http://${ip}:8000`;
+    if (!candidates.includes(url)) {
+      candidates.push(url);
+    }
+  });
+
+  resolvePromise = (async () => {
+    try {
+      const wonUrl = await safePromiseAny(candidates.map((url) => pingUrl(url)));
+      resolvedBaseUrl = wonUrl;
+      baseHostUrl = wonUrl;
+      authApi.defaults.baseURL = `${wonUrl}/api/auth`;
+      api.defaults.baseURL = `${wonUrl}/api/v1`;
+      return wonUrl;
+    } catch (err) {
+      resolvedBaseUrl = candidates[0] || 'http://127.0.0.1:8000';
+      baseHostUrl = resolvedBaseUrl;
+      return resolvedBaseUrl;
+    }
+  })();
+
+  return resolvePromise;
+};
 
 export const authApi = axios.create({
   baseURL: `${baseHostUrl}/api/auth`,
@@ -24,6 +98,16 @@ export const authApi = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Attach dynamic host resolver to auth requests
+authApi.interceptors.request.use(
+  async (config) => {
+    const currentBaseUrl = await getBaseHostUrl();
+    config.baseURL = `${currentBaseUrl}/api/auth`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 const api = axios.create({
   baseURL: `${baseHostUrl}/api/v1`,
@@ -36,6 +120,8 @@ const api = axios.create({
 // Attach JWT access token to every outgoing request
 api.interceptors.request.use(
   async (config) => {
+    const currentBaseUrl = await getBaseHostUrl();
+    config.baseURL = `${currentBaseUrl}/api/v1`;
     try {
       const token = await SecureStore.getItemAsync('jwt_token');
       if (token) {
