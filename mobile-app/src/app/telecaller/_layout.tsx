@@ -5,21 +5,23 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { Home, PhoneCall, User } from 'lucide-react-native';
+import { Home, PhoneCall, User, Clock } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 
 // Screen imports
 import TelecallerDashboard from './dashboard';
 import TelecallerLeads from './leads';
 import TelecallerProfile from './profile';
+import TelecallerAttendance from './attendance';
 
-type ScreenTab = 'dashboard' | 'leads' | 'profile';
+type ScreenTab = 'dashboard' | 'leads' | 'attendance' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads', 'profile'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads', 'attendance', 'profile'];
 
 const TABS_CONFIG = [
   { key: 'dashboard', label: 'Home', icon: Home },
   { key: 'leads', label: 'Leads Desk', icon: PhoneCall },
+  { key: 'attendance', label: 'Attendance', icon: Clock },
   { key: 'profile', label: 'Profile', icon: User },
 ] as const;
 
@@ -118,6 +120,9 @@ export default function TelecallerLayout() {
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
           <TelecallerLeads />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
+          <TelecallerAttendance />
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
           <TelecallerProfile />

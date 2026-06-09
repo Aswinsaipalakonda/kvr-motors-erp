@@ -14,6 +14,10 @@ from ledger.views import LedgerEntryViewSet
 from inventory.views import StockTransferViewSet
 from users.views import UserViewSet, CurrentUserView
 from activity_logs.views import ActivityLogViewSet
+from attendance.views import AttendanceViewSet
+
+from django.conf import settings
+from django.conf.urls.static import static
 
 router = DefaultRouter()
 router.register(r'branches', BranchViewSet, basename='branch')
@@ -32,6 +36,8 @@ router.register(r'ledger-entries', LedgerEntryViewSet, basename='ledgerentry')
 router.register(r'stock-transfers', StockTransferViewSet, basename='stocktransfer')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'activity-logs', ActivityLogViewSet, basename='activitylog')
+router.register(r'attendance', AttendanceViewSet, basename='attendance')
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -46,3 +52,7 @@ urlpatterns = [
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

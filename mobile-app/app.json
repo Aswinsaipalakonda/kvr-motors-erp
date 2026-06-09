@@ -8,7 +8,11 @@
     "scheme": "kvrmotors",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app requires camera permission to capture your photo for daily attendance verification and to scan VIN codes in the godown.",
+        "NSLocationWhenInUseUsageDescription": "This app requires location permission to capture your current workspace location for daily attendance verification."
+      }
     },
     "android": {
       "package": "com.kvrmotors.erp",
@@ -16,7 +20,12 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -32,6 +41,18 @@
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "This app requires camera permission to capture your photo for daily attendance verification and to scan VIN codes in the godown."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app requires location permission to capture your current workspace location for daily attendance verification."
         }
       ]
     ],

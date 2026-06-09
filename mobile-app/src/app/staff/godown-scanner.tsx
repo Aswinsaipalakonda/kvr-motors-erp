@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import {
   ArrowLeft, ScanLine, Keyboard, CheckCircle, Boxes, Truck, PackageCheck,
 } from 'lucide-react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
@@ -52,6 +53,7 @@ export default function StaffGodownScanner({
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const [permission, requestPermission] = useCameraPermissions();
   const [manualMode, setManualMode] = useState(false);
   const [manualVin, setManualVin] = useState('');
   const [movement, setMovement] = useState<MovementType>('GRN Received');
@@ -153,19 +155,40 @@ export default function StaffGodownScanner({
             <View style={styles.contentSection}>
               {/* Scanner frame */}
               <View style={styles.scannerFrame}>
-                <View style={styles.scannerInner}>
+                {permission && permission.granted ? (
+                  <CameraView
+                    style={StyleSheet.absoluteFill}
+                    facing="back"
+                    barcodeScannerSettings={{
+                      barcodeTypes: ['qr', 'code128', 'code39', 'ean13', 'ean8'],
+                    }}
+                    onBarcodeScanned={isScanning ? undefined : ({ data }) => {
+                      if (data) {
+                        setIsScanning(true);
+                        registerMovement(data);
+                        setTimeout(() => setIsScanning(false), 2000);
+                      }
+                    }}
+                  />
+                ) : (
+                  <View style={styles.permissionPlaceholder}>
+                    <Pressable onPress={requestPermission} style={styles.grantBtn}>
+                      <ThemedText style={styles.grantBtnText}>Enable Camera Access</ThemedText>
+                    </Pressable>
+                  </View>
+                )}
+
+                <View style={styles.scannerInner} pointerEvents="none">
                   {/* corner brackets */}
                   <View style={[styles.corner, styles.cornerTL]} />
                   <View style={[styles.corner, styles.cornerTR]} />
                   <View style={[styles.corner, styles.cornerBL]} />
                   <View style={[styles.corner, styles.cornerBR]} />
-                  {isScanning ? (
+                  {isScanning && (
                     <View style={styles.scanningState}>
                       <ActivityIndicator size="large" color="#04a700" />
-                      <ThemedText style={styles.scanningText}>Scanning...</ThemedText>
+                      <ThemedText style={styles.scanningText}>Processing...</ThemedText>
                     </View>
-                  ) : (
-                    <ScanLine size={54} color="rgba(4, 167, 0, 0.5)" />
                   )}
                 </View>
               </View>
@@ -345,4 +368,7 @@ const styles = StyleSheet.create({
   verifiedTagText: { fontSize: 8, fontWeight: 'bold', color: '#04a700', letterSpacing: 0.4 },
   logStatusPill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   logStatusText: { fontSize: 9.5, fontWeight: 'bold' },
+  permissionPlaceholder: { flex: 1, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', padding: 20 },
+  grantBtn: { backgroundColor: '#04a700', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  grantBtnText: { color: '#ffffff', fontSize: 13, fontWeight: 'bold' },
 });

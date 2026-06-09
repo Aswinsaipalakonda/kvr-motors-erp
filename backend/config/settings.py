@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'booking',
     'dashboard',
     'activity_logs',
+    'attendance',
 ]
 
 MIDDLEWARE = [
@@ -256,5 +257,9 @@ JAZZMIN_UI_TWEAKS = {
         "success": "btn-success"
     }
 }
+
+# Media files configurations
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 

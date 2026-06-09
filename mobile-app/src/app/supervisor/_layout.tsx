@@ -5,7 +5,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { ClipboardCheck, Boxes, Users, User } from 'lucide-react-native';
+import { ClipboardCheck, Boxes, Users, User, Clock } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 
 // Direct imports instead of React.lazy to avoid Metro resolution issues
@@ -13,16 +13,18 @@ import SupervisorDashboard from './dashboard';
 import SupervisorInventory from './inventory';
 import SupervisorLeads from './leads';
 import SupervisorProfile from './profile';
+import SupervisorAttendance from './attendance';
 
 // Define Supervisor Tabs
-type ScreenTab = 'dashboard' | 'inventory' | 'leads' | 'profile';
+type ScreenTab = 'dashboard' | 'inventory' | 'leads' | 'attendance' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'leads', 'profile'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'inventory', 'leads', 'attendance', 'profile'];
 
 const TABS_CONFIG = [
   { key: 'dashboard', label: 'Approvals', icon: ClipboardCheck },
   { key: 'inventory', label: 'Inventory', icon: Boxes },
   { key: 'leads', label: 'Leads Control', icon: Users },
+  { key: 'attendance', label: 'Attendance', icon: Clock },
   { key: 'profile', label: 'Profile', icon: User },
 ] as const;
 
@@ -129,6 +131,9 @@ export default function SupervisorLayout() {
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
           <SupervisorLeads />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
+          <SupervisorAttendance />
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
           <SupervisorProfile />

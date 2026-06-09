@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
-let baseHostUrl = 'https://kvr.thehps.in';
+export let baseHostUrl = 'https://kvr.thehps.in';
 
 if (__DEV__) {
   baseHostUrl = 'http://127.0.0.1:8000';

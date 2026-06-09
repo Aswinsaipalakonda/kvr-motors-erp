@@ -5,7 +5,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { Home, UserCheck, CalendarDays, User } from 'lucide-react-native';
+import { Home, UserCheck, CalendarDays, User, Clock } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 
 // Direct imports instead of React.lazy to avoid Metro resolution issues
@@ -13,16 +13,18 @@ import SalesDashboard from './dashboard';
 import SalesLeads from './leads';
 import SalesFollowups from './followups';
 import SalesProfile from './profile';
+import SalesAttendance from './attendance';
 
 // Define Sales Tabs
-type ScreenTab = 'dashboard' | 'leads' | 'followups' | 'profile';
+type ScreenTab = 'dashboard' | 'leads' | 'followups' | 'attendance' | 'profile';
 
-const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads', 'followups', 'profile'];
+const TAB_KEYS: ScreenTab[] = ['dashboard', 'leads', 'followups', 'attendance', 'profile'];
 
 const TABS_CONFIG = [
   { key: 'dashboard', label: 'Home', icon: Home },
   { key: 'leads', label: 'Leads', icon: UserCheck },
   { key: 'followups', label: 'Followups', icon: CalendarDays },
+  { key: 'attendance', label: 'Attendance', icon: Clock },
   { key: 'profile', label: 'Profile', icon: User },
 ] as const;
 
@@ -129,6 +131,9 @@ export default function SalesLayout() {
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'followups' ? 'flex' : 'none' }]}>
           <SalesFollowups />
+        </View>
+        <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
+          <SalesAttendance />
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
           <SalesProfile />

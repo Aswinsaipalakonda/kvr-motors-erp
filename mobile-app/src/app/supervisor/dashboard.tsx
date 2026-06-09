@@ -206,6 +206,20 @@ export default function SupervisorDashboard() {
                   <ThemedText style={styles.quickTitle}>Booking Locks</ThemedText>
                   <ThemedText style={styles.quickDesc}>Verify deposits</ThemedText>
                 </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/verify-attendance' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                    <UserCheck size={18} color="#10b981" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Verify Attendance</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Approve staff check-in</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/attendance' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                    <Clock size={18} color="#3b82f6" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>My Attendance</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Daily check-in</ThemedText>
+                </Pressable>
               </View>
             </View>
 

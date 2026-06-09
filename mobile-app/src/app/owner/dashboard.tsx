@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput, Dimensions, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, Dimensions, ActivityIndicator, Image, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -467,6 +467,9 @@ export default function OwnerDashboard({
           style={styles.scrollView} 
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={loadData} colors={['#04a700']} tintColor="#04a700" />
+          }
         >
           {/* Obsidian SaaS Home Hero Canvas (Matches header dark slate theme) */}
           <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#0a0e1a' }} />

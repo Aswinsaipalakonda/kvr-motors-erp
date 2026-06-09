@@ -63,6 +63,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "ledger", label: "Ledger Management", icon: BookOpen },
         { id: "reports", label: "Reports & Analytics", icon: BarChart2 },
         { id: "users", label: "Users & Roles", icon: Users },
+        { id: "attendance", label: "Staff Attendance", icon: UsersRound },
         { id: "activity-logs", label: "Activity Logs", icon: ActivitySquare },
         { id: "settings", label: "Settings", icon: Settings },
         { id: "profile", label: "My Profile", icon: User },
@@ -83,6 +84,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "bookings", label: "Advance Bookings", icon: CalendarDays },
         { id: "batteries", label: "Batteries Management", icon: Battery },
         { id: "reports", label: "Reports", icon: BarChart2 },
+        { id: "attendance", label: "Verify Attendance", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },

@@ -20,6 +20,7 @@ import { getUsers } from "../services/users";
 import { getBookings, createBooking, updateBooking } from "../services/bookings";
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getBatteries, createBattery, updateBattery, deleteBattery, getFifoOverrides, updateFifoOverride } from "../services/batteries";
+import { getAttendanceLogs, verifyAttendance, AttendanceRecord } from "../services/attendance";
 
 import {
   TrendingUp,
@@ -53,7 +54,9 @@ import {
   Truck,
   Clock,
   Boxes,
-  Phone
+  Phone,
+  RefreshCw,
+  MapPin
 } from "lucide-react";
 
 import { 
@@ -134,6 +137,9 @@ export default function SupervisorDashboard() {
 
   const [locationsList, setLocationsList] = useState<any[]>([]);
   const [showroomsList, setShowroomsList] = useState<any[]>([]);
+  const [attendanceList, setAttendanceList] = useState<AttendanceRecord[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [attendanceFilterStatus, setAttendanceFilterStatus] = useState("All Statuses");
 
   // Static Supervisor alerts
   const [staticAlerts, setStaticAlerts] = useState<any[]>([
@@ -329,6 +335,28 @@ export default function SupervisorDashboard() {
     }
   };
 
+  const loadAttendance = async (isSilent = false) => {
+    try {
+      if (!isSilent) setAttendanceLoading(true);
+      const data = await getAttendanceLogs();
+      setAttendanceList(data);
+    } catch (e) {
+      console.error("Failed to load branch attendance:", e);
+    } finally {
+      if (!isSilent) setAttendanceLoading(false);
+    }
+  };
+
+  const handleVerifyAttendance = async (id: number, status: "verified" | "rejected", remarks: string = "") => {
+    try {
+      await verifyAttendance(id, status, remarks);
+      showToast(`Staff check-in marked as ${status}.`);
+      loadAttendance();
+    } catch {
+      showToast("Failed to verify attendance.", "error");
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadVehicles();
@@ -339,6 +367,7 @@ export default function SupervisorDashboard() {
     loadOverrides();
     loadTransfers();
     loadUsers();
+    loadAttendance();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
 
@@ -351,6 +380,7 @@ export default function SupervisorDashboard() {
       loadBatteries(true);
       loadTransfers(true);
       loadUsers();
+      loadAttendance(true);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -1883,6 +1913,154 @@ export default function SupervisorDashboard() {
               </div>
             </div>
           )}
+
+          {/* TAB 8.5: VERIFY ATTENDANCE */}
+          {activeTab === "attendance" && (
+            <div className="space-y-6 text-left">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800">Branch Staff Attendance Verification</h2>
+                  <p className="text-xs text-slate-400 mt-1">Review, approve, or reject daily check-ins for staff, sales, and telecallers at {user?.branch || "your branch"}.</p>
+                </div>
+                <button
+                  onClick={() => loadAttendance()}
+                  className="inline-flex items-center gap-2 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-4 rounded-full shadow-md shadow-[#04a700]/20 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" /> Refresh Logs
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="grid gap-3 md:grid-cols-1">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Filter by Verification Status</label>
+                  <select
+                    value={attendanceFilterStatus}
+                    onChange={(e) => setAttendanceFilterStatus(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-[#04a700]"
+                  >
+                    <option>All Statuses</option>
+                    <option value="pending">Pending Verification</option>
+                    <option value="verified">Verified</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Table */}
+              <Table 
+                title="Branch Check-ins Awaiting Review" 
+                headers={["Date", "Employee Name", "Role", "Check-in Photo", "GPS Location", "Status", "Actions"]}
+              >
+                {attendanceLoading ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                        <span>Syncing attendance logs...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : attendanceList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center">
+                      <EmptyState title="No Attendance Logs" description="No daily check-ins recorded for this branch yet." />
+                    </td>
+                  </tr>
+                ) : (
+                  attendanceList
+                    .filter((log) => {
+                      const statusMatch = attendanceFilterStatus === "All Statuses" || 
+                        log.status === attendanceFilterStatus;
+                      return statusMatch;
+                    })
+                    .map((log) => {
+                      const getImageUrl = (path: string) => {
+                        if (!path) return "/avatar_owner.png";
+                        if (path.startsWith("http")) return path;
+                        const base = typeof window !== "undefined" && window.location.hostname === "localhost" 
+                          ? "http://127.0.0.1:8000" 
+                          : "";
+                        return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+                      };
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3.5 px-5 font-bold text-slate-800">
+                            {new Date(log.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <div className="font-bold text-slate-800">{log.user_details?.full_name || log.user_details?.username}</div>
+                            <div className="text-[10px] text-slate-400 font-bold">@{log.user_details?.username}</div>
+                          </td>
+                          <td className="py-3.5 px-5 text-xs font-semibold text-slate-600 uppercase">
+                            {log.user_details?.role.replace("_", " ")}
+                          </td>
+                          <td className="py-3.5 px-5">
+                            {log.photo ? (
+                              <a href={getImageUrl(log.photo)} target="_blank" rel="noreferrer" className="block w-12 h-12 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-105 transition-transform cursor-pointer">
+                                <img src={getImageUrl(log.photo)} alt="Captured workplace face" className="w-full h-full object-cover" />
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400">No Photo</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <div className="text-xs font-bold text-slate-700">{log.location_name || "Workspace"}</div>
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}`} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="text-[10px] font-extrabold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <MapPin className="h-3 w-3 inline" /> {Number(log.latitude).toFixed(4)}, {Number(log.longitude).toFixed(4)}
+                            </a>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <div className="flex flex-col">
+                              <span className={`inline-flex self-start px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                log.status === 'verified' 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                  : log.status === 'rejected'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}>
+                                {log.status.toUpperCase()}
+                              </span>
+                              {log.status !== 'pending' && (
+                                <span className="text-[9px] text-slate-400 mt-1 font-semibold">
+                                  by {log.verified_by_details?.full_name || 'Supervisor'}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5 whitespace-nowrap">
+                            {log.status === "pending" && log.user_details?.role !== 'supervisor' ? (
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => handleVerifyAttendance(log.id, "verified", "Approved by Supervisor")} 
+                                  className="text-xs text-emerald-600 hover:text-emerald-800 font-extrabold cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                                <button 
+                                  onClick={() => handleVerifyAttendance(log.id, "rejected", "Rejected by Supervisor")} 
+                                  className="text-xs text-rose-600 hover:text-rose-800 font-extrabold cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 font-bold">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                )}
+              </Table>
+            </div>
+          )}
+
           {activeTab === "profile" && (
             <ProfileView />
           )}
