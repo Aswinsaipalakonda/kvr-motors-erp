@@ -74,25 +74,29 @@ export default function AttendanceScreen({ role }: { role: string }) {
     }
   };
 
-  // Silently check existing permissions on mount (no prompts)
+  // Request permissions on mount to prepare camera and location immediately
   useEffect(() => {
     loadAttendanceData();
-    silentPermissionCheck();
+    requestPermissionsOnMount();
   }, []);
 
-  // Silently check permissions without prompting — like Instagram/WhatsApp
-  const silentPermissionCheck = async () => {
+  // Request permissions actively on mount
+  const requestPermissionsOnMount = async () => {
     try {
-      const { status: locStatus } = await Location.getForegroundPermissionsAsync();
+      // 1. Request Camera Permission
+      const camRes = await requestCameraPermission();
+      if (camRes.granted) {
+        setActiveCamera(true);
+      }
+
+      // 2. Request Location Permission
+      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
       setLocationStatus(locStatus);
       if (locStatus === Location.PermissionStatus.GRANTED) {
         resolveCurrentLocation();
       }
-      // Camera permission is already tracked by useCameraPermissions hook
-      // We just need to know if it's granted to show camera view
-      if (cameraPermission?.granted) {
-        setActiveCamera(true);
-      }
+    } catch (err) {
+      console.error('Failed to request permissions on mount:', err);
     } finally {
       setPermissionsChecked(true);
     }
@@ -103,7 +107,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
     if (cameraPermission?.granted && !isCheckedInToday) {
       setActiveCamera(true);
     }
-  }, [cameraPermission?.granted]);
+  }, [cameraPermission?.granted, isCheckedInToday]);
 
   // This is now only called when user explicitly taps "Grant Location Access"
   const checkAndRequestLocationPermission = async () => {
@@ -163,26 +167,69 @@ export default function AttendanceScreen({ role }: { role: string }) {
   };
 
   const handleCaptureAndCheckIn = async () => {
-    if (!cameraPermission?.granted) {
+    // 1. Camera permission check and prompt if missing
+    let camGranted = cameraPermission?.granted;
+    if (!camGranted) {
       const res = await requestCameraPermission();
-      if (!res.granted) {
+      camGranted = res.granted;
+      if (!camGranted) {
         Alert.alert('Permission Denied', 'Camera access is required for attendance facial verification.');
+        return;
+      }
+      setActiveCamera(true);
+    }
+
+    // 2. Location permission check and prompt if missing
+    let locStatus = locationStatus;
+    if (locStatus !== Location.PermissionStatus.GRANTED) {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      locStatus = status;
+      setLocationStatus(status);
+      if (status !== Location.PermissionStatus.GRANTED) {
+        Alert.alert('Permission Denied', 'Location access is required to verify your workplace check-in.');
         return;
       }
     }
 
-    if (locationStatus !== Location.PermissionStatus.GRANTED) {
-      await requestLocationPermission();
-      return;
-    }
-
-    if (!coords) {
+    // 3. Ensure coordinates are resolved
+    let currentCoords = coords;
+    if (!currentCoords) {
       setIsResolvingLocation(true);
-      await resolveCurrentLocation();
+      try {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        currentCoords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        };
+        setCoords(currentCoords);
+
+        // Geocode coordinates
+        const geocoded = await Location.reverseGeocodeAsync(currentCoords);
+        if (geocoded && geocoded[0]) {
+          const address = geocoded[0];
+          const name = [
+            address.name,
+            address.street,
+            address.city,
+            address.region
+          ].filter(Boolean).slice(0, 2).join(', ') || 'Showroom Workspace';
+          setLocationName(name);
+        } else {
+          setLocationName('Showroom Workspace');
+        }
+      } catch (err) {
+        console.error('Failed to resolve current location:', err);
+        setLocationName('Autocaptured Location');
+      } finally {
+        setIsResolvingLocation(false);
+      }
     }
 
+    // 4. Ensure camera ref is ready
     if (!cameraRef.current) {
-      Alert.alert('Error', 'Camera is initializing. Please try again.');
+      Alert.alert('Camera Initializing', 'The camera is preparing. Please tap the button again in 1 second.');
       return;
     }
 
@@ -209,14 +256,14 @@ export default function AttendanceScreen({ role }: { role: string }) {
         type: 'image/jpeg',
       } as any);
       
-      formData.append('latitude', (coords?.latitude || 0).toString());
-      formData.append('longitude', (coords?.longitude || 0).toString());
+      formData.append('latitude', (currentCoords?.latitude || 0).toString());
+      formData.append('longitude', (currentCoords?.longitude || 0).toString());
       formData.append('location_name', locationName || 'Showroom Workspace');
 
       // 3. Post to backend
       const res = await api.post('/attendance/', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data', // Axios multipart override helper
+          'Content-Type': 'multipart/form-data',
         }
       });
 

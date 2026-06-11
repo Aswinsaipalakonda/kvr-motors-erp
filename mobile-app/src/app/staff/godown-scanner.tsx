@@ -83,6 +83,13 @@ export default function StaffGodownScanner({
     return () => sub.remove();
   }, [isActive, handleBack]);
 
+  // Request camera permission on mount to prepare scanner immediately
+  React.useEffect(() => {
+    if (isActive && (!permission || !permission.granted)) {
+      requestPermission();
+    }
+  }, [isActive, permission, requestPermission]);
+
   const registerMovement = async (vin: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const logId = Date.now();
