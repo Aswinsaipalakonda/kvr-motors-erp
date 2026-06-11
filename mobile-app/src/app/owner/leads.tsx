@@ -124,7 +124,7 @@ export default function OwnerLeads({
       router.back();
       return true;
     }
-    router.replace('/owner' as any);
+    router.replace('/owner/dashboard' as any);
     return true;
   }, [isModalOpen, onBack, router]);
 

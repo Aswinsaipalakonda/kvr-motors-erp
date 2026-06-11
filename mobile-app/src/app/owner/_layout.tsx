@@ -121,7 +121,9 @@ export default function OwnerLayout() {
   useEffect(() => {
     const segments = pathname.split('/').filter(Boolean);
     const lastSegment = segments[segments.length - 1];
-    if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
+    if (lastSegment === 'owner') {
+      setActiveTab('dashboard');
+    } else if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
       setActiveTab(lastSegment as ScreenTab);
     }
   }, [pathname]);

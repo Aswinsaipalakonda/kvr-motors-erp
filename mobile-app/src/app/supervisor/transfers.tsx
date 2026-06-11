@@ -99,7 +99,7 @@ export default function SupervisorTransfers() {
       router.back();
       return true;
     }
-    router.replace('/supervisor' as any);
+    router.replace('/supervisor/dashboard' as any);
     return true;
   }, [isModalOpen, router]);
 

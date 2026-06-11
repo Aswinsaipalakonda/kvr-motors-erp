@@ -79,7 +79,7 @@ export default function StaffHandover() {
       router.back();
       return true;
     }
-    router.replace('/staff' as any);
+    router.replace('/staff/dashboard' as any);
     return true;
   }, [success, router]);
 

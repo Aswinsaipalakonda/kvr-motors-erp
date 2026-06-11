@@ -73,7 +73,7 @@ export default function StaffGodownScanner({
       router.back();
       return true;
     }
-    router.replace('/staff' as any);
+    router.replace('/staff/dashboard' as any);
     return true;
   }, [onBack, router]);
 

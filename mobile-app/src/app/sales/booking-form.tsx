@@ -82,7 +82,7 @@ export default function SalesBookingForm() {
       router.back();
       return true;
     }
-    router.replace('/sales' as any);
+    router.replace('/sales/dashboard' as any);
     return true;
   }, [successData, router]);
 

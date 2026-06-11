@@ -85,7 +85,7 @@ export default function OwnerInventory({
       router.back();
       return true;
     }
-    router.replace('/owner' as any);
+    router.replace('/owner/dashboard' as any);
     return true;
   }, [onBack, router]);
 

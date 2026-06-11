@@ -4,7 +4,7 @@ import RoleProfile from '@/components/RoleProfile';
 export default function OwnerProfile() {
   return (
     <RoleProfile
-      backFallback="/owner"
+      backFallback="/owner/dashboard"
       roleFallback="OWNER"
       locationLabel="Visakhapatnam HQ"
     />

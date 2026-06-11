@@ -38,7 +38,7 @@ export default function SupervisorFifoOverrides() {
       router.back();
       return true;
     }
-    router.replace('/supervisor' as any);
+    router.replace('/supervisor/dashboard' as any);
     return true;
   }, [router]);
 

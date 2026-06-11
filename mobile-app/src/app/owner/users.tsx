@@ -148,7 +148,7 @@ export default function OwnerUsers({
       router.back();
       return true;
     }
-    router.replace('/owner' as any);
+    router.replace('/owner/dashboard' as any);
     return true;
   }, [selectedUser, isModalOpen, onBack, router]);
 

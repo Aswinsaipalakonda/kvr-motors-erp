@@ -78,10 +78,13 @@ export default function TelecallerLayout() {
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width;
   
+  // Sync pathname with active tab
   useEffect(() => {
     const segments = pathname.split('/').filter(Boolean);
     const lastSegment = segments[segments.length - 1];
-    if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
+    if (lastSegment === 'telecaller') {
+      setActiveTab('dashboard');
+    } else if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
       setActiveTab(lastSegment as ScreenTab);
     }
   }, [pathname]);
@@ -119,7 +122,19 @@ export default function TelecallerLayout() {
           <TelecallerDashboard />
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
-          <TelecallerLeads />
+          <TelecallerLeads 
+            onBack={() => {
+              if (pathname.endsWith('/leads')) {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/telecaller' as any);
+                }
+              } else {
+                setActiveTab('dashboard');
+              }
+            }}
+          />
         </View>
         <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
           <TelecallerAttendance />

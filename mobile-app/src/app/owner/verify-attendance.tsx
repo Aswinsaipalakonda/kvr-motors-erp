@@ -183,7 +183,7 @@ export default function OwnerVerifyAttendance() {
                 // Always navigate deterministically to owner main layout
                 // router.back() is unreliable — it follows history stack and may land
                 // on unrelated screens (e.g. leads pipeline) depending on navigation history
-                router.replace('/owner/' as any);
+                router.replace('/owner/dashboard' as any);
               }} 
               style={styles.backButton} 
               hitSlop={8}
@@ -422,7 +422,7 @@ export default function OwnerVerifyAttendance() {
                           <View style={styles.historyRemarksBox}>
                             <FileText size={12} color="#64748b" />
                             <ThemedText style={styles.historyRemarksText}>
-                              Remarks: "{record.remarks}"
+                              Remarks: &quot;{record.remarks}&quot;
                             </ThemedText>
                           </View>
                         )}

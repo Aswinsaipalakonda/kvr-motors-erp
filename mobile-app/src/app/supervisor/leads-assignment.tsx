@@ -46,7 +46,7 @@ export default function SupervisorLeadsAssignment() {
       router.back();
       return true;
     }
-    router.replace('/supervisor' as any);
+    router.replace('/supervisor/dashboard' as any);
     return true;
   }, [selectedLead, router]);
 

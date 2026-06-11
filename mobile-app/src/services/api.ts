@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
-import axios from 'axios';
+import { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 export let baseHostUrl = 'https://kvr.thehps.in';
 
@@ -29,9 +30,9 @@ const safePromiseAny = async <T>(promises: Promise<T>[]): Promise<T> => {
 
 const pingUrl = async (url: string): Promise<string> => {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 1200);
+  const id = setTimeout(() => controller.abort(), 3000);
   try {
-    const response = await fetch(url, {
+    await fetch(url, {
       method: 'GET',
       signal: controller.signal,
     });
@@ -56,11 +57,22 @@ export const getBaseHostUrl = async (): Promise<string> => {
   if (resolvePromise) return resolvePromise;
 
   const candidates: string[] = [];
+  
+  // Prioritize emulator loopback IP based on platform
+  if (Platform.OS === 'android') {
+    candidates.push('http://10.0.2.2:8000');
+  } else if (Platform.OS === 'ios') {
+    candidates.push('http://127.0.0.1:8000');
+  }
+
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) {
-      candidates.push(`http://${ip}:8000`);
+      const url = `http://${ip}:8000`;
+      if (!candidates.includes(url)) {
+        candidates.push(url);
+      }
     }
   }
 
@@ -81,7 +93,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
       authApi.defaults.baseURL = `${wonUrl}/api/auth`;
       api.defaults.baseURL = `${wonUrl}/api/v1`;
       return wonUrl;
-    } catch (err) {
+    } catch {
       resolvedBaseUrl = candidates[0] || 'http://127.0.0.1:8000';
       baseHostUrl = resolvedBaseUrl;
       return resolvedBaseUrl;
@@ -91,7 +103,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
   return resolvePromise;
 };
 
-export const authApi = axios.create({
+export const authApi = create({
   baseURL: `${baseHostUrl}/api/auth`,
   timeout: 10000,
   headers: {
@@ -109,7 +121,7 @@ authApi.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-const api = axios.create({
+const api = create({
   baseURL: `${baseHostUrl}/api/v1`,
   timeout: 10000,
   headers: {
@@ -139,10 +151,10 @@ api.interceptors.request.use(
 
 // Track whether we're currently refreshing to avoid infinite loops
 let isRefreshing = false;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (value?: unknown) => void;
   reject: (reason?: unknown) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((promise) => {
