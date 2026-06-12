@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api, { authApi } from '../services/api';
+import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
 
 export interface UserProfile {
   id: number;
@@ -37,6 +38,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper to register push token with Django backend
+  const registerPushNotificationsLater = async () => {
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        await api.patch('/auth/me/', { expo_push_token: pushToken });
+        console.log('Successfully registered Expo push token with backend:', pushToken);
+      }
+    } catch (err) {
+      console.warn('Failed to register push token with backend:', err);
+    }
+  };
+
   // Load session from SecureStore on launch
   useEffect(() => {
     async function loadSession() {
@@ -48,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedToken && storedRefreshToken && storedUser) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
+          
+          // Register token asynchronously
+          setTimeout(registerPushNotificationsLater, 500);
         } else if (storedToken || storedUser) {
           // Stale/legacy session detected without a refresh token. Purge it to prevent 401 loops!
           await SecureStore.deleteItemAsync('jwt_token').catch(() => {});
@@ -86,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setToken(access);
       setUser(userProfile);
+      
+      // Register token asynchronously
+      setTimeout(registerPushNotificationsLater, 500);
     } catch (err: any) {
       console.error('Login failed:', err);
       throw err;

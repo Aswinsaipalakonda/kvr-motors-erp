@@ -7,6 +7,9 @@ class ShowroomSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class InventoryLocationSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    showroom_name = serializers.CharField(source='showroom.name', read_only=True)
+
     class Meta:
         model = InventoryLocation
         fields = '__all__'

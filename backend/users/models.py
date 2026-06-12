@@ -22,6 +22,7 @@ class User(AbstractUser):
     city = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    expo_push_token = models.CharField(max_length=255, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.full_name:

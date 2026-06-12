@@ -27,6 +27,10 @@ interface Transfer {
   status: TransferStatus;
   requestedBy: string;
   approvedBy: string;
+  fromBranchName?: string;
+  toBranchName?: string;
+  fromShowroomName?: string;
+  toShowroomName?: string;
 }
 
 interface TransferForm {
@@ -77,6 +81,7 @@ export default function SupervisorTransfers() {
   const [form, setForm] = useState<TransferForm>(emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeSegment, setActiveSegment] = useState<'incoming' | 'outgoing'>('incoming');
 
   // Dynamic API Database states
   const [vehicleUnits, setVehicleUnits] = useState<any[]>([]);
@@ -127,6 +132,10 @@ export default function SupervisorTransfers() {
         status: (t.status as TransferStatus) || 'pending',
         requestedBy: t.requester_name || 'Sales Executive',
         approvedBy: t.approver_name || (t.status === 'pending' ? 'Awaiting' : 'Supervisor Desk'),
+        fromBranchName: t.from_branch_name,
+        toBranchName: t.to_branch_name,
+        fromShowroomName: t.from_showroom_name,
+        toShowroomName: t.to_showroom_name,
       }));
       setTransfers(mapped.length > 0 ? mapped : FALLBACK);
       setVehicleUnits(unitsRes.data || []);
@@ -149,7 +158,7 @@ export default function SupervisorTransfers() {
   // Filter available units at other showroom outlets
   const otherBranchUnits = React.useMemo(() => {
     return vehicleUnits.filter(u => 
-      u.showroom !== user?.showroom && 
+      u.showroom_name !== user?.showroom && 
       u.stock_status === 'available'
     );
   }, [vehicleUnits, user]);
@@ -169,9 +178,26 @@ export default function SupervisorTransfers() {
   // Filter target locations belonging to supervisor's branch
   const targetLocations = React.useMemo(() => {
     return locations.filter(l => 
-      l.branch === user?.branch
+      l.branch_name === user?.branch
     );
   }, [locations, user]);
+
+  // Memos for split incoming / outgoing transfer lists
+  const incomingTransfers = React.useMemo(() => {
+    return transfers.filter(t => 
+      (t.fromShowroomName && t.fromShowroomName === (user?.showroom as any)) ||
+      (t.fromBranchName && t.fromBranchName === (user?.branch as any))
+    );
+  }, [transfers, user]);
+
+  const outgoingTransfers = React.useMemo(() => {
+    return transfers.filter(t => 
+      (t.toShowroomName && t.toShowroomName === (user?.showroom as any)) ||
+      (t.toBranchName && t.toBranchName === (user?.branch as any))
+    );
+  }, [transfers, user]);
+
+  const displayedTransfers = activeSegment === 'incoming' ? incomingTransfers : outgoingTransfers;
 
   const openCreate = () => {
     setErrors({});
@@ -244,20 +270,22 @@ export default function SupervisorTransfers() {
     }
   };
 
-  const advanceStatus = async (t: Transfer) => {
-    let next: TransferStatus = 'in_transit';
-    if (t.status === 'pending' || t.status === 'approved') {
-      next = 'in_transit';
-    } else if (t.status === 'in_transit') {
-      next = 'received';
-    }
-    if (t.status === 'received' || t.status === 'rejected') return;
-    
-    setTransfers((prev) => prev.map((x) => (x.id === t.id ? { ...x, status: next, approvedBy: 'Supervisor Desk' } : x)));
+  const handleUpdateStatus = async (t: Transfer, next: TransferStatus) => {
+    setTransfers((prev) => 
+      prev.map((x) => 
+        x.id === t.id 
+          ? { ...x, status: next, approvedBy: next === 'approved' || next === 'in_transit' || next === 'rejected' ? (user?.full_name || 'Supervisor Desk') : x.approvedBy } 
+          : x
+      )
+    );
     try {
       await api.patch(`/stock-transfers/${t.id}/`, { status: next });
-    } catch {
-      /* local fallback applied */
+      Alert.alert('Status Updated', `Transfer status changed to ${STATUS_META[next].label}.`);
+    } catch (err: any) {
+      console.error('Failed to update status:', err);
+      const backendError = err.response?.data?.status?.[0] || err.response?.data?.non_field_errors?.[0] || err.response?.data?.detail || err.message;
+      Alert.alert('Error', backendError || 'Failed to update transfer status.');
+      loadData();
     }
   };
 
@@ -335,15 +363,35 @@ export default function SupervisorTransfers() {
                 <ThemedText style={styles.createBtnText}>CREATE TRANSFER REQUISITION</ThemedText>
               </Pressable>
 
-              <View style={styles.feedHeaderRow}>
-                <ThemedText style={styles.feedTitle}>Transfer Timeline</ThemedText>
-                <ThemedText style={styles.feedCount}>{transfers.length} records</ThemedText>
+              <View style={styles.segmentContainer}>
+                <Pressable 
+                  style={[styles.segmentBtn, activeSegment === 'incoming' && styles.segmentBtnActive]}
+                  onPress={() => setActiveSegment('incoming')}
+                >
+                  <ThemedText style={[styles.segmentText, activeSegment === 'incoming' && styles.segmentTextActive]}>
+                    Incoming ({incomingTransfers.length})
+                  </ThemedText>
+                </Pressable>
+                <Pressable 
+                  style={[styles.segmentBtn, activeSegment === 'outgoing' && styles.segmentBtnActive]}
+                  onPress={() => setActiveSegment('outgoing')}
+                >
+                  <ThemedText style={[styles.segmentText, activeSegment === 'outgoing' && styles.segmentTextActive]}>
+                    Outgoing ({outgoingTransfers.length})
+                  </ThemedText>
+                </Pressable>
               </View>
 
-              {transfers.map((t) => {
+              <View style={styles.feedHeaderRow}>
+                <ThemedText style={styles.feedTitle}>
+                  {activeSegment === 'incoming' ? 'Incoming Requests' : 'My Requisitions'}
+                </ThemedText>
+                <ThemedText style={styles.feedCount}>{displayedTransfers.length} records</ThemedText>
+              </View>
+
+              {displayedTransfers.map((t) => {
                 const meta = STATUS_META[t.status];
                 const isExpanded = expandedId === t.id;
-                const canAdvance = t.status !== 'received' && t.status !== 'rejected';
                 return (
                   <View key={t.id} style={styles.card}>
                     <Pressable style={styles.cardTop} onPress={() => setExpandedId(isExpanded ? null : t.id)}>
@@ -378,13 +426,40 @@ export default function SupervisorTransfers() {
                       <View style={[styles.priorityChip, { backgroundColor: `${PRIORITY_COLOR[t.priority]}14` }]}>
                         <ThemedText style={[styles.priorityText, { color: PRIORITY_COLOR[t.priority] }]}>{t.priority} Priority</ThemedText>
                       </View>
-                      {canAdvance && (
-                        <Pressable onPress={() => advanceStatus(t)} style={({ pressed }) => [styles.advanceBtn, pressed && { opacity: 0.85 }]}>
-                          <ThemedText style={styles.advanceBtnText}>
-                            {t.status === 'pending' ? 'Approve & Dispatch' : t.status === 'approved' ? 'Dispatch' : 'Mark Received'}
-                          </ThemedText>
-                        </Pressable>
-                      )}
+                      <View style={styles.actionsContainer}>
+                        {activeSegment === 'incoming' && t.status === 'pending' && (
+                          <>
+                            <Pressable 
+                              onPress={() => handleUpdateStatus(t, 'rejected')} 
+                              style={({ pressed }) => [styles.rejectBtn, pressed && { opacity: 0.85 }]}
+                            >
+                              <ThemedText style={styles.rejectBtnText}>Reject</ThemedText>
+                            </Pressable>
+                            <Pressable 
+                              onPress={() => handleUpdateStatus(t, 'in_transit')} 
+                              style={({ pressed }) => [styles.approveBtn, pressed && { opacity: 0.85 }]}
+                            >
+                              <ThemedText style={styles.approveBtnText}>Approve & Dispatch</ThemedText>
+                            </Pressable>
+                          </>
+                        )}
+                        {activeSegment === 'incoming' && t.status === 'approved' && (
+                          <Pressable 
+                            onPress={() => handleUpdateStatus(t, 'in_transit')} 
+                            style={({ pressed }) => [styles.approveBtn, pressed && { opacity: 0.85 }]}
+                          >
+                            <ThemedText style={styles.approveBtnText}>Dispatch</ThemedText>
+                          </Pressable>
+                        )}
+                        {activeSegment === 'outgoing' && (t.status === 'in_transit' || t.status === 'approved') && (
+                          <Pressable 
+                            onPress={() => handleUpdateStatus(t, 'received')} 
+                            style={({ pressed }) => [styles.receiveBtn, pressed && { opacity: 0.85 }]}
+                          >
+                            <ThemedText style={styles.receiveBtnText}>Mark Received</ThemedText>
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
 
                     {isExpanded && (
@@ -570,6 +645,83 @@ export default function SupervisorTransfers() {
 }
 
 const styles = StyleSheet.create({
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 4,
+    gap: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderRadius: 9,
+  },
+  segmentBtnActive: {
+    backgroundColor: '#ffffff',
+    boxShadow: '0 2px 5px rgba(15, 23, 42, 0.05)',
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  segmentTextActive: {
+    color: '#04a700',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  rejectBtn: {
+    backgroundColor: 'rgba(215, 29, 34, 0.08)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(215, 29, 34, 0.25)',
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  rejectBtnText: {
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    color: '#d71d22',
+  },
+  approveBtn: {
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(4, 167, 0, 0.25)',
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  approveBtnText: {
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    color: '#04a700',
+  },
+  receiveBtn: {
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.25)',
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  receiveBtnText: {
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
   mainContainer: { flex: 1, backgroundColor: '#f8fafc' },
   scrollView: { flex: 1 },
   scrollContent: { flexGrow: 1 },
