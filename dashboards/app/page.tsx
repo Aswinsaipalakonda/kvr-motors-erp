@@ -18,11 +18,9 @@ import {
   Activity,
   Layers,
   CheckCircle2,
-  Workflow,
-  Cpu,
   Database,
   Smartphone,
-  Gauge
+  Cpu
 } from "lucide-react";
 
 export default function Home() {
@@ -161,16 +159,15 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#090d16] flex flex-col justify-between font-sans antialiased text-slate-300 selection:bg-emerald-500/20 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#070b13] flex flex-col justify-between font-sans antialiased text-slate-300 selection:bg-emerald-500/20 selection:text-white relative overflow-hidden">
       
-      {/* SaaS mesh gradients */}
+      {/* Background Soft Glow Spheres */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-15%] w-[60%] h-[60%] bg-[#04a700]/10 rounded-full blur-[160px]" />
-        <div className="absolute bottom-[-20%] right-[-15%] w-[60%] h-[60%] bg-teal-500/10 rounded-full blur-[160px]" />
-        <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-[140px]" />
+        <div className="absolute top-[-25%] left-[-10%] w-[70%] h-[70%] bg-[#04a700]/8 rounded-full blur-[160px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[65%] h-[65%] bg-teal-500/8 rounded-full blur-[160px]" />
       </div>
 
-      {/* Header Container */}
+      {/* Header (Opulea Style) */}
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between border-b border-white/5 relative z-10 select-none">
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0 bg-white rounded-xl p-1.5 flex items-center justify-center border border-white/10 shadow-lg">
@@ -189,110 +186,204 @@ export default function Home() {
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/5 rounded-full text-[10px] font-bold text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#04a700] animate-ping" />
-            <span>ALL SYSTEMS ACTIVE</span>
-          </div>
-          <Link href="/login" className="text-xs font-bold text-white hover:text-[#04a700] px-4 py-2 rounded-full border border-white/10 hover:border-[#04a700]/30 bg-white/5 transition-all">
-            Sign In
+        {/* Navigation center links */}
+        <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-400">
+          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <a href="#portals" className="hover:text-white transition-colors">Portals</a>
+          <a href="#statistics" className="hover:text-white transition-colors">Statistics</a>
+          <a href="#docs" className="hover:text-white transition-colors">Documentation</a>
+        </nav>
+
+        <div className="flex items-center gap-6">
+          <Link href="/login" className="text-xs font-bold text-slate-400 hover:text-white transition-all">
+            Login
+          </Link>
+          <Link href="/login" className="text-xs font-black text-white bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-600 px-5 py-2.5 rounded-full shadow-lg shadow-[#04a700]/20 hover:scale-[1.03] transition-all duration-200">
+            Start Free Trial
           </Link>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-16 md:py-24 flex flex-col justify-center relative z-10">
+      {/* Main Content containing Hero */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-12 md:py-24 flex flex-col justify-center relative z-10">
         
-        {/* Intro and Headline */}
-        <div className="text-center max-w-3xl mx-auto mb-20 space-y-5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-[#04a700]">
-            <Sparkles className="h-3.5 w-3.5 text-[#04a700] animate-pulse" /> Unified Dealership Command Center
-          </div>
+        {/* 1. Hero Section (Opulea Layout replica) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center mb-28">
           
-          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight">
-            Automate and Scale Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#04a700] to-teal-400">Automotive Enterprise</span>
-          </h1>
-          
-          <p className="text-sm sm:text-base font-medium text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            The multi-branch operational control deck for inventory tracking, CRM lead pipelines, sales receipts ledger, and automated battery allocation.
-          </p>
+          {/* Hero Left Column */}
+          <div className="lg:col-span-7 text-left space-y-6">
+            <span className="inline-block text-[10px] font-extrabold tracking-widest text-[#04a700] uppercase bg-[#04a700]/10 px-3 py-1.5 rounded-full">
+              ALL-IN-ONE AUTOMOTIVE ERP PLATFORM
+            </span>
+            
+            <h1 className="text-5xl sm:text-7xl font-serif font-normal text-white tracking-tight leading-tight">
+              Run Dealerships.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400">Brilliantly.</span>
+            </h1>
+            
+            <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl font-medium">
+              KVR Motors is the ultimate operating system for modern automotive enterprises. Effortlessly manage stock, streamline inter-branch transfers, automate battery registries, and coordinate sales workflows—all from one beautifully intuitive platform engineered for growth.
+            </p>
 
-          <div className="pt-4 flex justify-center gap-4">
-            <Link href="/login" className="py-3 px-6 rounded-full bg-gradient-to-r from-[#04a700] to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-[#04a700]/20 hover:shadow-xl transition-all cursor-pointer flex items-center gap-2 group">
-              <span>Launch Cloud Hub</span>
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
+            <div className="pt-2 flex flex-wrap gap-4">
+              <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02]">
+                Start Free Trial
+              </Link>
+              <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-[#04a700]/40 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
+                Book a Demo
+              </Link>
+            </div>
+
+            <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 font-semibold select-none">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> No Credit Card Required
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> Free 14-Day Trial
+              </span>
+            </div>
           </div>
+
+          {/* Hero Right Column (Scooter + Stats Card Overlap) */}
+          <div className="lg:col-span-5 relative flex items-center justify-center">
+            
+            {/* Ambient Circular Glow behind the bike */}
+            <div className="absolute w-[320px] h-[320px] sm:w-[420px] sm:h-[420px] bg-emerald-500/10 rounded-full blur-2xl z-0" />
+            <div className="absolute w-[220px] h-[220px] sm:w-[300px] sm:h-[300px] bg-slate-900 border border-emerald-500/20 rounded-full z-0" />
+
+            {/* Scooter Image */}
+            <div className="relative z-10 w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] hover:scale-[1.02] transition-transform duration-500">
+              <Image
+                src="/hero-scooter.png"
+                alt="Premium Scooter Hero"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            {/* Opulea style Overview Stats Card Overlap */}
+            <div className="absolute -bottom-6 right-0 sm:right-[-20px] z-25 bg-[#090d16]/80 border border-white/10 backdrop-blur-md p-5 rounded-2xl w-64 shadow-xl select-none">
+              <h4 className="text-xs font-black text-white mb-3 tracking-wide border-b border-white/5 pb-2">Today&apos;s Overview</h4>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="text-left">
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Active Bookings</span>
+                    <span className="text-sm font-black text-white font-mono">142</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-[#04a700]">+18%</span>
+                </div>
+                
+                <div className="flex justify-between items-end">
+                  <div className="text-left">
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Revenue</span>
+                    <span className="text-sm font-black text-white font-mono">₹48,92,000</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-[#04a700]">+25%</span>
+                </div>
+
+                <div className="flex justify-between items-end">
+                  <div className="text-left">
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">New Leads</span>
+                    <span className="text-sm font-black text-white font-mono">36</span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-extrabold text-[#04a700]">+14%</span>
+                    {/* Wavy line mini graph */}
+                    <div className="flex items-end gap-0.5 h-3">
+                      <div className="w-1 h-1 bg-[#04a700] rounded-full" />
+                      <div className="w-1 h-1.5 bg-[#04a700] rounded-full" />
+                      <div className="w-1 h-2 bg-[#04a700] rounded-full" />
+                      <div className="w-1 h-1 bg-[#04a700] rounded-full" />
+                      <div className="w-1 h-2.5 bg-[#04a700] rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
 
-        {/* Portals Selection Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
-          {portals.map((portal, idx) => {
-            const PortalIcon = portal.icon;
-            return (
-              <div 
-                key={idx} 
-                className={`bg-white/[0.02] backdrop-blur-md border ${portal.borderColor} rounded-3xl p-7 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:${portal.glowColor} hover:scale-[1.01] transition-all duration-300 group h-124`}
-              >
-                <div>
-                  {/* Top Header inside Card */}
-                  <div className="flex items-center justify-between mb-6">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      Terminal 0{idx + 1}
-                    </span>
-                    <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                      <PortalIcon className="h-5 w-5" />
+        {/* 2. Portal Hub Section */}
+        <div id="portals" className="mb-28 scroll-mt-12">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Access Your ERP Hub</h2>
+            <p className="text-sm text-slate-400 font-semibold max-w-xl mx-auto leading-relaxed">
+              Authenticate via your specific business terminal deck below to manage operational workflows.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {portals.map((portal, idx) => {
+              const PortalIcon = portal.icon;
+              return (
+                <div 
+                  key={idx} 
+                  className={`bg-white/[0.01] border ${portal.borderColor} rounded-3xl p-7 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:${portal.glowColor} hover:scale-[1.01] transition-all duration-300 group h-124`}
+                >
+                  <div>
+                    {/* Top Header inside Card */}
+                    <div className="flex items-center justify-between mb-6">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        Terminal 0{idx + 1}
+                      </span>
+                      <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                        <PortalIcon className="h-5 w-5" />
+                      </div>
+                    </div>
+
+                    {/* Title & Description */}
+                    <div className="space-y-2 mb-6">
+                      <h3 className="text-xl font-bold text-white group-hover:text-[#04a700] transition-colors">
+                        {portal.title}
+                      </h3>
+                      <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                        {portal.description}
+                      </p>
+                    </div>
+
+                    {/* Feature Bullets */}
+                    <div className="space-y-3.5 pt-5 border-t border-white/5">
+                      <span className="text-[9px] font-extrabold text-[#04a700] uppercase tracking-wider block text-left">
+                        Core Modules
+                      </span>
+                      <ul className="space-y-2.5">
+                        {portal.features.map((feature, fIdx) => {
+                          const FeatIcon = feature.icon;
+                          return (
+                            <li key={fIdx} className="flex items-center gap-2.5 text-[11px] font-bold text-slate-300">
+                              <FeatIcon className="h-3.5 w-3.5 text-slate-500" />
+                              <span>{feature.label}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   </div>
 
-                  {/* Title & Description */}
-                  <div className="space-y-2 mb-6">
-                    <h3 className="text-xl font-bold text-white group-hover:text-[#04a700] transition-colors">
-                      {portal.title}
-                    </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      {portal.description}
-                    </p>
-                  </div>
+                  {/* Direct Action Link */}
+                  <Link href={portal.path} className="block mt-8">
+                    <div className={`w-full py-3 rounded-2xl bg-white/5 hover:bg-[#04a700] border border-white/10 hover:border-transparent text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer`}>
+                      <span>{portal.actionText}</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
 
-                  {/* Feature Bullets */}
-                  <div className="space-y-3.5 pt-5 border-t border-white/5">
-                    <span className="text-[9px] font-extrabold text-[#04a700] uppercase tracking-wider block text-left">
-                      Core Modules
-                    </span>
-                    <ul className="space-y-2.5">
-                      {portal.features.map((feature, fIdx) => {
-                        const FeatIcon = feature.icon;
-                        return (
-                          <li key={fIdx} className="flex items-center gap-2.5 text-[11px] font-bold text-slate-300">
-                            <FeatIcon className="h-3.5 w-3.5 text-slate-500" />
-                            <span>{feature.label}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
                 </div>
-
-                {/* Direct Action Link */}
-                <Link href={portal.path} className="block mt-8">
-                  <div className={`w-full py-3 rounded-2xl bg-white/5 hover:bg-[#04a700] border border-white/10 hover:border-transparent text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer`}>
-                    <span>{portal.actionText}</span>
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Link>
-
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
-        {/* Bento SaaS Features Showcase */}
-        <div className="mb-24 space-y-12">
+        {/* 3. Bento Features Section */}
+        <div id="features" className="mb-28 scroll-mt-12 space-y-12">
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Built for Enterprise Performance</h2>
-            <p className="text-xs font-semibold text-slate-400 leading-relaxed">
-              Engineered with advanced business logic to handle bulk distribution pipelines with zero friction.
+            <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Engineered for Performance</h2>
+            <p className="text-sm text-slate-400 font-semibold leading-relaxed">
+              Designed with enterprise business logic to handle bulk distribution pipelines with zero latency.
             </p>
           </div>
 
@@ -317,8 +408,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Interactive Stats Block */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-white/[0.01] border border-white/5 rounded-3xl max-w-5xl mx-auto text-center backdrop-blur-sm">
+        {/* 4. Statistics Panel */}
+        <div id="statistics" className="scroll-mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-white/[0.01] border border-white/5 rounded-3xl max-w-5xl mx-auto text-center backdrop-blur-sm">
           <div className="space-y-1">
             <span className="block text-2xl sm:text-3xl font-black text-white font-mono">3</span>
             <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active Outlets</span>
