@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       const redirectPath = roleRedirectMap[userProfile.role as keyof typeof roleRedirectMap] || "/";
-      router.push(redirectPath);
+      window.location.href = redirectPath;
 
       return userProfile;
     } catch (error: any) {

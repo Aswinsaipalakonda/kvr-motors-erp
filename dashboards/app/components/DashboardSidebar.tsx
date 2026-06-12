@@ -195,7 +195,6 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
             <div className="flex flex-col text-left">
               <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans flex items-center gap-1.5">
                 KVR Motors
-                <span className="inline-flex items-center rounded bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-extrabold text-[#04a700] border border-[#04a700]/20">v1.0 (Beta)</span>
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
                 {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}

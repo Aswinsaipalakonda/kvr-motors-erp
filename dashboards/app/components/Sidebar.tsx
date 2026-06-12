@@ -288,7 +288,7 @@ export default function Sidebar() {
 
         {/* Footer info */}
         <div className="p-4 border-t border-[#27272a] bg-[#09090b] flex items-center justify-between text-xs text-[#71717a]">
-          <span>KVR ERP v1.0.0</span>
+          <span>KVR ERP</span>
           <span className="h-2 w-2 rounded-full bg-[#10b981]" />
         </div>
       </aside>
