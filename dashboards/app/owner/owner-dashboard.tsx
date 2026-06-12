@@ -850,7 +850,7 @@ export default function OwnerDashboard() {
   };
 
   // --- Add / Edit Lead + Kanban drag-drop ---
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "", assigned_executive: "" as string | number | null };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -871,6 +871,7 @@ export default function OwnerDashboard() {
       status: lead.status || "new_lead",
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
+      assigned_executive: lead.assigned_executive || "",
     });
     setIsAddLeadOpen(true);
   };
@@ -885,6 +886,7 @@ export default function OwnerDashboard() {
       status: newLead.status,
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
+      assigned_executive: newLead.assigned_executive ? parseInt(String(newLead.assigned_executive)) : null,
     };
     try {
       if (editingLeadId) {
@@ -3988,6 +3990,24 @@ export default function OwnerDashboard() {
               rows={3}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-medium outline-none focus:border-[#04a700] resize-none"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Executive / Telecaller</label>
+            <select
+              value={newLead.assigned_executive || ""}
+              onChange={(e) => setNewLead({ ...newLead, assigned_executive: e.target.value || null })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+            >
+              <option value="">Unassigned</option>
+              {usersList
+                .filter(u => u.role === "telecaller" || u.role === "sales_executive" || u.role === "sales")
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales Executive"})
+                  </option>
+                ))
+              }
+            </select>
           </div>
           <div className={editingLeadId ? "grid grid-cols-2 gap-4" : "w-full"}>
             <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
