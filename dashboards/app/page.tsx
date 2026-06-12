@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -20,10 +20,74 @@ import {
   CheckCircle2,
   Database,
   Smartphone,
-  Cpu
+  Cpu,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default function Home() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      tagline: "ALL-IN-ONE AUTOMOTIVE ERP PLATFORM",
+      headline: "Run Dealerships. Brilliantly.",
+      desc: "KVR Motors is the ultimate operating system for modern automotive enterprises. Effortlessly manage stock, streamline inter-branch transfers, automate battery registries, and coordinate sales workflows—all from one beautifully intuitive platform engineered for growth.",
+      image: "/hero-scooter.png",
+      accentText: "text-[#04a700]",
+      accentBg: "bg-[#04a700]/10",
+      widgetTitle: "Today's Overview",
+      widgetData: [
+        { label: "Active Bookings", val: "142", change: "+18%" },
+        { label: "Total Revenue", val: "₹48,92,000", change: "+25%" },
+        { label: "New Leads", val: "36", change: "+14%", graph: true }
+      ]
+    },
+    {
+      tagline: "FIFO BATTERY REGISTRY",
+      headline: "Allocate Stock. Precision.",
+      desc: "Intelligent auto-matching algorithms align fresh battery units to sold vehicles on a strict FIFO sequence, protecting battery lifespans, optimizing warranties, and preventing manual allocation override delays.",
+      image: "/hero-battery.png",
+      accentText: "text-blue-400",
+      accentBg: "bg-blue-500/10",
+      widgetTitle: "FIFO Allocation Stats",
+      widgetData: [
+        { label: "Queue Match Rate", val: "98.4%", change: "+2.1%" },
+        { label: "Pending Deliveries", val: "12 Units", change: "Queued" },
+        { label: "Active Overrides", val: "4 Orders", change: "Secure", graph: true }
+      ]
+    },
+    {
+      tagline: "MULTI-BRANCH SYNCHRONIZATION",
+      headline: "Manage Networks. Instantly.",
+      desc: "Consolidated transaction ledger records sales invoices, Supplier POs, cash inflows, and inter-branch vehicles transfer requests across Visakhapatnam, Srikakulam & Kakinada branches in real time.",
+      image: "/hero-showroom.png",
+      accentText: "text-teal-400",
+      accentBg: "bg-teal-500/10",
+      widgetTitle: "Live Branch Ledger",
+      widgetData: [
+        { label: "Visakhapatnam", val: "₹14,20,000", change: "+16%" },
+        { label: "Srikakulam", val: "₹8,90,000", change: "+12%" },
+        { label: "Kakinada", val: "₹11,50,000", change: "+20%", graph: true }
+      ]
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const handlePrev = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const handleNext = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
   const portals = [
     {
       title: "Owner Analytics Portal",
@@ -205,106 +269,134 @@ export default function Home() {
       </header>
 
       {/* Main Content containing Hero */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-12 md:py-24 flex flex-col justify-center relative z-10">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col justify-center relative z-10">
         
-        {/* 1. Hero Section (Opulea Layout replica) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center mb-28">
+        {/* 1. Slideshow Hero Section */}
+        <div className="relative h-[650px] sm:h-[550px] lg:h-[480px] w-full mb-16 overflow-hidden">
           
-          {/* Hero Left Column */}
-          <div className="lg:col-span-7 text-left space-y-6">
-            <span className="inline-block text-[10px] font-extrabold tracking-widest text-[#04a700] uppercase bg-[#04a700]/10 px-3 py-1.5 rounded-full">
-              ALL-IN-ONE AUTOMOTIVE ERP PLATFORM
-            </span>
-            
-            <h1 className="text-5xl sm:text-7xl font-serif font-normal text-white tracking-tight leading-tight">
-              Run Dealerships.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400">Brilliantly.</span>
-            </h1>
-            
-            <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl font-medium">
-              KVR Motors is the ultimate operating system for modern automotive enterprises. Effortlessly manage stock, streamline inter-branch transfers, automate battery registries, and coordinate sales workflows—all from one beautifully intuitive platform engineered for growth.
-            </p>
+          {slides.map((slide, idx) => {
+            const isActive = idx === currentSlide;
+            return (
+              <div 
+                key={idx}
+                className={`absolute inset-0 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center transition-all duration-1000 ease-in-out ${
+                  isActive ? "opacity-100 translate-x-0 z-10 pointer-events-auto" : "opacity-0 translate-x-8 z-0 pointer-events-none"
+                }`}
+              >
+                {/* Left Column (Text & CTAs) */}
+                <div className="lg:col-span-7 text-left space-y-5">
+                  <span className={`inline-block text-[10px] font-extrabold tracking-widest ${slide.accentText} ${slide.accentBg} px-3 py-1.5 rounded-full`}>
+                    {slide.tagline}
+                  </span>
+                  
+                  <h1 className="text-5xl sm:text-7xl font-serif font-normal text-white tracking-tight leading-tight">
+                    {slide.headline.split(".")[0]}.<br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-150 to-slate-400">{slide.headline.split(".")[1]}.</span>
+                  </h1>
+                  
+                  <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl font-medium">
+                    {slide.desc}
+                  </p>
 
-            <div className="pt-2 flex flex-wrap gap-4">
-              <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02]">
-                Start Free Trial
-              </Link>
-              <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-[#04a700]/40 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
-                Book a Demo
-              </Link>
-            </div>
-
-            <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 font-semibold select-none">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> No Credit Card Required
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> Free 14-Day Trial
-              </span>
-            </div>
-          </div>
-
-          {/* Hero Right Column (Scooter + Stats Card Overlap) */}
-          <div className="lg:col-span-5 relative flex items-center justify-center">
-            
-            {/* Ambient Circular Glow behind the bike */}
-            <div className="absolute w-[320px] h-[320px] sm:w-[420px] sm:h-[420px] bg-emerald-500/10 rounded-full blur-2xl z-0" />
-            <div className="absolute w-[220px] h-[220px] sm:w-[300px] sm:h-[300px] bg-slate-900 border border-emerald-500/20 rounded-full z-0" />
-
-            {/* Scooter Image */}
-            <div className="relative z-10 w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] hover:scale-[1.02] transition-transform duration-500">
-              <Image
-                src="/hero-scooter.png"
-                alt="Premium Scooter Hero"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-
-            {/* Opulea style Overview Stats Card Overlap */}
-            <div className="absolute -bottom-6 right-0 sm:right-[-20px] z-25 bg-[#090d16]/80 border border-white/10 backdrop-blur-md p-5 rounded-2xl w-64 shadow-xl select-none">
-              <h4 className="text-xs font-black text-white mb-3 tracking-wide border-b border-white/5 pb-2">Today&apos;s Overview</h4>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <div className="text-left">
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Active Bookings</span>
-                    <span className="text-sm font-black text-white font-mono">142</span>
+                  <div className="pt-2 flex flex-wrap gap-4">
+                    <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02]">
+                      Start Free Trial
+                    </Link>
+                    <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-[#04a700]/40 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
+                      Book a Demo
+                    </Link>
                   </div>
-                  <span className="text-[10px] font-extrabold text-[#04a700]">+18%</span>
-                </div>
-                
-                <div className="flex justify-between items-end">
-                  <div className="text-left">
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Revenue</span>
-                    <span className="text-sm font-black text-white font-mono">₹48,92,000</span>
+
+                  <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 font-semibold select-none">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> No Credit Card Required
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> Free 14-Day Trial
+                    </span>
                   </div>
-                  <span className="text-[10px] font-extrabold text-[#04a700]">+25%</span>
                 </div>
 
-                <div className="flex justify-between items-end">
-                  <div className="text-left">
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">New Leads</span>
-                    <span className="text-sm font-black text-white font-mono">36</span>
+                {/* Right Column (Scooter + Stats Card Overlap) */}
+                <div className="lg:col-span-5 relative flex items-center justify-center h-full min-h-[300px]">
+                  
+                  {/* Ambient Circular Glow behind the image */}
+                  <div className="absolute w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] bg-emerald-500/10 rounded-full blur-2xl z-0" />
+                  <div className="absolute w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] bg-slate-900 border border-white/5 rounded-full z-0" />
+
+                  {/* Main Slide Image */}
+                  <div className="relative z-10 w-[260px] h-[260px] sm:w-[350px] sm:h-[350px] hover:scale-[1.02] transition-transform duration-500">
+                    <Image
+                      src={slide.image}
+                      alt={slide.headline}
+                      fill
+                      className="object-contain rounded-2xl"
+                      priority
+                    />
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-extrabold text-[#04a700]">+14%</span>
-                    {/* Wavy line mini graph */}
-                    <div className="flex items-end gap-0.5 h-3">
-                      <div className="w-1 h-1 bg-[#04a700] rounded-full" />
-                      <div className="w-1 h-1.5 bg-[#04a700] rounded-full" />
-                      <div className="w-1 h-2 bg-[#04a700] rounded-full" />
-                      <div className="w-1 h-1 bg-[#04a700] rounded-full" />
-                      <div className="w-1 h-2.5 bg-[#04a700] rounded-full" />
+
+                  {/* Overlaid widget (Opulea style) */}
+                  <div className="absolute -bottom-4 right-0 sm:right-[-20px] z-25 bg-[#090d16]/85 border border-white/10 backdrop-blur-md p-5 rounded-2xl w-64 shadow-2xl select-none">
+                    <h4 className="text-xs font-black text-white mb-3 tracking-wide border-b border-white/5 pb-2">{slide.widgetTitle}</h4>
+                    
+                    <div className="space-y-4">
+                      {slide.widgetData.map((item, itemIdx) => (
+                        <div key={itemIdx} className="flex justify-between items-end">
+                          <div className="text-left">
+                            <span className="block text-[9px] font-bold text-slate-500 uppercase">{item.label}</span>
+                            <span className="text-sm font-black text-white font-mono">{item.val}</span>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`text-[10px] font-extrabold ${item.change.startsWith("+") ? "text-[#04a700]" : "text-blue-400"}`}>{item.change}</span>
+                            {item.graph && (
+                              <div className="flex items-end gap-0.5 h-3">
+                                <div className="w-1 h-1 bg-[#04a700] rounded-full" />
+                                <div className="w-1 h-1.5 bg-[#04a700] rounded-full" />
+                                <div className="w-1 h-2 bg-[#04a700] rounded-full" />
+                                <div className="w-1 h-1 bg-[#04a700] rounded-full" />
+                                <div className="w-1 h-2.5 bg-[#04a700] rounded-full" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
+
                 </div>
               </div>
-            </div>
+            );
+          })}
+        </div>
 
+        {/* Manual Slideshow navigation indicators */}
+        <div className="flex items-center justify-between max-w-md mx-auto mb-28 select-none relative z-20">
+          <button 
+            onClick={handlePrev}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-[#04a700] hover:border-transparent text-white transition-all cursor-pointer"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          
+          {/* Dots Indicator */}
+          <div className="flex items-center gap-2">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  idx === currentSlide ? "w-6 bg-[#04a700]" : "w-2 bg-white/20 hover:bg-white/40"
+                }`}
+              />
+            ))}
           </div>
 
+          <button 
+            onClick={handleNext}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-[#04a700] hover:border-transparent text-white transition-all cursor-pointer"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
 
         {/* 2. Portal Hub Section */}
