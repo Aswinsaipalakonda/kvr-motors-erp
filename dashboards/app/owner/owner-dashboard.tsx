@@ -561,8 +561,9 @@ export default function OwnerDashboard() {
       await deleteBranch(id);
       showToast("Branch outlet deleted successfully.");
       loadBranches();
-    } catch {
-      showToast("Failed to delete branch. Ensure there are no active stock or transactions linked.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || err.message || "Failed to delete branch.";
+      showToast(errMsg, "error");
     }
   };
 
@@ -572,8 +573,9 @@ export default function OwnerDashboard() {
       await deleteVehicleModel(id);
       showToast("Vehicle model deleted from catalog.");
       loadVehicles();
-    } catch {
-      showToast("Failed to delete vehicle model. Ensure no active inventory units are linked.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || err.message || "Failed to delete vehicle model.";
+      showToast(errMsg, "error");
     }
   };
 
@@ -584,8 +586,9 @@ export default function OwnerDashboard() {
       showToast("Lead removed from pipeline.");
       setIsAddLeadOpen(false);
       loadLeads();
-    } catch {
-      showToast("Failed to delete lead.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || err.message || "Failed to delete lead.";
+      showToast(errMsg, "error");
     }
   };
 
@@ -595,8 +598,9 @@ export default function OwnerDashboard() {
       await deleteBooking(id);
       showToast("Booking record deleted.");
       loadBookings();
-    } catch {
-      showToast("Failed to delete booking.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || err.message || "Failed to delete booking.";
+      showToast(errMsg, "error");
     }
   };
 
@@ -606,8 +610,9 @@ export default function OwnerDashboard() {
       await deleteUser(id);
       showToast("User account deleted.");
       loadUsers();
-    } catch {
-      showToast("Failed to delete user.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || err.message || "Failed to delete user.";
+      showToast(errMsg, "error");
     }
   };
 
