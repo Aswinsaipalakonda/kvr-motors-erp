@@ -4000,10 +4000,10 @@ export default function OwnerDashboard() {
             >
               <option value="">Unassigned</option>
               {usersList
-                .filter(u => u.role === "telecaller" || u.role === "sales_executive" || u.role === "sales")
+                .filter(u => u.role === "telecaller")
                 .map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.role === "telecaller" ? "Telecaller" : "Sales Executive"})
+                    {u.full_name} (Telecaller)
                   </option>
                 ))
               }
