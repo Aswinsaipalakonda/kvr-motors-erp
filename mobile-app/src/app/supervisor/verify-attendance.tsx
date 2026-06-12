@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Alert, 
-  RefreshControl, TextInput
+  RefreshControl, TextInput, BackHandler
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
@@ -61,6 +61,16 @@ export default function SupervisorVerifyAttendance() {
   useEffect(() => {
     loadAttendance();
   }, []);
+
+  const handleBack = useCallback((): boolean => {
+    router.replace('/supervisor/dashboard' as any);
+    return true;
+  }, [router]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [handleBack]);
 
   const onRefresh = () => {
     setRefreshing(true);

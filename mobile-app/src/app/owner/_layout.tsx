@@ -487,7 +487,7 @@ export default function OwnerLayout() {
               <OwnerSales isActive={activeTab === 'sales'} onBack={() => setActiveTab('dashboard')} />
             </View>
             <View style={{ flex: 1, display: activeTab === 'users' ? 'flex' : 'none' }}>
-              <OwnerUsers isActive={activeTab === 'users'} />
+              <OwnerUsers isActive={activeTab === 'users'} onBack={() => setActiveTab('dashboard')} />
             </View>
             <View style={{ flex: 1, display: activeTab === 'bookings' ? 'flex' : 'none' }}>
               <OwnerBookings isActive={activeTab === 'bookings'} onBack={() => setActiveTab('dashboard')} />

@@ -41,4 +41,12 @@ class UserViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), IsOwnerOrAdmin()]
 
     def get_queryset(self):
-        return User.objects.all().order_by('-id')
+        user = self.request.user
+        if not user.is_authenticated:
+            return User.objects.none()
+        if user.role in ['owner', 'admin'] or user.is_staff:
+            return User.objects.all().order_by('-id')
+        elif user.role == 'supervisor' and user.branch:
+            return User.objects.filter(branch=user.branch).order_by('-id')
+        return User.objects.filter(id=user.id)
+

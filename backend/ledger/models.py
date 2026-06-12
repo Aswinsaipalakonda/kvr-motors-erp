@@ -32,5 +32,12 @@ class LedgerEntry(models.Model):
     class Meta:
         verbose_name_plural = "Ledger Entries"
 
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            import datetime, random
+            self.transaction_id = f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.transaction_id} ({self.ledger_type}) - ₹ {self.income or self.expense}"
+

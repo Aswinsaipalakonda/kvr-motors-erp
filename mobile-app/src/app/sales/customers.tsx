@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, StyleSheet, ScrollView, Pressable, TextInput, 
-  ActivityIndicator, RefreshControl, Dimensions, Platform 
+  ActivityIndicator, RefreshControl, Dimensions, Platform, BackHandler
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -38,6 +38,16 @@ export default function SalesCustomers() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+
+  const handleBack = useCallback((): boolean => {
+    router.replace('/sales/dashboard' as any);
+    return true;
+  }, [router]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => handleBack());
+    return () => sub.remove();
+  }, [handleBack]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -99,7 +109,7 @@ export default function SalesCustomers() {
         {/* Obsidian Header */}
         <View style={[styles.darkHeader, { paddingTop: insets.top + 12 }]}>
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Pressable onPress={handleBack} style={styles.backBtn}>
               <ArrowLeft size={22} color="#ffffff" />
             </Pressable>
             <View style={styles.titleContainer}>

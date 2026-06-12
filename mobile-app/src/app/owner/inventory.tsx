@@ -80,11 +80,6 @@ export default function OwnerInventory({
       onBack();
       return true;
     }
-    // @ts-ignore - canGoBack exists on expo-router's router at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
     router.replace('/owner/dashboard' as any);
     return true;
   }, [onBack, router]);

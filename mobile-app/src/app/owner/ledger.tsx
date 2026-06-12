@@ -99,11 +99,6 @@ export default function OwnerLedger({
       onBack();
       return true;
     }
-    // @ts-ignore - canGoBack exists at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
     router.replace('/owner/dashboard' as any);
     return true;
   }, [isModalOpen, onBack, router]);

@@ -125,11 +125,7 @@ export default function TelecallerLayout() {
           <TelecallerLeads 
             onBack={() => {
               if (pathname.endsWith('/leads')) {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace('/telecaller' as any);
-                }
+                router.replace('/telecaller' as any);
               } else {
                 setActiveTab('dashboard');
               }

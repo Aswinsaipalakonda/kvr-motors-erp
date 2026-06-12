@@ -37,11 +37,6 @@ export default function SupervisorBookings() {
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const handleBack = useCallback((): boolean => {
-    // @ts-ignore - canGoBack exists at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
     router.replace('/supervisor/dashboard' as any);
     return true;
   }, [router]);

@@ -77,11 +77,6 @@ export default function SalesBookingForm() {
       setSuccessData(null);
       return true;
     }
-    // @ts-ignore - canGoBack exists at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
     router.replace('/sales/dashboard' as any);
     return true;
   }, [successData, router]);
