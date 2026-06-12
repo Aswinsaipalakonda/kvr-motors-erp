@@ -36,6 +36,11 @@ export default function Home() {
       image: "/hero-scooter.png",
       accentText: "text-[#04a700]",
       accentBg: "bg-[#04a700]/10",
+      accentBgHover: "hover:bg-[#04a700]",
+      bgColor: "from-[#021805]/95 via-[#070b13]/98 to-[#070b13]",
+      overlayColor: "from-[#021805] via-[#021805]/90 to-transparent",
+      glowSphere: "bg-emerald-500/10",
+      activeDotBg: "bg-[#04a700]",
       widgetTitle: "Today's Overview",
       widgetData: [
         { label: "Active Bookings", val: "142", change: "+18%" },
@@ -50,6 +55,11 @@ export default function Home() {
       image: "/hero-battery.png",
       accentText: "text-blue-400",
       accentBg: "bg-blue-500/10",
+      accentBgHover: "hover:bg-blue-600",
+      bgColor: "from-[#03153c]/95 via-[#070b13]/98 to-[#070b13]",
+      overlayColor: "from-[#03153c] via-[#03153c]/90 to-transparent",
+      glowSphere: "bg-blue-500/10",
+      activeDotBg: "bg-blue-400",
       widgetTitle: "FIFO Allocation Stats",
       widgetData: [
         { label: "Queue Match Rate", val: "98.4%", change: "+2.1%" },
@@ -64,6 +74,11 @@ export default function Home() {
       image: "/hero-showroom.png",
       accentText: "text-teal-400",
       accentBg: "bg-teal-500/10",
+      accentBgHover: "hover:bg-teal-600",
+      bgColor: "from-[#081e24]/95 via-[#070b13]/98 to-[#070b13]",
+      overlayColor: "from-[#081e24] via-[#081e24]/90 to-transparent",
+      glowSphere: "bg-teal-500/10",
+      activeDotBg: "bg-teal-400",
       widgetTitle: "Live Branch Ledger",
       widgetData: [
         { label: "Visakhapatnam", val: "₹14,20,000", change: "+16%" },
@@ -272,72 +287,111 @@ export default function Home() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col justify-center relative z-10">
         
         {/* 1. Slideshow Hero Section */}
-        <div className="relative h-[650px] sm:h-[550px] lg:h-[480px] w-full mb-16 overflow-hidden">
+        <div className="relative h-[650px] sm:h-[580px] lg:h-[520px] w-full mb-16 rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl bg-[#070b13] select-none group">
           
+          {/* Active background gradient wrapper that transitions */}
+          {slides.map((slide, idx) => {
+            const isActive = idx === currentSlide;
+            return (
+              <div
+                key={`bg-${idx}`}
+                className={`absolute inset-0 bg-gradient-to-br ${slide.bgColor} transition-opacity duration-1000 ease-in-out ${
+                  isActive ? "opacity-100 z-0" : "opacity-0 z-0"
+                }`}
+              />
+            );
+          })}
+
+          {/* Active slide content */}
           {slides.map((slide, idx) => {
             const isActive = idx === currentSlide;
             return (
               <div 
                 key={idx}
-                className={`absolute inset-0 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center transition-all duration-1000 ease-in-out ${
-                  isActive ? "opacity-100 translate-x-0 z-10 pointer-events-auto" : "opacity-0 translate-x-8 z-0 pointer-events-none"
+                className={`absolute inset-0 flex items-center transition-all duration-1000 ease-in-out ${
+                  isActive ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
                 }`}
               >
-                {/* Left Column (Text & CTAs) */}
-                <div className="lg:col-span-7 text-left space-y-5">
-                  <span className={`inline-block text-[10px] font-extrabold tracking-widest ${slide.accentText} ${slide.accentBg} px-3 py-1.5 rounded-full`}>
-                    {slide.tagline}
-                  </span>
+                
+                {/* Large Background Image on the Right */}
+                <div 
+                  className={`absolute right-0 top-0 bottom-0 h-full w-full lg:w-[55%] transition-all duration-1000 ease-out transform ${
+                    isActive ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-105 translate-x-4"
+                  }`}
+                >
+                  <Image
+                    src={slide.image}
+                    alt={slide.headline}
+                    fill
+                    className="object-cover object-center lg:object-right-top"
+                    priority
+                  />
                   
-                  <h1 className="text-5xl sm:text-7xl font-serif font-normal text-white tracking-tight leading-tight">
-                    {slide.headline.split(".")[0]}.<br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-150 to-slate-400">{slide.headline.split(".")[1]}.</span>
-                  </h1>
-                  
-                  <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-xl font-medium">
-                    {slide.desc}
-                  </p>
+                  {/* Gradient mask to blend image into the slide's custom gradient background */}
+                  <div className={`absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r ${slide.overlayColor} z-10`} />
+                </div>
 
-                  <div className="pt-2 flex flex-wrap gap-4">
-                    <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02]">
+                {/* Ambient glow sphere behind the text (changes per slide) */}
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[120px] pointer-events-none transition-all duration-1000 ${slide.glowSphere} ${isActive ? "opacity-100 scale-100" : "opacity-0 scale-90"}`} />
+
+                {/* Left Column (Text & CTAs) */}
+                <div className="relative z-20 w-full lg:w-[55%] px-6 sm:px-12 py-10 lg:p-14 flex flex-col justify-center text-left space-y-6">
+                  
+                  {/* Tagline */}
+                  <div className={`transition-all duration-700 ease-out transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}`}>
+                    <span className={`inline-block text-[10px] font-extrabold tracking-widest ${slide.accentText} ${slide.accentBg} px-3.5 py-1.5 rounded-full border border-white/5`}>
+                      {slide.tagline}
+                    </span>
+                  </div>
+                  
+                  {/* Headline */}
+                  <div className={`transition-all duration-750 ease-out delay-100 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                    <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-serif font-normal text-white tracking-tight leading-tight">
+                      {slide.headline.split(".")[0]}.<br />
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                        {slide.headline.split(".")[1]}.
+                      </span>
+                    </h1>
+                  </div>
+                  
+                  {/* Description */}
+                  <div className={`transition-all duration-750 ease-out delay-200 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-lg font-medium">
+                      {slide.desc}
+                    </p>
+                  </div>
+
+                  {/* CTAs */}
+                  <div className={`pt-2 flex flex-wrap gap-4 transition-all duration-750 ease-out delay-300 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                    <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02] hover:shadow-[#04a700]/35">
                       Start Free Trial
                     </Link>
-                    <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-[#04a700]/40 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
+                    <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-white/20 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
                       Book a Demo
                     </Link>
                   </div>
 
-                  <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 font-semibold select-none">
+                  {/* Checklist */}
+                  <div className={`pt-2 flex items-center gap-6 text-[10px] text-slate-500 font-semibold select-none transition-all duration-750 ease-out delay-300 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                     <span className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> No Credit Card Required
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> No Credit Card Required
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-[#04a700]" /> Free 14-Day Trial
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> Free 14-Day Trial
                     </span>
                   </div>
                 </div>
 
-                {/* Right Column (Scooter + Stats Card Overlap) */}
-                <div className="lg:col-span-5 relative flex items-center justify-center h-full min-h-[300px]">
-                  
-                  {/* Ambient Circular Glow behind the image */}
-                  <div className="absolute w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] bg-emerald-500/10 rounded-full blur-2xl z-0" />
-                  <div className="absolute w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] bg-slate-900 border border-white/5 rounded-full z-0" />
-
-                  {/* Main Slide Image */}
-                  <div className="relative z-10 w-[260px] h-[260px] sm:w-[350px] sm:h-[350px] hover:scale-[1.02] transition-transform duration-500">
-                    <Image
-                      src={slide.image}
-                      alt={slide.headline}
-                      fill
-                      className="object-contain rounded-2xl"
-                      priority
-                    />
-                  </div>
-
-                  {/* Overlaid widget (Opulea style) */}
-                  <div className="absolute -bottom-4 right-0 sm:right-[-20px] z-25 bg-[#090d16]/85 border border-white/10 backdrop-blur-md p-5 rounded-2xl w-64 shadow-2xl select-none">
-                    <h4 className="text-xs font-black text-white mb-3 tracking-wide border-b border-white/5 pb-2">{slide.widgetTitle}</h4>
+                {/* Overlaid stats card widget (floats on the right, overlaid on top of image) */}
+                <div 
+                  className={`absolute bottom-8 right-8 lg:bottom-12 lg:right-12 z-20 transition-all duration-700 ease-out delay-500 transform hidden sm:block ${
+                    isActive ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-8 scale-95"
+                  }`}
+                >
+                  <div className="bg-[#090d16]/75 border border-white/10 backdrop-blur-xl p-5 rounded-2xl w-64 shadow-2xl shadow-black/60">
+                    <h4 className="text-xs font-black text-white mb-3 tracking-wide border-b border-white/5 pb-2">
+                      {slide.widgetTitle}
+                    </h4>
                     
                     <div className="space-y-4">
                       {slide.widgetData.map((item, itemIdx) => (
@@ -347,7 +401,9 @@ export default function Home() {
                             <span className="text-sm font-black text-white font-mono">{item.val}</span>
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            <span className={`text-[10px] font-extrabold ${item.change.startsWith("+") ? "text-[#04a700]" : "text-blue-400"}`}>{item.change}</span>
+                            <span className={`text-[10px] font-extrabold ${item.change.startsWith("+") ? "text-[#04a700]" : "text-blue-400"}`}>
+                              {item.change}
+                            </span>
                             {item.graph && (
                               <div className="flex items-end gap-0.5 h-3">
                                 <div className="w-1 h-1 bg-[#04a700] rounded-full" />
@@ -362,18 +418,34 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-
                 </div>
+
               </div>
             );
           })}
+
+          {/* Left/Right manual arrow buttons overlaid on the slide edges */}
+          <button 
+            onClick={handlePrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#090d16]/60 backdrop-blur-md text-white hover:bg-[#04a700] hover:border-transparent transition-all cursor-pointer opacity-0 group-hover:opacity-100 duration-300"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          
+          <button 
+            onClick={handleNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#090d16]/60 backdrop-blur-md text-white hover:bg-[#04a700] hover:border-transparent transition-all cursor-pointer opacity-0 group-hover:opacity-100 duration-300"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
         </div>
 
         {/* Manual Slideshow navigation indicators */}
         <div className="flex items-center justify-between max-w-md mx-auto mb-28 select-none relative z-20">
           <button 
             onClick={handlePrev}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-[#04a700] hover:border-transparent text-white transition-all cursor-pointer"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 ${slides[currentSlide].accentBgHover} hover:border-transparent text-white transition-all cursor-pointer`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -385,7 +457,7 @@ export default function Home() {
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
                 className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                  idx === currentSlide ? "w-6 bg-[#04a700]" : "w-2 bg-white/20 hover:bg-white/40"
+                  idx === currentSlide ? `w-6 ${slides[currentSlide].activeDotBg}` : "w-2 bg-white/20 hover:bg-white/40"
                 }`}
               />
             ))}
@@ -393,7 +465,7 @@ export default function Home() {
 
           <button 
             onClick={handleNext}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-[#04a700] hover:border-transparent text-white transition-all cursor-pointer"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 ${slides[currentSlide].accentBgHover} hover:border-transparent text-white transition-all cursor-pointer`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
