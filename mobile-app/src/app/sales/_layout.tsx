@@ -116,49 +116,57 @@ export default function SalesLayout() {
     };
   });
 
-  if (isSubRoute) {
-    return <Slot />;
-  }
-
   return (
     <ThemedView style={styles.container}>
       {/* Persistent screen mounting — toggled via display so tab switches never
           re-mount a screen (which previously replayed the fade = white blink). */}
-      <View style={styles.screenContainer}>
-        <View style={[styles.screenLayer, { display: activeTab === 'dashboard' ? 'flex' : 'none' }]}>
-          <SalesDashboard />
+      {!isSubRoute && (
+        <View style={styles.screenContainer}>
+          <View style={[styles.screenLayer, { display: activeTab === 'dashboard' ? 'flex' : 'none' }]}>
+            <SalesDashboard />
+          </View>
+          <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
+            <SalesLeads />
+          </View>
+          <View style={[styles.screenLayer, { display: activeTab === 'followups' ? 'flex' : 'none' }]}>
+            <SalesFollowups />
+          </View>
+          <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
+            <SalesAttendance />
+          </View>
+          <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
+            <SalesProfile />
+          </View>
         </View>
-        <View style={[styles.screenLayer, { display: activeTab === 'leads' ? 'flex' : 'none' }]}>
-          <SalesLeads />
-        </View>
-        <View style={[styles.screenLayer, { display: activeTab === 'followups' ? 'flex' : 'none' }]}>
-          <SalesFollowups />
-        </View>
-        <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
-          <SalesAttendance />
-        </View>
-        <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
-          <SalesProfile />
-        </View>
+      )}
+
+      {/* Slot Container - ALWAYS rendered in the same spot! */}
+      <View 
+        key="layout-slot-container"
+        style={isSubRoute ? { flex: 1 } : { position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}
+      >
+        <Slot />
       </View>
 
       {/* Dark Glassmorphic Bottom Navigation Bar */}
-      <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
-        {/* Animated Sliding Highlight Line at the top of the tab bar */}
-        <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
-          <View style={styles.activeTopLine} />
-        </Animated.View>
+      {!isSubRoute && (
+        <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
+          {/* Animated Sliding Highlight Line at the top of the tab bar */}
+          <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
+            <View style={styles.activeTopLine} />
+          </Animated.View>
 
-        {TABS_CONFIG.map((tab) => (
-          <AnimatedTabButton
-            key={tab.key}
-            label={tab.label}
-            icon={tab.icon}
-            isActive={activeTab === tab.key}
-            onPress={() => setActiveTab(tab.key)}
-          />
-        ))}
-      </View>
+          {TABS_CONFIG.map((tab) => (
+            <AnimatedTabButton
+              key={tab.key}
+              label={tab.label}
+              icon={tab.icon}
+              isActive={activeTab === tab.key}
+              onPress={() => setActiveTab(tab.key)}
+            />
+          ))}
+        </View>
+      )}
     </ThemedView>
   );
 }

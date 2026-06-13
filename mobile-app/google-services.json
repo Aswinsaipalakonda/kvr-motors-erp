@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "992962951841",
+    "project_id": "kvr-motors",
+    "storage_bucket": "kvr-motors.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:992962951841:android:d4447409100582de408ee0",
+        "android_client_info": {
+          "package_name": "com.kvrmotors.erp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXue0lUBGh37Zdy4Laxo_eDjL06He07sk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

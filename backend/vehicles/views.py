@@ -3,16 +3,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import VehicleBrand, VehicleModel, VehicleUnit
 from .serializers import VehicleBrandSerializer, VehicleModelSerializer, VehicleUnitSerializer
+from config.cache import CacheResponseMixin
 
-class VehicleBrandViewSet(viewsets.ModelViewSet):
+class VehicleBrandViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = VehicleBrand.objects.all()
     serializer_class = VehicleBrandSerializer
 
-class VehicleModelViewSet(viewsets.ModelViewSet):
+class VehicleModelViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = VehicleModel.objects.all()
     serializer_class = VehicleModelSerializer
 
-class VehicleUnitViewSet(viewsets.ModelViewSet):
+class VehicleUnitViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = VehicleUnit.objects.all()
     serializer_class = VehicleUnitSerializer
 

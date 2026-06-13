@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from .models import Lead
 from .serializers import LeadSerializer
+from config.cache import CacheResponseMixin
 
-class LeadViewSet(viewsets.ModelViewSet):
+class LeadViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = LeadSerializer
     filterset_fields = ['status', 'lead_source', 'assigned_executive']
 
@@ -24,3 +25,5 @@ class LeadViewSet(viewsets.ModelViewSet):
             elif hasattr(user, 'branch') and user.branch:
                 branch = user.branch
         serializer.save(branch=branch)
+        self.clear_cache()
+

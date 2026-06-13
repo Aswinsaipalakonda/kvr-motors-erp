@@ -27,6 +27,18 @@ interface BrandCategory {
   color: string;
 }
 
+// Global memory cache to persist metrics between page navigations (eliminates loading screen)
+let globalDashboardCache: {
+  ledgerEntries: any[];
+  vehicleUnits: any[];
+  vehicleModels: any[];
+  bookings: any[];
+  leads: any[];
+  batteries: any[];
+  activityLogs: any[];
+  salesInvoices: any[];
+} | null = null;
+
 export default function OwnerDashboard({ 
   branch = 'All Branches', 
   setBranch = () => {},
@@ -52,16 +64,16 @@ export default function OwnerDashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [salesTimeFilter, setSalesTimeFilter] = useState<'week' | 'month' | 'six_months'>('week');
 
-  // Live database states
-  const [isLoading, setIsLoading] = useState(true);
-  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
-  const [salesInvoices, setSalesInvoices] = useState<any[]>([]);
-  const [vehicleUnits, setVehicleUnits] = useState<any[]>([]);
-  const [vehicleModels, setVehicleModels] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [batteries, setBatteries] = useState<any[]>([]);
-  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  // Live database states (using local SWR cache for instant load)
+  const [isLoading, setIsLoading] = useState(!globalDashboardCache);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>(globalDashboardCache?.ledgerEntries || []);
+  const [salesInvoices, setSalesInvoices] = useState<any[]>(globalDashboardCache?.salesInvoices || []);
+  const [vehicleUnits, setVehicleUnits] = useState<any[]>(globalDashboardCache?.vehicleUnits || []);
+  const [vehicleModels, setVehicleModels] = useState<any[]>(globalDashboardCache?.vehicleModels || []);
+  const [bookings, setBookings] = useState<any[]>(globalDashboardCache?.bookings || []);
+  const [leads, setLeads] = useState<any[]>(globalDashboardCache?.leads || []);
+  const [batteries, setBatteries] = useState<any[]>(globalDashboardCache?.batteries || []);
+  const [activityLogs, setActivityLogs] = useState<any[]>(globalDashboardCache?.activityLogs || []);
   const [pendingPOs, setPendingPOs] = useState<any[]>([
     { id: 1, invoice: 'PO-2026-8910', showroom: 'Visakhapatnam - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
     { id: 2, invoice: 'PO-2026-9233', showroom: 'Visakhapatnam - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
@@ -113,9 +125,9 @@ export default function OwnerDashboard({
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (isSilent = false) => {
     try {
-      setIsLoading(true);
+      if (!isSilent) setIsLoading(true);
       const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes, batteriesRes, activityRes, salesRes] = await Promise.all([
         api.get('/ledger-entries/').catch(() => ({ data: [] })),
         api.get('/vehicle-units/').catch(() => ({ data: [] })),
@@ -156,14 +168,28 @@ export default function OwnerDashboard({
         }),
         api.get('/sales-invoices/').catch(() => ({ data: [] })),
       ]);
-      setLedgerEntries(ledgerRes.data);
-      setVehicleUnits(unitsRes.data);
-      setVehicleModels(modelsRes.data);
-      setBookings(bookingsRes.data);
-      setLeads(leadsRes.data);
-      setBatteries(batteriesRes.data);
-      setActivityLogs(activityRes.data || []);
-      setSalesInvoices(salesRes.data || []);
+
+      const newData = {
+        ledgerEntries: ledgerRes.data,
+        vehicleUnits: unitsRes.data,
+        vehicleModels: modelsRes.data,
+        bookings: bookingsRes.data,
+        leads: leadsRes.data,
+        batteries: batteriesRes.data,
+        activityLogs: activityRes.data || [],
+        salesInvoices: salesRes.data || [],
+      };
+
+      globalDashboardCache = newData;
+
+      setLedgerEntries(newData.ledgerEntries);
+      setVehicleUnits(newData.vehicleUnits);
+      setVehicleModels(newData.vehicleModels);
+      setBookings(newData.bookings);
+      setLeads(newData.leads);
+      setBatteries(newData.batteries);
+      setActivityLogs(newData.activityLogs);
+      setSalesInvoices(newData.salesInvoices);
     } catch (e) {
       console.error('Failed to load dashboard metrics from backend API:', e);
     } finally {
@@ -172,7 +198,7 @@ export default function OwnerDashboard({
   };
 
   useEffect(() => {
-    loadData();
+    loadData(!!globalDashboardCache);
   }, []);
 
   // Filter ledger entries by selected branch + brand category
@@ -468,7 +494,7 @@ export default function OwnerDashboard({
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 110, paddingTop: contentPaddingTop }]} 
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={loadData} colors={['#04a700']} tintColor="#04a700" />
+            <RefreshControl refreshing={isLoading} onRefresh={() => loadData(true)} colors={['#04a700']} tintColor="#04a700" />
           }
         >
           {/* Obsidian SaaS Home Hero Canvas (Matches header dark slate theme) */}
@@ -551,168 +577,60 @@ export default function OwnerDashboard({
             </View>
           ) : (
             <>
-              {/* Bento Stats Insight Section */}
+              {/* Bento Stats Insight Section - Clean 2x2 Grid */}
               <View style={styles.bentoSection}>
-                <ThemedText style={styles.bentoTitle}>Operational & Financial Insights</ThemedText>
+                <ThemedText style={styles.bentoTitle}>Operational Insights</ThemedText>
                 
-                 {/* 1. Units Sold spark chart */}
-                <View style={styles.revenueBentoCard}>
-                  <View style={styles.revHeader}>
-                    <View>
-                      <ThemedText style={styles.revLabel}>TOTAL UNITS SOLD</ThemedText>
-                      <ThemedText style={styles.revVal}>{totalUnitsSold} Unit{totalUnitsSold !== 1 ? 's' : ''}</ThemedText>
+                <View style={styles.simpleMetricsGrid}>
+                  {/* Card 1: Units Sold */}
+                  <View style={styles.metricCard}>
+                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(4, 167, 0, 0.08)' }]}>
+                      <TrendingUp size={16} color="#04a700" />
                     </View>
-                    <View style={styles.trendBadge}>
-                      <TrendingUp size={11} color="#04a700" />
-                      <ThemedText style={styles.trendText}>Active Period</ThemedText>
-                    </View>
+                    <ThemedText style={styles.metricVal}>{totalUnitsSold}</ThemedText>
+                    <ThemedText style={styles.metricLbl}>Units Sold</ThemedText>
                   </View>
 
-                  {/* Filter Pills */}
-                  <View style={styles.chartFiltersRow}>
-                    {(['week', 'month', 'six_months'] as const).map((filter) => {
-                      const labels = {
-                        week: 'Week',
-                        month: 'Month',
-                        six_months: '6 Months',
-                      };
-                      const isSelected = salesTimeFilter === filter;
-                      return (
-                        <Pressable
-                          key={filter}
-                          onPress={() => setSalesTimeFilter(filter)}
-                          style={[
-                            styles.chartFilterPill,
-                            isSelected && styles.chartFilterPillActive,
-                          ]}
-                        >
-                          <ThemedText
-                            style={[
-                              styles.chartFilterPillText,
-                              isSelected && styles.chartFilterPillTextActive,
-                            ]}
-                          >
-                            {labels[filter]}
-                          </ThemedText>
-                        </Pressable>
-                      );
-                    })}
+                  {/* Card 2: Active Bookings */}
+                  <View style={styles.metricCard}>
+                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
+                      <CalendarDays size={16} color="#2563eb" />
+                    </View>
+                    <ThemedText style={styles.metricVal}>{filteredBookings.length}</ThemedText>
+                    <ThemedText style={styles.metricLbl}>Active Bookings</ThemedText>
                   </View>
 
-                  <View style={styles.sparkChartContainer}>
-                    {chartData.map((item, idx) => (
-                      <View key={idx} style={styles.chartColWrapper}>
-                        <View style={[
-                          styles.chartBar, 
-                          { 
-                            height: `${Math.min(100, Math.max(15, (item.value / maxVal) * 100))}%`, 
-                            backgroundColor: idx === chartData.length - 1 ? '#04a700' : 'rgba(4, 167, 0, 0.25)' 
-                          }
-                        ]} />
-                        <ThemedText style={styles.chartDayText}>{item.label}</ThemedText>
-                      </View>
-                    ))}
+                  {/* Card 3: Conversion Rate */}
+                  <View style={styles.metricCard}>
+                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
+                      <Zap size={16} color="#8b5cf6" />
+                    </View>
+                    <ThemedText style={styles.metricVal}>{leadsWonPercentage}</ThemedText>
+                    <ThemedText style={styles.metricLbl}>Conversion Rate</ThemedText>
                   </View>
-                </View>
 
-                {/* 2. Won-Leads Converted Rate Bento Ring */}
-                <View style={styles.ringGaugeCard}>
-                  <View style={styles.ringGaugeLeft}>
-                    <View style={styles.ringGaugeOuter}>
-                      <View style={styles.ringGaugeInner}>
-                        <ThemedText style={styles.ringGaugePercentage}>{leadsWonPercentage}</ThemedText>
-                        <ThemedText style={styles.ringGaugeSubLabel}>CONVERTED</ThemedText>
-                      </View>
+                  {/* Card 4: Net Capital */}
+                  <View style={styles.metricCard}>
+                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
+                      <Wallet size={16} color="#ea580c" />
                     </View>
-                  </View>
-                  <View style={styles.ringGaugeRight}>
-                    <View style={styles.ringGaugeTitleRow}>
-                      <Zap size={14} color="#04a700" fill="#04a700" />
-                      <ThemedText style={styles.ringGaugeTitle}>Won-Leads Target Ring</ThemedText>
-                    </View>
-                    <ThemedText style={styles.ringGaugeDesc}>
-                      Outstanding conversion this month. Out of {totalLeadsCount} active customer enquiries, {wonLeadsCount} are closed as won. Ahead of regional target pace.
+                    <ThemedText style={[styles.metricVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444' }]}>
+                      ₹{Math.abs(netProfit) >= 100000 
+                        ? `${(netProfit / 100000).toFixed(1)}L` 
+                        : netProfit.toLocaleString('en-IN')}
                     </ThemedText>
-                  </View>
-                </View>
-
-                {/* 3. Live Inventory Telemetry */}
-                <View style={styles.telemetryCard}>
-                  <View style={styles.telemetryHeader}>
-                    <Warehouse size={15} color="#04a700" />
-                    <ThemedText style={styles.telemetryTitle}>Live Inventory Telemetry</ThemedText>
-                  </View>
-                  <View style={styles.telemetryRow}>
-                    <View style={styles.telemetryItem}>
-                      <View style={styles.telemetryItemHeader}>
-                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#04a700' }]} />
-                        <ThemedText style={styles.telemetryItemValue}>{filteredUnits.length}</ThemedText>
-                      </View>
-                      <ThemedText style={styles.telemetryItemLabel}>Physical Stock</ThemedText>
-                    </View>
-                    <View style={styles.telemetryItem}>
-                      <View style={styles.telemetryItemHeader}>
-                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#2563eb' }]} />
-                        <ThemedText style={styles.telemetryItemValue}>{filteredBookings.length}</ThemedText>
-                      </View>
-                      <ThemedText style={styles.telemetryItemLabel}>Active Bookings</ThemedText>
-                    </View>
-                    <View style={styles.telemetryItem}>
-                      <View style={styles.telemetryItemHeader}>
-                        <View style={[styles.pulseIndicatorDot, { backgroundColor: '#ea580c' }]} />
-                        <ThemedText style={styles.telemetryItemValue}>
-                          {filteredUnits.filter(u => u.stock_status === 'reserved').length}
-                        </ThemedText>
-                      </View>
-                      <ThemedText style={styles.telemetryItemLabel}>FIFO Reserves</ThemedText>
-                    </View>
-                  </View>
-                </View>
-
-                {/* 4. Sales Funnel Breakdown & Targets */}
-                <View style={styles.funnelCard}>
-                  <View style={styles.funnelHeader}>
-                    <TrendingUp size={15} color="#04a700" />
-                    <ThemedText style={styles.funnelTitle}>Leads Pipeline Funnel</ThemedText>
-                  </View>
-                  <View style={styles.funnelPipelineRow}>
-                    <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'new' || l.status === 'lead' || l.status === 'new_lead').length || 0}</ThemedText>
-                      <ThemedText style={styles.funnelStageLabel}>Cold</ThemedText>
-                    </View>
-                    <View style={styles.funnelStageDivider} />
-                    <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'contacted' || l.status === 'active' || l.status === 'follow_up').length || 0}</ThemedText>
-                      <ThemedText style={styles.funnelStageLabel}>Warm</ThemedText>
-                    </View>
-                    <View style={styles.funnelStageDivider} />
-                    <View style={styles.funnelStage}>
-                      <ThemedText style={styles.funnelStageVal}>{filteredLeads.filter(l => l.status === 'qualified' || l.status === 'hot' || l.status === 'negotiation').length || 0}</ThemedText>
-                      <ThemedText style={styles.funnelStageLabel}>Hot</ThemedText>
-                    </View>
-                    <View style={styles.funnelStageDivider} />
-                    <View style={styles.funnelStage}>
-                      <ThemedText style={[styles.funnelStageVal, { color: '#04a700' }]}>{wonLeadsCount}</ThemedText>
-                      <ThemedText style={styles.funnelStageLabel}>Won</ThemedText>
-                    </View>
-                  </View>
-                  <View style={styles.funnelTargetTrack}>
-                    <View style={[styles.funnelTargetFill, { width: leadsWonPercentage as any }]} />
-                  </View>
-                  <View style={styles.funnelTargetFooter}>
-                    <ThemedText style={styles.funnelTargetLabel}>Conversion Target pace</ThemedText>
-                    <ThemedText style={styles.funnelTargetVal}>{leadsWonPercentage} Closed</ThemedText>
+                    <ThemedText style={styles.metricLbl}>Net Capital</ThemedText>
                   </View>
                 </View>
               </View>
 
-              {/* Audit Vault Quick Summary (Inflow, Outflow, Net Profit, GST) */}
+              {/* Capital Audit Vault Card */}
               <View style={styles.bentoSection}>
-                <ThemedText style={styles.bentoTitle}>KVR Capital Audit vault</ThemedText>
+                <ThemedText style={styles.bentoTitle}>Financial Vault</ThemedText>
                 <View style={styles.auditCard}>
                   <View style={styles.auditHeader}>
                     <Wallet size={16} color="#04a700" />
-                    <ThemedText style={styles.auditCardTitle}>Auto-Journal Ledger Summary</ThemedText>
+                    <ThemedText style={styles.auditCardTitle}>Ledger Summary</ThemedText>
                   </View>
                   <View style={styles.auditGrid}>
                     <View style={styles.auditItem}>
@@ -728,21 +646,6 @@ export default function OwnerDashboard({
                         <ThemedText style={styles.auditItemVal}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
                       </View>
                       <ThemedText style={styles.auditItemLabel}>Outflow Total</ThemedText>
-                    </View>
-                  </View>
-                  <View style={styles.auditDivider} />
-                  <View style={styles.auditGrid}>
-                    <View style={styles.auditSubItem}>
-                      <ThemedText style={styles.auditItemLabel}>EST. CAPITAL NET</ThemedText>
-                      <ThemedText style={[styles.auditItemVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444', fontSize: 14 }]}>
-                        {netProfit >= 0 ? '+' : ''}₹ {netProfit.toLocaleString('en-IN')}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.auditSubItem}>
-                      <ThemedText style={styles.auditItemLabel}>18% EST. GST LIABILITY</ThemedText>
-                      <ThemedText style={[styles.auditItemVal, { color: '#ea580c', fontSize: 14 }]}>
-                        ₹ {Math.max(0, Math.round((totalInflow * 0.18) - (totalOutflow * 0.18 * 0.7))).toLocaleString('en-IN')}
-                      </ThemedText>
                     </View>
                   </View>
                 </View>
@@ -790,241 +693,8 @@ export default function OwnerDashboard({
                   </Pressable>
                 </View>
               </View>
-
-              {/* Pending PO Approvals & Operations Vault */}
-              <View style={styles.poSection}>
-                <View style={styles.poHeaderRow}>
-                  <ShieldAlert size={16} color="#d97706" />
-                  <ThemedText style={styles.poSectionTitle}>Pending PO Approvals</ThemedText>
-                  <View style={styles.poBadgeCount}>
-                    <ThemedText style={styles.poBadgeCountText}>
-                      {pendingPOs.filter(p => !p.approved).length} Action
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.poHorizontalScroll}
-                >
-                  {pendingPOs.map((po) => {
-                    const isApproved = po.approved;
-                    return (
-                      <View key={po.id} style={[styles.poCard, isApproved && styles.poCardApproved]}>
-                        <View style={styles.poCardTop}>
-                          <ThemedText style={styles.poInvoiceText}>{po.invoice}</ThemedText>
-                          <View style={[styles.poStatusBadge, isApproved ? styles.poStatusBadgeApproved : styles.poStatusBadgePending]}>
-                            <ThemedText style={[styles.poStatusBadgeText, isApproved ? styles.poStatusBadgeTextApproved : styles.poStatusBadgeTextPending]}>
-                              {isApproved ? 'Approved' : 'Pending Sign-off'}
-                            </ThemedText>
-                          </View>
-                        </View>
-
-                        <ThemedText style={styles.poDetailsText} numberOfLines={1}>{po.details}</ThemedText>
-                        <ThemedText style={styles.poShowroomText}>{po.showroom.split(' - ')[0]}</ThemedText>
-
-                        <View style={styles.poCardDivider} />
-
-                        <View style={styles.poCardBottom}>
-                          <View>
-                            <ThemedText style={styles.poValueLabel}>EST. PO COST</ThemedText>
-                            <ThemedText style={styles.poValueText}>{po.value}</ThemedText>
-                          </View>
-
-                          {!isApproved ? (
-                            <Pressable 
-                              onPress={() => handleApprovePO(po.id)}
-                              style={({ pressed }) => [
-                                styles.approvePoBtn,
-                                pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
-                              ]}
-                            >
-                              <ThemedText style={styles.approvePoBtnText}>Sign off</ThemedText>
-                            </Pressable>
-                          ) : (
-                            <View style={styles.approvedIndicator}>
-                              <Check size={12} color="#04a700" strokeWidth={3} />
-                              <ThemedText style={styles.approvedIndicatorText}>Signed</ThemedText>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })}
-                  {pendingPOs.length === 0 && (
-                    <View style={styles.poEmptyCard}>
-                      <ThemedText style={styles.poEmptyText}>All Purchase Orders signed and finalized</ThemedText>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
             </>
           )}
-
-          {/* Active EV Fleet Collections Card Feed (HORIZONTAL SCROLLING!) */}
-          <View style={styles.collectionsSection}>
-            <View style={styles.sectionHeaderRow}>
-              <ThemedText style={styles.collectionsTitle}>Active EV Fleet Collections</ThemedText>
-              <ThemedText style={styles.viewAllTextDark}>
-                ({filteredCollections.length} Models)
-              </ThemedText>
-            </View>
-
-            {filteredCollections.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Layers size={36} color="#94a3b8" />
-                <ThemedText style={styles.emptyText}>No vehicle matching filters found</ThemedText>
-              </View>
-            ) : (
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.evHorizontalScroll}
-              >
-                {filteredCollections.map((model, idx) => (
-                  <View key={idx} style={styles.evCard}>
-                    {/* High Fidelity Generated Scooter Image Asset */}
-                    <View style={styles.imageMockupContainer}>
-                      <Image 
-                        source={scooterImages[model.image] || scooterImages.scooter_green} 
-                        style={styles.scooterImage} 
-                        resizeMode="contain"
-                      />
-
-                      {model.isPopular && (
-                        <View style={styles.badgePopular}>
-                          <Award size={10} color="#ffffff" />
-                          <ThemedText style={styles.badgeText}>BEST SELLER</ThemedText>
-                        </View>
-                      )}
-
-                      <View style={styles.badgeRating}>
-                        <Star size={11} color="#f59e0b" fill="#f59e0b" />
-                        <ThemedText style={styles.ratingText}>{model.rating}</ThemedText>
-                      </View>
-                    </View>
-
-                    {/* Details Section */}
-                    <View style={styles.cardDetails}>
-                      <View style={styles.nameRow}>
-                        <View style={{ flex: 1 }}>
-                          <ThemedText style={styles.evName}>{model.name}</ThemedText>
-                          <ThemedText style={styles.evShowroom}>{model.showroom}</ThemedText>
-                        </View>
-                        <ThemedText style={styles.evPrice}>{model.price}</ThemedText>
-                      </View>
-
-                      {/* Specifications Pills */}
-                      <View style={styles.specsRow}>
-                        {model.specs.slice(0, 2).map((spec, sIdx) => (
-                          <View key={sIdx} style={styles.specPill}>
-                            <ThemedText style={styles.specText}>{spec}</ThemedText>
-                          </View>
-                        ))}
-                      </View>
-
-                      {/* Divider */}
-                      <View style={styles.cardDivider} />
-
-                      {/* PRD Operational Stock & FIFO status bar */}
-                      <View style={styles.stockStatusRow}>
-                        <View style={styles.stockBadge}>
-                          <Warehouse size={12} color="#64748b" />
-                          <ThemedText style={styles.stockBadgeText}>Stock: {model.stock} Units</ThemedText>
-                        </View>
-                        
-                        <View style={[
-                          styles.fifoBadge, 
-                          { backgroundColor: model.fifoStatus === 'Approved' ? 'rgba(4, 167, 0, 0.08)' : 'rgba(234, 88, 12, 0.08)' }
-                        ]}>
-                          <Check size={10} color={model.fifoStatus === 'Approved' ? '#04a700' : '#ea580c'} />
-                          <ThemedText style={[
-                            styles.fifoBadgeText,
-                            { color: model.fifoStatus === 'Approved' ? '#04a700' : '#ea580c' }
-                          ]}>
-                            FIFO {model.fifoStatus.split(' ')[0]}
-                          </ThemedText>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-
-          {/* Horizontal Scrolling FIFO Battery Queue Row */}
-          <View style={styles.batteryFifoSection}>
-            <View style={styles.sectionHeaderRow}>
-              <ThemedText style={styles.batteryFifoTitle}>FIFO Battery Stock Queue</ThemedText>
-              <ThemedText style={styles.batteryFifoSubText}>
-                ({batteries.length} Serials active)
-              </ThemedText>
-            </View>
-
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.batteryHorizontalScroll}
-            >
-              {batteries.map((bat, idx) => {
-                const ageDays = Math.round((new Date().getTime() - new Date(bat.purchase_date).getTime()) / (1000 * 60 * 60 * 24)) || 4;
-                
-                // FIFO status algorithm
-                const sameCapacityAvailable = batteries.filter(b => b.capacity === bat.capacity && b.status === 'available');
-                const isOldest = sameCapacityAvailable.length > 0 && sameCapacityAvailable[0].serial_number === bat.serial_number;
-                
-                let fifoStatus = 'FIFO Approved';
-                let statusColor = '#04a700';
-                let statusBg = 'rgba(4, 167, 0, 0.08)';
-                
-                if (isOldest) {
-                  fifoStatus = 'FIFO Oldest';
-                  statusColor = '#04a700';
-                  statusBg = 'rgba(4, 167, 0, 0.12)';
-                } else if (bat.status === 'reserved') {
-                  fifoStatus = 'On Hold';
-                  statusColor = '#ea580c';
-                  statusBg = 'rgba(234, 88, 12, 0.08)';
-                } else {
-                  fifoStatus = 'FIFO Warning';
-                  statusColor = '#ef4444';
-                  statusBg = 'rgba(239, 68, 68, 0.08)';
-                }
-
-                return (
-                  <View key={bat.id || idx} style={styles.batteryCard}>
-                    <View style={styles.batteryCardTop}>
-                      <View style={[styles.batteryCircleIndicator, { borderColor: statusColor, backgroundColor: statusBg }]}>
-                        <Battery size={14} color={statusColor} />
-                      </View>
-                      <View style={[styles.fifoBadgeTextContainer, { backgroundColor: statusBg }]}>
-                        <ThemedText style={[styles.fifoCardBadgeText, { color: statusColor }]}>{fifoStatus}</ThemedText>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.batteryCardBody}>
-                      <ThemedText style={styles.batterySerial}>{bat.serial_number}</ThemedText>
-                      <ThemedText style={styles.batterySpecs}>{bat.capacity} Li-ion • {ageDays} Days</ThemedText>
-                    </View>
-                    
-                    <View style={styles.batteryCardDivider} />
-                    
-                    <ThemedText style={styles.batteryLocationText} numberOfLines={1}>
-                      {bat.location_name || 'Visakhapatnam Godown'}
-                    </ThemedText>
-                  </View>
-                );
-              })}
-              
-              {batteries.length === 0 && (
-                <View style={styles.emptyBatteriesCard}>
-                  <ThemedText style={styles.emptyBatteriesText}>No battery stock records available</ThemedText>
-                </View>
-              )}
-            </ScrollView>
-          </View>
 
           {/* Showroom Live Activity Log Feed */}
           <View style={styles.activityFeedSection}>
@@ -1208,6 +878,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0f172a',
     marginBottom: 2,
+  },
+  simpleMetricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  metricCard: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#f1f5f9',
+    gap: 6,
+    alignItems: 'flex-start',
+  },
+  metricIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricVal: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  metricLbl: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: 'bold',
   },
   toolsSection: {
     paddingHorizontal: 24,
@@ -1438,314 +1141,10 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  collectionsSection: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 14,
-  },
-  collectionsTitle: {
-    fontSize: 19, // Increased section title font size
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
   viewAllTextDark: {
     fontSize: 12.5,
     color: '#64748b',
     fontWeight: 'bold',
-  },
-  emptyContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    borderRadius: 22,
-    paddingVertical: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  cardsContainer: {
-    gap: 16,
-  },
-  evHorizontalScroll: {
-    gap: 14,
-    paddingVertical: 4,
-  },
-  evCard: {
-    width: 250, // HORIZONTAL Card width!
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    gap: 14,
-  },
-  imageMockupContainer: {
-    height: 140,
-    backgroundColor: '#f8fafc',
-    borderRadius: 20,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-  },
-  scooterBackgroundCircle: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-  },
-  vectorScooterBody: {
-    width: 100,
-    height: 50,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vectorChassis: {
-    width: 70,
-    height: 24,
-    borderRadius: 12,
-    position: 'absolute',
-    bottom: 10,
-    transform: [{ rotateZ: '-10deg' }],
-  },
-  vectorWheelFront: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#1e293b',
-    borderWidth: 4,
-    borderColor: '#94a3b8',
-    position: 'absolute',
-    bottom: 2,
-    right: 12,
-  },
-  vectorWheelBack: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#1e293b',
-    borderWidth: 4,
-    borderColor: '#94a3b8',
-    position: 'absolute',
-    bottom: 2,
-    left: 12,
-  },
-  vectorHandle: {
-    width: 3.5,
-    height: 32,
-    backgroundColor: '#475569',
-    position: 'absolute',
-    bottom: 14,
-    right: 24,
-    transform: [{ rotateZ: '-15deg' }],
-    borderRadius: 1.5,
-  },
-  badgePopular: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: '#04a700',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 4,
-  },
-  badgeText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-  badgeRating: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#ffffff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  ratingText: {
-    fontSize: 9.5,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  cardDetails: {
-    gap: 10,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  evName: {
-    fontSize: 17, // Increased font size for model name
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  evShowroom: {
-    fontSize: 11.5, // Increased size slightly
-    color: '#64748b',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  evPrice: {
-    fontSize: 17, // Increased price text size
-    fontWeight: '800',
-    color: '#04a700',
-  },
-  specsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  specPill: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 9999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  specText: {
-    fontSize: 10.5, // Increased text size inside specs pill
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 2,
-  },
-  stockStatusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  stockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  stockBadgeText: {
-    fontSize: 12.5, // Increased stock badge text size
-    color: '#64748b',
-    fontWeight: 'bold',
-  },
-  fifoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  fifoBadgeText: {
-    fontSize: 10, // Increased size slightly
-    fontWeight: 'bold',
-  },
-  batteryFifoSection: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    gap: 14,
-  },
-  batteryFifoTitle: {
-    fontSize: 19, // Increased section header font size
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  batteryFifoSubText: {
-    fontSize: 13, // Increased subtitle text size
-    color: '#64748b',
-    fontWeight: 'bold',
-  },
-  batteryHorizontalScroll: {
-    gap: 12,
-    paddingVertical: 4,
-  },
-  batteryCard: {
-    width: 180, // Slightly wider for larger text
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    padding: 14,
-    gap: 10,
-  },
-  batteryCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  batteryCircleIndicator: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fifoBadgeTextContainer: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  fifoCardBadgeText: {
-    fontSize: 9.5, // Increased font size slightly
-    fontWeight: 'bold',
-  },
-  batteryCardBody: {
-    gap: 2,
-  },
-  batterySerial: {
-    fontSize: 16, // Increased battery serial font size
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  batterySpecs: {
-    fontSize: 11.5, // Increased battery spec details font size
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  batteryCardDivider: {
-    height: 1,
-    borderColor: '#f1f5f9',
-    borderBottomWidth: 1,
-  },
-  batteryLocationText: {
-    fontSize: 10.5, // Increased battery showroom name text size
-    color: '#64748b',
-    fontWeight: 'bold',
-  },
-  emptyBatteriesCard: {
-    width: Dimensions.get('window').width - 48,
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    paddingVertical: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyBatteriesText: {
-    fontSize: 12.5, // Increased size slightly
-    color: '#64748b',
-    fontWeight: '500',
   },
   auditCard: {
     backgroundColor: '#ffffff',
@@ -1926,177 +1325,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#04a700',
   },
-  poSection: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 14,
-  },
-  poHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  poSectionTitle: {
-    fontSize: 19, // Increased section title size
-    fontWeight: 'bold',
-    color: '#0f172a',
-    flex: 1,
-  },
-  poBadgeCount: {
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  poBadgeCountText: {
-    fontSize: 11.5, // Increased count font size
-    fontWeight: 'bold',
-    color: '#d97706',
-  },
-  poHorizontalScroll: {
-    gap: 12,
-    paddingVertical: 4,
-  },
-  poCard: {
-    width: 250, // Slightly wider for increased font size
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    padding: 14,
-    gap: 8,
-  },
-  poCardApproved: {
-    borderColor: 'rgba(4, 167, 0, 0.2)',
-  },
-  poCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  poInvoiceText: {
-    fontSize: 14, // Increased invoice text size
-    fontWeight: 'bold',
-    color: '#2563eb',
-    fontFamily: 'monospace',
-  },
-  poStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  poStatusBadgeApproved: {
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-  },
-  poStatusBadgePending: {
-    backgroundColor: 'rgba(217, 119, 6, 0.08)',
-  },
-  poStatusBadgeText: {
-    fontSize: 9.5, // Increased size slightly
-    fontWeight: 'bold',
-  },
-  poStatusBadgeTextApproved: {
-    color: '#04a700',
-  },
-  poStatusBadgeTextPending: {
-    color: '#d97706',
-  },
-  poDetailsText: {
-    fontSize: 15.5, // Increased details text size
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  poShowroomText: {
-    fontSize: 12.5, // Increased showroom text size
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  poCardDivider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 2,
-  },
-  poCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  poValueLabel: {
-    fontSize: 8.5,
-    fontWeight: 'bold',
-    color: '#64748b',
-    letterSpacing: 0.5,
-  },
-  poValueText: {
-    fontSize: 14.5, // Increased PO cost value size
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  approvePoBtn: {
-    backgroundColor: '#04a700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  approvePoBtnText: {
-    color: '#ffffff',
-    fontSize: 12, // Increased button font size
-    fontWeight: 'bold',
-  },
-  approvedIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  approvedIndicatorText: {
-    fontSize: 11.5, // Increased approved text size
-    fontWeight: 'bold',
-    color: '#04a700',
-  },
-  poEmptyCard: {
-    width: Dimensions.get('window').width - 48,
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#f1f5f9',
-    paddingVertical: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poEmptyText: {
-    fontSize: 13, // Increased empty text size
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  chartFiltersRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginVertical: 10,
-    paddingHorizontal: 2,
-  },
-  chartFilterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 9999,
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  chartFilterPillActive: {
-    backgroundColor: '#04a700',
-    borderColor: '#04a700',
-  },
-  chartFilterPillText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#64748b',
-  },
-  chartFilterPillTextActive: {
-    color: '#ffffff',
-  },
+
 });

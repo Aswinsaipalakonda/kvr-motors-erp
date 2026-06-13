@@ -330,192 +330,210 @@ export default function OwnerLayout() {
     },
   ];
 
-  if (isSubRoute) {
-    return <Slot />;
-  }
-
   return (
     <DrawerContext.Provider value={{ openDrawer, closeDrawer, isDrawerOpen: isDrawerOpenState }}>
       <ThemedView style={styles.container}>
         {/* Animated Sliding Sidebar Drawer (Premium custom double-deck style matching second image) */}
-        <Animated.View style={[styles.drawerContainer, { width: drawerWidth }, drawerAnimatedStyle]}>
-          {/* Top Deck: Premium Obsidian-Slate Header Container */}
-          <View style={[styles.drawerPremiumHeader, { paddingTop: insets.top + 16 }]}>
-            {/* Header Top Row */}
-            <View style={styles.drawerHeaderTopRow}>
-              <ThemedText style={styles.drawerHeaderTitle}>Profile</ThemedText>
-              <Pressable onPress={closeDrawer} style={styles.drawerCloseCircle}>
-                <X size={16} color="#ffffff" strokeWidth={2.8} />
-              </Pressable>
-            </View>
-
-            {/* Center Profile Deck */}
-            <View style={styles.profileDeckCenter}>
-              <View style={styles.profileAvatarContainer}>
-                <Image 
-                  source={require('@/assets/images/logo.png')} 
-                  style={styles.profileAvatarImage} 
-                  resizeMode="contain"
-                />
-                {/* Floating Shield Badge */}
-                <View style={styles.profileAvatarBadge}>
-                  <Shield size={11} color="#ffffff" strokeWidth={2.8} />
-                </View>
+        {!isSubRoute && (
+          <Animated.View style={[styles.drawerContainer, { width: drawerWidth }, drawerAnimatedStyle]}>
+            {/* Top Deck: Premium Obsidian-Slate Header Container */}
+            <View style={[styles.drawerPremiumHeader, { paddingTop: insets.top + 16 }]}>
+              {/* Header Top Row */}
+              <View style={styles.drawerHeaderTopRow}>
+                <ThemedText style={styles.drawerHeaderTitle}>Profile</ThemedText>
+                <Pressable onPress={closeDrawer} style={styles.drawerCloseCircle}>
+                  <X size={16} color="#ffffff" strokeWidth={2.8} />
+                </Pressable>
               </View>
-              <ThemedText style={styles.profileDeckName}>{user?.full_name || 'Ravi Varma'}</ThemedText>
-              <ThemedText style={styles.profileDeckRole}>
-                {user?.role?.toUpperCase() || 'OWNER'} • Visakhapatnam HQ
-              </ThemedText>
-            </View>
-          </View>
 
-          {/* Bottom Deck: White Operations Sheet */}
-          <View style={styles.drawerWhiteSheet}>
-            <ThemedText style={styles.sheetSectionTitle}>Account Overview</ThemedText>
-            
-            {/* Scrollable Navigation Items */}
-            <ScrollView 
-              style={styles.sheetScrollView} 
-              contentContainerStyle={styles.sheetScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {drawerMenuItems.map((item, idx) => {
-                const IconComp = item.icon;
-                // Soft pastel colors based on menu item color tint
-                const pastelBg = item.color === '#ea580c' ? '#fff7ed' : 
-                                 item.color === '#04a700' ? '#f0fdf4' : 
-                                 item.color === '#2563eb' ? '#eff6ff' : 
-                                 item.color === '#8b5cf6' ? '#faf5ff' : 
-                                 '#fdf2f8';
-                return (
-                  <Pressable 
-                    key={idx}
-                    onPress={() => {
-                      closeDrawer();
-                      if (item.route === '/owner/sales') {
-                        setActiveTab('sales');
-                      } else if (item.route === '/owner/users') {
-                        setActiveTab('users');
-                      } else if (item.route === '/owner/bookings') {
-                        setActiveTab('bookings');
-                      } else {
-                        router.replace(item.route as any);
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.sheetMenuItem,
-                      pressed && styles.sheetMenuItemPressed
-                    ]}
-                  >
-                    <View style={[styles.sheetMenuIconFrame, { backgroundColor: pastelBg }]}>
-                      <IconComp size={18} color={item.color} strokeWidth={2.2} />
-                    </View>
-                    <ThemedText style={styles.sheetMenuItemText}>{item.title}</ThemedText>
-                    <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
-                  </Pressable>
-                );
-              })}
-
-              {/* In-list Integrated Premium Logout Option */}
-              <Pressable 
-                onPress={handleLogout} 
-                style={({ pressed }) => [
-                  styles.sheetMenuItem,
-                  pressed && styles.sheetMenuItemPressed,
-                  { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }
-                ]}
-              >
-                <View style={[styles.sheetMenuIconFrame, { backgroundColor: '#fef2f2' }]}>
-                  <LogOut size={18} color="#ef4444" strokeWidth={2.2} />
+              {/* Center Profile Deck */}
+              <View style={styles.profileDeckCenter}>
+                <View style={styles.profileAvatarContainer}>
+                  <Image 
+                    source={require('@/assets/images/logo.png')} 
+                    style={styles.profileAvatarImage} 
+                    resizeMode="contain"
+                  />
+                  {/* Floating Shield Badge */}
+                  <View style={styles.profileAvatarBadge}>
+                    <Shield size={11} color="#ffffff" strokeWidth={2.8} />
+                  </View>
                 </View>
-                <ThemedText style={[styles.sheetMenuItemText, { color: '#ef4444', fontWeight: '700' }]}>
-                  Log Out Session
+                <ThemedText style={styles.profileDeckName}>{user?.full_name || 'Ravi Varma'}</ThemedText>
+                <ThemedText style={styles.profileDeckRole}>
+                  {user?.role?.toUpperCase() || 'OWNER'} • Visakhapatnam HQ
                 </ThemedText>
-                <ChevronRight size={16} color="#fca5a5" strokeWidth={2} />
-              </Pressable>
-            </ScrollView>
-          </View>
-        </Animated.View>
+              </View>
+            </View>
+
+            {/* Bottom Deck: White Operations Sheet */}
+            <View style={styles.drawerWhiteSheet}>
+              <ThemedText style={styles.sheetSectionTitle}>Account Overview</ThemedText>
+              
+              {/* Scrollable Navigation Items */}
+              <ScrollView 
+                style={styles.sheetScrollView} 
+                contentContainerStyle={styles.sheetScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {drawerMenuItems.map((item, idx) => {
+                  const IconComp = item.icon;
+                  // Soft pastel colors based on menu item color tint
+                  const pastelBg = item.color === '#ea580c' ? '#fff7ed' : 
+                                   item.color === '#04a700' ? '#f0fdf4' : 
+                                   item.color === '#2563eb' ? '#eff6ff' : 
+                                   item.color === '#8b5cf6' ? '#faf5ff' : 
+                                   '#fdf2f8';
+                  return (
+                    <Pressable 
+                      key={idx}
+                      onPress={() => {
+                        closeDrawer();
+                        if (item.route === '/owner/sales') {
+                          setActiveTab('sales');
+                        } else if (item.route === '/owner/users') {
+                          setActiveTab('users');
+                        } else if (item.route === '/owner/bookings') {
+                          setActiveTab('bookings');
+                        } else {
+                          router.replace(item.route as any);
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        styles.sheetMenuItem,
+                        pressed && styles.sheetMenuItemPressed
+                      ]}
+                    >
+                      <View style={[styles.sheetMenuIconFrame, { backgroundColor: pastelBg }]}>
+                        <IconComp size={18} color={item.color} strokeWidth={2.2} />
+                      </View>
+                      <ThemedText style={styles.sheetMenuItemText}>{item.title}</ThemedText>
+                      <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
+                    </Pressable>
+                  );
+                })}
+
+                {/* In-list Integrated Premium Logout Option */}
+                <Pressable 
+                  onPress={handleLogout} 
+                  style={({ pressed }) => [
+                    styles.sheetMenuItem,
+                    pressed && styles.sheetMenuItemPressed,
+                    { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }
+                  ]}
+                >
+                  <View style={[styles.sheetMenuIconFrame, { backgroundColor: '#fef2f2' }]}>
+                    <LogOut size={18} color="#ef4444" strokeWidth={2.2} />
+                  </View>
+                  <ThemedText style={[styles.sheetMenuItemText, { color: '#ef4444', fontWeight: '700' }]}>
+                    Log Out Session
+                  </ThemedText>
+                  <ChevronRight size={16} color="#fca5a5" strokeWidth={2} />
+                </Pressable>
+              </ScrollView>
+            </View>
+          </Animated.View>
+        )}
 
         {/* Animated Main Content Container (LIGHT slate grey background!) */}
-        <Animated.View style={[styles.mainContentContainer, mainContentAnimatedStyle]}>
+        <Animated.View style={[
+          styles.mainContentContainer,
+          !isSubRoute ? mainContentAnimatedStyle : null,
+          isSubRoute && { transform: [], borderRadius: 0 }
+        ]}>
           {/* Constant Top Floating Header Bar */}
-          <View style={[styles.fixedHeader, { paddingTop: insets.top + 10, height: headerHeight }]}>
-            <View style={styles.headerRow}>
-              <Pressable 
-                onPress={openDrawer}
-                style={({ pressed }) => [
-                  styles.hamburgerBtn,
-                  pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
-                ]}
-              >
-                <HamburgerIcon size={22} color="#04a700" />
-              </Pressable>
-              
-              <Pressable 
-                style={styles.locationSelector}
-                onPress={() => setIsBranchModalVisible(true)}
-              >
-                <MapPin size={15} color="#04a700" />
-                <ThemedText style={styles.locationText} numberOfLines={1}>
-                  {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
-                </ThemedText>
-                <ChevronDown size={13} color="#94a3b8" />
-              </Pressable>
+          {!isSubRoute && (
+            <View style={[styles.fixedHeader, { paddingTop: insets.top + 10, height: headerHeight }]}>
+              <View style={styles.headerRow}>
+                <Pressable 
+                  onPress={openDrawer}
+                  style={({ pressed }) => [
+                    styles.hamburgerBtn,
+                    pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
+                  ]}
+                >
+                  <HamburgerIcon size={22} color="#04a700" />
+                </Pressable>
+                
+                <Pressable 
+                  style={styles.locationSelector}
+                  onPress={() => setIsBranchModalVisible(true)}
+                >
+                  <MapPin size={15} color="#04a700" />
+                  <ThemedText style={styles.locationText} numberOfLines={1}>
+                    {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
+                  </ThemedText>
+                  <ChevronDown size={13} color="#94a3b8" />
+                </Pressable>
 
-              <Pressable 
-                onPress={() => router.push('/owner/profile' as any)} 
-                style={({ pressed }) => [
-                  styles.profileHeaderBtn,
-                  pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
-                ]}
-              >
-                <User size={18} color="#04a700" />
-              </Pressable>
+                <Pressable 
+                  onPress={() => router.push('/owner/profile' as any)} 
+                  style={({ pressed }) => [
+                    styles.profileHeaderBtn,
+                    pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
+                  ]}
+                >
+                  <User size={18} color="#04a700" />
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Active Screen View with Persistent Mounting (Instant Tab Toggles!) */}
-          <View style={styles.screenContainer}>
-            <View style={{ flex: 1, display: activeTab === 'dashboard' ? 'flex' : 'none' }}>
-              <OwnerDashboard branch={branch} setBranch={setBranch} onOpenBranchSelector={() => setIsBranchModalVisible(true)} isActive={activeTab === 'dashboard'} />
+          {!isSubRoute && (
+            <View style={styles.screenContainer}>
+              <View style={{ flex: 1, display: activeTab === 'dashboard' ? 'flex' : 'none' }}>
+                <OwnerDashboard branch={branch} setBranch={setBranch} onOpenBranchSelector={() => setIsBranchModalVisible(true)} isActive={activeTab === 'dashboard'} />
+              </View>
+              <View style={{ flex: 1, display: activeTab === 'inventory' ? 'flex' : 'none' }}>
+                <OwnerInventory branch={branch} isActive={activeTab === 'inventory'} onBack={() => setActiveTab('dashboard')} />
+              </View>
+              <View style={{ flex: 1, display: activeTab === 'sales' ? 'flex' : 'none' }}>
+                <OwnerSales isActive={activeTab === 'sales'} onBack={() => setActiveTab('dashboard')} />
+              </View>
+              <View style={{ flex: 1, display: activeTab === 'users' ? 'flex' : 'none' }}>
+                <OwnerUsers isActive={activeTab === 'users'} onBack={() => setActiveTab('dashboard')} />
+              </View>
+              <View style={{ flex: 1, display: activeTab === 'bookings' ? 'flex' : 'none' }}>
+                <OwnerBookings isActive={activeTab === 'bookings'} onBack={() => setActiveTab('dashboard')} />
+              </View>
             </View>
-            <View style={{ flex: 1, display: activeTab === 'inventory' ? 'flex' : 'none' }}>
-              <OwnerInventory branch={branch} isActive={activeTab === 'inventory'} onBack={() => setActiveTab('dashboard')} />
-            </View>
-            <View style={{ flex: 1, display: activeTab === 'sales' ? 'flex' : 'none' }}>
-              <OwnerSales isActive={activeTab === 'sales'} onBack={() => setActiveTab('dashboard')} />
-            </View>
-            <View style={{ flex: 1, display: activeTab === 'users' ? 'flex' : 'none' }}>
-              <OwnerUsers isActive={activeTab === 'users'} onBack={() => setActiveTab('dashboard')} />
-            </View>
-            <View style={{ flex: 1, display: activeTab === 'bookings' ? 'flex' : 'none' }}>
-              <OwnerBookings isActive={activeTab === 'bookings'} onBack={() => setActiveTab('dashboard')} />
-            </View>
+          )}
+
+          {/* Slot Container - ALWAYS rendered in the same spot! */}
+          <View 
+            key="layout-slot-container"
+            style={isSubRoute ? { flex: 1 } : { position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}
+          >
+            <Slot />
           </View>
 
           {/* Interactive Tap-to-Close Dim Overlay */}
-          <Animated.View style={[styles.dimOverlay, overlayAnimatedStyle]}>
-            <Pressable style={styles.overlayPressable} onPress={closeDrawer} />
-          </Animated.View>
+          {!isSubRoute && (
+            <Animated.View style={[styles.dimOverlay, overlayAnimatedStyle]}>
+              <Pressable style={styles.overlayPressable} onPress={closeDrawer} />
+            </Animated.View>
+          )}
 
           {/* Bottom Navigation Bar */}
-          <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
-            {/* Animated Sliding Highlight Line at the top of the tab bar */}
-            <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
-              <View style={styles.activeTopLine} />
-            </Animated.View>
-            
-            {TABS_CONFIG.map((tab) => (
-              <AnimatedTabButton 
-                key={tab.key}
-                label={tab.label}
-                icon={tab.icon}
-                isActive={activeTab === tab.key}
-                onPress={() => setActiveTab(tab.key)}
-              />
-            ))}
-          </View>
+          {!isSubRoute && (
+            <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
+              {/* Animated Sliding Highlight Line at the top of the tab bar */}
+              <Animated.View style={[styles.activeIndicatorWrapper, animatedIndicatorStyle]}>
+                <View style={styles.activeTopLine} />
+              </Animated.View>
+              
+              {TABS_CONFIG.map((tab) => (
+                <AnimatedTabButton 
+                  key={tab.key}
+                  label={tab.label}
+                  icon={tab.icon}
+                  isActive={activeTab === tab.key}
+                  onPress={() => setActiveTab(tab.key)}
+                />
+              ))}
+            </View>
+          )}
         </Animated.View>
 
         {/* Global Showroom Selector Dropdown Modal Sheet */}

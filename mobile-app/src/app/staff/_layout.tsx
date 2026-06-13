@@ -75,41 +75,49 @@ export default function StaffLayout() {
 
   const isSubRoute = pathname !== '/staff' && pathname !== '/staff/' && !TAB_KEYS.some((tab) => pathname.endsWith(tab));
 
-  if (isSubRoute) {
-    return <Slot />;
-  }
-
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.screenContainer}>
-        <View style={{ flex: 1, display: activeTab === 'dashboard' ? 'flex' : 'none' }}>
-          <StaffDashboard isActive={activeTab === 'dashboard'} />
+      {!isSubRoute && (
+        <View style={styles.screenContainer}>
+          <View style={{ flex: 1, display: activeTab === 'dashboard' ? 'flex' : 'none' }}>
+            <StaffDashboard isActive={activeTab === 'dashboard'} />
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'godown-scanner' ? 'flex' : 'none' }}>
+            <StaffScanner isActive={activeTab === 'godown-scanner'} onBack={() => setActiveTab('dashboard')} />
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'pdi-checklist' ? 'flex' : 'none' }}>
+            <StaffPdi isActive={activeTab === 'pdi-checklist'} onBack={() => setActiveTab('dashboard')} />
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'attendance' ? 'flex' : 'none' }}>
+            <StaffAttendance />
+          </View>
+          <View style={{ flex: 1, display: activeTab === 'profile' ? 'flex' : 'none' }}>
+            <StaffProfile />
+          </View>
         </View>
-        <View style={{ flex: 1, display: activeTab === 'godown-scanner' ? 'flex' : 'none' }}>
-          <StaffScanner isActive={activeTab === 'godown-scanner'} onBack={() => setActiveTab('dashboard')} />
-        </View>
-        <View style={{ flex: 1, display: activeTab === 'pdi-checklist' ? 'flex' : 'none' }}>
-          <StaffPdi isActive={activeTab === 'pdi-checklist'} onBack={() => setActiveTab('dashboard')} />
-        </View>
-        <View style={{ flex: 1, display: activeTab === 'attendance' ? 'flex' : 'none' }}>
-          <StaffAttendance />
-        </View>
-        <View style={{ flex: 1, display: activeTab === 'profile' ? 'flex' : 'none' }}>
-          <StaffProfile />
-        </View>
+      )}
+
+      {/* Slot Container - ALWAYS rendered in the same spot! */}
+      <View 
+        key="layout-slot-container"
+        style={isSubRoute ? { flex: 1 } : { position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}
+      >
+        <Slot />
       </View>
 
-      <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
-        {TABS_CONFIG.map((tab) => (
-          <AnimatedTabButton
-            key={tab.key}
-            label={tab.label}
-            icon={tab.icon}
-            isActive={activeTab === tab.key}
-            onPress={() => setActiveTab(tab.key)}
-          />
-        ))}
-      </View>
+      {!isSubRoute && (
+        <View style={[styles.tabBar, { height: 60 + insets.bottom, paddingBottom: insets.bottom, paddingTop: 6 }]}>
+          {TABS_CONFIG.map((tab) => (
+            <AnimatedTabButton
+              key={tab.key}
+              label={tab.label}
+              icon={tab.icon}
+              isActive={activeTab === tab.key}
+              onPress={() => setActiveTab(tab.key)}
+            />
+          ))}
+        </View>
+      )}
     </ThemedView>
   );
 }

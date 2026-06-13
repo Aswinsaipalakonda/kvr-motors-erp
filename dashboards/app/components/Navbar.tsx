@@ -22,6 +22,8 @@ interface NavbarProps {
   role: "owner" | "supervisor" | "sales" | "telecaller";
   activeBranch?: string;
   onBranchChange?: (branch: string) => void;
+  activeRange?: string;
+  onRangeChange?: (range: string) => void;
   branchesList?: any[];
 }
 
@@ -81,7 +83,15 @@ const DATE_RANGES = [
   "This Year",
 ];
 
-export default function Navbar({ title, role, activeBranch: activeBranchProp, onBranchChange, branchesList }: NavbarProps) {
+export default function Navbar({ 
+  title, 
+  role, 
+  activeBranch: activeBranchProp, 
+  onBranchChange, 
+  activeRange: activeRangeProp,
+  onRangeChange,
+  branchesList 
+}: NavbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
 
@@ -102,7 +112,17 @@ export default function Navbar({ title, role, activeBranch: activeBranchProp, on
     setShowBranchDropdown(false);
   };
 
-  const [activeRange, setActiveRange] = useState(DATE_RANGES[0]);
+  const [localActiveRange, setLocalActiveRange] = useState(DATE_RANGES[0]);
+  const activeRange = activeRangeProp !== undefined ? activeRangeProp : localActiveRange;
+  const handleRangeSelect = (range: string) => {
+    if (onRangeChange) {
+      onRangeChange(range);
+    } else {
+      setLocalActiveRange(range);
+    }
+    setShowDateDropdown(false);
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [hasUnread, setHasUnread] = useState(true);
 
@@ -300,8 +320,7 @@ export default function Navbar({ title, role, activeBranch: activeBranchProp, on
                 <button
                   key={range}
                   onClick={() => {
-                    setActiveRange(range);
-                    setShowDateDropdown(false);
+                    handleRangeSelect(range);
                   }}
                   className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs text-left hover:bg-slate-50 transition-colors ${
                     activeRange === range ? "bg-slate-50 text-emerald-600 font-bold" : "text-slate-600"

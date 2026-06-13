@@ -3,8 +3,9 @@ from rest_framework.response import Response
 from django.db.models import ProtectedError
 from .models import Branch, Showroom, InventoryLocation
 from .serializers import BranchSerializer, ShowroomSerializer, InventoryLocationSerializer
+from config.cache import CacheResponseMixin
 
-class BranchViewSet(viewsets.ModelViewSet):
+class BranchViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
 
@@ -37,7 +38,7 @@ class BranchViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-class ShowroomViewSet(viewsets.ModelViewSet):
+class ShowroomViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = Showroom.objects.all()
     serializer_class = ShowroomSerializer
 
@@ -60,7 +61,7 @@ class ShowroomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-class InventoryLocationViewSet(viewsets.ModelViewSet):
+class InventoryLocationViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = InventoryLocation.objects.all()
     serializer_class = InventoryLocationSerializer
 

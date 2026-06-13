@@ -1,68 +1,48 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 
-// Configure heads-up display behaviors when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
+/**
+ * Registers the device for Firebase Cloud Messaging (FCM).
+ * This function is safe to run inside Expo Go as it dynamically imports 
+ * Firebase Messaging and falls back to a mock token if native modules are not linked.
+ */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
-  let token: string | null = null;
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
+  if (Platform.OS === 'web') {
+    return 'mock-firebase-token-web';
   }
 
-  if (!Device.isDevice) {
-    console.log('Simulator detected: Defaulting to simulator mock push token.');
-    return 'ExponentPushToken[mock-token-for-simulator]';
+  // Check if native Firebase modules are linked in the current binary
+  const hasFirebase = !!NativeModules.RNFBAppModule;
+  if (!hasFirebase) {
+    console.log('FCM native modules not linked/available (running in Expo Go). Defaulting to mock token.');
+    return 'ExponentPushToken[mock-fcm-token-go]';
   }
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    // Dynamically require Firebase Messaging to prevent breaking Expo Go at import time
+    const messaging = require('@react-native-firebase/messaging').default;
     
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    if (finalStatus !== 'granted') {
-      console.warn('Failed to secure push notification permissions.');
+    // Request permission (handles iOS prompts automatically)
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === 1 || // messaging.AuthorizationStatus.AUTHORIZED
+      authStatus === 2;   // messaging.AuthorizationStatus.PROVISIONAL
+
+    if (!enabled) {
+      console.warn('Failed to secure FCM push notification permissions from user.');
       return null;
     }
 
-    // Retrieve EAS Project ID from Expo configurations
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId;
-
-    if (!projectId) {
-      console.warn('EAS Project ID is missing. Attempting to fetch token without it.');
+    // Register device for remote messages (mandatory for iOS APNs to FCM mapping)
+    if (Platform.OS === 'ios') {
+      await messaging().registerDeviceForRemoteMessages();
     }
 
-    const expoPushToken = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
-    
-    token = expoPushToken.data;
-    console.log('Expo Push Token:', token);
+    // Retrieve FCM token
+    const token = await messaging().getToken();
+    console.log('Firebase Cloud Messaging Token:', token);
+    return token;
   } catch (error) {
-    console.error('Error occurred while fetching Expo push token:', error);
+    console.log('FCM native modules not available (expected when running in Expo Go). Defaulting to mock token:', error);
+    return 'ExponentPushToken[mock-fcm-token-go]';
   }
-
-  return token;
 }

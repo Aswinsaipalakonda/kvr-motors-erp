@@ -130,11 +130,6 @@ export default function RoleProfile({
       onBack();
       return true;
     }
-    // @ts-ignore - canGoBack exists at runtime
-    if (typeof router.canGoBack === 'function' && router.canGoBack()) {
-      router.back();
-      return true;
-    }
     router.replace(backFallback as any);
     return true;
   }, [isEditingPersonalInfo, onBack, router, backFallback]);

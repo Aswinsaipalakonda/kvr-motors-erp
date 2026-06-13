@@ -6,8 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from .models import Attendance
 from .serializers import AttendanceSerializer
+from config.cache import CacheResponseMixin
 
-class AttendanceViewSet(viewsets.ModelViewSet):
+class AttendanceViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
     permission_classes = [IsAuthenticated]
 
@@ -39,6 +40,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({"detail": "You have already checked in for today."})
             
         serializer.save(user=user, date=today, check_in=timezone.now(), status='pending')
+        self.clear_cache()
 
     @action(detail=True, methods=['patch', 'post'], url_path='verify')
     def verify_attendance(self, request, pk=None):
@@ -76,6 +78,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         attendance.verified_at = timezone.now()
         attendance.remarks = remarks
         attendance.save()
+        self.clear_cache()
 
         serializer = self.get_serializer(attendance)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -119,6 +122,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 attendance.remarks = remarks
                 attendance.save()
                 updated_count += 1
+
+        if updated_count > 0:
+            self.clear_cache()
 
         return Response(
             {"detail": f"Successfully updated {updated_count} attendance records."},

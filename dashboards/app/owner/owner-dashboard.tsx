@@ -77,6 +77,7 @@ export default function OwnerDashboard() {
   const initialTab = lastSegment === "owner" ? "dashboard" : lastSegment;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
+  const [selectedRange, setSelectedRange] = useState("01 May 2024 - 31 May 2024");
 
   // Sync state with browser back/forward navigation popstate events
   useEffect(() => {
@@ -1250,59 +1251,144 @@ export default function OwnerDashboard() {
     printWindow.document.close();
   };
 
+  // Helper to check if a date string falls within a selected range
+  const isWithinDateRange = React.useCallback((dateString: string, range: string) => {
+    if (!dateString) return false;
+    const itemDate = new Date(dateString);
+    itemDate.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (range === "01 May 2024 - 31 May 2024") {
+      const start = new Date("2024-05-01T00:00:00");
+      start.setHours(0, 0, 0, 0);
+      const end = new Date("2024-05-31T23:59:59");
+      end.setHours(23, 59, 59, 999);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "Today") {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "Last 7 Days") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "This Month") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "Last Month") {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "This Quarter") {
+      const quarter = Math.floor(now.getMonth() / 3);
+      const start = new Date(now.getFullYear(), quarter * 3, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    if (range === "This Year") {
+      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
+      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+      return itemDate >= start && itemDate <= end;
+    }
+
+    return true;
+  }, []);
+
   // DYNAMIC COMPUTATIONS & MEMOIZED AGGREGATES
   const filteredVehicleUnits = React.useMemo(() => {
     return vehicleUnitsList.filter((unit) => {
       if (selectedBranch === "All Branches") return true;
       return (
         unit.branch_name &&
-        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
+        (unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase()) ||
+          selectedBranch.toLowerCase().includes(unit.branch_name.toLowerCase()))
       );
     });
   }, [vehicleUnitsList, selectedBranch]);
 
   const filteredSalesInvoices = React.useMemo(() => {
     return salesInvoices.filter((inv) => {
-      if (selectedBranch === "All Branches") return true;
-      return (
-        inv.branch_name &&
-        inv.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
-      );
+      let matchesBranch = true;
+      if (selectedBranch !== "All Branches") {
+        matchesBranch = inv.branch_name && (
+          inv.branch_name.toLowerCase().includes(selectedBranch.toLowerCase()) ||
+          selectedBranch.toLowerCase().includes(inv.branch_name.toLowerCase())
+        );
+      }
+      const matchesDate = isWithinDateRange(inv.sale_date || inv.created_at, selectedRange);
+      return matchesBranch && matchesDate;
     });
-  }, [salesInvoices, selectedBranch]);
+  }, [salesInvoices, selectedBranch, selectedRange, isWithinDateRange]);
 
   const filteredLedgerEntries = React.useMemo(() => {
     return ledgerEntries.filter((entry) => {
-      if (selectedBranch === "All Branches") return true;
-      return (
-        entry.branch_name &&
-        entry.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
-      );
+      let matchesBranch = true;
+      if (selectedBranch !== "All Branches") {
+        matchesBranch = entry.branch_name && (
+          entry.branch_name.toLowerCase().includes(selectedBranch.toLowerCase()) ||
+          selectedBranch.toLowerCase().includes(entry.branch_name.toLowerCase())
+        );
+      }
+      const matchesDate = isWithinDateRange(entry.created_at, selectedRange);
+      return matchesBranch && matchesDate;
     });
-  }, [ledgerEntries, selectedBranch]);
+  }, [ledgerEntries, selectedBranch, selectedRange, isWithinDateRange]);
 
   const filteredLeadsList = React.useMemo(() => {
     return leadsList.filter((lead) => {
-      if (selectedBranch === "All Branches") return true;
-      return (
-        lead.branch &&
-        lead.branch.toLowerCase().includes(selectedBranch.toLowerCase())
-      );
+      let matchesBranch = true;
+      if (selectedBranch !== "All Branches") {
+        matchesBranch = lead.branch && (
+          lead.branch.toLowerCase().includes(selectedBranch.toLowerCase()) ||
+          selectedBranch.toLowerCase().includes(lead.branch.toLowerCase())
+        );
+      }
+      const matchesDate = isWithinDateRange(lead.created_at, selectedRange);
+      return matchesBranch && matchesDate;
     });
-  }, [leadsList, selectedBranch]);
+  }, [leadsList, selectedBranch, selectedRange, isWithinDateRange]);
 
   const filteredAdvanceBookings = React.useMemo(() => {
     return advanceBookings.filter((booking) => {
-      if (selectedBranch === "All Branches") return true;
-      if (!booking.vin_number) return true;
-      const unit = vehicleUnitsList.find((u) => u.vin_number === booking.vin_number);
-      return (
-        unit &&
-        unit.branch_name &&
-        unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase())
-      );
+      let matchesBranch = true;
+      if (selectedBranch !== "All Branches") {
+        if (!booking.vin_number) {
+          matchesBranch = false;
+        } else {
+          const unit = vehicleUnitsList.find((u) => u.vin_number === booking.vin_number);
+          matchesBranch = unit && unit.branch_name && (
+            unit.branch_name.toLowerCase().includes(selectedBranch.toLowerCase()) ||
+            selectedBranch.toLowerCase().includes(unit.branch_name.toLowerCase())
+          );
+        }
+      }
+      const matchesDate = isWithinDateRange(booking.booking_date, selectedRange);
+      return matchesBranch && matchesDate;
     });
-  }, [advanceBookings, vehicleUnitsList, selectedBranch]);
+  }, [advanceBookings, vehicleUnitsList, selectedBranch, selectedRange, isWithinDateRange]);
+
+  const filteredPurchaseOrders = React.useMemo(() => {
+    return purchaseOrders.filter((po) => {
+      return isWithinDateRange(po.order_date, selectedRange);
+    });
+  }, [purchaseOrders, selectedRange, isWithinDateRange]);
+
 
   const salesOverviewData = React.useMemo(() => {
     const now = new Date();
@@ -1500,6 +1586,8 @@ export default function OwnerDashboard() {
           title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} 
           activeBranch={selectedBranch}
           onBranchChange={setSelectedBranch}
+          activeRange={selectedRange}
+          onRangeChange={setSelectedRange}
           branchesList={branchesList}
         />
         {/* Dashboard Views */}
@@ -1595,7 +1683,7 @@ export default function OwnerDashboard() {
                 />
                 <DashboardCard 
                   title="Total Purchases" 
-                  value={purchaseOrdersLoading ? "..." : "₹ " + purchaseOrders.filter(po => po.status === "approved" || po.status === "received").reduce((acc, curr) => acc + parseFloat(curr.total_price || 0), 0).toLocaleString('en-IN')} 
+                  value={purchaseOrdersLoading ? "..." : "₹ " + filteredPurchaseOrders.filter(po => po.status === "approved" || po.status === "received").reduce((acc, curr) => acc + parseFloat(curr.total_price || 0), 0).toLocaleString('en-IN')} 
                   trend="↓ 6.2%" 
                   trendType="danger" 
                   description="Approved PO total" 

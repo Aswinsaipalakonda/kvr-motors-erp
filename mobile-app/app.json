@@ -2,7 +2,7 @@
   "expo": {
     "name": "KVR Motors",
     "slug": "kvr-motors",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kvrmotors",
@@ -12,10 +12,12 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app requires camera permission to capture your photo for daily attendance verification and to scan VIN codes in the godown.",
         "NSLocationWhenInUseUsageDescription": "This app requires location permission to capture your current workspace location for daily attendance verification."
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.kvrmotors.erp",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
@@ -25,7 +27,8 @@
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -54,7 +57,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "This app requires location permission to capture your current workspace location for daily attendance verification."
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -3,8 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Battery, FifoOverride
 from .serializers import BatterySerializer, FifoOverrideSerializer
+from config.cache import CacheResponseMixin
 
-class BatteryViewSet(viewsets.ModelViewSet):
+class BatteryViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = Battery.objects.all()
     serializer_class = BatterySerializer
 
@@ -53,6 +54,6 @@ class BatteryViewSet(viewsets.ModelViewSet):
             "message": "Perfect! This is the oldest available battery and matches FIFO guidelines."
         }, status=status.HTTP_200_OK)
 
-class FifoOverrideViewSet(viewsets.ModelViewSet):
+class FifoOverrideViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = FifoOverride.objects.all().order_by('-created_at')
     serializer_class = FifoOverrideSerializer

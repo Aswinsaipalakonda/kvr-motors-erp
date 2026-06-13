@@ -24,6 +24,8 @@ class CurrentUserView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+from config.cache import CacheResponseMixin
+
 class IsOwnerOrAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
@@ -32,7 +34,7 @@ class IsOwnerOrAdmin(BasePermission):
             request.user.role == 'admin'
         )
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_permissions(self):
