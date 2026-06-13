@@ -87,7 +87,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`absolute right-0 top-0 h-full w-full ${widthClass} bg-white shadow-2xl shadow-slate-900/20 border-l border-slate-200 flex flex-col sm:rounded-l-3xl overflow-hidden transition-transform duration-300 ease-out ${
+        className={`absolute right-0 top-0 h-screen max-h-screen w-full ${widthClass} bg-white shadow-2xl shadow-slate-900/20 border-l border-slate-200 flex flex-col sm:rounded-l-3xl overflow-hidden transition-transform duration-300 ease-out ${
           isAnimating ? "translate-x-0" : "translate-x-full"
         }`}
       >

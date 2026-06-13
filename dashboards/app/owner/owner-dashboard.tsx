@@ -3473,7 +3473,7 @@ export default function OwnerDashboard() {
       <BottomNav role="owner" activeTab={activeTab} />
       {/* MODALS */}
       <Modal isOpen={isAddBranchOpen} onClose={() => { resetBranchForm(); setIsAddBranchOpen(false); }} title={editingBranchId ? "Edit Showroom / Branch Outlet" : "Create New Showroom / Branch Outlet"}>
-        <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left max-h-[70vh] overflow-y-auto pr-2 slim-scrollbar">
+        <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Name</label>
             <input 
