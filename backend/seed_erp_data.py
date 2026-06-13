@@ -17,14 +17,26 @@ from leads.models import Lead
 
 def seed_erp_data():
     print("--- Seeding Branches & Locations ---")
-    branch, _ = Branch.objects.get_or_create(
+    branch, created = Branch.objects.get_or_create(
         name="KVR Motors - Visakhapatnam",
         defaults={
             "address": "Visakhapatnam City High Road",
             "phone_number": "9876543210",
-            "is_active": True
+            "is_active": True,
+            "manager_name": "Suresh Babu",
+            "total_stock": 120,
+            "sales_volume": 11200000.00,
+            "monthly_target": 15000000.00,
+            "target_achieved_pct": 74
         }
     )
+    if not created:
+        branch.manager_name = "Suresh Babu"
+        branch.total_stock = 120
+        branch.sales_volume = 11200000.00
+        branch.monthly_target = 15000000.00
+        branch.target_achieved_pct = 74
+        branch.save()
     
     showroom_visakhapatnam, _ = Showroom.objects.get_or_create(
         branch=branch,
@@ -57,14 +69,27 @@ def seed_erp_data():
     )
 
     # Add Srikakulam branch and showroom
-    branch_srikakulam, _ = Branch.objects.get_or_create(
+    branch_srikakulam, created = Branch.objects.get_or_create(
         name="KVR Motors - Srikakulam",
         defaults={
             "address": "Srikakulam Highway Junction",
             "phone_number": "9876543215",
-            "is_active": True
+            "is_active": True,
+            "manager_name": "Satish Kumar",
+            "total_stock": 85,
+            "sales_volume": 7200000.00,
+            "monthly_target": 10000000.00,
+            "target_achieved_pct": 72
         }
     )
+    if not created:
+        branch_srikakulam.manager_name = "Satish Kumar"
+        branch_srikakulam.total_stock = 85
+        branch_srikakulam.sales_volume = 7200000.00
+        branch_srikakulam.monthly_target = 10000000.00
+        branch_srikakulam.target_achieved_pct = 72
+        branch_srikakulam.save()
+
     showroom_srikakulam, _ = Showroom.objects.get_or_create(
         branch=branch_srikakulam,
         name="KVR Showroom - Srikakulam",
@@ -80,14 +105,27 @@ def seed_erp_data():
     )
 
     # Add Kakinada branch and showroom
-    branch_kakinada, _ = Branch.objects.get_or_create(
+    branch_kakinada, created = Branch.objects.get_or_create(
         name="KVR Motors - Kakinada",
         defaults={
             "address": "Kakinada Main Road",
             "phone_number": "9876543216",
-            "is_active": True
+            "is_active": True,
+            "manager_name": "N. Venkat",
+            "total_stock": 95,
+            "sales_volume": 8500000.00,
+            "monthly_target": 12000000.00,
+            "target_achieved_pct": 70
         }
     )
+    if not created:
+        branch_kakinada.manager_name = "N. Venkat"
+        branch_kakinada.total_stock = 95
+        branch_kakinada.sales_volume = 8500000.00
+        branch_kakinada.monthly_target = 12000000.00
+        branch_kakinada.target_achieved_pct = 70
+        branch_kakinada.save()
+
     showroom_kakinada, _ = Showroom.objects.get_or_create(
         branch=branch_kakinada,
         name="KVR Showroom - Kakinada",
@@ -103,14 +141,27 @@ def seed_erp_data():
     )
 
     # Add Vizag branch and showrooms
-    branch_vizag, _ = Branch.objects.get_or_create(
+    branch_vizag, created = Branch.objects.get_or_create(
         name="KVR Motors - Vizag",
         defaults={
             "address": "Vizag City High Road",
             "phone_number": "9876543217",
-            "is_active": True
+            "is_active": True,
+            "manager_name": "T. Prasad",
+            "total_stock": 110,
+            "sales_volume": 9500000.00,
+            "monthly_target": 13000000.00,
+            "target_achieved_pct": 73
         }
     )
+    if not created:
+        branch_vizag.manager_name = "T. Prasad"
+        branch_vizag.total_stock = 110
+        branch_vizag.sales_volume = 9500000.00
+        branch_vizag.monthly_target = 13000000.00
+        branch_vizag.target_achieved_pct = 73
+        branch_vizag.save()
+
     showroom_vizag, _ = Showroom.objects.get_or_create(
         branch=branch_vizag,
         name="KVR Showroom - Vizag",

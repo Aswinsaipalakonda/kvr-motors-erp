@@ -5,6 +5,11 @@ export interface BranchInput {
   address?: string;
   phone_number?: string;
   is_active?: boolean;
+  manager_name?: string;
+  total_stock?: number;
+  sales_volume?: number;
+  monthly_target?: number;
+  target_achieved_pct?: number;
 }
 
 export const getBranches = async () => {
@@ -28,7 +33,7 @@ export const createBranch = async (data: BranchInput) => {
 };
 
 export const updateBranch = async (id: number, data: Partial<BranchInput>) => {
-  const response = await api.put(`/branches/${id}/`, data);
+  const response = await api.patch(`/branches/${id}/`, data);
   return response.data;
 };
 

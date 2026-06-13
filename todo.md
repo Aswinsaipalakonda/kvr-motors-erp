@@ -21,7 +21,7 @@ This checklist tracks the testing and verification of all screens, components, a
 
 ---
 
-### [ ] Tab 2: Branch & Showrooms (`/owner/branches`)
+### [x] Tab 2: Branch & Showrooms (`/owner/branches`)
 - **Description**: Interface to view, edit, add, and delete outlet branches and associate them with physical showrooms.
 - **Dynamic Behaviors**:
   - Lists branches dynamically by querying `/branches/`.
@@ -30,8 +30,8 @@ This checklist tracks the testing and verification of all screens, components, a
   - "Delete" button prompts confirmation, calls `DELETE /branches/<id>/`, and handles constraint errors gracefully if showrooms are attached.
 - **Test Cases**:
   - [x] **TC-WEB-BR-01**: Add a new branch and verify it instantly appears in the table.
-  - [ ] **TC-WEB-BR-02**: Toggle the active status switch and verify that the database record updates.
-  - [ ] **TC-WEB-BR-03**: Try to delete a branch and verify the confirmation prompt behaves correctly.
+  - [x] **TC-WEB-BR-02**: Toggle the active status switch and verify that the database record updates.
+  - [x] **TC-WEB-BR-03**: Try to delete a branch and verify the confirmation prompt behaves correctly.
 
 ---
 

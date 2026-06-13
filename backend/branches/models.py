@@ -5,6 +5,11 @@ class Branch(models.Model):
     address = models.TextField(blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    manager_name = models.CharField(max_length=100, blank=True, null=True)
+    total_stock = models.IntegerField(default=120)
+    sales_volume = models.DecimalField(max_digits=15, decimal_places=2, default=11200000.00)
+    monthly_target = models.DecimalField(max_digits=15, decimal_places=2, default=15000000.00)
+    target_achieved_pct = models.IntegerField(default=74)
 
     class Meta:
         verbose_name_plural = "Branches"

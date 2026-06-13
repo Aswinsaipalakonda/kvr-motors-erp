@@ -100,6 +100,12 @@ export default function OwnerDashboard() {
   const [branchAddress, setBranchAddress] = useState("");
   const [branchPhone, setBranchPhone] = useState("");
   const [branchActive, setBranchActive] = useState(true);
+  const [branchManagerName, setBranchManagerName] = useState("");
+  const [branchTotalStock, setBranchTotalStock] = useState("");
+  const [branchSalesVolume, setBranchSalesVolume] = useState("");
+  const [branchMonthlyTarget, setBranchMonthlyTarget] = useState("");
+  const [branchTargetPct, setBranchTargetPct] = useState("");
+  const [branchErrors, setBranchErrors] = useState<Record<string, string>>({});
 
   // Real database vehicles states
   const [vehicleBrandsList, setVehicleBrandsList] = useState<any[]>([]);
@@ -191,16 +197,100 @@ export default function OwnerDashboard() {
     }
   };
 
+  const resetBranchForm = React.useCallback(() => {
+    setEditingBranchId(null);
+    setBranchName("");
+    setBranchAddress("");
+    setBranchPhone("");
+    setBranchActive(true);
+    setBranchManagerName("");
+    setBranchTotalStock("");
+    setBranchSalesVolume("");
+    setBranchMonthlyTarget("");
+    setBranchTargetPct("");
+    setBranchErrors({});
+  }, []);
+
   const handleAddBranchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!branchName.trim()) return;
+    
+    // Clear errors
+    const errors: Record<string, string> = {};
+    
+    // 1. Showroom Name Constraint
+    if (!branchName.trim()) {
+      errors.name = "Showroom name is required.";
+    }
+    
+    // 2. Address / Location City Constraint
+    if (!branchAddress.trim()) {
+      errors.address = "Address / Location city is required.";
+    }
+    
+    // 3. Manager Name Constraint: letters and spaces only
+    if (!branchManagerName.trim()) {
+      errors.manager_name = "Manager name is required.";
+    } else if (!/^[a-zA-Z\s]+$/.test(branchManagerName.trim())) {
+      errors.manager_name = "Manager name must contain letters and spaces only.";
+    }
+    
+    // 4. Phone Number Constraint: exactly 10 digits
+    if (!branchPhone.trim()) {
+      errors.phone_number = "Phone number is required.";
+    } else if (!/^\d{10}$/.test(branchPhone.trim())) {
+      errors.phone_number = "Phone number must be exactly 10 digits.";
+    }
+    
+    // 5. Total Stock Constraint: non-negative integer
+    if (!branchTotalStock.trim()) {
+      errors.total_stock = "Total stock is required.";
+    } else if (!/^\d+$/.test(branchTotalStock.trim())) {
+      errors.total_stock = "Total stock must be a non-negative integer.";
+    }
+    
+    // 6. Sales Volume Constraint: non-negative decimal
+    if (!branchSalesVolume.trim()) {
+      errors.sales_volume = "Sales volume is required.";
+    } else if (isNaN(parseFloat(branchSalesVolume.trim())) || parseFloat(branchSalesVolume.trim()) < 0) {
+      errors.sales_volume = "Sales volume must be a non-negative number.";
+    }
+    
+    // 7. Monthly Target Constraint: non-negative decimal
+    if (!branchMonthlyTarget.trim()) {
+      errors.monthly_target = "Monthly target is required.";
+    } else if (isNaN(parseFloat(branchMonthlyTarget.trim())) || parseFloat(branchMonthlyTarget.trim()) < 0) {
+      errors.monthly_target = "Monthly target must be a non-negative number.";
+    }
+    
+    // 8. Target Achieved Pct Constraint: integer between 0 and 100
+    if (!branchTargetPct.trim()) {
+      errors.target_achieved_pct = "Target percentage is required.";
+    } else {
+      const pct = parseInt(branchTargetPct.trim());
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        errors.target_achieved_pct = "Target percentage must be an integer between 0 and 100.";
+      }
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setBranchErrors(errors);
+      showToast("Please fix the validation errors in the form.", "error");
+      return;
+    }
+    
     try {
       const payload = {
         name: branchName.trim(),
         address: branchAddress.trim(),
         phone_number: branchPhone.trim(),
-        is_active: branchActive
+        is_active: branchActive,
+        manager_name: branchManagerName.trim(),
+        total_stock: parseInt(branchTotalStock.trim()),
+        sales_volume: parseFloat(branchSalesVolume.trim()),
+        monthly_target: parseFloat(branchMonthlyTarget.trim()),
+        target_achieved_pct: parseInt(branchTargetPct.trim())
       };
+      
       if (editingBranchId) {
         await updateBranch(editingBranchId, payload);
         showToast("Branch updated.");
@@ -208,16 +298,14 @@ export default function OwnerDashboard() {
         await createBranch(payload);
         showToast("Branch registered.");
       }
-      setEditingBranchId(null);
-      setBranchName("");
-      setBranchAddress("");
-      setBranchPhone("");
-      setBranchActive(true);
+      
+      resetBranchForm();
       setIsAddBranchOpen(false);
       loadBranches();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save branch showroom in PostgreSQL:", err);
-      showToast("Failed to save branch.", "error");
+      const errMsg = err.response?.data?.detail || err.message || "Failed to save branch.";
+      showToast(errMsg, "error");
     }
   };
 
@@ -546,6 +634,11 @@ export default function OwnerDashboard() {
     setBranchAddress(branch.address || "");
     setBranchPhone(branch.phone_number || "");
     setBranchActive(branch.is_active !== false);
+    setBranchManagerName(branch.manager_name || "");
+    setBranchTotalStock(branch.total_stock !== undefined && branch.total_stock !== null ? String(branch.total_stock) : "");
+    setBranchSalesVolume(branch.sales_volume !== undefined && branch.sales_volume !== null ? String(branch.sales_volume) : "");
+    setBranchMonthlyTarget(branch.monthly_target !== undefined && branch.monthly_target !== null ? String(branch.monthly_target) : "");
+    setBranchTargetPct(branch.target_achieved_pct !== undefined && branch.target_achieved_pct !== null ? String(branch.target_achieved_pct) : "");
     setIsAddBranchOpen(true);
   };
   const handleToggleBranch = async (branch: any) => {
@@ -1954,15 +2047,15 @@ export default function OwnerDashboard() {
                   </tr>
                 ) : (
                   branchesList.map((branch, idx) => {
-                    const targetPct = branch.targetPct || "74%";
+                    const targetPct = branch.target_achieved_pct !== undefined && branch.target_achieved_pct !== null ? `${branch.target_achieved_pct}%` : "0%";
                     return (
                       <tr key={branch.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
-                        <td className="py-3.5 px-5 text-slate-600">{branch.address || "Visakhapatnam City"}</td>
-                        <td className="py-3.5 px-5 text-slate-600">{branch.phone_number || "Suresh Babu"}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.stock || 120} Vehicles</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales || "₹ 1,12,00,000"}</td>
-                        <td className="py-3.5 px-5 font-semibold text-slate-500">{branch.monthlyTarget || "₹ 1,50,00,000"}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{branch.address || "—"}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{branch.manager_name || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.total_stock !== undefined && branch.total_stock !== null ? `${branch.total_stock} Vehicles` : "0 Vehicles"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales_volume !== undefined && branch.sales_volume !== null ? `₹ ${parseFloat(branch.sales_volume).toLocaleString('en-IN')}` : "₹ 0"}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-500">{branch.monthly_target !== undefined && branch.monthly_target !== null ? `₹ ${parseFloat(branch.monthly_target).toLocaleString('en-IN')}` : "₹ 0"}</td>
                         <td className="py-3.5 px-5">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-emerald-700 text-[11px]">{targetPct}</span>
@@ -3379,8 +3472,8 @@ export default function OwnerDashboard() {
       {/* Mobile bottom navigation */}
       <BottomNav role="owner" activeTab={activeTab} />
       {/* MODALS */}
-      <Modal isOpen={isAddBranchOpen} onClose={() => { setIsAddBranchOpen(false); setEditingBranchId(null); setBranchName(""); setBranchAddress(""); setBranchPhone(""); setBranchActive(true); }} title={editingBranchId ? "Edit Showroom / Branch Outlet" : "Create New Showroom / Branch Outlet"}>
-        <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">
+      <Modal isOpen={isAddBranchOpen} onClose={() => { resetBranchForm(); setIsAddBranchOpen(false); }} title={editingBranchId ? "Edit Showroom / Branch Outlet" : "Create New Showroom / Branch Outlet"}>
+        <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left max-h-[70vh] overflow-y-auto pr-2 slim-scrollbar">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Name</label>
             <input 
@@ -3391,6 +3484,7 @@ export default function OwnerDashboard() {
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
+            {branchErrors.name && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.name}</p>}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Address / Location City</label>
@@ -3402,9 +3496,10 @@ export default function OwnerDashboard() {
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
+            {branchErrors.address && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.address}</p>}
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Phone / Manager</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
             <input 
               type="text" 
               placeholder="e.g. 9876543210" 
@@ -3413,6 +3508,69 @@ export default function OwnerDashboard() {
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
+            {branchErrors.phone_number && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.phone_number}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Manager Assigned</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Ramesh Babu" 
+              value={branchManagerName}
+              onChange={(e) => setBranchManagerName(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+            {branchErrors.manager_name && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.manager_name}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Total Stock</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 120" 
+              value={branchTotalStock}
+              onChange={(e) => setBranchTotalStock(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+            {branchErrors.total_stock && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.total_stock}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Sales Volume (INR)</label>
+            <input 
+              type="number" 
+              step="any"
+              placeholder="e.g. 11200000" 
+              value={branchSalesVolume}
+              onChange={(e) => setBranchSalesVolume(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+            {branchErrors.sales_volume && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.sales_volume}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Monthly Target (INR)</label>
+            <input 
+              type="number" 
+              step="any"
+              placeholder="e.g. 15000000" 
+              value={branchMonthlyTarget}
+              onChange={(e) => setBranchMonthlyTarget(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+            {branchErrors.monthly_target && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.monthly_target}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Target Achieved (%)</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 74" 
+              value={branchTargetPct}
+              onChange={(e) => setBranchTargetPct(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+            {branchErrors.target_achieved_pct && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.target_achieved_pct}</p>}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Operational Status</label>
