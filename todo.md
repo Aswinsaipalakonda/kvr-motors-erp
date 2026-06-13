@@ -29,7 +29,7 @@ This checklist tracks the testing and verification of all screens, components, a
   - Toggle switch changes the active status of branches via `PATCH /branches/<id>/`.
   - "Delete" button prompts confirmation, calls `DELETE /branches/<id>/`, and handles constraint errors gracefully if showrooms are attached.
 - **Test Cases**:
-  - [ ] **TC-WEB-BR-01**: Add a new branch and verify it instantly appears in the table.
+  - [x] **TC-WEB-BR-01**: Add a new branch and verify it instantly appears in the table.
   - [ ] **TC-WEB-BR-02**: Toggle the active status switch and verify that the database record updates.
   - [ ] **TC-WEB-BR-03**: Try to delete a branch and verify the confirmation prompt behaves correctly.
 
@@ -42,8 +42,8 @@ This checklist tracks the testing and verification of all screens, components, a
   - Add/Edit Model modals manage brand ID, name, base price, compatible batteries, colors (comma-separated), and active state.
   - Form validation prevents empty model names or non-numeric prices.
 - **Test Cases**:
-  - [ ] **TC-WEB-VH-01**: Verify vehicle brands list correctly in the model creation dropdown.
-  - [ ] **TC-WEB-VH-02**: Add a vehicle model with custom colors (e.g. "Red, Green, Blue") and verify list updates.
+  - [x] **TC-WEB-VH-01**: Verify vehicle brands list correctly in the model creation dropdown.
+  - [x] **TC-WEB-VH-02**: Add a vehicle model with custom colors (e.g. "Red, Green, Blue") and verify list updates.
   - [ ] **TC-WEB-VH-03**: Edit an existing model's base price and verify change persists in database.
 
 ---
