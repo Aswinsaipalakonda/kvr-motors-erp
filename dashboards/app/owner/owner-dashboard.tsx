@@ -2386,8 +2386,12 @@ export default function OwnerDashboard() {
                   <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                       <div>
-                        <h3 className="text-sm font-bold text-slate-805">Add Campaign Vehicle</h3>
-                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define specs and quantities for the Mela.</p>
+                        <h3 className="text-sm font-bold text-slate-855">
+                          {editingMelaInventoryId ? "Edit Campaign Vehicle" : "Add Campaign Vehicle"}
+                        </h3>
+                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                          {editingMelaInventoryId ? "Modify campaign specifications and pricing." : "Define specs and quantities for the Mela."}
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -2494,8 +2498,24 @@ export default function OwnerDashboard() {
                         type="submit"
                         className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
                       >
-                        Register Campaign Stock
+                        {editingMelaInventoryId ? "Update Campaign Stock" : "Register Campaign Stock"}
                       </button>
+                      {editingMelaInventoryId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingMelaInventoryId(null);
+                            setMelaInvModel("");
+                            setMelaInvColor("");
+                            setMelaInvBattery("graphene");
+                            setMelaInvQty("");
+                            setMelaInvPrice("");
+                          }}
+                          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl cursor-pointer transition-all text-center mt-2 border border-slate-200"
+                        >
+                          Cancel Edit
+                        </button>
+                      )}
                     </form>
                   </div>
 
