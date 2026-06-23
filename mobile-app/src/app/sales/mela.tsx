@@ -283,21 +283,75 @@ export default function SalesMelaCampaign() {
             {/* TAB 1: CATALOG & BOOKING */}
             {activeTab === 'catalog' && (
               <View style={styles.tabSection}>
-                {/* Campaign Status Banner */}
-                {activeMela ? (
-                  <View style={styles.heroBanner}>
-                    <View style={styles.bannerRow}>
-                      <View style={styles.pulseContainer}>
-                        <View style={styles.pulseDot} />
-                        <ThemedText style={styles.liveText}>CAMPAIGN ACTIVE</ThemedText>
-                      </View>
-                      <ThemedText style={styles.dateText}>
-                        📅 {activeMela.start_date || 'Start'} to {activeMela.end_date || 'End'}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.bannerVenue}>📍 Venue: {activeMela.location || 'Showroom Venue'}</ThemedText>
+                {/* Search & Filter Section */}
+                <View style={styles.searchFilterSection}>
+                  <View style={styles.searchContainer}>
+                    <Search size={18} color="#94a3b8" />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search name, color, battery..."
+                      placeholderTextColor="#94a3b8"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                    />
+                    {searchQuery !== '' && (
+                      <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+                        <X size={16} color="#94a3b8" />
+                      </Pressable>
+                    )}
                   </View>
-                ) : (
+
+                  {brands.length > 0 && (
+                    <View style={styles.brandScrollWrapper}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.brandPillContainer}
+                        style={styles.brandScroll}
+                      >
+                        <Pressable
+                          onPress={() => setSelectedBrandId(null)}
+                          style={[
+                            styles.brandPill,
+                            selectedBrandId === null && styles.brandPillActive
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.brandPillText,
+                              selectedBrandId === null && styles.brandPillTextActive
+                            ]}
+                          >
+                            All Brands
+                          </ThemedText>
+                        </Pressable>
+                        {brands.map((brand) => (
+                          <Pressable
+                            key={brand.id}
+                            onPress={() => setSelectedBrandId(brand.id)}
+                            style={[
+                              styles.brandPill,
+                              selectedBrandId === brand.id && styles.brandPillActive
+                            ]}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.brandPillText,
+                                selectedBrandId === brand.id && styles.brandPillTextActive
+                              ]}
+                            >
+                              {brand.name}
+                            </ThemedText>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {!activeMela && (
                   <View style={styles.warningBanner}>
                     <AlertTriangle size={18} color="#04a700" />
                     <ThemedText style={styles.warningBannerText}>
@@ -308,14 +362,18 @@ export default function SalesMelaCampaign() {
 
                 <ThemedText style={styles.sectionSubtitle}>Available Models for Booking</ThemedText>
 
-                {inventoryList.filter(item => item.remaining_quantity > 0).length === 0 ? (
+                {filteredInventory.length === 0 ? (
                   <View style={styles.emptyStockContainer}>
                     <Package size={42} color="#94a3b8" />
-                    <ThemedText style={styles.emptyStockText}>No campaign stock available right now.</ThemedText>
+                    <ThemedText style={styles.emptyStockText}>
+                      {searchQuery || selectedBrandId !== null
+                        ? 'No matching vehicles found.'
+                        : 'No campaign stock available right now.'}
+                    </ThemedText>
                   </View>
                 ) : (
                   <View style={styles.stockList}>
-                    {inventoryList.filter(item => item.remaining_quantity > 0).map((item) => {
+                    {filteredInventory.map((item) => {
                       const isLow = item.remaining_quantity <= 3;
                       return (
                         <Pressable
@@ -799,13 +857,59 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   // ---- Catalog tab ----
-  heroBanner: {
-    backgroundColor: '#0f172a',
-    borderRadius: 20,
-    padding: 18,
-    gap: 10,
+  searchFilterSection: {
+    gap: 12,
+    marginBottom: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: 'rgba(4, 167, 0, 0.2)'
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    height: 46,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '500',
+    padding: 0,
+  },
+  brandScrollWrapper: {
+    marginTop: 2,
+  },
+  brandScroll: {
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  brandPillContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 4,
+  },
+  brandPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  brandPillActive: {
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderColor: '#04a700',
+  },
+  brandPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  brandPillTextActive: {
+    color: '#04a700',
   },
   warningBanner: {
     flexDirection: 'row',
@@ -823,42 +927,6 @@ const styles = StyleSheet.create({
     color: '#04a700',
     fontWeight: '700',
     lineHeight: 17
-  },
-  bannerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  pulseContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(4, 167, 0, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#04a700'
-  },
-  liveText: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    color: '#04a700',
-    letterSpacing: 0.5
-  },
-  dateText: {
-    fontSize: 11,
-    color: '#86efac',
-    fontWeight: 'bold'
-  },
-  bannerVenue: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#cbd5e1'
   },
   stockList: {
     gap: 14
