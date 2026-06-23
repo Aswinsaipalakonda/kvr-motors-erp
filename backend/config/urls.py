@@ -15,7 +15,7 @@ from inventory.views import StockTransferViewSet
 from users.views import UserViewSet, CurrentUserView
 from activity_logs.views import ActivityLogViewSet
 from attendance.views import AttendanceViewSet
-from mela.views import MelaInventoryViewSet, MelaBookingViewSet, MelaReportsView
+from mela.views import MelaInventoryViewSet, MelaBookingViewSet, MelaReportsView, MelaSettingsViewSet
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -40,6 +40,7 @@ router.register(r'activity-logs', ActivityLogViewSet, basename='activitylog')
 router.register(r'attendance', AttendanceViewSet, basename='attendance')
 router.register(r'mela-inventory', MelaInventoryViewSet, basename='melainventory')
 router.register(r'mela-bookings', MelaBookingViewSet, basename='melabooking')
+router.register(r'mela-settings', MelaSettingsViewSet, basename='melasettings')
 
 
 urlpatterns = [
