@@ -587,9 +587,310 @@ export default function SalesDashboard() {
         {/* Navbar */}
         <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
-        {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           
+          {/* MELA VIEWS FOR SALES EXECUTIVE */}
+          {activeTab === "mela_booking_form" && (
+            <div className="space-y-6 text-left">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                
+                {/* Catalog Grid */}
+                <div className="xl:col-span-2 space-y-4">
+                  <div className="mb-2">
+                    <h3 className="text-sm font-black text-slate-805 tracking-tight">Active Mela Campaign Stock</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Select a vehicle from the catalog to book it at campaign prices.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {melaInventoryList.filter(inv => inv.remaining_quantity > 0).map((inv) => (
+                      <button
+                        key={inv.id}
+                        type="button"
+                        onClick={() => {
+                          setMelaBookingModel(String(inv.vehicle_model));
+                          setMelaBookingColor(inv.color);
+                          setMelaBookingBattery(inv.battery_type);
+                          showToast(`Selected ${inv.model_name} (${inv.color})`);
+                        }}
+                        className={`group bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all text-left flex flex-col justify-between h-40 cursor-pointer ${
+                          melaBookingModel === String(inv.vehicle_model) &&
+                          melaBookingColor === inv.color &&
+                          melaBookingBattery === inv.battery_type
+                            ? "border-[#04a700] ring-2 ring-[#04a700]/15"
+                            : "border-slate-200/70"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wide">
+                              {inv.brand_name || "EV Model"}
+                            </span>
+                            <span className="bg-[#04a700]/10 text-[#04a700] border border-[#04a700]/20 rounded-full px-2 py-0.5 text-[9px] font-bold">
+                              {inv.remaining_quantity} Available
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-extrabold text-slate-800 mt-1 leading-tight group-hover:text-[#04a700]">
+                            {inv.model_name}
+                          </h4>
+                          <div className="text-[10px] text-slate-500 font-bold mt-1.5 flex gap-2">
+                            <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">🎨 {inv.color}</span>
+                            <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">⚡ {inv.battery_type}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-end border-t border-slate-100 pt-2.5">
+                          <span className="text-emerald-700 font-mono font-black text-sm">
+                            ₹ {parseFloat(inv.price).toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-[10px] text-[#04a700] font-extrabold group-hover:translate-x-0.5 transition-transform">
+                            Select Spec
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                    {melaInventoryList.filter(inv => inv.remaining_quantity > 0).length === 0 && (
+                      <div className="col-span-2 py-12 text-center text-slate-400 font-semibold bg-white border border-dashed border-slate-200 rounded-2xl">
+                        All campaign vehicles are sold out!
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Booking form side panel */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Raise Mela Booking</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Enter customer details to reserve the selected EV configuration.</p>
+                  </div>
+
+                  <form onSubmit={melaBookingModel ? handleMelaBookingSubmit : (e) => { e.preventDefault(); showToast("Please select a vehicle from the catalog first.", "error"); }} className="space-y-4 text-xs font-semibold text-slate-650">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Ramesh Naidu"
+                        value={melaBookingName}
+                        onChange={(e) => setMelaBookingName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 9876543210"
+                        value={melaBookingPhone}
+                        onChange={(e) => setMelaBookingPhone(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-3 space-y-2 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">Selected Model:</span>
+                        <span className="text-slate-800 font-extrabold">
+                          {melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel)?.model_name || "None Selected"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">Color variant:</span>
+                        <span className="text-slate-800 font-extrabold capitalize">{melaBookingColor || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">Battery Option:</span>
+                        <span className="text-slate-800 font-extrabold capitalize">{melaBookingBattery || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">Mela Price:</span>
+                        <span className="text-emerald-700 font-black font-mono">
+                          {melaBookingModel
+                            ? `₹ ${parseFloat(melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel && i.color === melaBookingColor && i.battery_type === melaBookingBattery)?.price || '0').toLocaleString('en-IN')}`
+                            : "—"
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={melaLoading}
+                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center flex justify-center items-center gap-1.5"
+                    >
+                      {melaLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                          <span>Reserving stock...</span>
+                        </>
+                      ) : (
+                        <span>Confirm Unconfirmed Booking</span>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Success booking confirmation details modal */}
+              {createdMelaBookingResult && (
+                <Modal isOpen={!!createdMelaBookingResult} onClose={() => setCreatedMelaBookingResult(null)} title="Booking Reserved Successfully!">
+                  <div className="p-4 space-y-4 text-center max-w-sm mx-auto">
+                    <span className="h-12 w-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </span>
+                    
+                    <div>
+                      <h4 className="text-sm font-extrabold text-slate-800">Booking Reserved</h4>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-1">Provide this Booking ID to the customer for cash payment checkout with the Owner.</p>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2 text-xs font-semibold text-slate-600 text-left">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Booking ID:</span>
+                        <span className="text-emerald-700 font-black font-mono tracking-wider">{createdMelaBookingResult.booking_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Running Serial No:</span>
+                        <span className="text-slate-800 font-extrabold">#{createdMelaBookingResult.executive_serial_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Customer:</span>
+                        <span className="text-slate-800 font-bold">{createdMelaBookingResult.customer_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">EV Model:</span>
+                        <span className="text-slate-800 font-bold">{createdMelaBookingResult.model_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Price:</span>
+                        <span className="text-emerald-700 font-black font-mono">₹ {parseFloat(createdMelaBookingResult.price).toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCreatedMelaBookingResult(null)}
+                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </Modal>
+              )}
+            </div>
+          )}
+
+          {activeTab === "mela_my_bookings" && (
+            <div className="space-y-6 text-left">
+              <Table
+                title="My Personal Campaign Bookings"
+                headers={["Serial", "Booking ID", "Customer Name", "Contact Mobile", "Vehicle Model", "Specs", "Price", "Date", "Status", "Actions"]}
+              >
+                {melaBookingsList.map((bk) => (
+                  <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                    <td className="py-3.5 px-5 font-extrabold text-slate-400">#{bk.executive_serial_number}</td>
+                    <td className="py-3.5 px-5 font-bold font-mono text-slate-800">{bk.booking_id}</td>
+                    <td className="py-3.5 px-5 font-semibold text-slate-700">{bk.customer_name}</td>
+                    <td className="py-3.5 px-5 font-mono text-slate-500">{bk.customer_phone}</td>
+                    <td className="py-3.5 px-5 text-slate-800 font-medium">{bk.model_name}</td>
+                    <td className="py-3.5 px-5 capitalize text-slate-500 font-bold">{bk.color} / {bk.battery_type}</td>
+                    <td className="py-3.5 px-5 font-bold font-mono text-slate-800">₹ {parseFloat(bk.price).toLocaleString("en-IN")}</td>
+                    <td className="py-3.5 px-5 text-slate-500 font-medium">{new Date(bk.created_at).toLocaleDateString()}</td>
+                    <td className="py-3.5 px-5">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${
+                        bk.status === "completed"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : bk.status === "cancelled"
+                          ? "bg-rose-50 text-rose-750 border border-rose-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        {bk.status_display || bk.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      {bk.status === "unconfirmed" && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelMelaBooking(bk.id)}
+                          className="text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                        >
+                          Cancel Booking
+                        </button>
+                      )}
+                      {bk.status !== "unconfirmed" && <span className="text-slate-400 font-bold">—</span>}
+                    </td>
+                  </tr>
+                ))}
+                {melaBookingsList.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-450 font-semibold">
+                      <EmptyState title="No Campaign Bookings" description="You have not created any bookings for this campaign yet." />
+                    </td>
+                  </tr>
+                )}
+              </Table>
+            </div>
+          )}
+
+          {activeTab === "mela_reports" && (
+            <div className="space-y-6 text-left">
+              {/* Sales executive personal performance */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <DashboardCard
+                  title="My Total Bookings"
+                  value={`${melaBookingsList.length} Bookings`}
+                  description="All statuses included"
+                  icon={ShoppingBag}
+                  color="blue"
+                />
+                <DashboardCard
+                  title="My Completed Sales"
+                  value={`${melaBookingsList.filter(b => b.status === "completed").length} Deliveries`}
+                  description="Checked out by owner"
+                  icon={CheckCircle2}
+                  color="emerald"
+                />
+                <DashboardCard
+                  title="My Campaign Billing"
+                  value={`₹ ${melaBookingsList.filter(b => b.status === "completed").reduce((sum, b) => sum + parseFloat(b.price), 0).toLocaleString("en-IN")}`}
+                  description="Total revenue generated"
+                  icon={DollarSign}
+                  color="green"
+                />
+              </div>
+
+              {/* Personal bookings listing for reports */}
+              <Table
+                title="Performance Tracking Details"
+                headers={["Serial", "Booking ID", "Customer Name", "Specs", "Price", "Date", "Status"]}
+              >
+                {melaBookingsList.map((bk) => (
+                  <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                    <td className="py-3 px-5 font-bold text-slate-450">#{bk.executive_serial_number}</td>
+                    <td className="py-3 px-5 font-bold font-mono text-slate-800">{bk.booking_id}</td>
+                    <td className="py-3 px-5 font-semibold text-slate-700">{bk.customer_name}</td>
+                    <td className="py-3 px-5 capitalize text-slate-550">{bk.model_name} ({bk.color} - {bk.battery_type})</td>
+                    <td className="py-3 px-5 font-bold font-mono text-slate-800">₹ {parseFloat(bk.price).toLocaleString("en-IN")}</td>
+                    <td className="py-3 px-5 text-slate-450 font-semibold">{new Date(bk.created_at).toLocaleDateString()}</td>
+                    <td className="py-3 px-5">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${
+                        bk.status === "completed" ? "bg-emerald-50 text-emerald-700" : bk.status === "cancelled" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {bk.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {melaBookingsList.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-450">No performance details to track.</td>
+                  </tr>
+                )}
+              </Table>
+            </div>
+          )}
+
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
