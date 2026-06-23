@@ -1615,6 +1615,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800'
   },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  toggleTextWrapper: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  toggleDesc: {
+    fontSize: 10.5,
+    color: '#64748b',
+    marginTop: 2,
+  },
   // ---- Leaderboard Tab ----
   leaderboardList: {
     gap: 12
