@@ -214,7 +214,7 @@ export default function OwnerMelaCampaign() {
 
     Alert.alert(
       'Collect Cash & Deliver',
-      `Confirm cash collection of ₹${parseFloat(foundBooking.price).toLocaleString()} for Booking: ${foundBooking.booking_id}?`,
+      `Confirm cash collection of ₹${parseFloat(foundBooking.price).toLocaleString('en-IN')} for Booking: ${foundBooking.booking_id}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -614,7 +614,7 @@ export default function OwnerMelaCampaign() {
                             </View>
                             <View style={styles.gridCell}>
                               <ThemedText style={styles.gridLabel}>Price</ThemedText>
-                              <ThemedText style={styles.gridValuePrice}>₹{Math.round(item.price).toLocaleString()}</ThemedText>
+                              <ThemedText style={styles.gridValuePrice}>₹{Math.round(item.price).toLocaleString('en-IN')}</ThemedText>
                             </View>
                           </View>
                         </View>
@@ -685,7 +685,7 @@ export default function OwnerMelaCampaign() {
                         </View>
                         <View style={styles.detailsRow}>
                           <ThemedText style={styles.detailLbl}>Final Collection Price</ThemedText>
-                          <ThemedText style={styles.detailValPrice}>₹{parseFloat(foundBooking.price).toLocaleString()}</ThemedText>
+                          <ThemedText style={styles.detailValPrice}>₹{parseFloat(foundBooking.price).toLocaleString('en-IN')}</ThemedText>
                         </View>
                       </View>
 
