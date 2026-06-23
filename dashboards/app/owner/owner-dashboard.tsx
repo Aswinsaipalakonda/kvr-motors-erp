@@ -1821,8 +1821,422 @@ export default function OwnerDashboard() {
           onRangeChange={setSelectedRange}
           branchesList={branchesList}
         />
-        {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+          
+          {/* MELA TABS FOR OWNER */}
+          {activeTab === "mela_dashboard" && (
+            <div className="space-y-6 text-left">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <DashboardCard
+                  title="Total Mela Sales"
+                  value={`₹ ${(melaReports?.summary?.total_sales_revenue || 0).toLocaleString("en-IN")}`}
+                  description="Overall campaign revenue"
+                  icon={DollarSign}
+                  color="emerald"
+                />
+                <DashboardCard
+                  title="Delivered Vehicles"
+                  value={`${melaReports?.summary?.completed_bookings || 0} Units`}
+                  description="Completed checkouts"
+                  icon={CheckCircle2}
+                  color="green"
+                />
+                <DashboardCard
+                  title="Pending Bookings"
+                  value={`${melaReports?.summary?.unconfirmed_bookings || 0} Bookings`}
+                  description="Awaiting cash checkout"
+                  icon={AlertTriangle}
+                  color="amber"
+                />
+                <DashboardCard
+                  title="Today's Revenue"
+                  value={`₹ ${(melaReports?.summary?.daily_sales_revenue || 0).toLocaleString("en-IN")}`}
+                  description={`${melaReports?.summary?.daily_completed_count || 0} deliveries today`}
+                  icon={TrendingUp}
+                  color="blue"
+                />
+              </div>
+
+              {/* Quick Navigation Card / Welcome */}
+              <div className="bg-white border border-emerald-100 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                    Mela Campaign Active
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    </span>
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    Sales executives are actively taking bookings. Use the sub-sidebar to manage stock or complete customer checkouts.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigateTo("mela_checkout")}
+                    className="bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold py-2.5 px-4 rounded-full transition-all shadow-md shadow-[#04a700]/25 cursor-pointer"
+                  >
+                    Go to Checkout
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo("mela_inventory")}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-full transition-all border border-slate-200 cursor-pointer"
+                  >
+                    Manage Inventory
+                  </button>
+                </div>
+              </div>
+
+              {/* Recent Bookings table */}
+              <Table
+                title="Recent Campaign Bookings"
+                headers={["Booking ID", "Customer", "Contact", "Vehicle Model", "Color", "Battery", "Price", "Executive", "Status"]}
+              >
+                {melaBookingsList.slice(0, 10).map((bk) => (
+                  <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                    <td className="py-3 px-5 font-bold font-mono text-slate-800">{bk.booking_id}</td>
+                    <td className="py-3 px-5 font-semibold text-slate-700">{bk.customer_name}</td>
+                    <td className="py-3 px-5 font-mono text-slate-500">{bk.customer_phone}</td>
+                    <td className="py-3 px-5 text-slate-700 font-medium">{bk.model_name}</td>
+                    <td className="py-3 px-5 text-slate-600 capitalize">{bk.color}</td>
+                    <td className="py-3 px-5 text-slate-650 font-bold">{bk.battery_type}</td>
+                    <td className="py-3 px-5 font-bold font-mono text-slate-800">₹ {parseFloat(bk.price).toLocaleString("en-IN")}</td>
+                    <td className="py-3 px-5 text-slate-600 font-semibold">{bk.executive_name || bk.sales_executive}</td>
+                    <td className="py-3 px-5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${
+                        bk.status === "completed"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-250"
+                          : bk.status === "cancelled"
+                          ? "bg-rose-50 text-rose-700 border border-rose-250"
+                          : "bg-amber-50 text-amber-700 border border-amber-250"
+                      }`}>
+                        {bk.status_display || bk.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {melaBookingsList.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-slate-450 font-semibold">
+                      No campaign bookings recorded yet.
+                    </td>
+                  </tr>
+                )}
+              </Table>
+            </div>
+          )}
+
+          {activeTab === "mela_inventory" && (
+            <div className="space-y-6 text-left">
+              {/* Campaign stock list & Add stock form */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2 space-y-4">
+                  <Table
+                    title="Mela Campaign Active Inventory"
+                    headers={["Vehicle Model", "Color Variant", "Battery Spec", "Mela Price", "Initial Stock", "Remaining Stock", "Status", "Actions"]}
+                  >
+                    {melaInventoryList.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3 px-5 font-semibold text-slate-800">{inv.model_name}</td>
+                        <td className="py-3 px-5 text-slate-600 capitalize">{inv.color}</td>
+                        <td className="py-3 px-5 text-slate-700 font-bold">{inv.battery_type}</td>
+                        <td className="py-3 px-5 font-bold font-mono text-slate-800">₹ {parseFloat(inv.price).toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-5 font-mono text-slate-550">{inv.initial_quantity} Units</td>
+                        <td className="py-3 px-5 font-mono">
+                          <span className={`font-black ${inv.remaining_quantity === 0 ? "text-rose-600" : "text-slate-800"}`}>
+                            {inv.remaining_quantity} Units
+                          </span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            inv.remaining_quantity === 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                          }`}>
+                            {inv.remaining_quantity === 0 ? "Sold Out" : "In Stock"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMelaInventory(inv.id)}
+                            className="text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {melaInventoryList.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-slate-450 font-semibold">
+                          No active campaign stocks. Register new stock on the right panel.
+                        </td>
+                      </tr>
+                    )}
+                  </Table>
+                </div>
+
+                {/* Register stock side-card */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Add Campaign Vehicle</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define models, colors, battery types, prices, and quantities for the Mela.</p>
+                  </div>
+
+                  <form onSubmit={handleAddMelaInventorySubmit} className="space-y-3.5 text-xs font-semibold text-slate-655">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Select Model</label>
+                      <select
+                        value={melaInvModel}
+                        onChange={(e) => setMelaInvModel(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                        required
+                      >
+                        <option value="">-- Choose Model --</option>
+                        {vehicleModelsList.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.brand_name || m.brand} - {m.model_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Red, Black, Green"
+                        value={melaInvColor}
+                        onChange={(e) => setMelaInvColor(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Type Option</label>
+                      <select
+                        value={melaInvBattery}
+                        onChange={(e) => setMelaInvBattery(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                        required
+                      >
+                        <option value="graphene">Graphene</option>
+                        <option value="Li-24">Li-24</option>
+                        <option value="Li-30">Li-30</option>
+                        <option value="Li-40">Li-40</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Campaign Price</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 65000"
+                          value={melaInvPrice}
+                          onChange={(e) => setMelaInvPrice(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Qty</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 10"
+                          value={melaInvQty}
+                          onChange={(e) => setMelaInvQty(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
+                    >
+                      Register Campaign Stock
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "mela_checkout" && (
+            <div className="space-y-6 text-left max-w-3xl mx-auto">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Mela Cash Collection &amp; Order Checkout</h3>
+                  <p className="text-xs font-semibold text-slate-400 mt-1">Enter the Booking ID given by the customer to verify details and complete cash delivery.</p>
+                </div>
+
+                <form onSubmit={handleMelaCheckoutSearch} className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter Booking ID (e.g. MELA-20260623-1425)"
+                    value={melaSearchQuery}
+                    onChange={(e) => setMelaSearchQuery(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-850 font-bold font-mono outline-none focus:border-[#04a700]"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-[#04a700]/20 cursor-pointer shrink-0"
+                  >
+                    Search Booking
+                  </button>
+                </form>
+
+                {melaCheckoutError && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs font-bold flex items-center gap-2">
+                    <AlertTriangle className="h-4.5 w-4.5" />
+                    <span>{melaCheckoutError}</span>
+                  </div>
+                )}
+
+                {melaCheckoutLoading && (
+                  <div className="py-6 flex justify-center items-center gap-2 text-xs font-bold text-slate-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-200 border-t-[#04a700]" />
+                    <span>Processing transaction details...</span>
+                  </div>
+                )}
+
+                {melaFoundBooking && (
+                  <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-sm bg-[#FAFDFB]">
+                    <div className="bg-[#04a700]/10 border-b border-emerald-100 p-4 flex justify-between items-center">
+                      <span className="text-xs font-black text-[#04a700] font-mono tracking-wider">{melaFoundBooking.booking_id}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        melaFoundBooking.status === "completed"
+                          ? "bg-emerald-100 text-emerald-850"
+                          : "bg-amber-100 text-amber-850 animate-pulse"
+                      }`}>
+                        {melaFoundBooking.status_display}
+                      </span>
+                    </div>
+
+                    <div className="p-5 space-y-4 text-xs font-semibold text-slate-600">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                          <div className="text-slate-800 font-extrabold mt-0.5">{melaFoundBooking.customer_name}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Contact</label>
+                          <div className="text-slate-800 font-mono mt-0.5">{melaFoundBooking.customer_phone}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
+                          <div className="text-slate-850 font-extrabold mt-0.5">{melaFoundBooking.model_name}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Specs (Color / Battery)</label>
+                          <div className="text-slate-800 font-extrabold capitalize mt-0.5">{melaFoundBooking.color} / {melaFoundBooking.battery_type}</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Sales Rep</label>
+                          <div className="text-slate-855 font-bold mt-0.5">{melaFoundBooking.executive_name || melaFoundBooking.sales_executive} (Serial #{melaFoundBooking.executive_serial_number})</div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Special Campaign Price</label>
+                          <div className="text-emerald-700 font-black text-sm font-mono mt-0.5">₹ {parseFloat(melaFoundBooking.price).toLocaleString("en-IN")}</div>
+                        </div>
+                      </div>
+
+                      {melaFoundBooking.status === "unconfirmed" && (
+                        <div className="pt-4 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => handleMelaCheckoutComplete(melaFoundBooking.id)}
+                            className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-3 px-6 rounded-xl transition-all shadow-md shadow-[#04a700]/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <DollarSign className="h-4.5 w-4.5" />
+                            Collect Cash &amp; Finalize Order
+                          </button>
+                        </div>
+                      )}
+
+                      {melaFoundBooking.status === "completed" && (
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-xs bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                          <CheckCircle2 className="h-4.5 w-4.5" />
+                          <span>Order completed, fully paid, and delivered on {new Date(melaFoundBooking.completed_at).toLocaleString()}.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "mela_reports" && (
+            <div className="space-y-6 text-left">
+              {/* Leaderboard & performance reports */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Statistics panel */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                  <h3 className="text-sm font-black text-slate-800">Mela Campaign Performance</h3>
+                  <p className="text-[11px] font-semibold text-slate-400 -mt-2">Summary of billing metrics</p>
+                  
+                  <div className="divide-y divide-slate-100 text-xs">
+                    <div className="py-2.5 flex justify-between">
+                      <span className="text-slate-500 font-bold">Total Sales Billing</span>
+                      <span className="font-mono font-black text-slate-850">₹ {(melaReports?.summary?.total_sales_revenue || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="py-2.5 flex justify-between">
+                      <span className="text-slate-500 font-bold">Today's Sales Billing</span>
+                      <span className="font-mono font-black text-emerald-700">₹ {(melaReports?.summary?.daily_sales_revenue || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="py-2.5 flex justify-between">
+                      <span className="text-slate-500 font-bold">Total Deliveries</span>
+                      <span className="font-bold text-slate-850">{melaReports?.summary?.completed_bookings || 0} Vehicles</span>
+                    </div>
+                    <div className="py-2.5 flex justify-between">
+                      <span className="text-slate-500 font-bold">Active Reservations</span>
+                      <span className="font-bold text-amber-700">{melaReports?.summary?.unconfirmed_bookings || 0} Bookings</span>
+                    </div>
+                    <div className="py-2.5 flex justify-between">
+                      <span className="text-slate-500 font-bold">Cancelled Bookings</span>
+                      <span className="font-bold text-rose-600">{melaReports?.summary?.cancelled_bookings || 0} Bookings</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sales Representative Leaderboard */}
+                <div className="lg:col-span-2">
+                  <Table
+                    title="Sales Executive Leaderboard"
+                    headers={["Rank", "Executive Name", "Total Bookings", "Delivered Units", "Total Mela Revenue"]}
+                  >
+                    {melaReports?.executive_performance?.map((ex: any, idx: number) => (
+                      <tr key={ex.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3.5 px-5 font-extrabold text-slate-450">
+                          {idx === 0 ? "🏆 1st" : idx === 1 ? "🥈 2nd" : idx === 2 ? "🥉 3rd" : `${idx + 1}th`}
+                        </td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{ex.full_name}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-500">{ex.total_bookings} Bookings</td>
+                        <td className="py-3.5 px-5 font-black text-[#04a700]">{ex.completed_bookings} Delivered</td>
+                        <td className="py-3.5 px-5 font-bold font-mono text-slate-855">₹ {ex.total_revenue.toLocaleString("en-IN")}</td>
+                      </tr>
+                    ))}
+                    {(!melaReports?.executive_performance || melaReports.executive_performance.length === 0) && (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400 font-semibold">
+                          No sales data registered for executives.
+                        </td>
+                      </tr>
+                    )}
+                  </Table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
