@@ -11,6 +11,7 @@ import {
   User, TrendingUp, CalendarDays, UserCheck, Layers, ArrowUpRight, 
   MapPin, ShoppingBag, Landmark, PhoneCall, Sparkles
 } from 'lucide-react-native';
+import { getMelaSettingsList } from '@/services/mela';
 
 export default function SalesDashboard() {
   const insets = useSafeAreaInsets();
@@ -20,6 +21,7 @@ export default function SalesDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [leads, setLeads] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [melaActive, setMelaActive] = useState(false);
 
   const handleDial = (number: string) => {
     const cleaned = number.replace(/\s+/g, '');
@@ -35,12 +37,15 @@ export default function SalesDashboard() {
       if (!refreshing && leads.length === 0) {
         setIsLoading(true);
       }
-      const [leadsRes, salesRes] = await Promise.all([
+      const [leadsRes, salesRes, settingsRes] = await Promise.all([
         api.get('/leads/'),
         api.get('/sales-invoices/'),
+        getMelaSettingsList().catch(() => [])
       ]);
       setLeads(leadsRes.data || []);
       setSales(salesRes.data || []);
+      const activeMela = settingsRes?.find((s: any) => s.is_active);
+      setMelaActive(!!activeMela);
     } catch (e) {
       console.error('Failed to load sales dashboard data:', e);
     } finally {
