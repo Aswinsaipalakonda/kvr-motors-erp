@@ -132,7 +132,7 @@ export default function SalesLayout() {
             <SalesFollowups />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
-            <SalesAttendance />
+            <SalesAttendance isActive={activeTab === 'attendance'} />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
             <SalesProfile />
