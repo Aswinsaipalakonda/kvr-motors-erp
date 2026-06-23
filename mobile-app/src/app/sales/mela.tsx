@@ -107,8 +107,9 @@ export default function SalesMelaCampaign() {
       Alert.alert('Required Field', 'Please enter the customer\'s name.');
       return;
     }
-    if (!customerPhone.trim() || customerPhone.trim().length < 10) {
-      Alert.alert('Required Field', 'Please enter a valid 10-digit phone number.');
+    const cleanPhone = customerPhone.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      Alert.alert('Validation Error', 'Phone number must be exactly 10 digits.');
       return;
     }
 
