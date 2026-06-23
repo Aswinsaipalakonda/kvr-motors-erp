@@ -2087,12 +2087,18 @@ export default function OwnerDashboard() {
                         </span>
                         Campaign Live
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        Date Range: {selectedRange}
-                      </span>
+                      {melaStartDateSetting && melaEndDateSetting ? (
+                        <span className="text-[10px] font-bold text-amber-300 font-mono bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 rounded-full animate-pulse shadow-sm">
+                          📅 Campaign Period: {new Date(melaStartDateSetting).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} - {new Date(melaEndDateSetting).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400 font-mono">
+                          Date Range: {selectedRange}
+                        </span>
+                      )}
                     </div>
                     <h2 className="text-base sm:text-2xl font-semibold text-white tracking-tight leading-none whitespace-nowrap">
-                      Mela Campaign Overview
+                      {melaNameSetting || "Mela Campaign Overview"}
                     </h2>
                     <p className="text-[11px] sm:text-xs font-semibold text-slate-400 max-w-xl">
                       Monitor real-time campaign sales, approve pending reservations, and manage team quotas.
