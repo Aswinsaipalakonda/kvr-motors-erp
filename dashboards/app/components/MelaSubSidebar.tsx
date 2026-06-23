@@ -10,6 +10,7 @@ import {
   ListOrdered,
   PlusCircle,
   TrendingUp,
+  Settings,
 } from "lucide-react";
 
 interface MelaSubSidebarProps {
@@ -24,6 +25,7 @@ export default function MelaSubSidebar({ role, activeTab, setActiveTab }: MelaSu
     { id: "mela_inventory", label: "Campaign Stock", icon: Boxes },
     { id: "mela_checkout", label: "Cash Checkout", icon: CreditCard },
     { id: "mela_reports", label: "Sales & Leaderboard", icon: BarChart2 },
+    { id: "mela_settings", label: "About & Settings", icon: Settings },
   ];
 
   const salesItems = [
