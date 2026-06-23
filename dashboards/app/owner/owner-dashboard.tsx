@@ -150,6 +150,25 @@ export default function OwnerDashboard() {
   const [selectedLogDetail, setSelectedLogDetail] = useState<ActivityLog | null>(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
+  // Mela Campaign States
+  const [melaInventoryList, setMelaInventoryList] = useState<any[]>([]);
+  const [melaBookingsList, setMelaBookingsList] = useState<any[]>([]);
+  const [melaReports, setMelaReportsData] = useState<any>(null);
+  const [melaLoading, setMelaLoading] = useState(false);
+  const [melaSearchQuery, setMelaSearchQuery] = useState("");
+  const [melaFoundBooking, setMelaFoundBooking] = useState<any>(null);
+  const [melaCheckoutError, setMelaCheckoutError] = useState("");
+  const [melaCheckoutLoading, setMelaCheckoutLoading] = useState(false);
+  const [isAddMelaInventoryOpen, setIsAddMelaInventoryOpen] = useState(false);
+  const [editingMelaInventoryId, setEditingMelaInventoryId] = useState<number | null>(null);
+
+  // Mela Inventory Form
+  const [melaInvModel, setMelaInvModel] = useState("");
+  const [melaInvColor, setMelaInvColor] = useState("");
+  const [melaInvBattery, setMelaInvBattery] = useState("graphene");
+  const [melaInvQty, setMelaInvQty] = useState("");
+  const [melaInvPrice, setMelaInvPrice] = useState("");
+
   // New PO form state
   const [newPOSupplier, setNewPOSupplier] = useState("");
   const [newPOModel, setNewPOModel] = useState("");
