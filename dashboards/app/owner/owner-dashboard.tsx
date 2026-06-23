@@ -2311,7 +2311,21 @@ export default function OwnerDashboard() {
                             {inv.remaining_quantity === 0 ? "Sold Out" : "In Stock"}
                           </span>
                         </td>
-                        <td className="py-3 px-5">
+                        <td className="py-3 px-5 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingMelaInventoryId(inv.id);
+                              setMelaInvModel(String(inv.vehicle_model));
+                              setMelaInvColor(inv.color);
+                              setMelaInvBattery(inv.battery_type);
+                              setMelaInvQty(String(inv.initial_quantity));
+                              setMelaInvPrice(String(inv.price));
+                            }}
+                            className="text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer"
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteMelaInventory(inv.id)}
