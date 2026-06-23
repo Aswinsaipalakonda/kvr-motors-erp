@@ -574,8 +574,10 @@ export default function SalesDashboard() {
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       <DashboardSmoothScroll />
       
-      {/* Unified Sidebar */}
       <DashboardSidebar role="sales" activeTab={activeTab} setActiveTab={setActiveTab} />
+      {activeTab.startsWith("mela_") && (
+        <MelaSubSidebar role="sales" activeTab={activeTab} setActiveTab={setActiveTab} />
+      )}
 
       {/* Main Panel Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
