@@ -1797,5 +1797,48 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     paddingVertical: 20
+  },
+  // ---- Settings Tab Form ----
+  formContainer: {
+    gap: 16
+  },
+  inputGroup: {
+    gap: 6
+  },
+  inputLabel: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#475569',
+    textTransform: 'uppercase'
+  },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600'
+  },
+  dateGrid: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  saveBtn: {
+    backgroundColor: '#04a700',
+    borderRadius: 999,
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10
+  },
+  saveBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800'
   }
 });
