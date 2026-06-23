@@ -159,7 +159,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
         setLocationName('Showroom Workspace');
       }
     } catch (err) {
-      console.error('Failed to resolve current location:', err);
+      console.warn('Location unavailable, using fallback:', err?.message || err);
       setLocationName('Autocaptured Location');
     } finally {
       setIsResolvingLocation(false);
@@ -220,7 +220,7 @@ export default function AttendanceScreen({ role }: { role: string }) {
           setLocationName('Showroom Workspace');
         }
       } catch (err) {
-        console.error('Failed to resolve current location:', err);
+        console.warn('Location unavailable during check-in, using fallback:', err?.message || err);
         setLocationName('Autocaptured Location');
       } finally {
         setIsResolvingLocation(false);
