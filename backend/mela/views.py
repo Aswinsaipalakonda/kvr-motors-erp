@@ -16,13 +16,33 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class MelaInventoryViewSet(viewsets.ModelViewSet):
-    queryset = MelaInventory.objects.all().order_by('vehicle_model__model_name')
     serializer_class = MelaInventorySerializer
     filterset_fields = ['vehicle_model', 'color', 'battery_type', 'is_active']
 
+    def get_queryset(self):
+        queryset = MelaInventory.objects.all()
+        
+        vehicle_model = self.request.query_params.get('vehicle_model')
+        if vehicle_model:
+            queryset = queryset.filter(vehicle_model_id=vehicle_model)
+            
+        color = self.request.query_params.get('color')
+        if color:
+            queryset = queryset.filter(color__iexact=color)
+            
+        battery_type = self.request.query_params.get('battery_type')
+        if battery_type:
+            queryset = queryset.filter(battery_type=battery_type)
+            
+        is_active = self.request.query_params.get('is_active')
+        if is_active:
+            is_active_bool = is_active.lower() in ['true', '1']
+            queryset = queryset.filter(is_active=is_active_bool)
+            
+        return queryset.order_by('vehicle_model__model_name')
+
 
 class MelaBookingViewSet(viewsets.ModelViewSet):
-    queryset = MelaBooking.objects.all().order_by('-created_at')
     serializer_class = MelaBookingSerializer
     filterset_fields = ['status', 'sales_executive', 'booking_id']
 
@@ -30,11 +50,27 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_anonymous:
             return MelaBooking.objects.none()
-        # Admin and Owner roles can view all bookings
+        
+        # Base queryset based on role
         if user.role in ['owner', 'admin']:
-            return MelaBooking.objects.all().order_by('-created_at')
-        # Sales representatives can only view their own bookings
-        return MelaBooking.objects.filter(sales_executive=user).order_by('-created_at')
+            queryset = MelaBooking.objects.all()
+        else:
+            queryset = MelaBooking.objects.filter(sales_executive=user)
+
+        # Manual query parameters filtering
+        booking_id = self.request.query_params.get('booking_id')
+        if booking_id:
+            queryset = queryset.filter(booking_id=booking_id)
+
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        sales_executive_filter = self.request.query_params.get('sales_executive')
+        if sales_executive_filter:
+            queryset = queryset.filter(sales_executive_id=sales_executive_filter)
+
+        return queryset.order_by('-created_at')
 
     @action(detail=True, methods=['post'], url_path='complete')
     def complete_booking(self, request, pk=None):
@@ -100,8 +136,8 @@ class MelaReportsView(APIView):
             completed_at__date=today
         ).count()
 
-        # Leaderboard calculation across sales executives (supporting 'sales' and 'sales_executive' roles)
-        executives = User.objects.filter(role__in=['sales_executive', 'sales'])
+        # Leaderboard calculation across sales executives (supporting 'sales', 'sales_executive', 'owner', 'admin', and 'supervisor' roles)
+        executives = User.objects.filter(role__in=['sales_executive', 'sales', 'owner', 'admin', 'supervisor'])
         exec_performance = []
         for exe in executives:
             bookings_count = MelaBooking.objects.filter(sales_executive=exe).count()
