@@ -90,6 +90,23 @@ const getDefaultRangeString = () => {
   return `01 ${monthName} ${year} - ${String(lastDay).padStart(2, "0")} ${monthName} ${year}`;
 };
 
+const getDynamicDate = (day: number, offsetMonth: number = 0, format: "short" | "long" = "long") => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + offsetMonth;
+  const tempDate = new Date(year, month, day);
+  const mName = tempDate.toLocaleString("en-US", { month: format });
+  return `${day} ${mName} ${tempDate.getFullYear()}`;
+};
+
+const getDynamicCode = (prefix: string, day: number) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const dayStr = String(day).padStart(2, "0");
+  return `${prefix}-${year}-${month}${dayStr}`;
+};
+
 export default function OwnerDashboard() {
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
