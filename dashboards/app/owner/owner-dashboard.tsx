@@ -1926,6 +1926,15 @@ export default function OwnerDashboard() {
     return locationsList.filter((l) => String(l.branch) === stockUnitForm.branch);
   }, [locationsList, stockUnitForm.branch]);
 
+  // Dynamically extract battery capacities from database batteriesStock
+  const uniqueBatteryCapacities = React.useMemo(() => {
+    const capacities = Array.from(new Set(batteriesStock.map((b) => b.capacity).filter(Boolean)));
+    // Merge standard fallbacks to ensure options exist if database has few
+    const defaults = ["Graphene", "Li-24", "Li-30", "Li-40"];
+    const merged = Array.from(new Set([...capacities, ...defaults]));
+    return merged;
+  }, [batteriesStock]);
+
   if (!isMounted) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#FAFDFB]">
