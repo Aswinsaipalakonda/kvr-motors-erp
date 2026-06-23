@@ -29,7 +29,10 @@ import {
   deleteMelaInventory,
   getMelaBookings,
   completeMelaBooking,
-  getMelaReports
+  getMelaReports,
+  getMelaSettingsList,
+  createMelaSettings,
+  updateMelaSettings
 } from "../services/mela";
 import {
   TrendingUp,
