@@ -595,6 +595,34 @@ export default function SalesDashboard() {
 
         <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           
+          {/* Mobile Mela Sub-Navigation Tab Bar */}
+          {activeTab.startsWith("mela_") && (
+            <div className="flex md:hidden overflow-x-auto gap-2 py-2 px-1 border-b border-slate-100 scrollbar-none shrink-0 bg-white -mx-4 px-4 sticky top-0 z-30 shadow-sm">
+              {[
+                { id: "mela_booking_form", label: "New Booking", icon: PlusCircle },
+                { id: "mela_my_bookings", label: "My Bookings", icon: ListOrdered },
+                { id: "mela_reports", label: "Performance", icon: TrendingUp },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                const TIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => navigateTo(tab.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#04a700] to-emerald-600 text-white shadow-md shadow-emerald-500/10"
+                        : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <TIcon className="h-3.5 w-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* MELA VIEWS FOR SALES EXECUTIVE */}
           {activeTab === "mela_booking_form" && (
             <div className="space-y-6 text-left">
