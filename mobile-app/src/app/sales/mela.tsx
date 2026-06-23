@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, CheckCircle2, X,
-  TrendingUp, DollarSign, AlertTriangle, Award, ChevronRight, Phone, User
+  TrendingUp, DollarSign, AlertTriangle, Award, ChevronRight, Phone, User, Search
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -32,6 +32,8 @@ export default function SalesMelaCampaign() {
   const [bookingsList, setBookingsList] = useState<MelaBooking[]>([]);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
