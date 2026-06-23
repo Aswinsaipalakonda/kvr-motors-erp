@@ -136,6 +136,12 @@ export default function SalesLeads() {
       return;
     }
 
+    const cleanPhone = contactNumber.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      Alert.alert('Validation Error', 'Contact number must be exactly 10 digits.');
+      return;
+    }
+
     try {
       setIsLoading(true);
       const payload = {
