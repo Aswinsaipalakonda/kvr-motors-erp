@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Alert,
-  RefreshControl, BackHandler, Modal, FlatList, KeyboardAvoidingView, Platform
+  RefreshControl, BackHandler, Modal, FlatList, KeyboardAvoidingView, Platform, Switch
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
