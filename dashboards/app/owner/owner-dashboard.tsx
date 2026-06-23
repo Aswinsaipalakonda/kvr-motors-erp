@@ -642,14 +642,25 @@ export default function OwnerDashboard() {
   const loadMelaData = async () => {
     try {
       setMelaLoading(true);
-      const [inv, bookings, reports] = await Promise.all([
+      const [inv, bookings, reports, settings] = await Promise.all([
         getMelaInventory(),
         getMelaBookings(),
-        getMelaReports()
+        getMelaReports(),
+        getMelaSettingsList()
       ]);
       setMelaInventoryList(inv);
       setMelaBookingsList(bookings);
       setMelaReportsData(reports);
+      setMelaSettingsList(settings);
+
+      const activeSetting = settings.find((s: any) => s.is_active) || settings[0];
+      if (activeSetting) {
+        setMelaNameSetting(activeSetting.mela_name);
+        setMelaStartDateSetting(activeSetting.start_date || "");
+        setMelaEndDateSetting(activeSetting.end_date || "");
+        setMelaLocationSetting(activeSetting.location);
+        setMelaSettingsId(activeSetting.id || null);
+      }
     } catch (e) {
       console.error("Failed to load Mela campaign details:", e);
     } finally {
