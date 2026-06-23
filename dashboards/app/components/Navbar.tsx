@@ -73,8 +73,17 @@ const ROLE_MODULES: Record<NavbarProps["role"], SearchModule[]> = {
   ],
 };
 
+const getDefaultRangeString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthName = monthNames[now.getMonth()];
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  return `01 ${monthName} ${year} - ${String(lastDay).padStart(2, "0")} ${monthName} ${year}`;
+};
+
 const DATE_RANGES = [
-  "01 May 2024 - 31 May 2024",
+  getDefaultRangeString(),
   "Today",
   "Last 7 Days",
   "This Month",

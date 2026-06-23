@@ -81,13 +81,22 @@ import {
   Bar,
   Legend
 } from "recharts";
+const getDefaultRangeString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthName = monthNames[now.getMonth()];
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  return `01 ${monthName} ${year} - ${String(lastDay).padStart(2, "0")} ${monthName} ${year}`;
+};
+
 export default function OwnerDashboard() {
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
   const initialTab = lastSegment === "owner" ? "dashboard" : lastSegment;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
-  const [selectedRange, setSelectedRange] = useState("01 May 2024 - 31 May 2024");
+  const [selectedRange, setSelectedRange] = useState(getDefaultRangeString());
 
   // Sync state with browser back/forward navigation popstate events
   useEffect(() => {
