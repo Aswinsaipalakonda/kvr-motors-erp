@@ -215,7 +215,7 @@ export default function SalesDashboard() {
                     <ThemedText style={styles.melaCtaTitle}>⚡ Active Mela Campaign</ThemedText>
                     <ThemedText style={styles.bookingCtaDesc}>Mela Catalog, Bookings & Reports</ThemedText>
                   </View>
-                  <ArrowUpRight size={18} color="#d97706" />
+                  <ArrowUpRight size={18} color="#04a700" />
                 </Pressable>
               </View>
 
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(217, 119, 6, 0.25)',
-    shadowColor: '#d97706',
+    borderColor: 'rgba(4, 167, 0, 0.25)',
+    shadowColor: '#04a700',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#d97706',
+    backgroundColor: '#04a700',
     alignItems: 'center',
     justifyContent: 'center',
   },
