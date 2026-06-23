@@ -790,6 +790,21 @@ export default function OwnerMelaCampaign() {
                       />
                     </View>
 
+                    <View style={styles.toggleRow}>
+                      <View style={styles.toggleTextWrapper}>
+                        <ThemedText style={styles.toggleLabel}>Enable Mela Campaign features</ThemedText>
+                        <ThemedText style={styles.toggleDesc}>
+                          Turn on to show Mela Booking Portal to Sales Executives
+                        </ThemedText>
+                      </View>
+                      <Switch
+                        value={isActive}
+                        onValueChange={setIsActive}
+                        trackColor={{ false: '#e2e8f0', true: '#86efac' }}
+                        thumbColor={isActive ? '#04a700' : '#cbd5e1'}
+                      />
+                    </View>
+
                     <Pressable
                       onPress={handleSaveSettings}
                       disabled={submittingSettings}
