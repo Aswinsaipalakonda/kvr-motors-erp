@@ -41,6 +41,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
   // Closed by default so it acts as an overlay drawer on mobile.
   // On desktop (lg+) the aside is always visible via `lg:translate-x-0`.
   const [isOpen, setIsOpen] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<{ label: string; x: number; y: number } | null>(null);
 
   // Define sidebar menu structure for each role based on the PRD & reference image
   const menuConfig = {
