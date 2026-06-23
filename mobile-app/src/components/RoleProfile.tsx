@@ -157,6 +157,12 @@ export default function RoleProfile({
   };
 
   const handleSavePersonalInfo = async () => {
+    const cleanPhone = personalInfoForm.phone_number.trim().replace(/\D/g, '');
+    if (personalInfoForm.phone_number.trim() && cleanPhone.length !== 10) {
+      Alert.alert('Validation Error', 'Phone number must be exactly 10 digits.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       const fullName = `${personalInfoForm.first_name} ${personalInfoForm.last_name}`.trim();
