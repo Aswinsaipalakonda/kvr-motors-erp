@@ -578,7 +578,113 @@ export default function OwnerDashboard() {
       showToast("Failed to bulk verify attendance.", "error");
     }
   };
+  const loadMelaData = async () => {
+    try {
+      setMelaLoading(true);
+      const [inv, bookings, reports] = await Promise.all([
+        getMelaInventory(),
+        getMelaBookings(),
+        getMelaReports()
+      ]);
+      setMelaInventoryList(inv);
+      setMelaBookingsList(bookings);
+      setMelaReportsData(reports);
+    } catch (e) {
+      console.error("Failed to load Mela campaign details:", e);
+    } finally {
+      setMelaLoading(false);
+    }
+  };
 
+  const handleAddMelaInventorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!melaInvModel || !melaInvColor.trim() || !melaInvQty || !melaInvPrice) {
+      showToast("Please fill all required stock fields.", "error");
+      return;
+    }
+    const payload = {
+      vehicle_model: parseInt(melaInvModel),
+      color: melaInvColor.trim(),
+      battery_type: melaInvBattery,
+      initial_quantity: parseInt(melaInvQty),
+      remaining_quantity: parseInt(melaInvQty),
+      price: parseFloat(melaInvPrice),
+      is_active: true
+    };
+    try {
+      if (editingMelaInventoryId) {
+        await updateMelaInventory(editingMelaInventoryId, payload);
+        showToast("Mela stock updated.");
+      } else {
+        await createMelaInventory(payload);
+        showToast("Mela stock added.");
+      }
+      setEditingMelaInventoryId(null);
+      setMelaInvModel("");
+      setMelaInvColor("");
+      setMelaInvBattery("graphene");
+      setMelaInvQty("");
+      setMelaInvPrice("");
+      setIsAddMelaInventoryOpen(false);
+      loadMelaData();
+    } catch (err: any) {
+      console.error("Failed to save Mela stock:", err);
+      const msg = err.response?.data?.color || err.response?.data?.non_field_errors || "Failed to save stock.";
+      showToast(Array.isArray(msg) ? msg[0] : String(msg), "error");
+    }
+  };
+
+  const handleDeleteMelaInventory = async (id: number) => {
+    if (!window.confirm("Are you sure you want to remove this vehicle from the Mela campaign?")) return;
+    try {
+      await deleteMelaInventory(id);
+      showToast("Mela campaign stock deleted.");
+      loadMelaData();
+    } catch {
+      showToast("Failed to delete Mela stock.", "error");
+    }
+  };
+
+  const handleMelaCheckoutSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMelaCheckoutError("");
+    setMelaFoundBooking(null);
+    const q = melaSearchQuery.trim();
+    if (!q) {
+      setMelaCheckoutError("Please enter a Booking ID.");
+      return;
+    }
+    try {
+      setMelaCheckoutLoading(true);
+      const results = await getMelaBookings({ booking_id: q });
+      if (results && results.length > 0) {
+        setMelaFoundBooking(results[0]);
+      } else {
+        setMelaCheckoutError("No booking found with this Booking ID.");
+      }
+    } catch {
+      setMelaCheckoutError("Error searching for Booking ID.");
+    } finally {
+      setMelaCheckoutLoading(false);
+    }
+  };
+
+  const handleMelaCheckoutComplete = async (bookingId: number) => {
+    try {
+      setMelaCheckoutLoading(true);
+      await completeMelaBooking(bookingId);
+      showToast("Payment collected! Booking completed & delivered.");
+      setMelaSearchQuery("");
+      setMelaFoundBooking(null);
+      loadMelaData();
+      loadLedger();
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Failed to finalize checkout.";
+      showToast(String(msg), "error");
+    } finally {
+      setMelaCheckoutLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -593,6 +699,7 @@ export default function OwnerDashboard() {
     loadActivityLogs();
     loadUsers();
     loadAttendance();
+    loadMelaData();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
   }, []);
