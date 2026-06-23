@@ -7,7 +7,9 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, Plus, Edit2,
-  Trash2, Save, CheckCircle2, ChevronRight, X, BatteryCharging, Zap, Info
+  Trash2, Save, CheckCircle2, ChevronRight, X, BatteryCharging, Zap, Info,
+  TrendingUp, DollarSign, AlertTriangle, ShieldCheck, CreditCard, BarChart2,
+  Settings as SettingsIcon, Award
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import api from '@/services/api';
@@ -15,13 +17,19 @@ import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
   getMelaSettingsList, createMelaSettings, updateMelaSettings,
   getMelaInventory, createMelaInventory, updateMelaInventory, deleteMelaInventory,
-  getVehicleModels, createVehicleModel, getVehicleBrands, MelaInventoryInput,
-  MelaSettingsInput, VehicleModel, VehicleBrand
+  getVehicleModels, createVehicleModel, getMelaReports, getMelaBookings,
+  completeMelaBooking, getVehicleBrands, MelaInventoryInput,
+  MelaSettingsInput, VehicleModel, VehicleBrand, MelaReports, MelaBooking
 } from '@/services/mela';
+
+type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'leaderboard' | 'settings';
 
 export default function OwnerMelaCampaign() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<OwnerMelaTab>('overview');
 
   // Settings state
   const [melaSettingsId, setMelaSettingsId] = useState<number | null>(null);
@@ -35,6 +43,12 @@ export default function OwnerMelaCampaign() {
   const [inventoryList, setInventoryList] = useState<MelaInventoryInput[]>([]);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [melaReports, setMelaReports] = useState<MelaReports | null>(null);
+
+  // Checkout search states
+  const [melaSearchQuery, setMelaSearchQuery] = useState('');
+  const [foundBooking, setFoundBooking] = useState<MelaBooking | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Loading & refresh states
   const [isLoading, setIsLoading] = useState(true);
@@ -71,11 +85,12 @@ export default function OwnerMelaCampaign() {
     try {
       if (!isPullToRefresh) setIsLoading(true);
 
-      const [settingsRes, inventoryRes, modelsRes, brandsRes] = await Promise.all([
+      const [settingsRes, inventoryRes, modelsRes, brandsRes, reportsRes] = await Promise.all([
         getMelaSettingsList(),
         getMelaInventory(),
         getVehicleModels(),
-        getVehicleBrands()
+        getVehicleBrands(),
+        getMelaReports().catch(() => null) // Suppress reports fail to keep stock/settings loading
       ]);
 
       // Set settings
@@ -88,18 +103,14 @@ export default function OwnerMelaCampaign() {
         setMelaEndDate(activeSetting.end_date || '');
         setMelaLocation(activeSetting.location || '');
         setIsActive(activeSetting.is_active ?? true);
-      } else {
-        setMelaSettingsId(null);
-        setMelaName('');
-        setMelaStartDate('');
-        setMelaEndDate('');
-        setMelaLocation('');
-        setIsActive(true);
       }
 
       setInventoryList(inventoryRes || []);
       setModels(modelsRes || []);
       setBrands(brandsRes || []);
+      if (reportsRes) {
+        setMelaReports(reportsRes);
+      }
     } catch (err) {
       console.error('Failed to load Mela data:', err);
       Alert.alert('Sync Error', 'Unable to fetch latest campaign data from server.');
@@ -128,13 +139,13 @@ export default function OwnerMelaCampaign() {
     loadData(true);
   };
 
+  // Mela Settings save
   const handleSaveSettings = async () => {
     if (!melaName.trim() || !melaLocation.trim()) {
       Alert.alert('Required Fields', 'Please enter a campaign name and location.');
       return;
     }
 
-    // Basic date validations
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (melaStartDate && !dateRegex.test(melaStartDate)) {
       Alert.alert('Date Format', 'Start date must be in YYYY-MM-DD format (or empty).');
@@ -172,7 +183,62 @@ export default function OwnerMelaCampaign() {
     }
   };
 
-  // Add stock dialog opener
+  // Mela Checkout search
+  const handleSearchBooking = async () => {
+    if (!melaSearchQuery.trim()) {
+      Alert.alert('Required', 'Please enter a Booking ID to search.');
+      return;
+    }
+
+    try {
+      setCheckoutLoading(true);
+      setFoundBooking(null);
+      const bookings = await getMelaBookings({ booking_id: melaSearchQuery.trim() });
+      if (bookings && bookings.length > 0) {
+        setFoundBooking(bookings[0]);
+      } else {
+        Alert.alert('Not Found', 'No booking found matching this ID.');
+      }
+    } catch (err) {
+      console.error('Booking search failed:', err);
+      Alert.alert('Error', 'Search failed. Please verify connection.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  // Mela Checkout collect cash
+  const handleFinalizeCheckout = async () => {
+    if (!foundBooking) return;
+
+    Alert.alert(
+      'Collect Cash & Deliver',
+      `Confirm cash collection of ₹${parseFloat(foundBooking.price).toLocaleString()} for Booking: ${foundBooking.booking_id}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Collection',
+          onPress: async () => {
+            try {
+              setCheckoutLoading(true);
+              await completeMelaBooking(foundBooking.id);
+              Alert.alert('Success', 'Payment collected and order finalized successfully.');
+              setMelaSearchQuery('');
+              setFoundBooking(null);
+              loadData();
+            } catch (err) {
+              console.error('Finalize checkout failed:', err);
+              Alert.alert('Error', 'Failed to complete cash checkout transaction.');
+            } finally {
+              setCheckoutLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Stock operations helpers
   const handleOpenAddStock = () => {
     setEditingStockId(null);
     setStockModelId(null);
@@ -185,7 +251,6 @@ export default function OwnerMelaCampaign() {
     setIsStockModalVisible(true);
   };
 
-  // Edit stock dialog opener
   const handleOpenEditStock = (item: MelaInventoryInput) => {
     setEditingStockId(item.id || null);
     setStockModelId(item.vehicle_model);
@@ -224,9 +289,7 @@ export default function OwnerMelaCampaign() {
     );
   };
 
-  // Save/Update stock
   const handleSaveStock = async () => {
-    // 1. If inline add new model is active, create model first
     let finalModelId = stockModelId;
     if (showAddNewModel) {
       if (!newModelName.trim() || !newModelBrand || !newModelPrice.trim() || !newModelColors.trim()) {
@@ -244,7 +307,6 @@ export default function OwnerMelaCampaign() {
           status: 'active'
         });
         finalModelId = createdModel.id;
-        // Reset new model form inputs
         setNewModelName('');
         setNewModelBrand(null);
         setNewModelPrice('');
@@ -260,16 +322,13 @@ export default function OwnerMelaCampaign() {
 
     if (!finalModelId) {
       Alert.alert('Required Field', 'Please select or add a vehicle model.');
-      setSubmittingStock(false);
       return;
     }
 
-    // 2. Resolve battery type
     let finalBattery = stockBattery;
     if (showAddNewBattery) {
       if (!newBatteryName.trim()) {
         Alert.alert('Required Field', 'Please enter the custom battery spec name.');
-        setSubmittingStock(false);
         return;
       }
       finalBattery = newBatteryName.trim();
@@ -279,13 +338,11 @@ export default function OwnerMelaCampaign() {
 
     if (!finalBattery.trim()) {
       Alert.alert('Required Field', 'Please select or add a battery type.');
-      setSubmittingStock(false);
       return;
     }
 
     if (!stockColor.trim() || !stockQty.trim() || !stockPrice.trim()) {
       Alert.alert('Required Fields', 'Color, Quantity, and Special Price are required.');
-      setSubmittingStock(false);
       return;
     }
 
@@ -325,7 +382,7 @@ export default function OwnerMelaCampaign() {
       loadData();
     } catch (err: any) {
       console.error('Failed to save Mela stock:', err);
-      const errMsg = err.response?.data?.color || err.response?.data?.non_field_errors || 'Failed to save stock item. Ensure color is supported by the vehicle model.';
+      const errMsg = err.response?.data?.color || err.response?.data?.non_field_errors || 'Failed to save stock item. Ensure color variant exists on model.';
       Alert.alert('Validation Error', String(errMsg));
     } finally {
       setSubmittingStock(false);
@@ -362,13 +419,41 @@ export default function OwnerMelaCampaign() {
             </Pressable>
             <View style={styles.badgeWrapper}>
               <Sparkles size={12} color="#04a700" />
-              <ThemedText style={styles.badgeText}>MELA CAMPAIGN</ThemedText>
+              <ThemedText style={styles.badgeText}>MELA CONTROLS</ThemedText>
             </View>
           </View>
           <View style={styles.titleWrapper}>
-            <ThemedText style={styles.mainTitle}>Varahi Campaign</ThemedText>
-            <ThemedText style={styles.accentTitle}>{melaName || 'Mela Settings'}</ThemedText>
+            <ThemedText style={styles.mainTitle}>{melaName || 'Mela Campaign'}</ThemedText>
+            <ThemedText style={styles.accentTitle}>Owner Control Panel</ThemedText>
           </View>
+        </View>
+
+        {/* Tab Selector Segment Bar */}
+        <View style={styles.tabSelectorBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContent}>
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart2 },
+              { id: 'stock', label: 'Campaign Stock', icon: Package },
+              { id: 'checkout', label: 'Checkout', icon: CreditCard },
+              { id: 'leaderboard', label: 'Leaderboard', icon: Award },
+              { id: 'settings', label: 'Settings', icon: SettingsIcon }
+            ].map((tab) => {
+              const IconComp = tab.icon;
+              const isTabActive = activeTab === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  onPress={() => setActiveTab(tab.id as OwnerMelaTab)}
+                  style={[styles.tabItem, isTabActive && styles.activeTabItem]}
+                >
+                  <IconComp size={14} color={isTabActive ? '#04a700' : '#64748b'} style={{ marginRight: 6 }} />
+                  <ThemedText style={[styles.tabText, isTabActive && styles.activeTabText]}>
+                    {tab.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {isLoading ? (
@@ -385,163 +470,351 @@ export default function OwnerMelaCampaign() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
             }
           >
-            {/* Mela Settings Panel */}
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <ThemedText style={styles.cardTitle}>Mela Settings</ThemedText>
-                <View style={[styles.statusIndicator, { backgroundColor: isActive ? 'rgba(4, 167, 0, 0.12)' : 'rgba(239, 68, 68, 0.12)' }]}>
-                  <ThemedText style={[styles.statusText, { color: isActive ? '#04a700' : '#ef4444' }]}>
-                    {isActive ? 'Active' : 'Inactive'}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.formContainer}>
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>Mela Campaign Name</ThemedText>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Grand Monsoon Mela"
-                    placeholderTextColor="#94a3b8"
-                    value={melaName}
-                    onChangeText={setMelaName}
-                  />
-                </View>
-
-                <View style={styles.dateGrid}>
-                  <View style={[styles.inputGroup, { flex: 1 }]}>
-                    <ThemedText style={styles.inputLabel}>Start Date (YYYY-MM-DD)</ThemedText>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                      value={melaStartDate}
-                      onChangeText={setMelaStartDate}
-                    />
+            {/* TAB 1: OVERVIEW */}
+            {activeTab === 'overview' && (
+              <View style={styles.tabSection}>
+                {/* Campaign Status Banner */}
+                <View style={styles.heroBanner}>
+                  <View style={styles.bannerRow}>
+                    <View style={styles.pulseContainer}>
+                      <View style={styles.pulseDot} />
+                      <ThemedText style={styles.liveText}>CAMPAIGN LIVE</ThemedText>
+                    </View>
+                    <ThemedText style={styles.dateText}>
+                      📅 {melaStartDate || 'Start'} to {melaEndDate || 'End'}
+                    </ThemedText>
                   </View>
-                  <View style={[styles.inputGroup, { flex: 1 }]}>
-                    <ThemedText style={styles.inputLabel}>End Date (YYYY-MM-DD)</ThemedText>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                      value={melaEndDate}
-                      onChangeText={setMelaEndDate}
-                    />
+                  <ThemedText style={styles.bannerVenue}>📍 Venue: {melaLocation || 'Showroom Workplace'}</ThemedText>
+                </View>
+
+                {/* Performance Stats Cards */}
+                <View style={styles.statsGrid}>
+                  <View style={styles.statCard}>
+                    <DollarSign size={18} color="#04a700" />
+                    <ThemedText style={styles.statVal}>
+                      ₹{(melaReports?.summary?.total_sales_revenue || 0).toLocaleString('en-IN')}
+                    </ThemedText>
+                    <ThemedText style={styles.statLbl}>Total Revenue</ThemedText>
+                  </View>
+                  <View style={styles.statCard}>
+                    <CheckCircle2 size={18} color="#2563eb" />
+                    <ThemedText style={styles.statVal}>
+                      {melaReports?.summary?.completed_bookings || 0} Units
+                    </ThemedText>
+                    <ThemedText style={styles.statLbl}>Delivered</ThemedText>
+                  </View>
+                  <View style={styles.statCard}>
+                    <AlertTriangle size={18} color="#ea580c" />
+                    <ThemedText style={styles.statVal}>
+                      {melaReports?.summary?.unconfirmed_bookings || 0} Bookings
+                    </ThemedText>
+                    <ThemedText style={styles.statLbl}>Unconfirmed</ThemedText>
+                  </View>
+                  <View style={styles.statCard}>
+                    <TrendingUp size={18} color="#10b981" />
+                    <ThemedText style={styles.statVal}>
+                      ₹{(melaReports?.summary?.daily_sales_revenue || 0).toLocaleString('en-IN')}
+                    </ThemedText>
+                    <ThemedText style={styles.statLbl}>Today's Sales</ThemedText>
                   </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>Mela Location / Venue</ThemedText>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Main Showroom Ground"
-                    placeholderTextColor="#94a3b8"
-                    value={melaLocation}
-                    onChangeText={setMelaLocation}
-                  />
-                </View>
+                {/* Stock progress indicators list */}
+                <View style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>Live Inventory Ratio</ThemedText>
+                  <View style={styles.ratioList}>
+                    {inventoryList.map((item) => {
+                      const ratio = item.initial_quantity > 0 ? (item.remaining_quantity / item.initial_quantity) : 0;
+                      const percentage = Math.round(ratio * 100);
+                      const isLow = item.remaining_quantity <= 3;
 
-                <Pressable
-                  onPress={handleSaveSettings}
-                  disabled={submittingSettings}
-                  style={({ pressed }) => [
-                    styles.saveBtn,
-                    pressed && { opacity: 0.85 },
-                    submittingSettings && { opacity: 0.7 }
-                  ]}
-                >
-                  {submittingSettings ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <>
-                      <Save size={16} color="#ffffff" />
-                      <ThemedText style={styles.saveBtnText}>Save Configuration</ThemedText>
-                    </>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Mela Stock Panel */}
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <ThemedText style={styles.cardTitle}>Campaign Stock ({inventoryList.length})</ThemedText>
-                <Pressable
-                  onPress={handleOpenAddStock}
-                  style={({ pressed }) => [
-                    styles.addStockBtn,
-                    pressed && { opacity: 0.8 }
-                  ]}
-                >
-                  <Plus size={14} color="#ffffff" />
-                  <ThemedText style={styles.addStockBtnText}>Add Stock</ThemedText>
-                </Pressable>
-              </View>
-
-              {inventoryList.length === 0 ? (
-                <View style={styles.emptyStockContainer}>
-                  <Package size={42} color="#94a3b8" />
-                  <ThemedText style={styles.emptyStockText}>No vehicle stocks added to this campaign yet.</ThemedText>
-                </View>
-              ) : (
-                <View style={styles.stockList}>
-                  {inventoryList.map((item) => (
-                    <View key={item.id} style={styles.stockItemCard}>
-                      <View style={styles.stockHeader}>
-                        <View style={styles.modelCol}>
-                          <ThemedText style={styles.modelNameText}>
-                            {item.model_name || getModelName(item.vehicle_model)}
-                          </ThemedText>
-                          <ThemedText style={styles.brandNameText}>
-                            {item.brand_name || getBrandName(item.vehicle_model)}
-                          </ThemedText>
+                      return (
+                        <View key={item.id} style={styles.ratioItem}>
+                          <View style={styles.ratioHeader}>
+                            <View>
+                              <ThemedText style={styles.ratioModel}>
+                                {item.model_name || getModelName(item.vehicle_model)}
+                              </ThemedText>
+                              <ThemedText style={styles.ratioSpecs}>
+                                {item.color} • {item.battery_type}
+                              </ThemedText>
+                            </View>
+                            <ThemedText style={[styles.ratioCount, isLow && styles.lowStockCount]}>
+                              {item.remaining_quantity} / {item.initial_quantity} Left
+                            </ThemedText>
+                          </View>
+                          {/* Progress bar */}
+                          <View style={styles.progressBarTrack}>
+                            <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: isLow ? '#ef4444' : '#04a700' }]} />
+                          </View>
                         </View>
-                        <View style={styles.actionRow}>
-                          <Pressable
-                            onPress={() => handleOpenEditStock(item)}
-                            style={styles.iconBtn}
-                          >
-                            <Edit2 size={15} color="#2563eb" />
-                          </Pressable>
-                          <Pressable
-                            onPress={() => handleDeleteStock(item.id!)}
-                            style={styles.iconBtn}
-                          >
-                            <Trash2 size={15} color="#ef4444" />
-                          </Pressable>
+                      );
+                    })}
+                    {inventoryList.length === 0 && (
+                      <ThemedText style={styles.emptyTextCenter}>No active vehicles added to campaign.</ThemedText>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* TAB 2: INVENTORY STOCK */}
+            {activeTab === 'stock' && (
+              <View style={styles.tabSection}>
+                <View style={styles.card}>
+                  <View style={styles.cardHeaderRow}>
+                    <ThemedText style={styles.cardTitle}>Mela Campaign Inventory</ThemedText>
+                    <Pressable onPress={handleOpenAddStock} style={styles.addStockBtn}>
+                      <Plus size={14} color="#ffffff" />
+                      <ThemedText style={styles.addStockBtnText}>Add Stock</ThemedText>
+                    </Pressable>
+                  </View>
+
+                  {inventoryList.length === 0 ? (
+                    <View style={styles.emptyStockContainer}>
+                      <Package size={42} color="#94a3b8" />
+                      <ThemedText style={styles.emptyStockText}>No stocks configured yet.</ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.stockList}>
+                      {inventoryList.map((item) => (
+                        <View key={item.id} style={styles.stockItemCard}>
+                          <View style={styles.stockHeader}>
+                            <View style={styles.modelCol}>
+                              <ThemedText style={styles.modelNameText}>
+                                {item.model_name || getModelName(item.vehicle_model)}
+                              </ThemedText>
+                              <ThemedText style={styles.brandNameText}>
+                                {item.brand_name || getBrandName(item.vehicle_model)}
+                              </ThemedText>
+                            </View>
+                            <View style={styles.actionRow}>
+                              <Pressable onPress={() => handleOpenEditStock(item)} style={styles.iconBtn}>
+                                <Edit2 size={15} color="#2563eb" />
+                              </Pressable>
+                              <Pressable onPress={() => handleDeleteStock(item.id!)} style={styles.iconBtn}>
+                                <Trash2 size={15} color="#ef4444" />
+                              </Pressable>
+                            </View>
+                          </View>
+                          <View style={styles.divider} />
+                          <View style={styles.stockGrid}>
+                            <View style={styles.gridCell}>
+                              <ThemedText style={styles.gridLabel}>Color</ThemedText>
+                              <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
+                            </View>
+                            <View style={styles.gridCell}>
+                              <ThemedText style={styles.gridLabel}>Battery</ThemedText>
+                              <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
+                            </View>
+                            <View style={styles.gridCell}>
+                              <ThemedText style={styles.gridLabel}>Initial Stock</ThemedText>
+                              <ThemedText style={styles.gridValue}>{item.initial_quantity} Units</ThemedText>
+                            </View>
+                            <View style={styles.gridCell}>
+                              <ThemedText style={styles.gridLabel}>Price</ThemedText>
+                              <ThemedText style={styles.gridValuePrice}>₹{Math.round(item.price).toLocaleString()}</ThemedText>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* TAB 3: CHECKOUT */}
+            {activeTab === 'checkout' && (
+              <View style={styles.tabSection}>
+                <View style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>Cash Payment Delivery</ThemedText>
+                  <ThemedText style={styles.cardDesc}>Enter customer's reserved Mela Booking ID to complete pay collections.</ThemedText>
+
+                  <View style={styles.searchBarRow}>
+                    <TextInput
+                      style={styles.searchInputField}
+                      placeholder="e.g. MELA-20260623-1002"
+                      placeholderTextColor="#94a3b8"
+                      value={melaSearchQuery}
+                      onChangeText={setMelaSearchQuery}
+                      autoCapitalize="characters"
+                    />
+                    <Pressable onPress={handleSearchBooking} style={styles.searchBtn}>
+                      <ThemedText style={styles.searchBtnText}>Search</ThemedText>
+                    </Pressable>
+                  </View>
+
+                  {checkoutLoading && (
+                    <ActivityIndicator size="small" color="#04a700" style={{ marginVertical: 14 }} />
+                  )}
+
+                  {foundBooking && (
+                    <View style={styles.bookingFoundCard}>
+                      <View style={styles.foundHeader}>
+                        <ThemedText style={styles.foundBookingId}>{foundBooking.booking_id}</ThemedText>
+                        <View style={[styles.statusBadgeInline, { backgroundColor: foundBooking.status === 'completed' ? 'rgba(4,167,0,0.12)' : 'rgba(234,88,12,0.12)' }]}>
+                          <ThemedText style={[styles.statusTextInline, { color: foundBooking.status === 'completed' ? '#04a700' : '#ea580c' }]}>
+                            {foundBooking.status.toUpperCase()}
+                          </ThemedText>
                         </View>
                       </View>
-
                       <View style={styles.divider} />
 
-                      <View style={styles.stockGrid}>
-                        <View style={styles.gridCell}>
-                          <ThemedText style={styles.gridLabel}>Color</ThemedText>
-                          <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
+                      <View style={styles.detailsBlock}>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Customer Name</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.customer_name}</ThemedText>
                         </View>
-                        <View style={styles.gridCell}>
-                          <ThemedText style={styles.gridLabel}>Battery</ThemedText>
-                          <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Phone Number</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.customer_phone}</ThemedText>
                         </View>
-                        <View style={styles.gridCell}>
-                          <ThemedText style={styles.gridLabel}>Stock</ThemedText>
-                          <ThemedText style={styles.gridValue}>
-                            {item.remaining_quantity} / {item.initial_quantity}
-                          </ThemedText>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>EV Model Details</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.model_name || getModelName(foundBooking.vehicle_model)}</ThemedText>
                         </View>
-                        <View style={styles.gridCell}>
-                          <ThemedText style={styles.gridLabel}>Price</ThemedText>
-                          <ThemedText style={styles.gridValuePrice}>
-                            ₹{Math.round(item.price).toLocaleString()}
-                          </ThemedText>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Variant Specs</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.color} / {foundBooking.battery_type}</ThemedText>
+                        </View>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Sales executive</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.executive_name || 'Executive'} (Serial #{foundBooking.executive_serial_number})</ThemedText>
+                        </View>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Final Collection Price</ThemedText>
+                          <ThemedText style={styles.detailValPrice}>₹{parseFloat(foundBooking.price).toLocaleString()}</ThemedText>
                         </View>
                       </View>
+
+                      {foundBooking.status === 'unconfirmed' && (
+                        <Pressable onPress={handleFinalizeCheckout} style={styles.collectCashBtn}>
+                          <DollarSign size={16} color="#ffffff" />
+                          <ThemedText style={styles.collectCashBtnText}>Collect Cash & Deliver EV</ThemedText>
+                        </Pressable>
+                      )}
+
+                      {foundBooking.status === 'completed' && (
+                        <View style={styles.completedReceipt}>
+                          <CheckCircle2 size={16} color="#04a700" />
+                          <ThemedText style={styles.receiptText}>Delivered & paid in full.</ThemedText>
+                        </View>
+                      )}
                     </View>
-                  ))}
+                  )}
                 </View>
-              )}
-            </View>
+              </View>
+            )}
+
+            {/* TAB 4: LEADERBOARD */}
+            {activeTab === 'leaderboard' && (
+              <View style={styles.tabSection}>
+                <View style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>Sales Representative Leaderboard</ThemedText>
+                  <ThemedText style={styles.cardDesc}>Rankings calculated by total delivered Mela vehicles.</ThemedText>
+
+                  <View style={styles.leaderboardList}>
+                    {melaReports?.executive_performance?.map((ex, index) => (
+                      <View key={ex.id} style={styles.leaderboardRow}>
+                        <View style={styles.leaderboardLeft}>
+                          <ThemedText style={styles.rankNum}>
+                            {index === 0 ? '🏆 1' : index === 1 ? '🥈 2' : index === 2 ? '🥉 3' : `${index + 1}`}
+                          </ThemedText>
+                          <View>
+                            <ThemedText style={styles.execName}>{ex.full_name || ex.username}</ThemedText>
+                            <ThemedText style={styles.execSub}>Booked: {ex.total_bookings} orders</ThemedText>
+                          </View>
+                        </View>
+                        <View style={styles.leaderboardRight}>
+                          <ThemedText style={styles.execRevenue}>₹{ex.total_revenue.toLocaleString('en-IN')}</ThemedText>
+                          <ThemedText style={styles.execCompleted}>{ex.completed_bookings} Delivered</ThemedText>
+                        </View>
+                      </View>
+                    ))}
+                    {(!melaReports?.executive_performance || melaReports.executive_performance.length === 0) && (
+                      <ThemedText style={styles.emptyTextCenter}>No sales reps ranking metrics found.</ThemedText>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* TAB 5: ABOUT & SETTINGS */}
+            {activeTab === 'settings' && (
+              <View style={styles.tabSection}>
+                <View style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>Configure Dates & Info</ThemedText>
+                  <ThemedText style={styles.cardDesc}>Update the name, period dates, and location details of your campaign.</ThemedText>
+
+                  <View style={styles.formContainer}>
+                    <View style={styles.inputGroup}>
+                      <ThemedText style={styles.inputLabel}>Mela Campaign Name</ThemedText>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Grand Monsoon Mela"
+                        placeholderTextColor="#94a3b8"
+                        value={melaName}
+                        onChangeText={setMelaName}
+                      />
+                    </View>
+
+                    <View style={styles.dateGrid}>
+                      <View style={[styles.inputGroup, { flex: 1 }]}>
+                        <ThemedText style={styles.inputLabel}>Start Date (YYYY-MM-DD)</ThemedText>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor="#94a3b8"
+                          value={melaStartDate}
+                          onChangeText={setMelaStartDate}
+                        />
+                      </View>
+                      <View style={[styles.inputGroup, { flex: 1 }]}>
+                        <ThemedText style={styles.inputLabel}>End Date (YYYY-MM-DD)</ThemedText>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor="#94a3b8"
+                          value={melaEndDate}
+                          onChangeText={setMelaEndDate}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <ThemedText style={styles.inputLabel}>Mela Location / Venue</ThemedText>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Main Showroom Ground"
+                        placeholderTextColor="#94a3b8"
+                        value={melaLocation}
+                        onChangeText={setMelaLocation}
+                      />
+                    </View>
+
+                    <Pressable
+                      onPress={handleSaveSettings}
+                      disabled={submittingSettings}
+                      style={({ pressed }) => [
+                        styles.saveBtn,
+                        pressed && { opacity: 0.85 },
+                        submittingSettings && { opacity: 0.7 }
+                      ]}
+                    >
+                      {submittingSettings ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <>
+                          <Save size={16} color="#ffffff" />
+                          <ThemedText style={styles.saveBtnText}>Save Configuration</ThemedText>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            )}
           </ScrollView>
         )}
 
@@ -567,7 +840,6 @@ export default function OwnerMelaCampaign() {
               </View>
 
               <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-                {/* 1. Vehicle Model Dropdown / Inline form */}
                 {!editingStockId && (
                   <View style={styles.inputGroup}>
                     <ThemedText style={styles.inputLabel}>Vehicle Model</ThemedText>
@@ -587,7 +859,6 @@ export default function OwnerMelaCampaign() {
                   </View>
                 )}
 
-                {/* Inline "Add New Model" form if requested */}
                 {showAddNewModel && !editingStockId && (
                   <View style={styles.nestedForm}>
                     <ThemedText style={styles.nestedFormTitle}>Add New Vehicle Model</ThemedText>
@@ -641,13 +912,12 @@ export default function OwnerMelaCampaign() {
                   </View>
                 )}
 
-                {/* 2. Color Selection (Dropdown or Input) */}
                 <View style={styles.inputGroup}>
                   <ThemedText style={styles.inputLabel}>Vehicle Color</ThemedText>
                   {showAddNewModel ? (
                     <TextInput
                       style={styles.input}
-                      placeholder="e.g. Green (must match model color variants)"
+                      placeholder="e.g. Green"
                       placeholderTextColor="#94a3b8"
                       value={stockColor}
                       onChangeText={setStockColor}
@@ -669,7 +939,7 @@ export default function OwnerMelaCampaign() {
                   ) : (
                     <TextInput
                       style={styles.input}
-                      placeholder="Select a model first or add custom color"
+                      placeholder="Select a model first"
                       placeholderTextColor="#94a3b8"
                       value={stockColor}
                       onChangeText={setStockColor}
@@ -677,7 +947,6 @@ export default function OwnerMelaCampaign() {
                   )}
                 </View>
 
-                {/* 3. Battery spec selector */}
                 <View style={styles.inputGroup}>
                   <ThemedText style={styles.inputLabel}>Battery Specification</ThemedText>
                   <Pressable
@@ -695,7 +964,6 @@ export default function OwnerMelaCampaign() {
                   </Pressable>
                 </View>
 
-                {/* Inline "Add New Battery Spec" form */}
                 {showAddNewBattery && (
                   <View style={styles.nestedForm}>
                     <ThemedText style={styles.nestedFormTitle}>Add Custom Battery Spec</ThemedText>
@@ -709,7 +977,6 @@ export default function OwnerMelaCampaign() {
                   </View>
                 )}
 
-                {/* 4. Price & Qty Fields */}
                 <View style={styles.dateGrid}>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <ThemedText style={styles.inputLabel}>Initial Stock Qty</ThemedText>
@@ -760,17 +1027,14 @@ export default function OwnerMelaCampaign() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* 1. Modal vehicle model selector list */}
+        {/* Modal selectors lists */}
         <Modal
           visible={isModelSelectorVisible}
           transparent={true}
           animationType="fade"
           onRequestClose={() => setIsModelSelectorVisible(false)}
         >
-          <Pressable
-            style={styles.modalOverlayList}
-            onPress={() => setIsModelSelectorVisible(false)}
-          >
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsModelSelectorVisible(false)}>
             <View style={styles.selectorModalContent}>
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>Select Vehicle Model</ThemedText>
@@ -778,7 +1042,6 @@ export default function OwnerMelaCampaign() {
                   <X size={20} color="#0f172a" />
                 </Pressable>
               </View>
-
               <FlatList
                 data={[
                   { id: -1, model_name: '+ Add New Model', brand_name: 'CREATE NEW' },
@@ -795,11 +1058,8 @@ export default function OwnerMelaCampaign() {
                       } else {
                         setShowAddNewModel(false);
                         setStockModelId(item.id);
-                        // Pre-select first color variant if available
                         const variants = models.find(m => m.id === item.id)?.color_variants || [];
-                        if (variants.length > 0) {
-                          setStockColor(variants[0]);
-                        }
+                        if (variants.length > 0) setStockColor(variants[0]);
                       }
                       setIsModelSelectorVisible(false);
                     }}
@@ -815,17 +1075,13 @@ export default function OwnerMelaCampaign() {
           </Pressable>
         </Modal>
 
-        {/* 2. Modal battery specification selector list */}
         <Modal
           visible={isBatterySelectorVisible}
           transparent={true}
           animationType="fade"
           onRequestClose={() => setIsBatterySelectorVisible(false)}
         >
-          <Pressable
-            style={styles.modalOverlayList}
-            onPress={() => setIsBatterySelectorVisible(false)}
-          >
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsBatterySelectorVisible(false)}>
             <View style={styles.selectorModalContent}>
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>Select Battery Specification</ThemedText>
@@ -833,7 +1089,6 @@ export default function OwnerMelaCampaign() {
                   <X size={20} color="#0f172a" />
                 </Pressable>
               </View>
-
               <FlatList
                 data={[
                   { key: 'add-new', label: '+ Add Custom Battery Spec' },
@@ -931,6 +1186,37 @@ const styles = StyleSheet.create({
     color: '#04a700',
     letterSpacing: -0.5
   },
+  tabSelectorBar: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  tabScrollContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 12
+  },
+  tabItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9'
+  },
+  activeTabItem: {
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(4, 167, 0, 0.3)'
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b'
+  },
+  activeTabText: {
+    color: '#04a700'
+  },
   loaderContainer: {
     flex: 1,
     alignItems: 'center',
@@ -951,6 +1237,122 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16
   },
+  tabSection: {
+    gap: 16
+  },
+  // ---- Overview tab ----
+  heroBanner: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    padding: 18,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.2)'
+  },
+  bannerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  pulseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(4, 167, 0, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#04a700'
+  },
+  liveText: {
+    fontSize: 9.5,
+    fontWeight: '900',
+    color: '#04a700',
+    letterSpacing: 0.5
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#fbbf24',
+    fontWeight: 'bold'
+  },
+  bannerVenue: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#cbd5e1'
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    gap: 6,
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.03)'
+  },
+  statVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0f172a'
+  },
+  statLbl: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
+  },
+  ratioList: {
+    gap: 14,
+    marginTop: 8
+  },
+  ratioItem: {
+    gap: 6
+  },
+  ratioHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  ratioModel: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  ratioSpecs: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '600'
+  },
+  ratioCount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#04a700'
+  },
+  lowStockCount: {
+    color: '#ef4444'
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#e2e8f0',
+    overflow: 'hidden'
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4
+  },
+  // ---- Stock Tab ----
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
@@ -971,58 +1373,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: -0.3
   },
-  statusIndicator: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-  statusText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    textTransform: 'uppercase'
-  },
-  formContainer: {
-    gap: 14
-  },
-  inputGroup: {
-    gap: 6
-  },
-  inputLabel: {
-    fontSize: 10,
-    fontWeight: '800',
+  cardDesc: {
+    fontSize: 12,
     color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 44,
-    fontSize: 13,
-    color: '#0f172a',
-    fontWeight: '600'
-  },
-  dateGrid: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  saveBtn: {
-    backgroundColor: '#04a700',
-    borderRadius: 999,
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 6
-  },
-  saveBtnText: {
-    color: '#ffffff',
-    fontSize: 13.5,
-    fontWeight: '800'
+    fontWeight: '500',
+    marginBottom: 14,
+    lineHeight: 17
   },
   addStockBtn: {
     backgroundColor: '#04a700',
@@ -1125,7 +1481,171 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#04a700'
   },
-  // ---- Modal ----
+  // ---- Checkout Tab ----
+  searchBarRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16
+  },
+  searchInputField: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  },
+  searchBtn: {
+    backgroundColor: '#04a700',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  searchBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '800'
+  },
+  bookingFoundCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(4, 167, 0, 0.2)',
+    padding: 16,
+    gap: 14
+  },
+  foundHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  foundBookingId: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#04a700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  },
+  statusBadgeInline: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4
+  },
+  statusTextInline: {
+    fontSize: 9,
+    fontWeight: '900'
+  },
+  detailsBlock: {
+    gap: 10
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  detailLbl: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600'
+  },
+  detailVal: {
+    fontSize: 11.5,
+    color: '#0f172a',
+    fontWeight: '800'
+  },
+  detailValPrice: {
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: '#04a700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  },
+  collectCashBtn: {
+    backgroundColor: '#04a700',
+    borderRadius: 12,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 6
+  },
+  collectCashBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  completedReceipt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(4, 167, 0, 0.18)',
+    padding: 12,
+    borderRadius: 10,
+    gap: 6
+  },
+  receiptText: {
+    color: '#04a700',
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  // ---- Leaderboard Tab ----
+  leaderboardList: {
+    gap: 12
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  leaderboardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  rankNum: {
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: '#475569',
+    width: 32,
+    textAlign: 'center'
+  },
+  execName: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  execSub: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '500'
+  },
+  leaderboardRight: {
+    alignItems: 'flex-end',
+    gap: 2
+  },
+  execRevenue: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#1e293b'
+  },
+  execCompleted: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#04a700'
+  },
+  // ---- Global Modals ----
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.4)',
@@ -1183,7 +1703,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10
   },
-  // ---- Nested Form ----
   nestedForm: {
     backgroundColor: '#f1f5f9',
     borderRadius: 14,
@@ -1234,7 +1753,6 @@ const styles = StyleSheet.create({
   pillTextActive: {
     color: '#04a700'
   },
-  // ---- Selector List Modals ----
   modalOverlayList: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.3)',
@@ -1247,7 +1765,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     width: '100%',
     maxHeight: '75%',
-    shadowColor: '#000',
+    shadowColor: '#005',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
@@ -1273,5 +1791,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     marginTop: 2
+  },
+  emptyTextCenter: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    paddingVertical: 20
   }
 });
