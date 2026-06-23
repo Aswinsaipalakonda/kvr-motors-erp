@@ -1772,10 +1772,10 @@ export default function OwnerDashboard() {
     });
     if (list.length === 0) {
       return [
-        { id: 1, action: "Vehicle Stock In", ref: "GRN-2024-0512", location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
-        { id: 2, action: "Sale Invoice Created", ref: "INV-2024-0789", location: "Isakapallem Showroom", user: "Suresh", time: "15 mins ago" },
-        { id: 3, action: "Purchase Invoice Created", ref: "PINV-2024-0321", location: "Pineapple Colony Godown", user: "Ramesh", time: "1 hour ago" },
-        { id: 4, action: "Lead Converted to Sale", ref: "LD-2024-0156", location: "Kakinada Showroom", user: "Suresh", time: "2 hours ago" },
+        { id: 1, action: "Vehicle Stock In", ref: getDynamicCode("GRN", 12), location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
+        { id: 2, action: "Sale Invoice Created", ref: getDynamicCode("INV", 89), location: "Isakapallem Showroom", user: "Suresh", time: "15 mins ago" },
+        { id: 3, action: "Purchase Invoice Created", ref: getDynamicCode("PINV", 21), location: "Pineapple Colony Godown", user: "Ramesh", time: "1 hour ago" },
+        { id: 4, action: "Lead Converted to Sale", ref: getDynamicCode("LD", 56), location: "Kakinada Showroom", user: "Suresh", time: "2 hours ago" },
       ];
     }
     return list.slice(0, 4);
