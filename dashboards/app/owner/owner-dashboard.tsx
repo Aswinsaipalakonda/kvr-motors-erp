@@ -2690,60 +2690,85 @@ export default function OwnerDashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {vehicleModelsList.map((model, idx) => (
-                    <div key={model.id || idx} className="bg-white border border-slate-150 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-250 transition-all duration-300 overflow-hidden group flex flex-col justify-between">
-                      <div className="p-5 space-y-4">
-                        {/* Brand Badge & Status */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-105">
+                    <div key={model.id || idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-emerald-500/30 transition-all duration-300 overflow-hidden flex flex-col justify-between group">
+                      {/* Premium Header */}
+                      <div className="bg-[#0b1329] border-b border-slate-800 text-white px-5 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Car className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
                             {model.brand_name || "Kinetic"}
                           </span>
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                            model.status === "active" ? "bg-emerald-50 text-[#04a700]" : "bg-slate-50 text-slate-505"
-                          }`}>
-                            {model.status === "active" ? "Active" : "Inactive"}
-                          </span>
                         </div>
-                        
-                        {/* Model Name & Base Price */}
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          model.status === "active" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-300"
+                        }`}>
+                          {model.status === "active" ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+
+                      {/* Card Content with Bento Grid */}
+                      <div className="p-5 space-y-4 text-left">
                         <div>
-                          <h4 className="text-base font-black text-slate-850 tracking-tight leading-none group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
-                          <p className="text-[10px] font-bold text-slate-400 mt-2">Base Price: <span className="font-black text-slate-800 font-mono text-xs">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</span></p>
+                          <h4 className="text-base font-extrabold text-slate-800 tracking-tight leading-none group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
+                          <div className="flex items-baseline gap-1 mt-2.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Base Price</span>
+                            <span className="text-lg font-black text-slate-900 font-mono">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</span>
+                          </div>
                         </div>
 
-                        {/* Specs Grid */}
-                        <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                          <div>
-                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Battery Compatibility</span>
-                            <span className="text-slate-700 font-bold truncate block">{model.battery_compatibility || "1.2 kWh"}</span>
+                        {/* Bento Grid */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {/* Battery compatibility */}
+                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                              <Battery className="h-3.5 w-3.5 text-slate-400" />
+                              <span>Battery Spec</span>
+                            </div>
+                            <span className="text-[11px] font-black text-slate-700 truncate mt-1">{model.battery_compatibility || "1.2 kWh"}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Color Variants</span>
-                            <span className="text-slate-700 font-bold truncate block">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}</span>
+
+                          {/* Color variants */}
+                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                              <span>Color Options</span>
+                            </div>
+                            <span className="text-[11px] font-black text-slate-700 truncate mt-1">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}</span>
                           </div>
-                          <div className="mt-1">
-                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Range (KM)</span>
-                            <span className="text-emerald-700 font-extrabold block">140 km</span>
+
+                          {/* Range */}
+                          <div className="bg-emerald-50/20 border border-emerald-100/60 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-700 uppercase tracking-wide">
+                              <Zap className="h-3.5 w-3.5 text-emerald-500" />
+                              <span>Est. Range</span>
+                            </div>
+                            <span className="text-xs font-black text-emerald-800 mt-1">140 km</span>
                           </div>
-                          <div className="mt-1">
-                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Warranty Period</span>
-                            <span className="text-slate-700 font-bold block">3 Yrs / 40K km</span>
+
+                          {/* Warranty */}
+                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                              <span className="text-[10px] text-slate-400 font-bold">🛡️</span>
+                              <span>Warranty</span>
+                            </div>
+                            <span className="text-[10px] font-extrabold text-slate-700 mt-1">3 Yrs / 40K km</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Action Footer */}
-                      <div className="border-t border-slate-100 bg-slate-50/30 px-5 py-3 flex justify-end gap-3">
+                      {/* Footer Actions */}
+                      <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-3 flex justify-end gap-3">
                         <button
                           onClick={() => openEditModel(model)}
-                          className="text-[11px] font-bold text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
+                          className="text-[11px] font-extrabold text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           Edit Details
                         </button>
                         <button
                           onClick={() => handleDeleteModel(model.id)}
-                          className="text-[11px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
+                          className="text-[11px] font-extrabold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
                         >
-                          Delete
+                          Delete Catalog
                         </button>
                       </div>
                     </div>
