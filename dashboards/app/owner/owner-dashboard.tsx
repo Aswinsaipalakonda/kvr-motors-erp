@@ -2268,7 +2268,7 @@ export default function OwnerDashboard() {
                         Enterprise Live
                       </span>
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-500">
-                        <CalendarDays className="h-3 w-3" /> 01 May – 31 May 2024
+                        <CalendarDays className="h-3 w-3" /> {selectedRange}
                       </span>
                     </div>
                     <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
