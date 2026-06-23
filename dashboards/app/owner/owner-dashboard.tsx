@@ -692,6 +692,92 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleMelaStockAdjustmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!melaAdjItem || !melaAdjQty) {
+      showToast("Please select a campaign item and enter adjustment quantity.", "error");
+      return;
+    }
+    const qtyVal = parseInt(melaAdjQty);
+    if (isNaN(qtyVal) || qtyVal <= 0) {
+      showToast("Quantity must be greater than zero.", "error");
+      return;
+    }
+    const selectedInv = melaInventoryList.find(item => String(item.id) === melaAdjItem);
+    if (!selectedInv) {
+      showToast("Selected campaign item not found.", "error");
+      return;
+    }
+
+    const newQty = melaAdjType === "in" 
+      ? selectedInv.remaining_quantity + qtyVal 
+      : selectedInv.remaining_quantity - qtyVal;
+
+    if (newQty < 0) {
+      showToast("Cannot subtract more stock than available.", "error");
+      return;
+    }
+
+    try {
+      const payload = {
+        vehicle_model: selectedInv.vehicle_model,
+        color: selectedInv.color,
+        battery_type: selectedInv.battery_type,
+        initial_quantity: selectedInv.initial_quantity + (melaAdjType === "in" ? qtyVal : 0),
+        remaining_quantity: newQty,
+        price: parseFloat(selectedInv.price),
+        is_active: selectedInv.is_active
+      };
+
+      await updateMelaInventory(selectedInv.id, payload);
+      
+      const newLog = {
+        id: Date.now(),
+        date: getDynamicDate(new Date().getDate(), 0, "short"),
+        model_name: selectedInv.model_name,
+        color: selectedInv.color,
+        battery_type: selectedInv.battery_type,
+        type: melaAdjType,
+        quantity: qtyVal,
+        notes: melaAdjNotes || (melaAdjType === "in" ? "Manual Stock-In Adjustment" : "Manual Stock-Out Adjustment")
+      };
+      
+      setMelaStockLogs(prev => [newLog, ...prev]);
+      showToast(`Stock successfully adjusted!`);
+      
+      setMelaAdjQty("");
+      setMelaAdjNotes("");
+      loadMelaData();
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to complete stock adjustment.", "error");
+    }
+  };
+
+  const handleMelaAddGroupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim() || !newGroupLead.trim()) {
+      showToast("Please fill in Group Name and Lead.", "error");
+      return;
+    }
+    const newGroup = {
+      id: `group-${Date.now()}`,
+      name: newGroupName.trim(),
+      lead: newGroupLead.trim(),
+      members: newGroupMembers.trim() || newGroupLead.trim(),
+      bookings: 0,
+      target: parseInt(newGroupTarget) || 10,
+      revenue: 0
+    };
+    setMelaGroups(prev => [...prev, newGroup]);
+    showToast(`Campaign Group "${newGroupName}" created!`);
+    setNewGroupName("");
+    setNewGroupLead("");
+    setNewGroupMembers("");
+    setNewGroupTarget("10");
+    setShowAddGroupForm(false);
+  };
+
   const handleMelaCheckoutSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setMelaCheckoutError("");
