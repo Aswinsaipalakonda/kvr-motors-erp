@@ -64,7 +64,9 @@ import {
   Phone,
   Boxes,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  LayoutDashboard,
+  BarChart2
 } from "lucide-react";
 import { 
   AreaChart, 
