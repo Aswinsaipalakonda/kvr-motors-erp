@@ -38,13 +38,6 @@ function RootLayoutNav() {
 
     if (!user) {
       if (inAuthGroup) {
-        try {
-          if (typeof router.canDismiss === 'function' && router.canDismiss()) {
-            router.dismissAll();
-          }
-        } catch (e) {
-          console.warn("Failed to dismiss navigation stack on logout:", e);
-        }
         router.replace('/login');
       }
     } else {
@@ -58,13 +51,6 @@ function RootLayoutNav() {
           router.replace(targetPath as any);
         }
       } else {
-        try {
-          if (typeof router.canDismiss === 'function' && router.canDismiss()) {
-            router.dismissAll();
-          }
-        } catch (e) {
-          console.warn("Failed to dismiss navigation stack on login:", e);
-        }
         const targetPath = ROLE_ROUTE_MAP[user.role] || '/login';
         router.replace(targetPath as any);
       }
