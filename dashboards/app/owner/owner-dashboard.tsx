@@ -1955,8 +1955,8 @@ export default function OwnerDashboard() {
           branchesList={branchesList}
         />
         <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
-          
-          {/* MELA TABS F          {activeTab === "mela_dashboard" && (
+          {/* MELA TABS FOR OWNER */}
+          {activeTab === "mela_dashboard" && (
             <div className="space-y-6 text-left">
               {/* Premium Glassmorphic Hero Banner */}
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-[#071f11] to-slate-900 border border-emerald-950 p-6 sm:p-8 shadow-xl">
@@ -2257,10 +2257,8 @@ export default function OwnerDashboard() {
                       Create Campaign Group
                     </button>
                   </form>
-                </div>
               </div>
             </div>
-          )}  </div>
           )}
 
           {activeTab === "mela_inventory" && (
