@@ -2640,139 +2640,100 @@ export default function OwnerDashboard() {
                       </tr>
                     );
                   })
-                )}
-              </Table>
-            </div>
-          )}
-          {/* TAB 3: VEHICLE MANAGEMENT */}
+               {/* TAB 3: VEHICLE MANAGEMENT */}
           {activeTab === "vehicles" && (
-            <div className="space-y-8">
-              
-              {/* Vehicle Master Models catalog */}
-              <Table 
-                title="Vehicle Master Models Catalog" 
-                headers={["Model Name", "Brand", "Category", "Base Price", "Color Variants", "Battery Spec", "Warranty Period", "Range (km)", "Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={() => setIsAddVehicleOpen(true)}
-                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" /> Add Model
-                  </button>
-                }
-              >
-                {vehiclesLoading ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center text-xs text-slate-405 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
-                         <span>Loading model catalog...</span>
+            <div className="space-y-6 text-left">
+              {/* Header block with modern feel */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-black text-slate-805 tracking-tight">Vehicle Master Models Catalog</h3>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Configure models, battery specifications, colors, and base retail pricing.</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddVehicleOpen(true)}
+                  className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-5 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 transition-all"
+                >
+                  <Plus className="h-4 w-4" /> Add Model
+                </button>
+              </div>
+
+              {vehiclesLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-205 border-t-[#04a700]" />
+                  <span className="text-xs font-semibold text-slate-405">Loading model catalog...</span>
+                </div>
+              ) : vehicleModelsList.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm">
+                  <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {vehicleModelsList.map((model, idx) => (
+                    <div key={model.id || idx} className="bg-white border border-slate-150 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-250 transition-all duration-300 overflow-hidden group flex flex-col justify-between">
+                      <div className="p-5 space-y-4">
+                        {/* Brand Badge & Status */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-105">
+                            {model.brand_name || "Kinetic"}
+                          </span>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            model.status === "active" ? "bg-emerald-50 text-[#04a700]" : "bg-slate-50 text-slate-505"
+                          }`}>
+                            {model.status === "active" ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        
+                        {/* Model Name & Base Price */}
+                        <div>
+                          <h4 className="text-base font-black text-slate-850 tracking-tight leading-none group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
+                          <p className="text-[10px] font-bold text-slate-400 mt-2">Base Price: <span className="font-black text-slate-800 font-mono text-xs">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</span></p>
+                        </div>
+
+                        {/* Specs Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                          <div>
+                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Battery Compatibility</span>
+                            <span className="text-slate-700 font-bold truncate block">{model.battery_compatibility || "1.2 kWh"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Color Variants</span>
+                            <span className="text-slate-700 font-bold truncate block">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}</span>
+                          </div>
+                          <div className="mt-1">
+                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Range (KM)</span>
+                            <span className="text-emerald-700 font-extrabold block">140 km</span>
+                          </div>
+                          <div className="mt-1">
+                            <span className="text-slate-400 block text-[9px] font-bold uppercase">Warranty Period</span>
+                            <span className="text-slate-700 font-bold block">3 Yrs / 40K km</span>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ) : vehicleModelsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center">
-                      <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
-                    </td>
-                  </tr>
-                ) : (
-                  vehicleModelsList.map((model, idx) => (
-                    <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{model.brand_name || "Kinetic"}</td>
-                      <td className="py-3.5 px-5 text-slate-605">Electric</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Green"}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-semibold">{model.battery_compatibility || "1.2 kWh"}</td>
-                      <td className="py-3.5 px-5 text-slate-500 font-semibold">3 Yrs / 40K km</td>
-                      <td className="py-3.5 px-5 font-bold text-emerald-700">140 km</td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                        }`}>
-                          {model.status === "active" ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 whitespace-nowrap">
-                        <button onClick={() => openEditModel(model)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit Model</button>
-                        <button onClick={() => handleDeleteModel(model.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </Table>
-              {/* Physical Stock Units tracking */}
-              <Table 
-                title="Physical Inventory Stock Units (VIN Registry)" 
-                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "PDI Status", "Age in Stock", "Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={openAddStockUnit}
-                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" /> Add Stock Unit
-                  </button>
-                }
-              >
-                {vehiclesLoading ? (
-                  <tr>
-                    <td colSpan={12} className="py-8 text-center text-xs text-slate-405 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-indigo-600" />
-                        <span>Loading physical units registry...</span>
+
+                      {/* Action Footer */}
+                      <div className="border-t border-slate-100 bg-slate-50/30 px-5 py-3 flex justify-end gap-3">
+                        <button
+                          onClick={() => openEditModel(model)}
+                          className="text-[11px] font-bold text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          Edit Details
+                        </button>
+                        <button
+                          onClick={() => handleDeleteModel(model.id)}
+                          className="text-[11px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          Delete
+                        </button>
                       </div>
-                    </td>
-                  </tr>
-                ) : filteredVehicleUnits.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="py-8 text-center">
-                      <EmptyState 
-                        title="No Stock Units Found" 
-                        description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered for the selected branch outlet."} 
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  filteredVehicleUnits.map((unit, idx) => (
-                    <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
-                      <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
-                      <td className="py-3.5 px-5 text-slate-400 font-medium">{unit.location_name || "Warehouse"}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
-                      <td className="py-3.5 px-5">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Passed
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 font-bold text-slate-650">5 days</td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                          "bg-slate-100 text-slate-505 border border-slate-205"
-                        }`}>
-                          {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 whitespace-nowrap">
-                        <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
-                        <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </Table>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {/* TAB 4: STOCK (IN & OUT) */}
           {activeTab === "stock" && (
-            <div className="space-y-5">
+            <div className="space-y-6 text-left">
               {/* Summary metric strip */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
@@ -2784,9 +2745,9 @@ export default function OwnerDashboard() {
                   const SIcon = s.icon;
                   const tintMap: Record<string, string> = {
                     emerald: "bg-[#04a700]/10 text-[#04a700]",
-                    blue: "bg-blue-50 text-blue-600",
-                    amber: "bg-amber-50 text-amber-600",
-                    rose: "bg-rose-50 text-rose-600",
+                    blue: "bg-blue-50 text-blue-605",
+                    amber: "bg-amber-50 text-amber-605",
+                    rose: "bg-rose-50 text-rose-605",
                   };
                   return (
                     <div key={i} className="bg-white border border-emerald-100/60 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
@@ -2826,8 +2787,8 @@ export default function OwnerDashboard() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
                           <div><span className="text-slate-400 font-semibold">Location: </span><span className="font-bold text-slate-600">{r.loc}</span></div>
                           <div><span className="text-slate-400 font-semibold">GRN: </span><span className="font-bold text-slate-600">{r.code}</span></div>
-                          <div><span className="text-slate-400 font-semibold">Carrier: </span><span className="font-bold text-slate-600">{r.carrier}</span></div>
-                          <div><span className="text-slate-400 font-semibold">PDI: </span><span className="font-bold text-slate-600">{r.pdi}</span></div>
+                          <div><span className="text-slate-400 font-semibold">Carrier: </span><span className="font-bold text-slate-650">{r.carrier}</span></div>
+                          <div><span className="text-slate-400 font-semibold">PDI: </span><span className="font-bold text-slate-650">{r.pdi}</span></div>
                         </div>
                         <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
                       </div>
@@ -2857,7 +2818,7 @@ export default function OwnerDashboard() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
                           <div><span className="text-slate-400 font-semibold">Destination: </span><span className="font-bold text-slate-600">{r.dest}</span></div>
                           <div><span className="text-slate-400 font-semibold">Ref: </span><span className="font-bold text-slate-600">{r.ref}</span></div>
-                          <div><span className="text-slate-400 font-semibold">Driver: </span><span className="font-bold text-slate-600">{r.driver}</span></div>
+                          <div><span className="text-slate-400 font-semibold">Driver: </span><span className="font-bold text-slate-650">{r.driver}</span></div>
                         </div>
                         <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
                       </div>
@@ -2877,9 +2838,9 @@ export default function OwnerDashboard() {
                     { ref: "TRN-2024-0044", from: "Pendurthi Godown", to: "KVR Showroom - Visakhapatnam", qty: "Kinetic E-Luna (10 Units)", dispatch: "14 May 2024", transit: "4 hours", arrival: "14 May, 4:00 PM", approval: "Approved (Suresh Babu)", status: "Completed", done: true },
                     { ref: "TRN-2024-0049", from: "Pineapple Colony Godown", to: "KVR Showroom - Srikakulam", qty: "Dynamo Pro (5 Units)", dispatch: "18 May 2024", transit: "1 day", arrival: "18 May, 6:00 PM", approval: "Pending Review", status: "In Transit", done: false },
                   ].map((t, i) => (
-                    <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/40 p-4">
+                    <div key={i} className="rounded-xl border border-slate-105 bg-slate-50/40 p-4">
                       <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="font-mono font-bold text-slate-700 text-xs">{t.ref}</span>
+                        <span className="font-mono font-bold text-slate-705 text-xs">{t.ref}</span>
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${t.done ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>{t.status}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 mb-3">
@@ -2889,13 +2850,84 @@ export default function OwnerDashboard() {
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
                         <div className="col-span-2"><span className="text-slate-400 font-semibold">Model: </span><span className="font-bold text-slate-600">{t.qty}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Dispatch: </span><span className="font-bold text-slate-600">{t.dispatch}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Transit: </span><span className="font-bold text-slate-600">{t.transit}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Arrival: </span><span className="font-bold text-slate-600">{t.arrival}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Approval: </span><span className="font-bold text-slate-600">{t.approval}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Dispatch: </span><span className="font-bold text-slate-650">{t.dispatch}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Transit: </span><span className="font-bold text-slate-655">{t.transit}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Arrival: </span><span className="font-bold text-slate-655">{t.arrival}</span></div>
+                        <div><span className="text-slate-400 font-semibold">Approval: </span><span className="font-bold text-slate-655">{t.approval}</span></div>
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Physical Inventory Stock Units (VIN Registry - Moved from Vehicles tab to Stock Management tab to keep operations grouped logically and fully functional) */}
+              <Table 
+                title="Physical Inventory Stock Units (VIN Registry)" 
+                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "PDI Status", "Age in Stock", "Status", "Actions"]}
+                actions={
+                  <button 
+                    onClick={openAddStockUnit}
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15"
+                  >
+                    <Plus className="h-4 w-4" /> Add Stock Unit
+                  </button>
+                }
+              >
+                {vehiclesLoading ? (
+                  <tr>
+                    <td colSpan={12} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-[#04a700]" />
+                        <span>Loading physical units registry...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredVehicleUnits.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="py-8 text-center">
+                      <EmptyState 
+                        title="No Stock Units Found" 
+                        description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered for the selected branch outlet."} 
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  filteredVehicleUnits.map((unit, idx) => (
+                    <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
+                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
+                      <td className="py-3.5 px-5 text-slate-450 font-medium">{unit.location_name || "Warehouse"}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
+                      <td className="py-3.5 px-5">
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Passed
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 font-bold text-slate-650">5 days</td>
+                      <td className="py-3.5 px-5">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                          "bg-slate-100 text-slate-505 border border-slate-205"
+                        }`}>
+                          {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                        <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </Table>
+            </div>
+          )}}
                 </div>
               </div>
             </div>
