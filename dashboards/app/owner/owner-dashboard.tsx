@@ -2265,9 +2265,10 @@ export default function OwnerDashboard() {
                     >
                       Create Campaign Group
                     </button>
+                  </form>
+                </div>
               </div>
             </div>
-          </div>
           )}
 
           {activeTab === "mela_inventory" && (
