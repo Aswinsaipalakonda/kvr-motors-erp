@@ -12,7 +12,7 @@ class MelaInventory(models.Model):
 
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_inventories")
     color = models.CharField(max_length=50, help_text="Selected color variant")
-    battery_type = models.CharField(max_length=20, choices=BATTERY_CHOICES)
+    battery_type = models.CharField(max_length=50, help_text="Battery capacity/spec")
     initial_quantity = models.PositiveIntegerField(default=0)
     remaining_quantity = models.PositiveIntegerField(default=0)
     price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Special campaign price")
@@ -48,7 +48,7 @@ class MelaBooking(models.Model):
     
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_bookings")
     color = models.CharField(max_length=50)
-    battery_type = models.CharField(max_length=20, choices=MelaInventory.BATTERY_CHOICES)
+    battery_type = models.CharField(max_length=50)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unconfirmed')
