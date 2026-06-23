@@ -194,6 +194,14 @@ export default function OwnerDashboard() {
   const [isAddMelaInventoryOpen, setIsAddMelaInventoryOpen] = useState(false);
   const [editingMelaInventoryId, setEditingMelaInventoryId] = useState<number | null>(null);
 
+  // Mela Settings States
+  const [melaSettingsList, setMelaSettingsList] = useState<any[]>([]);
+  const [melaNameSetting, setMelaNameSetting] = useState("Grand Monsoon Mela");
+  const [melaStartDateSetting, setMelaStartDateSetting] = useState("");
+  const [melaEndDateSetting, setMelaEndDateSetting] = useState("");
+  const [melaLocationSetting, setMelaLocationSetting] = useState("Main Showroom Ground");
+  const [melaSettingsId, setMelaSettingsId] = useState<number | null>(null);
+
   // Mela Inventory Form
   const [melaInvModel, setMelaInvModel] = useState("");
   const [melaInvColor, setMelaInvColor] = useState("");
