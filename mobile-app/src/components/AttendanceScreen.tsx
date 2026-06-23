@@ -26,7 +26,8 @@ interface AttendanceLog {
   remarks: string;
 }
 
-export default function AttendanceScreen({ role }: { role: string }) {
+export default function AttendanceScreen({ role, isActive = true }: { role: string; isActive?: boolean }) {
+  const [hasInitialized, setHasInitialized] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
