@@ -21,6 +21,16 @@ import { getBatteries, createBattery, updateBattery, deleteBattery } from "../se
 import { getActivityLogs, ActivityLog } from "../services/activityLogs";
 import { getUsers, createUser, updateUser, deleteUser } from "../services/users";
 import { getAttendanceLogs, verifyAttendance, bulkVerifyAttendance, AttendanceRecord } from "../services/attendance";
+import MelaSubSidebar from "../components/MelaSubSidebar";
+import {
+  getMelaInventory,
+  createMelaInventory,
+  updateMelaInventory,
+  deleteMelaInventory,
+  getMelaBookings,
+  completeMelaBooking,
+  getMelaReports
+} from "../services/mela";
 import {
   TrendingUp,
   Percent,
