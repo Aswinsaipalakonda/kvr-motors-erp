@@ -844,7 +844,11 @@ const styles = StyleSheet.create({
     borderColor: '#f1f5f9',
     padding: 16,
     gap: 12,
-    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.03)'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2
   },
   stockHeader: {
     flexDirection: 'row',
@@ -940,7 +944,11 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3
   },
   cardTitle: {
     fontSize: 15,
@@ -981,7 +989,7 @@ const styles = StyleSheet.create({
   },
   statusTextInline: {
     fontSize: 9,
-    fontWeight: '950',
+    fontWeight: '900',
     letterSpacing: 0.3
   },
   detailsBlock: {
@@ -1000,7 +1008,7 @@ const styles = StyleSheet.create({
   detailVal: {
     fontSize: 11.5,
     color: '#0f172a',
-    fontWeight: '850'
+    fontWeight: '800'
   },
   detailValPrice: {
     fontSize: 13,
@@ -1068,7 +1076,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f1f5f9',
     gap: 6,
-    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.03)'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2
   },
   statVal: {
     fontSize: 16,
