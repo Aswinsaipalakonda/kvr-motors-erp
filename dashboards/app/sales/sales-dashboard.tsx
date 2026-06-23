@@ -586,7 +586,13 @@ export default function SalesDashboard() {
         {/* Navbar */}
         <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${
+          activeTab.startsWith("mela_") 
+            ? "pt-0 md:pt-4 overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
+            : activeTab === "dashboard" 
+              ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
+              : "overflow-y-auto space-y-6"
+        }`}>
           
           {/* Mobile Mela Sub-Navigation Tab Bar */}
           {activeTab.startsWith("mela_") && (
@@ -602,10 +608,10 @@ export default function SalesDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => navigateTo(tab.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-normal transition-all whitespace-nowrap cursor-pointer ${
                       isActive
-                        ? "bg-gradient-to-r from-[#04a700] to-emerald-600 text-white shadow-md shadow-emerald-500/10"
-                        : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        ? "bg-gradient-to-r from-[#04a700] to-emerald-600 text-white shadow-md shadow-emerald-500/10 font-bold"
+                        : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 font-normal"
                     }`}
                   >
                     <TIcon className="h-3 w-3" />
