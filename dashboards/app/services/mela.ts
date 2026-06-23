@@ -107,3 +107,27 @@ export const getMelaReports = async () => {
   const response = await api.get<MelaReports>("/mela-reports/");
   return response.data;
 };
+
+export interface MelaSettingsInput {
+  id?: number;
+  mela_name: string;
+  start_date: string | null;
+  end_date: string | null;
+  location: string;
+  is_active?: boolean;
+}
+
+export const getMelaSettingsList = async () => {
+  const response = await api.get<MelaSettingsInput[]>("/mela-settings/");
+  return response.data;
+};
+
+export const createMelaSettings = async (data: MelaSettingsInput) => {
+  const response = await api.post<MelaSettingsInput>("/mela-settings/", data);
+  return response.data;
+};
+
+export const updateMelaSettings = async (id: number, data: Partial<MelaSettingsInput>) => {
+  const response = await api.patch<MelaSettingsInput>(`/mela-settings/${id}/`, data);
+  return response.data;
+};
