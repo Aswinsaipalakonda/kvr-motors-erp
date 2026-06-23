@@ -2378,7 +2378,14 @@ export default function OwnerDashboard() {
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Select Model</label>
                         <select
                           value={melaInvModel}
-                          onChange={(e) => setMelaInvModel(e.target.value)}
+                          onChange={(e) => {
+                            if (e.target.value === "add_new") {
+                              setIsAddVehicleOpen(true);
+                              setMelaInvModel("");
+                            } else {
+                              setMelaInvModel(e.target.value);
+                            }
+                          }}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
                           required
                         >
@@ -2388,6 +2395,9 @@ export default function OwnerDashboard() {
                               {m.brand_name || m.brand} - {m.model_name}
                             </option>
                           ))}
+                          <option value="add_new" className="text-emerald-600 font-bold bg-emerald-50">
+                            + Add New Model (Master Registry)...
+                          </option>
                         </select>
                       </div>
 
@@ -2407,14 +2417,26 @@ export default function OwnerDashboard() {
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Type Option</label>
                         <select
                           value={melaInvBattery}
-                          onChange={(e) => setMelaInvBattery(e.target.value)}
+                          onChange={(e) => {
+                            if (e.target.value === "add_new") {
+                              setIsAddBatteryOpen(true);
+                              setMelaInvBattery("graphene");
+                            } else {
+                              setMelaInvBattery(e.target.value);
+                            }
+                          }}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
                           required
                         >
-                          <option value="graphene">Graphene</option>
-                          <option value="Li-24">Li-24</option>
-                          <option value="Li-30">Li-30</option>
-                          <option value="Li-40">Li-40</option>
+                          <option value="">-- Choose Battery Spec --</option>
+                          {uniqueBatteryCapacities.map((cap) => (
+                            <option key={cap} value={cap}>
+                              {cap}
+                            </option>
+                          ))}
+                          <option value="add_new" className="text-emerald-600 font-bold bg-emerald-50">
+                            + Add New Battery (Master Registry)...
+                          </option>
                         </select>
                       </div>
 
