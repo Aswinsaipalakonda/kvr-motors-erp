@@ -28,6 +28,7 @@ import {
   UserCheck2,
   ActivitySquare,
   User
+  Sparkles
 } from "lucide-react";
 
 interface SidebarProps {
