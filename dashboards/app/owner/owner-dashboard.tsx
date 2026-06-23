@@ -1976,7 +1976,13 @@ export default function OwnerDashboard() {
           onRangeChange={setSelectedRange}
           branchesList={branchesList}
         />
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${
+          activeTab.startsWith("mela_") 
+            ? "pt-0 md:pt-4 overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
+            : activeTab === "dashboard" 
+              ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
+              : "overflow-y-auto space-y-6"
+        }`}>
           {/* Mobile Mela Sub-Navigation Tab Bar */}
           {activeTab.startsWith("mela_") && (
             <div className="flex md:hidden overflow-x-auto gap-1.5 py-1.5 border-b border-slate-100 scrollbar-none shrink-0 bg-white -mx-4 px-4 sticky top-0 z-30 shadow-sm">
@@ -1985,6 +1991,7 @@ export default function OwnerDashboard() {
                 { id: "mela_inventory", label: "Stock", icon: Boxes },
                 { id: "mela_checkout", label: "Checkout", icon: CreditCard },
                 { id: "mela_reports", label: "Leaderboard", icon: BarChart2 },
+                { id: "mela_settings", label: "Settings", icon: Settings },
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
                 const TIcon = tab.icon;
@@ -1992,10 +1999,10 @@ export default function OwnerDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => navigateTo(tab.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-normal transition-all whitespace-nowrap cursor-pointer ${
                       isActive
-                        ? "bg-gradient-to-r from-[#04a700] to-emerald-600 text-white shadow-md shadow-emerald-500/10"
-                        : "bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100"
+                        ? "bg-gradient-to-r from-[#04a700] to-emerald-600 text-white shadow-md shadow-emerald-500/10 font-bold"
+                        : "bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100 font-normal"
                     }`}
                   >
                     <TIcon className="h-3 w-3" />
@@ -2028,7 +2035,7 @@ export default function OwnerDashboard() {
                         Date Range: {selectedRange}
                       </span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
+                    <h2 className="text-base sm:text-2xl font-semibold text-white tracking-tight leading-none whitespace-nowrap">
                       Mela Campaign Overview
                     </h2>
                     <p className="text-[11px] sm:text-xs font-semibold text-slate-400 max-w-xl">
