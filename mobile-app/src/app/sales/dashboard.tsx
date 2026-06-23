@@ -209,19 +209,21 @@ export default function SalesDashboard() {
                 </Pressable>
 
                 {/* Active Mela Campaign CTA */}
-                <Pressable
-                  onPress={() => router.push('/sales/mela' as any)}
-                  style={({ pressed }) => [styles.melaCta, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
-                >
-                  <View style={styles.melaCtaIcon}>
-                    <Sparkles size={18} color="#ffffff" />
-                  </View>
-                  <View style={styles.bookingCtaText}>
-                    <ThemedText style={styles.melaCtaTitle}>⚡ Active Mela Campaign</ThemedText>
-                    <ThemedText style={styles.bookingCtaDesc}>Mela Catalog, Bookings & Reports</ThemedText>
-                  </View>
-                  <ArrowUpRight size={18} color="#04a700" />
-                </Pressable>
+                {melaActive && (
+                  <Pressable
+                    onPress={() => router.push('/sales/mela' as any)}
+                    style={({ pressed }) => [styles.melaCta, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                  >
+                    <View style={styles.melaCtaIcon}>
+                      <Sparkles size={18} color="#ffffff" />
+                    </View>
+                    <View style={styles.bookingCtaText}>
+                      <ThemedText style={styles.melaCtaTitle}>⚡ Active Mela Campaign</ThemedText>
+                      <ThemedText style={styles.bookingCtaDesc}>Mela Catalog, Bookings & Reports</ThemedText>
+                    </View>
+                    <ArrowUpRight size={18} color="#04a700" />
+                  </Pressable>
+                )}
               </View>
 
               {/* Top Pipeline Leads */}
