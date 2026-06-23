@@ -52,6 +52,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
       },
       items: [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "mela_dashboard", label: "Mela Campaign", icon: Sparkles },
         { id: "branches", label: "Branch & Showrooms", icon: Building2 },
         { id: "vehicles", label: "Vehicle Management", icon: Car },
         { id: "stock", label: "Stock (In & Out)", icon: Boxes },
@@ -96,6 +97,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
       },
       items: [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "mela_booking_form", label: "Mela Booking", icon: Sparkles },
         { id: "leads", label: "Leads / Enquiries", icon: Compass },
         { id: "customers", label: "Customers", icon: UsersRound },
         { id: "sales_bookings", label: "Sales & Bookings", icon: CreditCard },
