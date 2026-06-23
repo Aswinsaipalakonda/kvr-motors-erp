@@ -972,7 +972,7 @@ export default function SalesDashboard() {
                       <span className="text-2xl font-black text-slate-800 font-mono">{leadsLoading ? "..." : liveLeadsList.length}</span>
                       <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total Leads</span>
                     </div>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
                         <Pie
                           data={leadStatusData}
