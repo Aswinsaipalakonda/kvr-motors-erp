@@ -195,6 +195,27 @@ export default function OwnerDashboard() {
   const [melaInvQty, setMelaInvQty] = useState("");
   const [melaInvPrice, setMelaInvPrice] = useState("");
 
+  // Mela Stock Adjustments & Groups
+  const [melaStockLogs, setMelaStockLogs] = useState<any[]>([
+    { id: 1, date: getDynamicDate(20, 0, "short"), model_name: "E-Luna Moped", color: "Red", battery_type: "graphene", type: "in", quantity: 15, notes: "Campaign Intake" },
+    { id: 2, date: getDynamicDate(22, 0, "short"), model_name: "Dynamo Pro", color: "Blue", battery_type: "Li-30", type: "out", quantity: 2, notes: "PDI Transit Damage" }
+  ]);
+  const [melaGroups, setMelaGroups] = useState([
+    { id: "group-1", name: "Team Visakhapatnam Retailers", lead: "Anil Kumar", members: "Anil Kumar, Suresh Babu, Rajesh Gowd", bookings: 14, target: 20, revenue: 1340000 },
+    { id: "group-2", name: "Team Srikakulam Direct Sales", lead: "Suresh Babu", members: "Suresh Babu, Kiran Kumar, Lakshmi", bookings: 8, target: 15, revenue: 780000 },
+    { id: "group-3", name: "Team Kakinada Roadshow", lead: "Somu Naidu", members: "Somu Naidu, Ravi Varma, Prasad", bookings: 5, target: 10, revenue: 490000 }
+  ]);
+  const [melaAdjItem, setMelaAdjItem] = useState("");
+  const [melaAdjType, setMelaAdjType] = useState("in");
+  const [melaAdjQty, setMelaAdjQty] = useState("");
+  const [melaAdjNotes, setMelaAdjNotes] = useState("");
+  
+  const [showAddGroupForm, setShowAddGroupForm] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupLead, setNewGroupLead] = useState("");
+  const [newGroupMembers, setNewGroupMembers] = useState("");
+  const [newGroupTarget, setNewGroupTarget] = useState("10");
+
   // New PO form state
   const [newPOSupplier, setNewPOSupplier] = useState("");
   const [newPOModel, setNewPOModel] = useState("");
