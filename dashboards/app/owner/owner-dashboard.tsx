@@ -1805,8 +1805,10 @@ export default function OwnerDashboard() {
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       <DashboardSmoothScroll />
       
-      {/* Sidebar - Leaves existing Sidebar.tsx alone, uses DashboardSidebar */}
       <DashboardSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
+      {activeTab.startsWith("mela_") && (
+        <MelaSubSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
+      )}
       {/* Main Panel Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
