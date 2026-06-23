@@ -128,6 +128,19 @@ export default function SalesDashboard() {
   const [checkoutPaymentMode, setCheckoutPaymentMode] = useState("SBI Finance");
   const [checkoutInsurancePartner, setCheckoutInsurancePartner] = useState("Chola MS - Comprehensive 1+5 Yr");
 
+  // Mela Campaign States
+  const [melaInventoryList, setMelaInventoryList] = useState<any[]>([]);
+  const [melaBookingsList, setMelaBookingsList] = useState<any[]>([]);
+  const [melaLoading, setMelaLoading] = useState(false);
+  const [createdMelaBookingResult, setCreatedMelaBookingResult] = useState<any>(null);
+
+  // Mela booking form state
+  const [melaBookingName, setMelaBookingName] = useState("");
+  const [melaBookingPhone, setMelaBookingPhone] = useState("");
+  const [melaBookingModel, setMelaBookingModel] = useState("");
+  const [melaBookingColor, setMelaBookingColor] = useState("");
+  const [melaBookingBattery, setMelaBookingBattery] = useState("graphene");
+
   // Tab navigation
   const navigateTo = (tab: string) => {
     setActiveTab(tab);
