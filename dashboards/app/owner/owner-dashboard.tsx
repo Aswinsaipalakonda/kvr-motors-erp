@@ -2640,7 +2640,11 @@ export default function OwnerDashboard() {
                       </tr>
                     );
                   })
-               {/* TAB 3: VEHICLE MANAGEMENT */}
+                )}
+              </Table>
+            </div>
+          )}
+          {/* TAB 3: VEHICLE MANAGEMENT */}
           {activeTab === "vehicles" && (
             <div className="space-y-6 text-left">
               {/* Header block with modern feel */}
@@ -2926,10 +2930,6 @@ export default function OwnerDashboard() {
                   ))
                 )}
               </Table>
-            </div>
-          )}}
-                </div>
-              </div>
             </div>
           )}
           {/* TAB 5: PURCHASE MANAGEMENT */}
