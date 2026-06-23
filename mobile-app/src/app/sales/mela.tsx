@@ -395,7 +395,7 @@ export default function SalesMelaCampaign() {
                             </View>
                             <View style={styles.priceBadge}>
                               <ThemedText style={styles.priceBadgeText}>
-                                ₹{Math.round(item.price).toLocaleString()}
+                                ₹{Math.round(item.price).toLocaleString('en-IN')}
                               </ThemedText>
                             </View>
                           </View>
@@ -483,7 +483,7 @@ export default function SalesMelaCampaign() {
                               </View>
                               <View style={styles.detailsRow}>
                                 <ThemedText style={styles.detailLbl}>Price</ThemedText>
-                                <ThemedText style={styles.detailValPrice}>₹{parseFloat(item.price).toLocaleString()}</ThemedText>
+                                <ThemedText style={styles.detailValPrice}>₹{parseFloat(item.price).toLocaleString('en-IN')}</ThemedText>
                               </View>
                             </View>
 
@@ -534,7 +534,7 @@ export default function SalesMelaCampaign() {
                   </View>
                   <View style={styles.statCard}>
                     <DollarSign size={18} color="#10b981" />
-                    <ThemedText style={styles.statVal}>₹{totalRevenue.toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.statVal}>₹{totalRevenue.toLocaleString('en-IN')}</ThemedText>
                     <ThemedText style={styles.statLbl}>Delivered Revenue</ThemedText>
                   </View>
                 </View>
@@ -601,7 +601,7 @@ export default function SalesMelaCampaign() {
                       </ThemedText>
                     </View>
                     <ThemedText style={styles.evSummaryPrice}>
-                      ₹{Math.round(selectedInventory.price).toLocaleString()}
+                      ₹{Math.round(selectedInventory.price).toLocaleString('en-IN')}
                     </ThemedText>
                   </View>
 
@@ -708,7 +708,7 @@ export default function SalesMelaCampaign() {
                   </View>
                   <View style={styles.receiptRow}>
                     <ThemedText style={styles.receiptLabel}>Mela Price</ThemedText>
-                    <ThemedText style={styles.receiptValuePrice}>₹{parseFloat(createdBooking.price).toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.receiptValuePrice}>₹{parseFloat(createdBooking.price).toLocaleString('en-IN')}</ThemedText>
                   </View>
                 </View>
               )}
