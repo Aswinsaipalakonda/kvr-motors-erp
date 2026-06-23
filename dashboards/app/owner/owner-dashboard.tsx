@@ -1497,10 +1497,10 @@ export default function OwnerDashboard() {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    if (range === "01 May 2024 - 31 May 2024") {
-      const start = new Date("2024-05-01T00:00:00");
+    if (range === getDefaultRangeString()) {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
       start.setHours(0, 0, 0, 0);
-      const end = new Date("2024-05-31T23:59:59");
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
       end.setHours(23, 59, 59, 999);
       return itemDate >= start && itemDate <= end;
     }
