@@ -3,14 +3,9 @@ import requests
 # Login to get JWT
 login_url = "http://localhost:8000/api/auth/login/"
 res = requests.post(login_url, json={"username": "owner", "password": "owner123"})
-print("Login status:", res.status_code)
 tokens = res.json()
-print("Tokens response keys:", tokens.keys())
-
-# Get access token
 access_token = tokens.get("access")
 
-# Try to post empty body
 headers = {
     "Authorization": f"Bearer {access_token}",
     "Content-Type": "application/json"
@@ -19,8 +14,8 @@ headers = {
 mela_settings_url = "http://localhost:8000/api/v1/mela-settings/"
 payload = {
     "mela_name": "Varahi Grand Monsoon Mela",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-30",
+    "start_date": "",
+    "end_date": "",
     "location": "Varahi Ground, Pendurthi",
     "is_active": True
 }
