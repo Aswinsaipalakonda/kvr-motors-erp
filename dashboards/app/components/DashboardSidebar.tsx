@@ -179,7 +179,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         }`}
       >
         {/* Header / Logo */}
-        <div className={`flex flex-col border-b border-[#1e293b] bg-[#05070c]/50 ${isMela ? "p-3 items-center justify-center" : "p-4"}`}>
+        <div className={`flex flex-col border-b border-[#1e293b] bg-[#05070c]/50 ${isMela ? "p-4 lg:p-3 lg:items-center lg:justify-center" : "p-4"}`}>
           <div className="flex items-center gap-3">
             {/* In-drawer close button (mobile only) */}
             <button
@@ -200,27 +200,30 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 priority
               />
             </div>
-            {!isMela && (
-              <div className="flex flex-col text-left">
-                <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans flex items-center gap-1.5">
-                  KVR Motors
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
-                  {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
-                </span>
-              </div>
-            )}
+            <div className={`flex flex-col text-left ${isMela ? "lg:hidden" : ""}`}>
+              <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans flex items-center gap-1.5">
+                KVR Motors
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
+                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Scrollable menu items */}
-        <div className={`flex-1 overflow-y-auto slim-scrollbar space-y-1.5 py-4 ${isMela ? "px-2" : "px-4"}`}>
+        <div className={`flex-1 overflow-y-auto slim-scrollbar space-y-1.5 py-4 ${isMela ? "px-4 lg:px-2" : "px-4"}`}>
           {!isMela ? (
             <span className="px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left text-slate-400 font-sans">
               Modules
             </span>
           ) : (
-            <div className="border-b border-[#1e293b] my-2 mx-2" />
+            <>
+              <span className="px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left text-slate-400 font-sans lg:hidden">
+                Modules
+              </span>
+              <div className="hidden lg:block border-b border-[#1e293b] my-2 mx-2" />
+            </>
           )}
           <nav className="space-y-1">
             {currentConfig.items.map((item) => {
@@ -254,7 +257,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                   href={itemPath}
                   onClick={handleClick}
                   onMouseMove={(e) => {
-                    if (isMela) {
+                    if (isMela && window.innerWidth >= 1024) {
                       setHoveredItem({
                         label: item.label,
                         x: e.clientX,
@@ -267,12 +270,12 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                   }}
                   className={`flex w-full items-center rounded-full text-sm font-semibold transition-all duration-200 group text-left relative ${
                     isMela 
-                      ? "justify-center p-2.5" 
+                      ? "gap-3 px-4 py-2.5 lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5" 
                       : "gap-3 px-4 py-2.5"
                   } ${navItemClass}`}
                 >
                   <Icon className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${navIconClass}`} />
-                  {!isMela && <span>{item.label}</span>}
+                  <span className={isMela ? "lg:hidden" : ""}>{item.label}</span>
                 </Link>
               );
             })}
