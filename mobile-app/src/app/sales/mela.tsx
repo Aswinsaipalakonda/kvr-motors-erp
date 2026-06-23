@@ -204,7 +204,7 @@ export default function SalesMelaCampaign() {
               <ArrowLeft size={20} color="#cbd5e1" />
             </Pressable>
             <View style={styles.badgeWrapper}>
-              <Sparkles size={12} color="#d97706" />
+              <Sparkles size={12} color="#04a700" />
               <ThemedText style={styles.badgeText}>SALES AGENT</ThemedText>
             </View>
           </View>
@@ -230,7 +230,7 @@ export default function SalesMelaCampaign() {
                   onPress={() => setActiveTab(tab.id as SalesMelaTab)}
                   style={[styles.tabItem, isTabActive && styles.activeTabItem]}
                 >
-                  <IconComp size={14} color={isTabActive ? '#d97706' : '#64748b'} style={{ marginRight: 6 }} />
+                  <IconComp size={14} color={isTabActive ? '#04a700' : '#64748b'} style={{ marginRight: 6 }} />
                   <ThemedText style={[styles.tabText, isTabActive && styles.activeTabText]}>
                     {tab.label}
                   </ThemedText>
@@ -242,7 +242,7 @@ export default function SalesMelaCampaign() {
 
         {isLoading ? (
           <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#d97706" />
+            <ActivityIndicator size="large" color="#04a700" />
             <ThemedText style={styles.loaderText}>Syncing campaign details...</ThemedText>
           </View>
         ) : (
@@ -251,7 +251,7 @@ export default function SalesMelaCampaign() {
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d97706" />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
             }
           >
             {/* TAB 1: CATALOG & BOOKING */}
@@ -273,7 +273,7 @@ export default function SalesMelaCampaign() {
                   </View>
                 ) : (
                   <View style={styles.warningBanner}>
-                    <AlertTriangle size={18} color="#d97706" />
+                    <AlertTriangle size={18} color="#04a700" />
                     <ThemedText style={styles.warningBannerText}>
                       No active campaign found. Showing currently available mela inventory.
                     </ThemedText>
@@ -335,7 +335,7 @@ export default function SalesMelaCampaign() {
                             </View>
                             <View style={styles.bookCtaLink}>
                               <ThemedText style={styles.bookCtaText}>Book EV</ThemedText>
-                              <ChevronRight size={14} color="#d97706" />
+                              <ChevronRight size={14} color="#04a700" />
                             </View>
                           </View>
                         </Pressable>
@@ -366,7 +366,7 @@ export default function SalesMelaCampaign() {
                             ? { bg: 'rgba(4, 167, 0, 0.12)', text: '#04a700', label: 'DELIVERED' }
                             : item.status === 'cancelled'
                             ? { bg: 'rgba(100, 116, 139, 0.12)', text: '#64748b', label: 'CANCELLED' }
-                            : { bg: 'rgba(217, 119, 6, 0.12)', text: '#d97706', label: 'PENDING PAY' };
+                            : { bg: 'rgba(217, 119, 6, 0.12)', text: '#b45309', label: 'PENDING PAY' };
 
                         return (
                           <View key={item.id} style={styles.bookingItemCard}>
@@ -434,7 +434,7 @@ export default function SalesMelaCampaign() {
                 {/* Stats Grid */}
                 <View style={styles.statsGrid}>
                   <View style={styles.statCard}>
-                    <Award size={18} color="#d97706" />
+                    <Award size={18} color="#04a700" />
                     <ThemedText style={styles.statVal}>{totalBookings}</ThemedText>
                     <ThemedText style={styles.statLbl}>Total Booked</ThemedText>
                   </View>
@@ -462,7 +462,7 @@ export default function SalesMelaCampaign() {
                     {bookingsList.slice(0, 8).map((b) => (
                       <View key={b.id} style={styles.activityItem}>
                         <View style={styles.activityDotWrapper}>
-                          <View style={[styles.activityDot, { backgroundColor: b.status === 'completed' ? '#04a700' : b.status === 'cancelled' ? '#64748b' : '#d97706' }]} />
+                          <View style={[styles.activityDot, { backgroundColor: b.status === 'completed' ? '#04a700' : b.status === 'cancelled' ? '#64748b' : '#b45309' }]} />
                         </View>
                         <View style={styles.activityTextCol}>
                           <ThemedText style={styles.activityText}>
@@ -676,16 +676,16 @@ const styles = StyleSheet.create({
   badgeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.35)',
+    borderColor: 'rgba(4, 167, 0, 0.35)',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
     gap: 7
   },
   badgeText: {
-    color: '#d97706',
+    color: '#04a700',
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 0.8
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 36,
     fontWeight: 'bold',
-    color: '#d97706',
+    color: '#04a700',
     letterSpacing: -0.5
   },
   tabSelectorBar: {
@@ -731,9 +731,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9'
   },
   activeTabItem: {
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.3)'
+    borderColor: 'rgba(4, 167, 0, 0.3)'
   },
   tabText: {
     fontSize: 12,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     color: '#64748b'
   },
   activeTabText: {
-    color: '#d97706'
+    color: '#04a700'
   },
   loaderContainer: {
     flex: 1,
@@ -779,13 +779,13 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(217, 119, 6, 0.2)'
+    borderColor: 'rgba(4, 167, 0, 0.2)'
   },
   warningBanner: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.25)',
+    borderColor: 'rgba(4, 167, 0, 0.25)',
     borderRadius: 16,
     padding: 14,
     gap: 10,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
   warningBannerText: {
     flex: 1,
     fontSize: 12,
-    color: '#d97706',
+    color: '#04a700',
     fontWeight: '700',
     lineHeight: 17
   },
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(217, 119, 6, 0.15)',
+    backgroundColor: 'rgba(4, 167, 0, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999
@@ -816,17 +816,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#d97706'
+    backgroundColor: '#04a700'
   },
   liveText: {
     fontSize: 9.5,
     fontWeight: '900',
-    color: '#d97706',
+    color: '#04a700',
     letterSpacing: 0.5
   },
   dateText: {
     fontSize: 11,
-    color: '#fbbf24',
+    color: '#86efac',
     fontWeight: 'bold'
   },
   bannerVenue: {
@@ -935,7 +935,7 @@ const styles = StyleSheet.create({
   bookCtaText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#d97706'
+    color: '#04a700'
   },
   // ---- Bookings tab ----
   card: {
@@ -1220,7 +1220,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   submitStockBtn: {
-    backgroundColor: '#d97706',
+    backgroundColor: '#04a700',
     borderRadius: 999,
     height: 46,
     flexDirection: 'row',
