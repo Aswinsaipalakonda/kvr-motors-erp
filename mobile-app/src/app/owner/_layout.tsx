@@ -281,6 +281,12 @@ export default function OwnerLayout() {
   // Nav items inside the drawer
   const drawerMenuItems = [
     {
+      title: 'Mela Campaign',
+      route: '/owner/mela',
+      icon: Sparkles,
+      color: '#04a700',
+    },
+    {
       title: 'Showroom Bookings',
       route: '/owner/bookings',
       icon: CalendarDays,
