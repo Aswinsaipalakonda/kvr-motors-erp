@@ -3400,9 +3400,13 @@ export default function OwnerDashboard() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Date Range Filter</label>
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 font-bold outline-none focus:border-indigo-500">
-                      <option>This Month (May 2026)</option>
-                      <option>Last Month (April 2026)</option>
-                      <option>Year to Date (2026)</option>
+                      <option>This Month ({new Date().toLocaleString("en-US", { month: "long" })} {new Date().getFullYear()})</option>
+                      <option>Last Month ({(() => {
+                        const d = new Date();
+                        d.setMonth(d.getMonth() - 1);
+                        return d.toLocaleString("en-US", { month: "long" }) + " " + d.getFullYear();
+                      })()})</option>
+                      <option>Year to Date ({new Date().getFullYear()})</option>
                     </select>
                   </div>
                   <div className="flex items-end gap-2">
