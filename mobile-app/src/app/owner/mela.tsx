@@ -1299,7 +1299,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f1f5f9',
     gap: 6,
-    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.03)'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2
   },
   statVal: {
     fontSize: 16,
@@ -1359,7 +1363,11 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3
   },
   cardHeaderRow: {
     flexDirection: 'row',
