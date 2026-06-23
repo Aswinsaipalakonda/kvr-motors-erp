@@ -2155,9 +2155,11 @@ export default function OwnerDashboard() {
 
           {activeTab === "mela_inventory" && (
             <div className="space-y-6 text-left">
-              {/* Campaign stock list & Add stock form */}
+              {/* Campaign stock list & Add stock forms */}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2 space-y-4">
+                
+                {/* Left Column: Active Inventory Table & Stock Movement Log */}
+                <div className="xl:col-span-2 space-y-6">
                   <Table
                     title="Mela Campaign Active Inventory"
                     headers={["Vehicle Model", "Color Variant", "Battery Spec", "Mela Price", "Initial Stock", "Remaining Stock", "Status", "Actions"]}
@@ -2200,92 +2202,224 @@ export default function OwnerDashboard() {
                       </tr>
                     )}
                   </Table>
+
+                  {/* Mela Stock Movements Log */}
+                  <Table
+                    title="Mela Campaign Stock Movements (In & Out Logs)"
+                    headers={["Log Date", "Campaign Vehicle", "Type", "Adjusted Qty", "Notes / Reference"]}
+                  >
+                    {melaStockLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3 px-5 font-medium text-slate-505">{log.date}</td>
+                        <td className="py-3 px-5 font-bold text-slate-800">
+                          {log.model_name} <span className="text-[10px] text-slate-400">({log.color} / {log.battery_type})</span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            log.type === "in" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}>
+                            {log.type === "in" ? "Stock-In" : "Stock-Out"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-5 font-mono font-black text-slate-800">
+                          {log.type === "in" ? "+" : "-"}{log.quantity} Units
+                        </td>
+                        <td className="py-3 px-5 font-medium text-slate-500">{log.notes}</td>
+                      </tr>
+                    ))}
+                    {melaStockLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold">
+                          No manual stock movements recorded yet.
+                        </td>
+                      </tr>
+                    )}
+                  </Table>
                 </div>
 
-                {/* Register stock side-card */}
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Add Campaign Vehicle</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define models, colors, battery types, prices, and quantities for the Mela.</p>
+                {/* Right Column: Register Stock & Manual Adjustments Forms */}
+                <div className="space-y-6">
+                  
+                  {/* Form 1: Add Campaign Vehicle */}
+                  <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-805">Add Campaign Vehicle</h3>
+                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define specs and quantities for the Mela.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddVehicleOpen(true)}
+                        className="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-[#04a700] font-extrabold px-2.5 py-1 rounded-lg border border-emerald-200 cursor-pointer transition-all"
+                      >
+                        + Add New Model
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddMelaInventorySubmit} className="space-y-3.5 text-xs font-semibold text-slate-655">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Select Model</label>
+                        <select
+                          value={melaInvModel}
+                          onChange={(e) => setMelaInvModel(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        >
+                          <option value="">-- Choose Model --</option>
+                          {vehicleModelsList.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.brand_name || m.brand} - {m.model_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Red, Black, Green"
+                          value={melaInvColor}
+                          onChange={(e) => setMelaInvColor(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Type Option</label>
+                        <select
+                          value={melaInvBattery}
+                          onChange={(e) => setMelaInvBattery(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        >
+                          <option value="graphene">Graphene</option>
+                          <option value="Li-24">Li-24</option>
+                          <option value="Li-30">Li-30</option>
+                          <option value="Li-40">Li-40</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Campaign Price</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 65000"
+                            value={melaInvPrice}
+                            onChange={(e) => setMelaInvPrice(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Qty</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 10"
+                            value={melaInvQty}
+                            onChange={(e) => setMelaInvQty(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
+                      >
+                        Register Campaign Stock
+                      </button>
+                    </form>
                   </div>
 
-                  <form onSubmit={handleAddMelaInventorySubmit} className="space-y-3.5 text-xs font-semibold text-slate-655">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Select Model</label>
-                      <select
-                        value={melaInvModel}
-                        onChange={(e) => setMelaInvModel(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                        required
-                      >
-                        <option value="">-- Choose Model --</option>
-                        {vehicleModelsList.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.brand_name || m.brand} - {m.model_name}
-                          </option>
-                        ))}
-                      </select>
+                  {/* Form 2: Mela Stock Adjustments (In / Out) */}
+                  <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-855">Campaign Stock Adjustment</h3>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Manually record Stock-In or Stock-Out actions for Mela vehicles.</p>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Red, Black, Green"
-                        value={melaInvColor}
-                        onChange={(e) => setMelaInvColor(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Type Option</label>
-                      <select
-                        value={melaInvBattery}
-                        onChange={(e) => setMelaInvBattery(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                        required
-                      >
-                        <option value="graphene">Graphene</option>
-                        <option value="Li-24">Li-24</option>
-                        <option value="Li-30">Li-30</option>
-                        <option value="Li-40">Li-40</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
+                    <form onSubmit={handleMelaStockAdjustmentSubmit} className="space-y-3.5 text-xs font-semibold text-slate-655">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Campaign Price</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Select Campaign Vehicle</label>
+                        <select
+                          value={melaAdjItem}
+                          onChange={(e) => setMelaAdjItem(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        >
+                          <option value="">-- Choose Campaign Item --</option>
+                          {melaInventoryList.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.model_name} ({item.color} / {item.battery_type}) - Qty: {item.remaining_quantity}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Adjustment Type</label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="adjType"
+                              value="in"
+                              checked={melaAdjType === "in"}
+                              onChange={() => setMelaAdjType("in")}
+                              className="text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                            />
+                            <span>Stock-In (Add)</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="adjType"
+                              value="out"
+                              checked={melaAdjType === "out"}
+                              onChange={() => setMelaAdjType("out")}
+                              className="text-rose-600 focus:ring-rose-500 h-4 w-4"
+                            />
+                            <span>Stock-Out (Subtract)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Adjustment Quantity</label>
                         <input
                           type="number"
-                          placeholder="e.g. 65000"
-                          value={melaInvPrice}
-                          onChange={(e) => setMelaInvPrice(e.target.value)}
+                          placeholder="Quantity to add/subtract"
+                          value={melaAdjQty}
+                          onChange={(e) => setMelaAdjQty(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
                           required
                         />
                       </div>
+
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Qty</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Adjustment Notes / Reason</label>
                         <input
-                          type="number"
-                          placeholder="e.g. 10"
-                          value={melaInvQty}
-                          onChange={(e) => setMelaInvQty(e.target.value)}
+                          type="text"
+                          placeholder="e.g. Supplier Refill, Damage Write-off"
+                          value={melaAdjNotes}
+                          onChange={(e) => setMelaAdjNotes(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                          required
                         />
                       </div>
-                    </div>
 
-                    <button
-                      type="submit"
-                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
-                    >
-                      Register Campaign Stock
-                    </button>
-                  </form>
+                      <button
+                        type="submit"
+                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md transition-all text-center"
+                      >
+                        Submit Stock Adjustment
+                      </button>
+                    </form>
+                  </div>
+
                 </div>
               </div>
             </div>
