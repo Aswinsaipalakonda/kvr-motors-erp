@@ -192,6 +192,30 @@ export default function SalesMelaCampaign() {
     .reduce((sum, b) => sum + parseFloat(b.price || '0'), 0);
   const pendingBookings = bookingsList.filter(b => b.status === 'unconfirmed').length;
 
+  const filteredInventory = inventoryList.filter(item => {
+    // 1. Stock check: remaining_quantity > 0
+    if (item.remaining_quantity <= 0) return false;
+
+    // 2. Brand check
+    if (selectedBrandId !== null) {
+      const model = models.find(m => m.id === item.vehicle_model);
+      if (model?.brand !== selectedBrandId) return false;
+    }
+
+    // 3. Search query check
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      const modelName = (item.model_name || getModelName(item.vehicle_model) || '').toLowerCase();
+      const brandName = (item.brand_name || getBrandName(item.vehicle_model) || '').toLowerCase();
+      const color = (item.color || '').toLowerCase();
+      const battery = (item.battery_type || '').toLowerCase();
+      
+      return modelName.includes(query) || brandName.includes(query) || color.includes(query) || battery.includes(query);
+    }
+
+    return true;
+  });
+
   return (
     <FadeScaleTransition>
       <View style={styles.container}>
