@@ -97,8 +97,8 @@ export default function SalesBookingForm() {
     const next: FormErrors = {};
     if (!form.customer_name.trim()) next.customer_name = 'Customer name is required';
     else if (form.customer_name.trim().length < 3) next.customer_name = 'Enter at least 3 characters';
-    if (!form.customer_phone.trim()) next.customer_phone = 'Phone number is required';
-    else if (!/^[0-9+\-\s]{7,15}$/.test(form.customer_phone.trim())) next.customer_phone = 'Enter a valid phone number';
+    const cleanPhone = form.customer_phone.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) next.customer_phone = 'Phone number must be exactly 10 digits';
     if (!form.model.trim()) next.model = 'Select an EV model';
     const amt = parseFloat(form.advance);
     if (!form.advance.trim() || isNaN(amt) || amt <= 0) next.advance = 'Enter a valid advance amount';
