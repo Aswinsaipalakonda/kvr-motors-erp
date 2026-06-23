@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
+from django.core.cache import cache
 import datetime
 
 from .models import MelaInventory, MelaBooking, MelaSettings
@@ -14,6 +15,35 @@ from ledger.models import LedgerEntry
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+def get_cache_key(prefix, query_params=None, user_id=None):
+    parts = [prefix]
+    if user_id:
+        parts.append(f"user_{user_id}")
+    if query_params:
+        # Sort query params to ensure consistent key name
+        sorted_params = sorted(query_params.items())
+        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
+        parts.append(param_str)
+    return ":".join(parts)
+
+def clear_mela_cache(prefixes):
+    try:
+        real_cache = cache._connections[cache._alias]
+        if hasattr(real_cache, '_cache') and hasattr(real_cache._cache, 'get_client'):
+            client = real_cache._cache.get_client()
+            for prefix in prefixes:
+                keys = client.keys(f"*{prefix}*")
+                if keys:
+                    client.delete(*keys)
+        else:
+            cache.clear()
+    except Exception as e:
+        print(f"Failed to clear cache by prefix: {e}")
+        try:
+            cache.clear()
+        except:
+            pass
 
 class MelaInventoryViewSet(viewsets.ModelViewSet):
     serializer_class = MelaInventorySerializer
@@ -40,6 +70,27 @@ class MelaInventoryViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=is_active_bool)
             
         return queryset.order_by('vehicle_model__model_name')
+
+    def list(self, request, *args, **kwargs):
+        key = get_cache_key("mela_inventory_list", request.query_params)
+        cached_data = cache.get(key)
+        if cached_data is not None:
+            return Response(cached_data)
+        response = super().list(request, *args, **kwargs)
+        cache.set(key, response.data, timeout=86400)
+        return response
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        clear_mela_cache(["mela_inventory_list", "mela_reports"])
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        clear_mela_cache(["mela_inventory_list", "mela_reports"])
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        clear_mela_cache(["mela_inventory_list", "mela_reports"])
 
 
 class MelaBookingViewSet(viewsets.ModelViewSet):
@@ -71,6 +122,28 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(sales_executive_id=sales_executive_filter)
 
         return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.user.id if request.user and not request.user.is_anonymous else 'anon'
+        key = get_cache_key("mela_bookings_list", request.query_params, user_id)
+        cached_data = cache.get(key)
+        if cached_data is not None:
+            return Response(cached_data)
+        response = super().list(request, *args, **kwargs)
+        cache.set(key, response.data, timeout=86400)
+        return response
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
 
     @action(detail=True, methods=['post'], url_path='complete')
     def complete_booking(self, request, pk=None):
@@ -106,6 +179,7 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
                     approved_by=request.user
                 )
 
+        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
         serializer = self.get_serializer(booking)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -116,6 +190,11 @@ class MelaReportsView(APIView):
         # Allow owner, admin or supervisor to view report statistics
         if not user.is_authenticated or user.role not in ['owner', 'admin', 'supervisor']:
             return Response({"error": "Unauthorized to view Mela campaign reports."}, status=status.HTTP_403_FORBIDDEN)
+
+        key = "mela_reports"
+        cached_data = cache.get(key)
+        if cached_data is not None:
+            return Response(cached_data)
 
         today = timezone.localdate()
 
@@ -156,7 +235,7 @@ class MelaReportsView(APIView):
         # Order by completed bookings desc
         exec_performance.sort(key=lambda x: x['completed_bookings'], reverse=True)
 
-        return Response({
+        data = {
             "summary": {
                 "total_bookings": total_bookings,
                 "unconfirmed_bookings": unconfirmed_bookings,
@@ -167,9 +246,32 @@ class MelaReportsView(APIView):
                 "daily_completed_count": daily_completed_count,
             },
             "executive_performance": exec_performance,
-        }, status=status.HTTP_200_OK)
+        }
+        cache.set(key, data, timeout=86400)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class MelaSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = MelaSettingsSerializer
     queryset = MelaSettings.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        key = get_cache_key("mela_settings_list", request.query_params)
+        cached_data = cache.get(key)
+        if cached_data is not None:
+            return Response(cached_data)
+        response = super().list(request, *args, **kwargs)
+        cache.set(key, response.data, timeout=86400)
+        return response
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        clear_mela_cache(["mela_settings_list", "mela_reports"])
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        clear_mela_cache(["mela_settings_list", "mela_reports"])
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        clear_mela_cache(["mela_settings_list", "mela_reports"])
