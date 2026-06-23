@@ -2091,15 +2091,15 @@ export default function OwnerDashboard() {
                   return (
                     <div 
                       key={idx} 
-                      className={`bg-gradient-to-br ${card.tint} border p-5 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-305 text-left flex flex-col justify-between h-32`}
+                      className={`bg-gradient-to-br ${card.tint} border p-4 sm:p-5 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 text-left flex flex-col justify-between h-28 sm:h-32`}
                     >
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{card.title}</span>
                         <Icon className="h-4.5 w-4.5" />
                       </div>
-                      <div className="mt-2 min-w-0">
-                        <div className="text-xl font-black text-slate-800 tracking-tight leading-none truncate">{card.value}</div>
-                        <div className="text-[9px] font-bold text-slate-400 mt-1.5 truncate">{card.desc}</div>
+                      <div className="mt-1 sm:mt-2 min-w-0">
+                        <div className="text-lg sm:text-xl font-black text-slate-800 tracking-tight leading-none truncate">{card.value}</div>
+                        <div className="text-[9px] font-bold text-slate-400 mt-1 sm:mt-1.5 truncate">{card.desc}</div>
                       </div>
                     </div>
                   );
@@ -2117,7 +2117,7 @@ export default function OwnerDashboard() {
                     return (
                       <div 
                         key={inv.id} 
-                        className="bg-white border border-emerald-100/80 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between"
+                        className="bg-white border border-emerald-100/80 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between"
                       >
                         <div className="space-y-3">
                           <div className="flex justify-between items-start">
