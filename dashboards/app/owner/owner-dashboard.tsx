@@ -2059,6 +2059,97 @@ export default function OwnerDashboard() {
                   </tr>
                 )}
               </Table>
+
+              {/* Campaign Groups / Teams Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                {/* Active Groups List */}
+                <div className="lg:col-span-2">
+                  <Table
+                    title="Active Campaign Groups / Teams"
+                    headers={["Group / Team Name", "Team Leader", "Members", "Bookings Progress", "Revenue Generated"]}
+                  >
+                    {melaGroups.map((grp) => {
+                      const pct = Math.min(100, Math.round((grp.bookings / grp.target) * 100));
+                      return (
+                        <tr key={grp.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                          <td className="py-3.5 px-5 font-bold text-slate-800">{grp.name}</td>
+                          <td className="py-3.5 px-5 font-semibold text-slate-700">{grp.lead}</td>
+                          <td className="py-3.5 px-5 text-slate-500 max-w-[200px] truncate" title={grp.members}>{grp.members}</td>
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-700">{grp.bookings} / {grp.target}</span>
+                              <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] text-emerald-600 font-bold">({pct}%)</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5 font-bold font-mono text-slate-800">₹ {grp.revenue.toLocaleString("en-IN")}</td>
+                        </tr>
+                      );
+                    })}
+                  </Table>
+                </div>
+
+                {/* Add Team Panel */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Register Mela Sales Group</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define team groups for this campaign to track collective performance.</p>
+                  </div>
+                  <form onSubmit={handleMelaAddGroupSubmit} className="space-y-3 text-xs font-semibold text-slate-655">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Group Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Visakhapatnam Challengers"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Team Leader</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Anil Kumar"
+                        value={newGroupLead}
+                        onChange={(e) => setNewGroupLead(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Members (Comma Separated)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Suresh Babu, Rajesh Gowd"
+                        value={newGroupMembers}
+                        onChange={(e) => setNewGroupMembers(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Target Bookings</label>
+                      <input
+                        type="number"
+                        placeholder="10"
+                        value={newGroupTarget}
+                        onChange={(e) => setNewGroupTarget(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center"
+                    >
+                      Create Campaign Group
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           )}
 
