@@ -252,8 +252,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                   key={item.id}
                   href={itemPath}
                   onClick={handleClick}
-                  title={item.label}
-                  className={`flex w-full items-center rounded-full text-sm font-semibold transition-all duration-200 group text-left ${
+                  className={`flex w-full items-center rounded-full text-sm font-semibold transition-all duration-200 group text-left relative ${
                     isMela 
                       ? "justify-center p-2.5" 
                       : "gap-3 px-4 py-2.5"
@@ -261,6 +260,13 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 >
                   <Icon className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${navIconClass}`} />
                   {!isMela && <span>{item.label}</span>}
+                  
+                  {/* Floating tooltip on hover beside narrow collapsed sidebar items */}
+                  {isMela && (
+                    <div className="absolute left-16 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 bg-slate-950 border border-slate-800 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none translate-x-2 group-hover:translate-x-0">
+                      {item.label}
+                    </div>
+                  )}
                 </Link>
               );
             })}
