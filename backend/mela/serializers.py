@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.db.models import F, Max
-from .models import MelaInventory, MelaBooking
+from .models import MelaInventory, MelaBooking, MelaSettings
 from vehicles.models import VehicleModel
 
 class MelaInventorySerializer(serializers.ModelSerializer):
@@ -119,3 +119,9 @@ class MelaBookingSerializer(serializers.ModelSerializer):
                     })
 
             return super().update(instance, validated_data)
+
+
+class MelaSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MelaSettings
+        fields = '__all__'
