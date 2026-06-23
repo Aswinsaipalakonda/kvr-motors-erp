@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.db.models import Sum, Count, Q
 import datetime
 
-from .models import MelaInventory, MelaBooking
-from .serializers import MelaInventorySerializer, MelaBookingSerializer
+from .models import MelaInventory, MelaBooking, MelaSettings
+from .serializers import MelaInventorySerializer, MelaBookingSerializer, MelaSettingsSerializer
 from branches.models import Branch
 from ledger.models import LedgerEntry
 from django.contrib.auth import get_user_model
@@ -168,3 +168,8 @@ class MelaReportsView(APIView):
             },
             "executive_performance": exec_performance,
         }, status=status.HTTP_200_OK)
+
+
+class MelaSettingsViewSet(viewsets.ModelViewSet):
+    serializer_class = MelaSettingsSerializer
+    queryset = MelaSettings.objects.all()
