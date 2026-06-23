@@ -2880,6 +2880,74 @@ export default function OwnerDashboard() {
             </div>
           )}
 
+          {activeTab === "mela_settings" && (
+            <div className="space-y-6 text-left max-w-2xl mx-auto">
+              <div className="bg-white border border-emerald-100 p-6 rounded-2xl shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Mela Settings & Configuration</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">Configure the dates, name, and venue details for your active Mela Campaign.</p>
+                </div>
+                
+                <form onSubmit={handleSaveMelaSettings} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Mela Campaign Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Grand Monsoon Mela"
+                      value={melaNameSetting}
+                      onChange={(e) => setMelaNameSetting(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Start Date</label>
+                      <input
+                        type="date"
+                        value={melaStartDateSetting}
+                        onChange={(e) => setMelaStartDateSetting(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-750 font-mono outline-none focus:border-[#04a700]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">End Date</label>
+                      <input
+                        type="date"
+                        value={melaEndDateSetting}
+                        onChange={(e) => setMelaEndDateSetting(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-750 font-mono outline-none focus:border-[#04a700]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Mela Location / Venue</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Main Showroom Ground"
+                      value={melaLocationSetting}
+                      onChange={(e) => setMelaLocationSetting(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
+                      required
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={melaLoading}
+                      className="bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-[#038a00] hover:to-emerald-700 text-white font-extrabold text-xs py-3 px-6 rounded-full shadow-md shadow-emerald-500/10 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {melaLoading ? "Saving..." : "Save Mela Configuration"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
