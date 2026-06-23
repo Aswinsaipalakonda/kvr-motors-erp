@@ -66,7 +66,8 @@ import {
   MapPin,
   RefreshCw,
   LayoutDashboard,
-  BarChart2
+  BarChart2,
+  Settings
 } from "lucide-react";
 import { 
   AreaChart, 
