@@ -27,7 +27,7 @@ import {
   X,
   UserCheck2,
   ActivitySquare,
-  User
+  User,
   Sparkles
 } from "lucide-react";
 
