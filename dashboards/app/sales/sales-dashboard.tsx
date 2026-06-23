@@ -197,12 +197,73 @@ export default function SalesDashboard() {
     }
   };
 
+  const loadMelaData = async () => {
+    try {
+      setMelaLoading(true);
+      const [inv, bookings] = await Promise.all([
+        getMelaInventory(),
+        getMelaBookings()
+      ]);
+      setMelaInventoryList(inv);
+      setMelaBookingsList(bookings);
+    } catch (e) {
+      console.error("Failed to load Mela campaign details:", e);
+    } finally {
+      setMelaLoading(false);
+    }
+  };
+
+  const handleMelaBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!melaBookingName.trim() || !melaBookingPhone.trim() || !melaBookingModel || !melaBookingColor) {
+      showToast("Please fill all required booking fields.", "error");
+      return;
+    }
+    const payload = {
+      customer_name: melaBookingName.trim(),
+      customer_phone: melaBookingPhone.trim(),
+      vehicle_model: parseInt(melaBookingModel),
+      color: melaBookingColor,
+      battery_type: melaBookingBattery
+    };
+    try {
+      setMelaLoading(true);
+      const result = await createMelaBooking(payload);
+      setCreatedMelaBookingResult(result);
+      showToast("Mela Booking created successfully!");
+      setMelaBookingName("");
+      setMelaBookingPhone("");
+      setMelaBookingModel("");
+      setMelaBookingColor("");
+      setMelaBookingBattery("graphene");
+      loadMelaData();
+    } catch (err: any) {
+      console.error("Failed to place Mela booking:", err);
+      const msg = err.response?.data?.non_field_errors || err.response?.data?.error || "Failed to create booking. Stock might be unavailable.";
+      showToast(Array.isArray(msg) ? msg[0] : String(msg), "error");
+    } finally {
+      setMelaLoading(false);
+    }
+  };
+
+  const handleCancelMelaBooking = async (id: number) => {
+    if (!window.confirm("Are you sure you want to cancel this campaign booking? This will restore the campaign stock.")) return;
+    try {
+      await updateMelaBooking(id, { status: "cancelled" });
+      showToast("Booking cancelled successfully.");
+      loadMelaData();
+    } catch {
+      showToast("Failed to cancel booking.", "error");
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBatteries();
     loadLeadsData();
     loadBookings();
     loadSales();
+    loadMelaData();
   }, []);
 
   // Polling for FIFO Override approvals
