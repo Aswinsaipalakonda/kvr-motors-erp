@@ -668,6 +668,40 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleSaveMelaSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!melaNameSetting.trim() || !melaLocationSetting.trim()) {
+      showToast("Please enter a campaign name and location.", "error");
+      return;
+    }
+
+    try {
+      setMelaLoading(true);
+      const payload = {
+        mela_name: melaNameSetting,
+        start_date: melaStartDateSetting || null,
+        end_date: melaEndDateSetting || null,
+        location: melaLocationSetting,
+        is_active: true
+      };
+
+      if (melaSettingsId) {
+        await updateMelaSettings(melaSettingsId, payload);
+        showToast("Mela settings updated successfully.");
+      } else {
+        const newSetting = await createMelaSettings(payload);
+        setMelaSettingsId(newSetting.id || null);
+        showToast("Mela settings saved successfully.");
+      }
+      loadMelaData();
+    } catch (err) {
+      console.error("Failed to save Mela settings:", err);
+      showToast("Failed to save Mela settings.", "error");
+    } finally {
+      setMelaLoading(false);
+    }
+  };
+
   const handleAddMelaInventorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!melaInvModel || !melaInvColor.trim() || !melaInvQty || !melaInvPrice) {
