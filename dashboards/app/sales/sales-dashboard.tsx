@@ -557,7 +557,7 @@ export default function SalesDashboard() {
       name: s.customer_name,
       contact: s.customer_contact,
       model: s.model_name || "Kinetic Green E-Luna",
-      invDate: s.sale_date || "May 2024",
+      invDate: s.sale_date || new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
       delStatus: s.delivery_status || "Delivered",
       notes: s.insurance_partner || "Comprehensive package",
       pdiDoneBy: "Suresh Babu",
