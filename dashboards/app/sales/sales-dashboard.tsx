@@ -17,6 +17,13 @@ import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from ".
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { createBooking, getBookings, updateBooking } from "../services/bookings";
 import { createSalesInvoice, getSalesInvoices } from "../services/sales";
+import MelaSubSidebar from "../components/MelaSubSidebar";
+import {
+  getMelaInventory,
+  createMelaBooking,
+  getMelaBookings,
+  updateMelaBooking
+} from "../services/mela";
 
 import {
   Compass,
