@@ -9,7 +9,7 @@ import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
   User, TrendingUp, CalendarDays, UserCheck, Layers, ArrowUpRight, 
-  MapPin, ShoppingBag, Landmark, PhoneCall
+  MapPin, ShoppingBag, Landmark, PhoneCall, Sparkles
 } from 'lucide-react-native';
 
 export default function SalesDashboard() {
@@ -201,6 +201,21 @@ export default function SalesDashboard() {
                     <ThemedText style={styles.bookingCtaDesc}>Register a token advance deposit</ThemedText>
                   </View>
                   <ArrowUpRight size={18} color="#04a700" />
+                </Pressable>
+
+                {/* Active Mela Campaign CTA */}
+                <Pressable
+                  onPress={() => router.push('/sales/mela' as any)}
+                  style={({ pressed }) => [styles.melaCta, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                >
+                  <View style={styles.melaCtaIcon}>
+                    <Sparkles size={18} color="#ffffff" />
+                  </View>
+                  <View style={styles.bookingCtaText}>
+                    <ThemedText style={styles.melaCtaTitle}>⚡ Active Mela Campaign</ThemedText>
+                    <ThemedText style={styles.bookingCtaDesc}>Mela Catalog, Bookings & Reports</ThemedText>
+                  </View>
+                  <ArrowUpRight size={18} color="#d97706" />
                 </Pressable>
               </View>
 
@@ -441,6 +456,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 2,
+  },
+  melaCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 119, 6, 0.25)',
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  melaCtaIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#d97706',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  melaCtaTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0f172a',
   },
   bookingCtaIcon: {
     width: 40,
