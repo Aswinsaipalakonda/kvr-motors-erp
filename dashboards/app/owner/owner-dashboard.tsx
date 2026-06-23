@@ -1956,70 +1956,179 @@ export default function OwnerDashboard() {
         />
         <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" || activeTab.startsWith("mela_") ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
           
-          {/* MELA TABS FOR OWNER */}
-          {activeTab === "mela_dashboard" && (
+          {/* MELA TABS F          {activeTab === "mela_dashboard" && (
             <div className="space-y-6 text-left">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <DashboardCard
-                  title="Total Mela Sales"
-                  value={`₹ ${(melaReports?.summary?.total_sales_revenue || 0).toLocaleString("en-IN")}`}
-                  description="Overall campaign revenue"
-                  icon={DollarSign}
-                  color="emerald"
-                />
-                <DashboardCard
-                  title="Delivered Vehicles"
-                  value={`${melaReports?.summary?.completed_bookings || 0} Units`}
-                  description="Completed checkouts"
-                  icon={CheckCircle2}
-                  color="emerald"
-                />
-                <DashboardCard
-                  title="Pending Bookings"
-                  value={`${melaReports?.summary?.unconfirmed_bookings || 0} Bookings`}
-                  description="Awaiting cash checkout"
-                  icon={AlertTriangle}
-                  color="amber"
-                />
-                <DashboardCard
-                  title="Today's Revenue"
-                  value={`₹ ${(melaReports?.summary?.daily_sales_revenue || 0).toLocaleString("en-IN")}`}
-                  description={`${melaReports?.summary?.daily_completed_count || 0} deliveries today`}
-                  icon={TrendingUp}
-                  color="blue"
-                />
+              {/* Premium Glassmorphic Hero Banner */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-[#071f11] to-slate-900 border border-emerald-950 p-6 sm:p-8 shadow-xl">
+                <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -mb-6 -ml-6 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        </span>
+                        Campaign Live
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        Date Range: {selectedRange}
+                      </span>
+                    </div>
+                    <h2 className="text-2xl font-black text-white tracking-tight leading-none">
+                      Mela Campaign Overview
+                    </h2>
+                    <p className="text-xs font-semibold text-slate-400 max-w-xl">
+                      Monitor real-time campaign sales, approve pending reservations, and manage team quotas.
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigateTo("mela_checkout")}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-black py-3 px-5 rounded-full transition-all duration-200 shadow-lg shadow-emerald-500/15 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Collect Cash Checkout
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo("mela_inventory")}
+                      className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 px-5 rounded-full transition-all duration-200 border border-slate-700 cursor-pointer"
+                    >
+                      Manage Inventory
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Quick Navigation Card / Welcome */}
-              <div className="bg-white border border-emerald-100 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                    Mela Campaign Active
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                    </span>
-                  </h3>
-                  <p className="text-xs font-medium text-slate-500 mt-1">
-                    Sales executives are actively taking bookings. Use the sub-sidebar to manage stock or complete customer checkouts.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigateTo("mela_checkout")}
-                    className="bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold py-2.5 px-4 rounded-full transition-all shadow-md shadow-[#04a700]/25 cursor-pointer"
-                  >
-                    Go to Checkout
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateTo("mela_inventory")}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-full transition-all border border-slate-200 cursor-pointer"
-                  >
-                    Manage Inventory
-                  </button>
+              {/* Styled Stats Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    title: "Total Mela Sales",
+                    value: `₹ ${(melaReports?.summary?.total_sales_revenue || 0).toLocaleString("en-IN")}`,
+                    desc: "Accumulated checkout revenue",
+                    tint: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 text-emerald-600",
+                    icon: DollarSign
+                  },
+                  {
+                    title: "Delivered Vehicles",
+                    value: `${melaReports?.summary?.completed_bookings || 0} Units`,
+                    desc: "Finalized checkouts & handovers",
+                    tint: "from-indigo-500/10 to-indigo-500/5 border-indigo-500/20 text-indigo-650",
+                    icon: CheckCircle2
+                  },
+                  {
+                    title: "Pending Bookings",
+                    value: `${melaReports?.summary?.unconfirmed_bookings || 0} Bookings`,
+                    desc: "Awaiting cash collection",
+                    tint: "from-amber-500/10 to-amber-500/5 border-amber-500/20 text-amber-600",
+                    icon: AlertTriangle
+                  },
+                  {
+                    title: "Today's Revenue",
+                    value: `₹ ${(melaReports?.summary?.daily_sales_revenue || 0).toLocaleString("en-IN")}`,
+                    desc: `${melaReports?.summary?.daily_completed_count || 0} deliveries completed today`,
+                    tint: "from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-600",
+                    icon: TrendingUp
+                  }
+                ].map((card, idx) => {
+                  const Icon = card.icon;
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`bg-gradient-to-br ${card.tint} border p-5 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-305 text-left flex flex-col justify-between h-32`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{card.title}</span>
+                        <Icon className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="mt-2 min-w-0">
+                        <div className="text-xl font-black text-slate-800 tracking-tight leading-none truncate">{card.value}</div>
+                        <div className="text-[9px] font-bold text-slate-400 mt-1.5 truncate">{card.desc}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Active Campaign Stocks Added by Owner */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-extrabold text-slate-800 tracking-tight uppercase">
+                  Active Mela Vehicles Stock
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {melaInventoryList.map((inv) => {
+                    const pct = inv.initial_quantity > 0 ? Math.round((inv.remaining_quantity / inv.initial_quantity) * 100) : 0;
+                    return (
+                      <div 
+                        key={inv.id} 
+                        className="bg-white border border-emerald-100/80 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                {inv.brand_name || "EV Brand"}
+                              </span>
+                              <h4 className="text-sm font-black text-slate-800 mt-1.5">{inv.model_name}</h4>
+                            </div>
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${
+                              inv.remaining_quantity === 0 
+                                ? "bg-rose-50 text-rose-700 border border-rose-100" 
+                                : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            }`}>
+                              {inv.remaining_quantity === 0 ? "Sold Out" : `${inv.remaining_quantity} Available`}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            <span className="text-[10px] font-semibold bg-slate-50 border border-slate-100 text-slate-600 px-2 py-0.5 rounded-lg capitalize">
+                              🎨 {inv.color}
+                            </span>
+                            <span className="text-[10px] font-semibold bg-slate-50 border border-slate-100 text-slate-605 px-2 py-0.5 rounded-lg">
+                              🔋 {inv.battery_type}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 pt-4 border-t border-slate-100">
+                          <div className="flex justify-between items-center">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Mela Pricing</div>
+                            <div className="text-base font-black text-[#04a700] font-mono">
+                              ₹ {parseFloat(inv.price).toLocaleString("en-IN")}
+                            </div>
+                          </div>
+                          
+                          {/* Stock progress bar */}
+                          <div className="mt-3 space-y-1">
+                            <div className="flex justify-between text-[9px] font-bold text-slate-400">
+                              <span>Remaining Stock</span>
+                              <span>{inv.remaining_quantity} / {inv.initial_quantity} Units</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  pct === 0 ? "bg-rose-500" : pct <= 30 ? "bg-amber-500" : "bg-[#04a700]"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {melaInventoryList.length === 0 && (
+                    <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 p-8 rounded-2xl text-center">
+                      <div className="text-slate-400 font-bold text-xs">No active campaign stocks registered.</div>
+                      <p className="text-[10px] text-slate-400 mt-1">Go to the Campaign Stock tab to register new stocks for this campaign.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2092,7 +2201,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 {/* Add Team Panel */}
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit text-left">
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Register Mela Sales Group</h3>
                     <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Define team groups for this campaign to track collective performance.</p>
@@ -2151,6 +2260,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             </div>
+          )}  </div>
           )}
 
           {activeTab === "mela_inventory" && (
