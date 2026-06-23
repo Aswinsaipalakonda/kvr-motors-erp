@@ -89,7 +89,7 @@ export default function StaffLayout() {
             <StaffPdi isActive={activeTab === 'pdi-checklist'} onBack={() => setActiveTab('dashboard')} />
           </View>
           <View style={{ flex: 1, display: activeTab === 'attendance' ? 'flex' : 'none' }}>
-            <StaffAttendance />
+            <StaffAttendance isActive={activeTab === 'attendance'} />
           </View>
           <View style={{ flex: 1, display: activeTab === 'profile' ? 'flex' : 'none' }}>
             <StaffProfile />
