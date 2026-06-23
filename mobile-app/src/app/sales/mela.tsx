@@ -237,6 +237,23 @@ export default function SalesMelaCampaign() {
           <View style={styles.titleWrapper}>
             <ThemedText style={styles.mainTitle}>{activeMela?.mela_name || 'Mela Campaign'}</ThemedText>
             <ThemedText style={styles.accentTitle}>Booking Portal</ThemedText>
+            {activeMela && (
+              <View style={styles.headerDatesContainer}>
+                <CalendarDays size={12} color="#86efac" />
+                <ThemedText style={styles.headerDatesText}>
+                  {activeMela.start_date || 'Start'} to {activeMela.end_date || 'End'}
+                </ThemedText>
+                {activeMela.location ? (
+                  <>
+                    <View style={styles.headerDateSeparator} />
+                    <MapPin size={12} color="#86efac" />
+                    <ThemedText style={styles.headerDatesText} numberOfLines={1}>
+                      {activeMela.location}
+                    </ThemedText>
+                  </>
+                ) : null}
+              </View>
+            )}
           </View>
         </View>
 
@@ -777,6 +794,24 @@ const styles = StyleSheet.create({
   titleWrapper: {
     marginTop: 22,
     marginBottom: 6
+  },
+  headerDatesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  headerDatesText: {
+    color: '#86efac',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  headerDateSeparator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#64748b',
+    marginHorizontal: 4,
   },
   mainTitle: {
     fontSize: 26,
