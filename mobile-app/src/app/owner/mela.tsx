@@ -12,6 +12,7 @@ import {
   Settings as SettingsIcon, Award
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
+import DatePicker from '@/components/DatePicker';
 import api from '@/services/api';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
@@ -761,23 +762,19 @@ export default function OwnerMelaCampaign() {
 
                     <View style={styles.dateGrid}>
                       <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <ThemedText style={styles.inputLabel}>Start Date (YYYY-MM-DD)</ThemedText>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="YYYY-MM-DD"
-                          placeholderTextColor="#94a3b8"
+                        <ThemedText style={styles.inputLabel}>Start Date</ThemedText>
+                        <DatePicker
                           value={melaStartDate}
-                          onChangeText={setMelaStartDate}
+                          onChange={setMelaStartDate}
+                          placeholder="Select start date"
                         />
                       </View>
                       <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <ThemedText style={styles.inputLabel}>End Date (YYYY-MM-DD)</ThemedText>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="YYYY-MM-DD"
-                          placeholderTextColor="#94a3b8"
+                        <ThemedText style={styles.inputLabel}>End Date</ThemedText>
+                        <DatePicker
                           value={melaEndDate}
-                          onChangeText={setMelaEndDate}
+                          onChange={setMelaEndDate}
+                          placeholder="Select end date"
                         />
                       </View>
                     </View>
