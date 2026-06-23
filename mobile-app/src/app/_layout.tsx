@@ -2,6 +2,28 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
+export const ROLE_ROUTE_MAP: Record<string, string> = {
+  owner: '/owner/dashboard',
+  admin: '/owner/dashboard',
+  sales: '/sales/dashboard',
+  sales_executive: '/sales/dashboard',
+  supervisor: '/supervisor/dashboard',
+  staff: '/staff/dashboard',
+  operations: '/staff/dashboard',
+  telecaller: '/telecaller/dashboard',
+};
+
+const ROLE_GROUP_MAP: Record<string, string> = {
+  owner: 'owner',
+  admin: 'owner',
+  sales: 'sales',
+  sales_executive: 'sales',
+  supervisor: 'supervisor',
+  staff: 'staff',
+  operations: 'staff',
+  telecaller: 'telecaller',
+};
+
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
@@ -11,7 +33,8 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const targetGroup = segments[0];
-    const inAuthGroup = ['owner', 'sales', 'supervisor', 'staff', 'telecaller'].includes(targetGroup);
+    const authGroups = ['owner', 'sales', 'supervisor', 'staff', 'telecaller'];
+    const inAuthGroup = authGroups.includes(targetGroup);
 
     if (!user) {
       if (inAuthGroup) {
@@ -22,32 +45,19 @@ function RootLayoutNav() {
         } catch (e) {
           console.warn("Failed to dismiss navigation stack on logout:", e);
         }
-        // Redirect to the login screen if trying to access secure screens and not logged in
         router.replace('/login');
       }
     } else {
-      // User is logged in
-      const isUserInCorrectGroup = 
-        (user.role === 'owner' && targetGroup === 'owner') ||
-        ((user.role === 'sales' || user.role === 'sales_executive') && targetGroup === 'sales') ||
-        (user.role === 'supervisor' && targetGroup === 'supervisor') ||
-        ((user.role === 'staff' || user.role === 'operations') && targetGroup === 'staff') ||
-        (user.role === 'telecaller' && targetGroup === 'telecaller');
+      const correctGroup = ROLE_GROUP_MAP[user.role];
+      const isUserInCorrectGroup = targetGroup === correctGroup;
 
-      if (inAuthGroup && !isUserInCorrectGroup) {
-        // Redirect unauthorized role attempts to their correct dashboard
-        if (user.role === 'owner') {
-          router.replace('/owner/dashboard');
-        } else if (user.role === 'sales' || user.role === 'sales_executive') {
-          router.replace('/sales/dashboard');
-        } else if (user.role === 'supervisor') {
-          router.replace('/supervisor/dashboard');
-        } else if (user.role === 'staff' || user.role === 'operations') {
-          router.replace('/staff/dashboard');
-        } else if (user.role === 'telecaller') {
-          router.replace('/telecaller/dashboard');
+      if (inAuthGroup) {
+        if (!isUserInCorrectGroup) {
+          // Redirect unauthorized role attempts to their correct dashboard
+          const targetPath = ROLE_ROUTE_MAP[user.role] || '/login';
+          router.replace(targetPath as any);
         }
-      } else if (!inAuthGroup) {
+      } else {
         try {
           if (typeof router.canDismiss === 'function' && router.canDismiss()) {
             router.dismissAll();
@@ -55,18 +65,8 @@ function RootLayoutNav() {
         } catch (e) {
           console.warn("Failed to dismiss navigation stack on login:", e);
         }
-        // Redirect to appropriate dashboard if already logged in but not in an auth group
-        if (user.role === 'owner') {
-          router.replace('/owner/dashboard');
-        } else if (user.role === 'sales' || user.role === 'sales_executive') {
-          router.replace('/sales/dashboard');
-        } else if (user.role === 'supervisor') {
-          router.replace('/supervisor/dashboard');
-        } else if (user.role === 'staff' || user.role === 'operations') {
-          router.replace('/staff/dashboard');
-        } else if (user.role === 'telecaller') {
-          router.replace('/telecaller/dashboard');
-        }
+        const targetPath = ROLE_ROUTE_MAP[user.role] || '/login';
+        router.replace(targetPath as any);
       }
     }
   }, [user, isLoading, segments]);

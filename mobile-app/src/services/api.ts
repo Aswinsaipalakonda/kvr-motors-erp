@@ -50,6 +50,17 @@ let resolvePromise: Promise<string> | null = null;
 
 export const getBaseHostUrl = async (): Promise<string> => {
   if (resolvedBaseUrl) return resolvedBaseUrl;
+
+  // Check if explicit env variable is set
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    resolvedBaseUrl = envUrl;
+    baseHostUrl = envUrl;
+    authApi.defaults.baseURL = `${envUrl}/api/auth`;
+    api.defaults.baseURL = `${envUrl}/api/v1`;
+    return resolvedBaseUrl;
+  }
+
   if (!__DEV__) {
     resolvedBaseUrl = 'https://kvr.thehps.in';
     return resolvedBaseUrl;
@@ -58,32 +69,25 @@ export const getBaseHostUrl = async (): Promise<string> => {
 
   const candidates: string[] = [];
   
-  // Prioritize emulator loopback IP based on platform
-  if (Platform.OS === 'android') {
-    candidates.push('http://10.0.2.2:8000');
-  } else if (Platform.OS === 'ios') {
-    candidates.push('http://127.0.0.1:8000');
-  }
-
+  // Prioritize Expo packager host IP
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) {
-      const url = `http://${ip}:8000`;
-      if (!candidates.includes(url)) {
-        candidates.push(url);
-      }
+      candidates.push(`http://${ip}:8000`);
     }
   }
 
-  // Include known developer machine IPs and emulator default subnets
-  const developerIps = ['192.168.1.33', '192.168.1.45', '192.168.1.35', '10.0.2.2', '127.0.0.1'];
-  developerIps.forEach((ip) => {
-    const url = `http://${ip}:8000`;
-    if (!candidates.includes(url)) {
-      candidates.push(url);
+  // Fallback to platform-specific emulator loopback address
+  if (Platform.OS === 'android') {
+    if (!candidates.includes('http://10.0.2.2:8000')) {
+      candidates.push('http://10.0.2.2:8000');
     }
-  });
+  } else {
+    if (!candidates.includes('http://127.0.0.1:8000')) {
+      candidates.push('http://127.0.0.1:8000');
+    }
+  }
 
   resolvePromise = (async () => {
     try {

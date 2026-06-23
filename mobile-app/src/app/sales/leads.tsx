@@ -99,6 +99,12 @@ export default function SalesLeads() {
       }
     } catch (e) {
       console.error('Failed to load leads screen data:', e);
+      if (refreshing) {
+        Alert.alert(
+          'Refresh Failed',
+          'Failed to sync latest leads database. Please check your connection and try again.'
+        );
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);

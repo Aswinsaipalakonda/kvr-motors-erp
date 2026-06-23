@@ -5,30 +5,16 @@ import { ThemedView } from '@/components/themed-view';
 import { LogoHeader } from '@/components/LogoHeader';
 import { useAuth } from '@/context/AuthContext';
 
+import { ROLE_ROUTE_MAP } from './_layout';
+
 export default function EntryPoint() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
-
-    if (user) {
-      if (user.role === 'owner') {
-        router.replace('/owner/dashboard');
-      } else if (user.role === 'sales' || user.role === 'sales_executive') {
-        router.replace('/sales/dashboard');
-      } else if (user.role === 'supervisor') {
-        router.replace('/supervisor/dashboard');
-      } else if (user.role === 'staff' || user.role === 'operations') {
-        router.replace('/staff/dashboard');
-      } else if (user.role === 'telecaller') {
-        router.replace('/telecaller/dashboard');
-      } else {
-        router.replace('/login');
-      }
-    } else {
-      router.replace('/login');
-    }
+    const targetPath = user ? (ROLE_ROUTE_MAP[user.role] || '/login') : '/login';
+    router.replace(targetPath as any);
   }, [user, isLoading]);
 
   return (

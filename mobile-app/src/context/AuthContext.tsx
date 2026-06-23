@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import api, { authApi } from '../services/api';
 import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
@@ -44,10 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const pushToken = await registerForPushNotificationsAsync();
       if (pushToken) {
         await api.patch('/auth/me/', { expo_push_token: pushToken });
-        console.log('Successfully registered Expo push token with backend:', pushToken);
+        if (__DEV__) {
+          console.log('Successfully registered Expo push token with backend:', pushToken);
+        }
       }
     } catch (err) {
-      console.warn('Failed to register push token with backend:', err);
+      if (__DEV__) {
+        console.warn('Failed to register push token with backend:', err);
+      }
     }
   };
 
@@ -72,7 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await SecureStore.deleteItemAsync('user_profile').catch(() => {});
         }
       } catch (e) {
-        console.error('Failed to load session from SecureStore:', e);
+        if (__DEV__) {
+          console.error('Failed to load session from SecureStore:', e);
+        }
+        // Clearly notify the user of SecureStore read failures instead of silently wiping state
+        Alert.alert(
+          'Session Error',
+          'Failed to load your saved session due to a storage failure. Please log in again.'
+        );
         // Clear corrupted data
         await SecureStore.deleteItemAsync('jwt_token').catch(() => {});
         await SecureStore.deleteItemAsync('jwt_refresh_token').catch(() => {});

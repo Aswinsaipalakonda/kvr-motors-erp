@@ -87,6 +87,12 @@ export default function RoleProfile({
       });
     } catch (err) {
       console.error('Failed to load mobile profile:', err);
+      if (isSilent) {
+        Alert.alert(
+          'Refresh Failed',
+          'Failed to retrieve updated profile data. Please check your network connection and try again.'
+        );
+      }
       if (user) {
         const fullName = user.full_name || '';
         const nameParts = fullName.trim().split(/\s+/);

@@ -53,13 +53,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setIsLoading(false);
-  }, []);
+
+    // Set up auth:unauthorized event listener for clean SPA redirects
+    const handleUnauthorized = () => {
+      setUser(null);
+      router.push("/login");
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth:unauthorized", handleUnauthorized);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth:unauthorized", handleUnauthorized);
+      }
+    };
+  }, [router]);
 
   const login = async (username: string, password: string): Promise<UserProfile> => {
     try {
-      const host = typeof window !== "undefined" ? window.location.hostname : "127.0.0.1";
-      const isLocal = host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.");
-      const authUrl = isLocal ? `http://${host}:8000/api/auth/login/` : "https://kvr.thehps.in/api/auth/login/";
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      const apiOrigin = apiBaseUrl.replace(/\/api\/v1\/?$/, "");
+      const authUrl = `${apiOrigin}/api/auth/login/`;
 
       const response = await axios.post(authUrl, {
         username,
@@ -78,6 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCookie("user_role", userProfile.role, 1);
       setCookie("user_profile", JSON.stringify(userProfile), 1);
 
+      // Verify cookies are written (avoid race condition on fast redirects)
+      let retries = 0;
+      while (retries < 5 && getCookie("jwt_token") !== access) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        retries++;
+      }
+
       setUser(userProfile);
       
       // Redirect based on role path mapping
@@ -91,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       const redirectPath = roleRedirectMap[userProfile.role as keyof typeof roleRedirectMap] || "/";
-      window.location.href = redirectPath;
+      router.push(redirectPath);
 
       return userProfile;
     } catch (error: any) {

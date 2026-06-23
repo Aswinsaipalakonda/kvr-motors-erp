@@ -13,7 +13,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   // Check if native Firebase modules are linked in the current binary
   const hasFirebase = !!NativeModules.RNFBAppModule;
   if (!hasFirebase) {
-    console.log('FCM native modules not linked/available (running in Expo Go). Defaulting to mock token.');
+    if (__DEV__) {
+      console.log('FCM native modules not linked/available (running in Expo Go). Defaulting to mock token.');
+    }
     return 'ExponentPushToken[mock-fcm-token-go]';
   }
 
@@ -28,7 +30,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       authStatus === 2;   // messaging.AuthorizationStatus.PROVISIONAL
 
     if (!enabled) {
-      console.warn('Failed to secure FCM push notification permissions from user.');
+      if (__DEV__) {
+        console.warn('Failed to secure FCM push notification permissions from user.');
+      }
       return null;
     }
 
@@ -39,10 +43,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     // Retrieve FCM token
     const token = await messaging().getToken();
-    console.log('Firebase Cloud Messaging Token:', token);
+    if (__DEV__) {
+      console.log('Firebase Cloud Messaging Token:', token);
+    }
     return token;
   } catch (error) {
-    console.log('FCM native modules not available (expected when running in Expo Go). Defaulting to mock token:', error);
+    if (__DEV__) {
+      console.log('FCM native modules not available (expected when running in Expo Go). Defaulting to mock token:', error);
+    }
     return 'ExponentPushToken[mock-fcm-token-go]';
   }
 }
