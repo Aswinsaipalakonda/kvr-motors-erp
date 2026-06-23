@@ -65,3 +65,19 @@ class MelaBooking(models.Model):
 
     def __str__(self):
         return f"{self.booking_id} - {self.customer_name} ({self.status})"
+
+
+class MelaSettings(models.Model):
+    mela_name = models.CharField(max_length=255, default="Grand Monsoon Mela")
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    location = models.CharField(max_length=255, default="Main Showroom Ground")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Mela Settings"
+
+    def __str__(self):
+        return f"{self.mela_name} ({self.start_date} to {self.end_date})"
