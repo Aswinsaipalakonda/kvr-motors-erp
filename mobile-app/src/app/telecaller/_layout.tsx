@@ -130,7 +130,7 @@ export default function TelecallerLayout() {
             />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
-            <TelecallerAttendance />
+            <TelecallerAttendance isActive={activeTab === 'attendance'} />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
             <TelecallerProfile />

@@ -132,7 +132,7 @@ export default function SupervisorLayout() {
             <SupervisorLeads />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'attendance' ? 'flex' : 'none' }]}>
-            <SupervisorAttendance />
+            <SupervisorAttendance isActive={activeTab === 'attendance'} />
           </View>
           <View style={[styles.screenLayer, { display: activeTab === 'profile' ? 'flex' : 'none' }]}>
             <SupervisorProfile />
