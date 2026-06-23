@@ -10,6 +10,7 @@ import {
   FileText, ShieldCheck, ArrowRight, Plus, X, Trash2, Edit, IndianRupee, Search,
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
+import DatePicker from '@/components/DatePicker';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
 
@@ -776,13 +777,10 @@ export default function OwnerBookings({
                 {/* Expiry date */}
                 <View style={styles.field}>
                   <ThemedText style={styles.fieldLabel}>Expiry Date (optional)</ThemedText>
-                  <TextInput
-                    style={[styles.input, errors.expiry_date && styles.inputError]}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94a3b8"
+                  <DatePicker
                     value={form.expiry_date}
-                    onChangeText={(t) => updateField('expiry_date', t)}
-                    autoCapitalize="none"
+                    onChange={(date: string) => updateField('expiry_date', date)}
+                    placeholder="Select expiry date"
                   />
                   {errors.expiry_date && <ThemedText style={styles.errorText}>{errors.expiry_date}</ThemedText>}
                 </View>
