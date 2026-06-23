@@ -856,7 +856,7 @@ export default function SalesDashboard() {
                   value={`₹ ${melaBookingsList.filter(b => b.status === "completed").reduce((sum, b) => sum + parseFloat(b.price), 0).toLocaleString("en-IN")}`}
                   description="Total revenue generated"
                   icon={DollarSign}
-                  color="green"
+                  color="emerald"
                 />
               </div>
 
