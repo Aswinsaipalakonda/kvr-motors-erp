@@ -75,6 +75,12 @@ export default function SalesDashboard() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  const navigateTo = (tab: string) => {
+    setActiveTab(tab);
+    const path = tab === "dashboard" ? "/sales" : `/sales/${tab}`;
+    window.history.pushState({ path }, "", path);
+  };
+
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
