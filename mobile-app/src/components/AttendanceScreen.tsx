@@ -75,11 +75,14 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     }
   };
 
-  // Request permissions on mount to prepare camera and location immediately
+  // Request permissions when tab becomes active to prepare camera and location
   useEffect(() => {
-    loadAttendanceData();
-    requestPermissionsOnMount();
-  }, []);
+    if (isActive && !hasInitialized) {
+      loadAttendanceData();
+      requestPermissionsOnMount();
+      setHasInitialized(true);
+    }
+  }, [isActive, hasInitialized]);
 
   // Request permissions actively on mount
   const requestPermissionsOnMount = async () => {
@@ -87,7 +90,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       // 1. Request Camera Permission
       const camRes = await requestCameraPermission();
       if (camRes.granted) {
-        setActiveCamera(true);
+        setActiveCamera(isActive);
       }
 
       // 2. Request Location Permission
@@ -103,12 +106,14 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     }
   };
 
-  // When camera permission changes (e.g. user grants it), activate camera
+  // Manage camera state based on active status and permission
   useEffect(() => {
-    if (cameraPermission?.granted && !isCheckedInToday) {
+    if (!isActive) {
+      setActiveCamera(false);
+    } else if (cameraPermission?.granted && !isCheckedInToday) {
       setActiveCamera(true);
     }
-  }, [cameraPermission?.granted, isCheckedInToday]);
+  }, [isActive, cameraPermission?.granted, isCheckedInToday]);
 
   // This is now only called when user explicitly taps "Grant Location Access"
   const checkAndRequestLocationPermission = async () => {
