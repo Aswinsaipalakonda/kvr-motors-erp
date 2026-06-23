@@ -125,3 +125,12 @@ class MelaSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = MelaSettings
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        # Convert empty strings to None/null for date fields to prevent validation errors
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'start_date' in data and data['start_date'] == '':
+            data['start_date'] = None
+        if 'end_date' in data and data['end_date'] == '':
+            data['end_date'] = None
+        return super().to_internal_value(data)
