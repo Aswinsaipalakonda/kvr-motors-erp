@@ -1840,7 +1840,7 @@ export default function OwnerDashboard() {
                   value={`${melaReports?.summary?.completed_bookings || 0} Units`}
                   description="Completed checkouts"
                   icon={CheckCircle2}
-                  color="green"
+                  color="emerald"
                 />
                 <DashboardCard
                   title="Pending Bookings"
