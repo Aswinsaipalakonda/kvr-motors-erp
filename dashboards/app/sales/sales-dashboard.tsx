@@ -150,13 +150,6 @@ export default function SalesDashboard() {
   const [melaBookingColor, setMelaBookingColor] = useState("");
   const [melaBookingBattery, setMelaBookingBattery] = useState("graphene");
 
-  // Tab navigation
-  const navigateTo = (tab: string) => {
-    setActiveTab(tab);
-    const path = tab === "dashboard" ? "/sales" : `/sales/${tab}`;
-    window.history.pushState({ path }, "", path);
-  };
-
   const loadLeadsData = async () => {
     try {
       setLeadsLoading(true);
