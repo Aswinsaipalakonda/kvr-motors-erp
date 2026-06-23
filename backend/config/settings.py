@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'dashboard',
     'activity_logs',
     'attendance',
+    'mela',
 ]
 
 MIDDLEWARE = [
