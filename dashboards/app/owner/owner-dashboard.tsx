@@ -2794,8 +2794,8 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="divide-y divide-slate-100">
                     {[
-                      { date: "12 May 2024", model: "E-Luna Moped", vin: "KVRVIN2026X101", loc: "Pendurthi Godown", code: "GRN-2024-0512", carrier: "KVR Logistics", pdi: "Ramesh (Passed)", status: "Received" },
-                      { date: "10 May 2024", model: "Dynamo Pro", vin: "KVRVIN2026X102", loc: "Isakapallem Showroom", code: "GRN-2024-0508", carrier: "SafeExpress", pdi: "Suresh (Passed)", status: "Received" },
+                      { date: getDynamicDate(12, 0, "long"), model: "E-Luna Moped", vin: "KVRVIN2026X101", loc: "Pendurthi Godown", code: getDynamicCode("GRN", 12), carrier: "KVR Logistics", pdi: "Ramesh (Passed)", status: "Received" },
+                      { date: getDynamicDate(10, 0, "long"), model: "Dynamo Pro", vin: "KVRVIN2026X102", loc: "Isakapallem Showroom", code: getDynamicCode("GRN", 8), carrier: "SafeExpress", pdi: "Suresh (Passed)", status: "Received" },
                     ].map((r, i) => (
                       <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
                         <div className="flex items-start justify-between gap-3">
@@ -2825,8 +2825,8 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="divide-y divide-slate-100">
                     {[
-                      { date: "13 May 2024", model: "Dynamo Pro", vin: "KVRVIN2026X102", dest: "Visakhapatnam City Outlet", ref: "INV-2024-0789", driver: "Somu Naidu", status: "Sold Dispatch", tint: "indigo" },
-                      { date: "11 May 2024", model: "Watts 100", vin: "KVRVIN2026X115", dest: "Kakinada Showroom", ref: "TRN-2024-0044", driver: "Appalaraju", status: "Internal Transfer", tint: "amber" },
+                      { date: getDynamicDate(13, 0, "long"), model: "Dynamo Pro", vin: "KVRVIN2026X102", dest: "Visakhapatnam City Outlet", ref: getDynamicCode("INV", 89), driver: "Somu Naidu", status: "Sold Dispatch", tint: "indigo" },
+                      { date: getDynamicDate(11, 0, "long"), model: "Watts 100", vin: "KVRVIN2026X115", dest: "Kakinada Showroom", ref: getDynamicCode("TRN", 44), driver: "Appalaraju", status: "Internal Transfer", tint: "amber" },
                     ].map((r, i) => (
                       <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
                         <div className="flex items-start justify-between gap-3">
@@ -2856,8 +2856,8 @@ export default function OwnerDashboard() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   {[
-                    { ref: "TRN-2024-0044", from: "Pendurthi Godown", to: "KVR Showroom - Visakhapatnam", qty: "Kinetic E-Luna (10 Units)", dispatch: "14 May 2024", transit: "4 hours", arrival: "14 May, 4:00 PM", approval: "Approved (Suresh Babu)", status: "Completed", done: true },
-                    { ref: "TRN-2024-0049", from: "Pineapple Colony Godown", to: "KVR Showroom - Srikakulam", qty: "Dynamo Pro (5 Units)", dispatch: "18 May 2024", transit: "1 day", arrival: "18 May, 6:00 PM", approval: "Pending Review", status: "In Transit", done: false },
+                    { ref: getDynamicCode("TRN", 44), from: "Pendurthi Godown", to: "KVR Showroom - Visakhapatnam", qty: "Kinetic E-Luna (10 Units)", dispatch: getDynamicDate(14, 0, "long"), transit: "4 hours", arrival: `${getDynamicDate(14, 0, "short")}, 4:00 PM`, approval: "Approved (Suresh Babu)", status: "Completed", done: true },
+                    { ref: getDynamicCode("TRN", 49), from: "Pineapple Colony Godown", to: "KVR Showroom - Srikakulam", qty: "Dynamo Pro (5 Units)", dispatch: getDynamicDate(18, 0, "long"), transit: "1 day", arrival: `${getDynamicDate(18, 0, "short")}, 6:00 PM`, approval: "Pending Review", status: "In Transit", done: false },
                   ].map((t, i) => (
                     <div key={i} className="rounded-xl border border-slate-105 bg-slate-50/40 p-4">
                       <div className="flex items-center justify-between gap-2 mb-3">
@@ -3475,11 +3475,11 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="p-4 text-xs font-semibold text-slate-500 space-y-2">
                     <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span>KVR-Visakhapatnam Showroom • Delivered (INV-2024-0789)</span>
+                      <span>KVR-Visakhapatnam Showroom • Delivered ({getDynamicCode("INV", 89)})</span>
                       <span className="font-bold text-slate-800">₹ 98,500</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span>KVR-Srikakulam Showroom • Delivered (INV-2024-0791)</span>
+                      <span>KVR-Srikakulam Showroom • Delivered ({getDynamicCode("INV", 91)})</span>
                       <span className="font-bold text-slate-800">₹ 1,15,000</span>
                     </div>
                     <div className="flex justify-between">
