@@ -649,12 +649,22 @@ export default function OwnerDashboard() {
       showToast("Please fill all required stock fields.", "error");
       return;
     }
+
+    let remainingQty = parseInt(melaInvQty);
+    if (editingMelaInventoryId) {
+      const existing = melaInventoryList.find(item => item.id === editingMelaInventoryId);
+      if (existing) {
+        const diff = parseInt(melaInvQty) - existing.initial_quantity;
+        remainingQty = Math.max(0, existing.remaining_quantity + diff);
+      }
+    }
+
     const payload = {
       vehicle_model: parseInt(melaInvModel),
       color: melaInvColor.trim(),
       battery_type: melaInvBattery,
       initial_quantity: parseInt(melaInvQty),
-      remaining_quantity: parseInt(melaInvQty),
+      remaining_quantity: remainingQty,
       price: parseFloat(melaInvPrice),
       is_active: true
     };
