@@ -15,6 +15,7 @@ from inventory.views import StockTransferViewSet
 from users.views import UserViewSet, CurrentUserView
 from activity_logs.views import ActivityLogViewSet
 from attendance.views import AttendanceViewSet
+from mela.views import MelaInventoryViewSet, MelaBookingViewSet, MelaReportsView
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -37,6 +38,8 @@ router.register(r'stock-transfers', StockTransferViewSet, basename='stocktransfe
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'activity-logs', ActivityLogViewSet, basename='activitylog')
 router.register(r'attendance', AttendanceViewSet, basename='attendance')
+router.register(r'mela-inventory', MelaInventoryViewSet, basename='melainventory')
+router.register(r'mela-bookings', MelaBookingViewSet, basename='melabooking')
 
 
 urlpatterns = [
@@ -45,6 +48,7 @@ urlpatterns = [
     # Custom API endpoints
     path('api/auth/', include('users.urls')),
     path('api/v1/auth/me/', CurrentUserView.as_view(), name='current_user_v1'),
+    path('api/v1/mela-reports/', MelaReportsView.as_view(), name='mela_reports'),
     path('api/v1/', include(router.urls)),
     
     # OpenAPI Schema & API Documentation views
