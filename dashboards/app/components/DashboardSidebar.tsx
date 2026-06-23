@@ -145,6 +145,8 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
     return "text-emerald-800/60 group-hover:text-emerald-950";
   };
 
+  const isMela = activeTab?.startsWith("mela_");
+
   return (
     <>
       {/* Mobile Hamburger Toggle Button (hidden when drawer is open) */}
@@ -169,12 +171,14 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-72 max-w-[85vw] border-r transition-transform duration-300 lg:translate-x-0 lg:static lg:w-64 lg:shrink-0 rounded-none overflow-hidden bg-[#090d16] border-[#1e293b] text-white ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col w-72 max-w-[85vw] border-r transition-all duration-300 lg:translate-x-0 lg:static ${
+          isMela ? "lg:w-20" : "lg:w-64"
+        } lg:shrink-0 rounded-none overflow-hidden bg-[#090d16] border-[#1e293b] text-white ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Header / Logo */}
-        <div className="flex flex-col border-b border-[#1e293b] bg-[#05070c]/50 p-4">
+        <div className={`flex flex-col border-b border-[#1e293b] bg-[#05070c]/50 ${isMela ? "p-3 items-center justify-center" : "p-4"}`}>
           <div className="flex items-center gap-3">
             {/* In-drawer close button (mobile only) */}
             <button
@@ -195,22 +199,28 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 priority
               />
             </div>
-            <div className="flex flex-col text-left">
-              <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans flex items-center gap-1.5">
-                KVR Motors
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
-                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
-              </span>
-            </div>
+            {!isMela && (
+              <div className="flex flex-col text-left">
+                <span className="font-extrabold text-lg tracking-tight uppercase text-white font-sans flex items-center gap-1.5">
+                  KVR Motors
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
+                  {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Scrollable menu items */}
-        <div className="flex-1 overflow-y-auto slim-scrollbar px-4 space-y-1.5 py-4">
-          <span className="px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left text-slate-400 font-sans">
-            Modules
-          </span>
+        <div className={`flex-1 overflow-y-auto slim-scrollbar space-y-1.5 py-4 ${isMela ? "px-2" : "px-4"}`}>
+          {!isMela ? (
+            <span className="px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 text-left text-slate-400 font-sans">
+              Modules
+            </span>
+          ) : (
+            <div className="border-b border-[#1e293b] my-2 mx-2" />
+          )}
           <nav className="space-y-1">
             {currentConfig.items.map((item) => {
               const isTabActive = isItemActive(item.id);
@@ -242,10 +252,15 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                   key={item.id}
                   href={itemPath}
                   onClick={handleClick}
-                  className={`flex w-full items-center gap-3 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 group text-left ${navItemClass}`}
+                  title={item.label}
+                  className={`flex w-full items-center rounded-full text-sm font-semibold transition-all duration-200 group text-left ${
+                    isMela 
+                      ? "justify-center p-2.5" 
+                      : "gap-3 px-4 py-2.5"
+                  } ${navItemClass}`}
                 >
                   <Icon className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${navIconClass}`} />
-                  <span>{item.label}</span>
+                  {!isMela && <span>{item.label}</span>}
                 </Link>
               );
             })}
