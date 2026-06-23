@@ -26,6 +26,9 @@ import {
 } from "../services/mela";
 
 import {
+  TrendingUp,
+  ListOrdered,
+  PlusCircle,
   Compass,
   CreditCard,
   Phone,
