@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Users, ArrowLeft, X, ChevronDown, ShieldCheck, Shield,
-  Mail, Phone, MapPin, UserPlus, CheckCircle,
+  Mail, Phone, MapPin, UserPlus, CheckCircle, Edit2, Trash2,
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -69,6 +69,119 @@ export default function OwnerUsers({
 
   // Role action sheet
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
+
+  // Edit personnel form states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('Sales Executive');
+  const [editBranch, setEditBranch] = useState('KVR Motors - Visakhapatnam');
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editPassword, setEditPassword] = useState('');
+  const [isEditRoleDropdownOpen, setIsEditRoleDropdownOpen] = useState(false);
+  const [isEditBranchDropdownOpen, setIsEditBranchDropdownOpen] = useState(false);
+
+  const openEditModal = (user: StaffUser) => {
+    setEditFullName(user.name);
+    setEditEmail(user.email === '—' ? '' : user.email);
+    setEditPhone(user.phone === '—' ? '' : user.phone);
+    setEditRole(user.role);
+    setEditBranch(user.branch);
+    setEditIsActive(user.status === 'Active');
+    setEditPassword('');
+    setErrors({});
+    setIsEditRoleDropdownOpen(false);
+    setIsEditBranchDropdownOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditUserSubmit = async () => {
+    if (!selectedUser || !selectedUser.id) return;
+    
+    // Validate
+    const next: FormErrors = {};
+    if (!editFullName.trim()) next.fullName = 'Full name is required';
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!editEmail.trim()) next.email = 'Email is required';
+    else if (!emailRe.test(editEmail.trim())) next.email = 'Enter a valid email address';
+    
+    const cleanPhone = editPhone.trim().replace(/\D/g, '');
+    if (!editPhone.trim()) {
+      next.phone = 'Phone number is required';
+    } else if (cleanPhone.length !== 10) {
+      next.phone = 'Phone number must be exactly 10 digits';
+    }
+
+    if (Object.keys(next).length > 0) {
+      setErrors(next);
+      return;
+    }
+    
+    let backendRole = 'staff';
+    if (editRole === 'Owner') backendRole = 'owner';
+    else if (editRole === 'Supervisor') backendRole = 'supervisor';
+    else if (editRole === 'Sales Executive') backendRole = 'sales_executive';
+    else if (editRole === 'Telecaller') backendRole = 'telecaller';
+    else if (editRole === 'Staff') backendRole = 'staff';
+
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        full_name: editFullName.trim(),
+        email: editEmail.trim(),
+        phone_number: editPhone.trim(),
+        role: backendRole,
+        branch: editBranch,
+        is_active: editIsActive,
+      };
+      
+      if (editPassword.trim()) {
+        payload.password = editPassword.trim();
+      }
+      
+      await api.patch(`/users/${selectedUser.id}/`, payload);
+      Alert.alert('Personnel Updated', `${editFullName.trim()} has been updated successfully.`);
+      setIsEditModalOpen(false);
+      setSelectedUser(null);
+      loadUsers();
+    } catch (err: any) {
+      console.error('Failed to update user:', err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to update user: ${errMsg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = () => {
+    if (!selectedUser || !selectedUser.id) return;
+    
+    Alert.alert(
+      'Delete User Account',
+      `Are you sure you want to permanently delete the account of ${selectedUser.name}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await api.delete(`/users/${selectedUser.id}/`);
+              Alert.alert('Success', 'User account deleted successfully.');
+              setSelectedUser(null);
+              loadUsers();
+            } catch (err: any) {
+              console.error('Failed to delete user:', err);
+              Alert.alert('Error', 'Failed to delete user account.');
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const rolesList = ['Owner', 'Supervisor', 'Sales Executive', 'Telecaller', 'Staff'];
   const branchesList = [
@@ -178,8 +291,11 @@ export default function OwnerUsers({
     if (!email.trim()) next.email = 'Email is required';
     else if (!emailRe.test(email.trim())) next.email = 'Enter a valid email address';
 
-    if (phone.trim() && !/^[0-9+\-\s]{7,15}$/.test(phone.trim())) {
-      next.phone = 'Enter a valid phone number';
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!phone.trim()) {
+      next.phone = 'Phone number is required';
+    } else if (cleanPhone.length !== 10) {
+      next.phone = 'Phone number must be exactly 10 digits';
     }
 
     setErrors(next);
@@ -556,9 +672,9 @@ export default function OwnerUsers({
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* Role-change Action Sheet */}
+        {/* User Options Action Sheet */}
         <Modal
-          visible={selectedUser !== null}
+          visible={selectedUser !== null && !isEditModalOpen}
           transparent
           animationType="slide"
           onRequestClose={() => setSelectedUser(null)}
@@ -581,40 +697,250 @@ export default function OwnerUsers({
                         {selectedUser.role} • {shortBranch(selectedUser.branch)}
                       </ThemedText>
                     </View>
+                    <Pressable onPress={() => setSelectedUser(null)} style={styles.modalCloseBtn}>
+                      <X size={16} color="#0f172a" />
+                    </Pressable>
                   </View>
 
-                  <View style={styles.sheetSectionRow}>
-                    <Shield size={13} color="#64748b" />
-                    <ThemedText style={styles.sheetSectionTitle}>Change Role</ThemedText>
-                  </View>
+                  <View style={styles.actionSheetButtons}>
+                    <Pressable
+                      onPress={() => {
+                        openEditModal(selectedUser);
+                      }}
+                      style={({ pressed }) => [styles.actionBtn, styles.editActionBtn, pressed && { opacity: 0.85 }]}
+                    >
+                      <Edit2 size={16} color="#ffffff" />
+                      <ThemedText style={styles.actionBtnText}>Edit Details & Password</ThemedText>
+                    </Pressable>
 
-                  <View style={styles.roleOptionList}>
-                    {rolesList.map((r) => {
-                      const theme = roleTheme(r);
-                      const current = selectedUser.role === r;
-                      return (
-                        <Pressable
-                          key={r}
-                          onPress={() => handleRoleChange(r)}
-                          style={({ pressed }) => [
-                            styles.roleOption,
-                            current && { borderColor: theme.color, backgroundColor: theme.bg },
-                            pressed && { opacity: 0.85 },
-                          ]}
-                        >
-                          <View style={styles.roleOptionLeft}>
-                            <View style={[styles.dropdownDot, { backgroundColor: theme.color }]} />
-                            <ThemedText style={[styles.roleOptionText, current && { color: theme.color }]}>{r}</ThemedText>
-                          </View>
-                          {current && <CheckCircle size={16} color={theme.color} />}
-                        </Pressable>
-                      );
-                    })}
+                    <Pressable
+                      onPress={handleDeleteUser}
+                      style={({ pressed }) => [styles.actionBtn, styles.deleteActionBtn, pressed && { opacity: 0.85 }]}
+                    >
+                      <Trash2 size={16} color="#ffffff" />
+                      <ThemedText style={styles.actionBtnText}>Delete Personnel</ThemedText>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setSelectedUser(null)}
+                      style={({ pressed }) => [styles.actionBtn, styles.cancelActionBtn, pressed && { opacity: 0.85 }]}
+                    >
+                      <ThemedText style={styles.cancelBtnText}>Cancel</ThemedText>
+                    </Pressable>
                   </View>
                 </>
               )}
             </View>
           </View>
+        </Modal>
+
+        {/* Edit Personnel Modal */}
+        <Modal visible={isEditModalOpen} transparent animationType="slide" onRequestClose={() => setIsEditModalOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsEditModalOpen(false)} />
+            <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
+              <View style={styles.modalGrabber} />
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleRow}>
+                  <View style={[styles.modalIconWrap, { backgroundColor: 'rgba(4, 167, 0, 0.1)' }]}>
+                    <Edit2 size={18} color="#04a700" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.modalTitle}>Edit Personnel Profile</ThemedText>
+                    <ThemedText style={styles.modalSubtitle}>Update user information and credentials</ThemedText>
+                  </View>
+                </View>
+                <Pressable onPress={() => setIsEditModalOpen(false)} style={styles.modalCloseBtn} hitSlop={8}>
+                  <X size={18} color="#0f172a" />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                style={styles.modalFormScroll}
+                contentContainerStyle={styles.modalFormContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Full name */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Full Name</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.fullName && styles.inputError]}
+                    placeholder="e.g. Sai Krishna"
+                    placeholderTextColor="#94a3b8"
+                    value={editFullName}
+                    onChangeText={(t) => {
+                      setEditFullName(t);
+                      if (errors.fullName) setErrors((p) => ({ ...p, fullName: undefined }));
+                    }}
+                    autoCapitalize="words"
+                  />
+                  {errors.fullName && <ThemedText style={styles.errorText}>{errors.fullName}</ThemedText>}
+                </View>
+
+                {/* Email */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Email Address</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.email && styles.inputError]}
+                    placeholder="staff@kvrmotors.in"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={editEmail}
+                    onChangeText={(t) => {
+                      setEditEmail(t);
+                      if (errors.email) setErrors((p) => ({ ...p, email: undefined }));
+                    }}
+                  />
+                  {errors.email && <ThemedText style={styles.errorText}>{errors.email}</ThemedText>}
+                </View>
+
+                {/* Phone */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Phone Number</ThemedText>
+                  <TextInput
+                    style={[styles.input, errors.phone && styles.inputError]}
+                    placeholder="+91 98765 43210"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    value={editPhone}
+                    onChangeText={(t) => {
+                      setEditPhone(t);
+                      if (errors.phone) setErrors((p) => ({ ...p, phone: undefined }));
+                    }}
+                  />
+                  {errors.phone && <ThemedText style={styles.errorText}>{errors.phone}</ThemedText>}
+                </View>
+
+                {/* Password (Optional reset) */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Reset Password (leave blank to keep current)</ThemedText>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="New password (optional)"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry
+                    value={editPassword}
+                    onChangeText={setEditPassword}
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                {/* Role dropdown */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Assigned Role</ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      setIsEditRoleDropdownOpen((v) => !v);
+                      setIsEditBranchDropdownOpen(false);
+                    }}
+                    style={styles.dropdownTrigger}
+                  >
+                    <View style={styles.dropdownValueRow}>
+                      <View style={[styles.dropdownDot, { backgroundColor: roleTheme(editRole).color }]} />
+                      <ThemedText style={styles.dropdownValue}>{editRole}</ThemedText>
+                    </View>
+                    <ChevronDown
+                      size={15}
+                      color="#64748b"
+                      style={isEditRoleDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                    />
+                  </Pressable>
+                  {isEditRoleDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {rolesList.map((r, i) => (
+                        <Pressable
+                          key={r}
+                          onPress={() => {
+                            setEditRole(r);
+                            setIsEditRoleDropdownOpen(false);
+                          }}
+                          style={[styles.dropdownItem, i === rolesList.length - 1 && { borderBottomWidth: 0 }]}
+                        >
+                          <View style={[styles.dropdownDot, { backgroundColor: roleTheme(r).color }]} />
+                          <ThemedText style={styles.dropdownItemText}>{r}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Branch dropdown */}
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      setIsEditBranchDropdownOpen((v) => !v);
+                      setIsEditRoleDropdownOpen(false);
+                    }}
+                    style={styles.dropdownTrigger}
+                  >
+                    <View style={styles.dropdownValueRow}>
+                      <MapPin size={14} color="#64748b" />
+                      <ThemedText style={styles.dropdownValue}>{editBranch}</ThemedText>
+                    </View>
+                    <ChevronDown
+                      size={15}
+                      color="#64748b"
+                      style={isEditBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                    />
+                  </Pressable>
+                  {isEditBranchDropdownOpen && (
+                    <View style={styles.dropdownContainer}>
+                      {branchesList.map((b, i) => (
+                        <Pressable
+                          key={b}
+                          onPress={() => {
+                            setEditBranch(b);
+                            setIsEditBranchDropdownOpen(false);
+                          }}
+                          style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
+                        >
+                          <MapPin size={13} color="#94a3b8" />
+                          <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Status Toggle */}
+                <View style={[styles.field, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }]}>
+                  <View>
+                    <ThemedText style={styles.fieldLabel}>Account Status</ThemedText>
+                    <ThemedText style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}>
+                      {editIsActive ? 'Personnel can log in to app' : 'Access blocked / Account deactivated'}
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    onPress={() => setEditIsActive(v => !v)}
+                    style={[
+                      { width: 46, height: 26, borderRadius: 13, padding: 2, justifyContent: 'center' },
+                      editIsActive ? { backgroundColor: '#04a700', alignItems: 'flex-end' } : { backgroundColor: '#cbd5e1', alignItems: 'flex-start' }
+                    ]}
+                  >
+                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#ffffff' }} />
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  onPress={handleEditUserSubmit}
+                  disabled={isSubmitting}
+                  style={({ pressed }) => [styles.submitBtn, (pressed || isSubmitting) && { opacity: 0.85 }]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <CheckCircle size={17} color="#ffffff" />
+                      <ThemedText style={styles.submitBtnText}>Save Profile Changes</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </FadeScaleTransition>
@@ -1111,5 +1437,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#0f172a',
+  },
+  actionSheetButtons: {
+    gap: 10,
+    marginTop: 10,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    minHeight: 48,
+  },
+  editActionBtn: {
+    backgroundColor: '#04a700',
+  },
+  deleteActionBtn: {
+    backgroundColor: '#ef4444',
+  },
+  cancelActionBtn: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  actionBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cancelBtnText: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

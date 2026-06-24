@@ -22,7 +22,8 @@ import {
   getMelaInventory,
   createMelaBooking,
   getMelaBookings,
-  updateMelaBooking
+  updateMelaBooking,
+  getMelaSettingsList
 } from "../services/mela";
 
 import {
@@ -142,6 +143,7 @@ export default function SalesDashboard() {
   const [melaBookingsList, setMelaBookingsList] = useState<any[]>([]);
   const [melaLoading, setMelaLoading] = useState(false);
   const [createdMelaBookingResult, setCreatedMelaBookingResult] = useState<any>(null);
+  const [activeMela, setActiveMela] = useState<any>(null);
 
   // Mela booking form state
   const [melaBookingName, setMelaBookingName] = useState("");
@@ -202,12 +204,15 @@ export default function SalesDashboard() {
   const loadMelaData = async () => {
     try {
       setMelaLoading(true);
-      const [inv, bookings] = await Promise.all([
+      const [inv, bookings, settings] = await Promise.all([
         getMelaInventory(),
-        getMelaBookings()
+        getMelaBookings(),
+        getMelaSettingsList()
       ]);
       setMelaInventoryList(inv);
       setMelaBookingsList(bookings);
+      const active = settings.find((s: any) => s.is_active) || null;
+      setActiveMela(active);
     } catch (e) {
       console.error("Failed to load Mela campaign details:", e);
     } finally {
@@ -399,6 +404,11 @@ export default function SalesDashboard() {
   const handleAddLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
+    const cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
     const payload = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
@@ -456,6 +466,13 @@ export default function SalesDashboard() {
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBooking.customer_name.trim() || !newBooking.vehicle_model || !newBooking.advance_amount || !newBooking.expiry_date) return;
+    if (newBooking.contact_number.trim()) {
+      const cleanPhone = newBooking.contact_number.trim().replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        showToast("Contact number must contain exactly 10 digits.", "error");
+        return;
+      }
+    }
     try {
       if (editingBookingId) {
         await updateBooking(editingBookingId, {
@@ -621,149 +638,160 @@ export default function SalesDashboard() {
               })}
             </div>
           )}
-
           {/* MELA VIEWS FOR SALES EXECUTIVE */}
           {activeTab === "mela_booking_form" && (
             <div className="space-y-6 text-left">
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                
-                {/* Catalog Grid */}
-                <div className="xl:col-span-2 space-y-4">
-                  <div className="mb-2">
-                    <h3 className="text-sm font-black text-slate-805 tracking-tight">Active Mela Campaign Stock</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Select a vehicle from the catalog to book it at campaign prices.</p>
+              {!activeMela || !activeMela.is_active ? (
+                <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm text-center max-w-xl mx-auto space-y-4 my-12">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto">
+                    <AlertTriangle className="h-6 w-6" />
                   </div>
+                  <h3 className="text-base font-bold text-slate-800">Mela Campaign Inactive</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    There is currently no active Mela Campaign configured by the owner. Please contact your manager or owner to activate the campaign.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {melaInventoryList.filter(inv => inv.remaining_quantity > 0).map((inv) => (
-                      <button
-                        key={inv.id}
-                        type="button"
-                        onClick={() => {
-                          setMelaBookingModel(String(inv.vehicle_model));
-                          setMelaBookingColor(inv.color);
-                          setMelaBookingBattery(inv.battery_type);
-                          showToast(`Selected ${inv.model_name} (${inv.color})`);
-                        }}
-                        className={`group bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all text-left flex flex-col justify-between h-40 cursor-pointer ${
-                          melaBookingModel === String(inv.vehicle_model) &&
-                          melaBookingColor === inv.color &&
-                          melaBookingBattery === inv.battery_type
-                            ? "border-[#04a700] ring-2 ring-[#04a700]/15"
-                            : "border-slate-200/70"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wide">
-                              {inv.brand_name || "EV Model"}
+                  {/* Catalog Grid */}
+                  <div className="xl:col-span-2 space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-sm font-black text-slate-805 tracking-tight">Active Mela Campaign Stock</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Select a vehicle from the catalog to book it at campaign prices.</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {melaInventoryList.filter(inv => inv.remaining_quantity > 0).map((inv) => (
+                        <button
+                          key={inv.id}
+                          type="button"
+                          onClick={() => {
+                            setMelaBookingModel(String(inv.vehicle_model));
+                            setMelaBookingColor(inv.color);
+                            setMelaBookingBattery(inv.battery_type);
+                            showToast(`Selected ${inv.model_name} (${inv.color})`);
+                          }}
+                          className={`group bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all text-left flex flex-col justify-between h-40 cursor-pointer ${
+                            melaBookingModel === String(inv.vehicle_model) &&
+                            melaBookingColor === inv.color &&
+                            melaBookingBattery === inv.battery_type
+                              ? "border-[#04a700] ring-2 ring-[#04a700]/15"
+                              : "border-slate-200/70"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wide">
+                                {inv.brand_name || "EV Model"}
+                              </span>
+                              <span className="bg-[#04a700]/10 text-[#04a700] border border-[#04a700]/20 rounded-full px-2 py-0.5 text-[9px] font-bold">
+                                {inv.remaining_quantity} Available
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-extrabold text-slate-800 mt-1 leading-tight group-hover:text-[#04a700]">
+                              {inv.model_name}
+                            </h4>
+                            <div className="text-[10px] text-slate-500 font-bold mt-1.5 flex gap-2">
+                              <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">🎨 {inv.color}</span>
+                              <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">⚡ {inv.battery_type}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-end border-t border-slate-100 pt-2.5">
+                            <span className="text-emerald-700 font-mono font-black text-sm">
+                              ₹ {parseFloat(inv.price).toLocaleString("en-IN")}
                             </span>
-                            <span className="bg-[#04a700]/10 text-[#04a700] border border-[#04a700]/20 rounded-full px-2 py-0.5 text-[9px] font-bold">
-                              {inv.remaining_quantity} Available
+                            <span className="text-[10px] text-[#04a700] font-extrabold group-hover:translate-x-0.5 transition-transform">
+                              Select Spec
                             </span>
                           </div>
-                          <h4 className="text-sm font-extrabold text-slate-800 mt-1 leading-tight group-hover:text-[#04a700]">
-                            {inv.model_name}
-                          </h4>
-                          <div className="text-[10px] text-slate-500 font-bold mt-1.5 flex gap-2">
-                            <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">🎨 {inv.color}</span>
-                            <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">⚡ {inv.battery_type}</span>
-                          </div>
+                        </button>
+                      ))}
+                      {melaInventoryList.filter(inv => inv.remaining_quantity > 0).length === 0 && (
+                        <div className="col-span-2 py-12 text-center text-slate-400 font-semibold bg-white border border-dashed border-slate-200 rounded-2xl">
+                          All campaign vehicles are sold out!
                         </div>
-
-                        <div className="flex justify-between items-end border-t border-slate-100 pt-2.5">
-                          <span className="text-emerald-700 font-mono font-black text-sm">
-                            ₹ {parseFloat(inv.price).toLocaleString("en-IN")}
-                          </span>
-                          <span className="text-[10px] text-[#04a700] font-extrabold group-hover:translate-x-0.5 transition-transform">
-                            Select Spec
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                    {melaInventoryList.filter(inv => inv.remaining_quantity > 0).length === 0 && (
-                      <div className="col-span-2 py-12 text-center text-slate-400 font-semibold bg-white border border-dashed border-slate-200 rounded-2xl">
-                        All campaign vehicles are sold out!
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Booking form side panel */}
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Raise Mela Booking</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Enter customer details to reserve the selected EV configuration.</p>
-                  </div>
-
-                  <form onSubmit={melaBookingModel ? handleMelaBookingSubmit : (e) => { e.preventDefault(); showToast("Please select a vehicle from the catalog first.", "error"); }} className="space-y-4 text-xs font-semibold text-slate-650">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ramesh Naidu"
-                        value={melaBookingName}
-                        onChange={(e) => setMelaBookingName(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 9876543210"
-                        value={melaBookingPhone}
-                        onChange={(e) => setMelaBookingPhone(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-3 space-y-2 text-[11px]">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Selected Model:</span>
-                        <span className="text-slate-800 font-extrabold">
-                          {melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel)?.model_name || "None Selected"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Color variant:</span>
-                        <span className="text-slate-800 font-extrabold capitalize">{melaBookingColor || "—"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Battery Option:</span>
-                        <span className="text-slate-800 font-extrabold capitalize">{melaBookingBattery || "—"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 font-bold">Mela Price:</span>
-                        <span className="text-emerald-700 font-black font-mono">
-                          {melaBookingModel
-                            ? `₹ ${parseFloat(melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel && i.color === melaBookingColor && i.battery_type === melaBookingBattery)?.price || '0').toLocaleString('en-IN')}`
-                            : "—"
-                          }
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={melaLoading}
-                      className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center flex justify-center items-center gap-1.5"
-                    >
-                      {melaLoading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
-                          <span>Reserving stock...</span>
-                        </>
-                      ) : (
-                        <span>Confirm Unconfirmed Booking</span>
                       )}
-                    </button>
-                  </form>
+                    </div>
+                  </div>
+
+                  {/* Booking form side panel */}
+                  <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">Raise Mela Booking</h3>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Enter customer details to reserve the selected EV configuration.</p>
+                    </div>
+
+                    <form onSubmit={melaBookingModel ? handleMelaBookingSubmit : (e) => { e.preventDefault(); showToast("Please select a vehicle from the catalog first.", "error"); }} className="space-y-4 text-xs font-semibold text-slate-650">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Ramesh Naidu"
+                          value={melaBookingName}
+                          onChange={(e) => setMelaBookingName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 9876543210"
+                          value={melaBookingPhone}
+                          onChange={(e) => setMelaBookingPhone(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-3 space-y-2 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Selected Model:</span>
+                          <span className="text-slate-800 font-extrabold">
+                            {melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel)?.model_name || "None Selected"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Color variant:</span>
+                          <span className="text-slate-800 font-extrabold capitalize">{melaBookingColor || "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Battery Option:</span>
+                          <span className="text-slate-800 font-extrabold capitalize">{melaBookingBattery || "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Mela Price:</span>
+                          <span className="text-emerald-700 font-black font-mono">
+                            {melaBookingModel
+                              ? `₹ ${parseFloat(melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel && i.color === melaBookingColor && i.battery_type === melaBookingBattery)?.price || '0').toLocaleString('en-IN')}`
+                              : "—"
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={melaLoading}
+                        className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center flex justify-center items-center gap-1.5"
+                      >
+                        {melaLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                            <span>Reserving stock...</span>
+                          </>
+                        ) : (
+                          <span>Confirm Unconfirmed Booking</span>
+                        )}
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
 
               {/* Success booking confirmation details modal */}
               {createdMelaBookingResult && (
@@ -778,7 +806,7 @@ export default function SalesDashboard() {
                       <p className="text-[10px] font-semibold text-slate-400 mt-1">Provide this Booking ID to the customer for cash payment checkout with the Owner.</p>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2 text-xs font-semibold text-slate-600 text-left">
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2 text-xs font-semibold text-slate-655 text-left">
                       <div className="flex justify-between">
                         <span className="text-slate-400">Booking ID:</span>
                         <span className="text-emerald-700 font-black font-mono tracking-wider">{createdMelaBookingResult.booking_id}</span>
@@ -811,8 +839,10 @@ export default function SalesDashboard() {
                   </div>
                 </Modal>
               )}
-            </div>
+            </>
           )}
+        </div>
+      )}
 
           {activeTab === "mela_my_bookings" && (
             <div className="space-y-6 text-left">
@@ -1583,7 +1613,7 @@ export default function SalesDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Mobile</label>
-            <input type="text" placeholder="e.g. 9900112233" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+            <input type="tel" placeholder="e.g. 9876543210" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
@@ -1638,7 +1668,7 @@ export default function SalesDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-            <input type="text" placeholder="e.g. 9876543210" value={newBooking.contact_number} onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+            <input type="tel" placeholder="e.g. 9876543210" value={newBooking.contact_number} onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>

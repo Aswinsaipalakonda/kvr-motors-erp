@@ -213,10 +213,11 @@ export default function OwnerBranches({
     if (!form.targetUnits.trim()) next.targetUnits = 'Target units required';
     else if (isNaN(target) || target <= 0) next.targetUnits = 'Enter a valid target greater than 0';
 
+    const cleanPhone = form.managerPhone.trim().replace(/\D/g, '');
     if (!form.managerPhone.trim()) {
       next.managerPhone = 'Phone number is required';
-    } else if (!/^\+?[0-9\-\s]{7,15}$/.test(form.managerPhone.trim())) {
-      next.managerPhone = 'Enter a valid phone number';
+    } else if (cleanPhone.length !== 10) {
+      next.managerPhone = 'Phone number must be exactly 10 digits';
     }
     if (!form.manager.trim()) next.manager = 'Branch manager is required';
 

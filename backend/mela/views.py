@@ -71,15 +71,6 @@ class MelaInventoryViewSet(viewsets.ModelViewSet):
             
         return queryset.order_by('vehicle_model__model_name')
 
-    def list(self, request, *args, **kwargs):
-        key = get_cache_key("mela_inventory_list", request.query_params)
-        cached_data = cache.get(key)
-        if cached_data is not None:
-            return Response(cached_data)
-        response = super().list(request, *args, **kwargs)
-        cache.set(key, response.data, timeout=86400)
-        return response
-
     def perform_create(self, serializer):
         super().perform_create(serializer)
         clear_mela_cache(["mela_inventory_list", "mela_reports"])
@@ -122,16 +113,6 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(sales_executive_id=sales_executive_filter)
 
         return queryset.order_by('-created_at')
-
-    def list(self, request, *args, **kwargs):
-        user_id = request.user.id if request.user and not request.user.is_anonymous else 'anon'
-        key = get_cache_key("mela_bookings_list", request.query_params, user_id)
-        cached_data = cache.get(key)
-        if cached_data is not None:
-            return Response(cached_data)
-        response = super().list(request, *args, **kwargs)
-        cache.set(key, response.data, timeout=86400)
-        return response
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -191,11 +172,6 @@ class MelaReportsView(APIView):
         if not user.is_authenticated or user.role not in ['owner', 'admin', 'supervisor']:
             return Response({"error": "Unauthorized to view Mela campaign reports."}, status=status.HTTP_403_FORBIDDEN)
 
-        key = "mela_reports"
-        cached_data = cache.get(key)
-        if cached_data is not None:
-            return Response(cached_data)
-
         today = timezone.localdate()
 
         # Summary calculations
@@ -247,22 +223,13 @@ class MelaReportsView(APIView):
             },
             "executive_performance": exec_performance,
         }
-        cache.set(key, data, timeout=86400)
+
         return Response(data, status=status.HTTP_200_OK)
 
 
 class MelaSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = MelaSettingsSerializer
     queryset = MelaSettings.objects.all()
-
-    def list(self, request, *args, **kwargs):
-        key = get_cache_key("mela_settings_list", request.query_params)
-        cached_data = cache.get(key)
-        if cached_data is not None:
-            return Response(cached_data)
-        response = super().list(request, *args, **kwargs)
-        cache.set(key, response.data, timeout=86400)
-        return response
 
     def perform_create(self, serializer):
         super().perform_create(serializer)

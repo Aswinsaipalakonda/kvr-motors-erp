@@ -201,6 +201,7 @@ export default function OwnerDashboard() {
   const [melaEndDateSetting, setMelaEndDateSetting] = useState("");
   const [melaLocationSetting, setMelaLocationSetting] = useState("Main Showroom Ground");
   const [melaSettingsId, setMelaSettingsId] = useState<number | null>(null);
+  const [melaIsActiveSetting, setMelaIsActiveSetting] = useState(true);
 
   // Mela Inventory Form
   const [melaInvModel, setMelaInvModel] = useState("");
@@ -660,6 +661,9 @@ export default function OwnerDashboard() {
         setMelaEndDateSetting(activeSetting.end_date || "");
         setMelaLocationSetting(activeSetting.location);
         setMelaSettingsId(activeSetting.id || null);
+        setMelaIsActiveSetting(activeSetting.is_active ?? true);
+      } else {
+        setMelaIsActiveSetting(false);
       }
     } catch (e) {
       console.error("Failed to load Mela campaign details:", e);
@@ -682,7 +686,7 @@ export default function OwnerDashboard() {
         start_date: melaStartDateSetting || null,
         end_date: melaEndDateSetting || null,
         location: melaLocationSetting,
-        is_active: true
+        is_active: melaIsActiveSetting
       };
 
       if (melaSettingsId) {
@@ -1054,6 +1058,18 @@ export default function OwnerDashboard() {
       showToast("Please fill all required fields.", "error");
       return;
     }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(newUser.email.trim())) {
+      showToast("Please enter a valid email address.", "error");
+      return;
+    }
+    if (newUser.phoneNumber.trim()) {
+      const cleanPhone = newUser.phoneNumber.trim().replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        showToast("Phone number must contain exactly 10 digits.", "error");
+        return;
+      }
+    }
     try {
       await createUser({
         username: newUser.username.trim(),
@@ -1101,6 +1117,18 @@ export default function OwnerDashboard() {
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(editUserForm.email.trim())) {
+      showToast("Please enter a valid email address.", "error");
+      return;
+    }
+    if (editUserForm.phoneNumber.trim()) {
+      const cleanPhone = editUserForm.phoneNumber.trim().replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        showToast("Phone number must contain exactly 10 digits.", "error");
+        return;
+      }
+    }
     try {
       const payload: any = {
         full_name: editUserForm.fullName.trim(),
@@ -1310,6 +1338,11 @@ export default function OwnerDashboard() {
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
+    const cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
     const payload = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
@@ -1367,6 +1400,13 @@ export default function OwnerDashboard() {
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBooking.customer_name.trim() || !newBooking.vehicle_model || !newBooking.advance_amount || !newBooking.expiry_date) return;
+    if (newBooking.contact_number.trim()) {
+      const cleanPhone = newBooking.contact_number.trim().replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        showToast("Contact number must contain exactly 10 digits.", "error");
+        return;
+      }
+    }
     try {
       if (editingBookingId) {
         await updateBooking(editingBookingId, {
@@ -2080,13 +2120,19 @@ export default function OwnerDashboard() {
                 <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {melaIsActiveSetting ? (
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          </span>
+                          Campaign Live
                         </span>
-                        Campaign Live
-                      </span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-slate-500/20 text-slate-400 border border-slate-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                          Campaign Inactive
+                        </span>
+                      )}
                       {melaStartDateSetting && melaEndDateSetting ? (
                         <span className="text-[10px] font-bold text-amber-300 font-mono bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 rounded-full animate-pulse shadow-sm">
                           📅 Campaign Period: {new Date(melaStartDateSetting).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} - {new Date(melaEndDateSetting).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -2932,6 +2978,22 @@ export default function OwnerDashboard() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
                       required
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-extrabold text-slate-700 block">Campaign Active Status</label>
+                      <span className="text-[10px] font-semibold text-slate-400 block">Toggle to enable/disable Mela Booking for Sales Executives</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={melaIsActiveSetting} 
+                        onChange={(e) => setMelaIsActiveSetting(e.target.checked)}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 flex justify-end">
@@ -4825,10 +4887,13 @@ export default function OwnerDashboard() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
             <input 
-              type="text" 
+              type="tel" 
               placeholder="e.g. 9876543210" 
               value={branchPhone}
-              onChange={(e) => setBranchPhone(e.target.value)}
+              onChange={(e) => setBranchPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              maxLength={10}
+              inputMode="numeric"
+              pattern="[0-9]*"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
@@ -4956,8 +5021,11 @@ export default function OwnerDashboard() {
               <input
                 type="tel"
                 value={newUser.phoneNumber}
-                onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+                onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                 placeholder="e.g. 9876543210"
+                maxLength={10}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               />
             </div>
@@ -5043,8 +5111,11 @@ export default function OwnerDashboard() {
               <input
                 type="tel"
                 value={editUserForm.phoneNumber}
-                onChange={(e) => setEditUserForm({ ...editUserForm, phoneNumber: e.target.value })}
+                onChange={(e) => setEditUserForm({ ...editUserForm, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                 placeholder="e.g. 9876543210"
+                maxLength={10}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               />
             </div>
@@ -5488,9 +5559,12 @@ export default function OwnerDashboard() {
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
             <input
               type="tel"
-              placeholder="e.g. 98765 43210"
+              placeholder="e.g. 9876543210"
               value={newLead.contact_number}
-              onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })}
+              onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+              maxLength={10}
+              inputMode="numeric"
+              pattern="[0-9]*"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               required
             />
@@ -5615,9 +5689,12 @@ export default function OwnerDashboard() {
               <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
               <input
                 type="tel"
-                placeholder="e.g. 90000 12345"
+                placeholder="e.g. 9876543210"
                 value={newBooking.contact_number}
-                onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value })}
+                onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                maxLength={10}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
               />
             </div>

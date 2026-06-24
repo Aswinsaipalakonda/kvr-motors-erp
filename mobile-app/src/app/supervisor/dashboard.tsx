@@ -12,7 +12,7 @@ import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
   ClipboardCheck, Clock, Check, X, AlertTriangle, 
-  User, ShieldAlert, BadgeCheck, UserCheck, Boxes 
+  User, ShieldAlert, BadgeCheck, UserCheck, Boxes, Car, Battery
 } from 'lucide-react-native';
 
 interface FifoOverride {
@@ -219,6 +219,20 @@ export default function SupervisorDashboard() {
                   </View>
                   <ThemedText style={styles.quickTitle}>My Attendance</ThemedText>
                   <ThemedText style={styles.quickDesc}>Daily check-in</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/vehicles' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(37, 99, 235, 0.1)' }]}>
+                    <Car size={18} color="#2563eb" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Vehicle Catalog</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Models & VIN stock</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => router.push('/supervisor/batteries' as any)} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}>
+                  <View style={[styles.quickIcon, { backgroundColor: 'rgba(234, 88, 12, 0.1)' }]}>
+                    <Battery size={18} color="#ea580c" />
+                  </View>
+                  <ThemedText style={styles.quickTitle}>Battery Registry</ThemedText>
+                  <ThemedText style={styles.quickDesc}>Log storage packs</ThemedText>
                 </Pressable>
               </View>
             </View>

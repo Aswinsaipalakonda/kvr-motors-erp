@@ -15,13 +15,12 @@ import {
   Menu as HamburgerIcon, X, CalendarDays, ShoppingBag, 
   Users, LogOut, ChevronRight, Shield, Sparkles,
   MapPin, ChevronDown, MoreVertical, Check, User, Building,
-  FileText
+  FileText, Car, Battery
 } from 'lucide-react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 
-// Import Owner Screens
 import OwnerDashboard from './dashboard';
 import OwnerInventory from './inventory';
 import OwnerSales from './sales';
@@ -210,6 +209,18 @@ export default function OwnerLayout() {
 
   // Main Screen Scale, Shifting, and Border Radius Anim (SaaS-prototype effect from Figma Community)
   const mainContentAnimatedStyle = useAnimatedStyle(() => {
+    if (isSubRoute) {
+      return {
+        transform: [
+          { perspective: 1000 },
+          { translateX: 0 },
+          { scale: 1 },
+          { rotateY: '0deg' }
+        ],
+        borderRadius: 0,
+      };
+    }
+
     const scale = interpolate(drawerProgress.value, [0, 1], [1, 0.88]);
     const translateX = interpolate(drawerProgress.value, [0, 1], [0, drawerWidth * 0.9]);
     const borderRadius = interpolate(drawerProgress.value, [0, 1], [0, 32]);
@@ -285,6 +296,18 @@ export default function OwnerLayout() {
       route: '/owner/mela',
       icon: Sparkles,
       color: '#04a700',
+    },
+    {
+      title: 'Vehicle Catalog',
+      route: '/owner/vehicles',
+      icon: Car,
+      color: '#2563eb',
+    },
+    {
+      title: 'Battery Stock',
+      route: '/owner/batteries',
+      icon: Battery,
+      color: '#ea580c',
     },
     {
       title: 'Showroom Bookings',
@@ -444,8 +467,7 @@ export default function OwnerLayout() {
         {/* Animated Main Content Container (LIGHT slate grey background!) */}
         <Animated.View style={[
           styles.mainContentContainer,
-          !isSubRoute ? mainContentAnimatedStyle : null,
-          isSubRoute && { transform: [], borderRadius: 0 }
+          mainContentAnimatedStyle
         ]}>
           {/* Constant Top Floating Header Bar */}
           {!isSubRoute && (

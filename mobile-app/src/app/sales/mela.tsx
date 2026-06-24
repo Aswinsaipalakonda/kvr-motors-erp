@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, CheckCircle2, X,
-  TrendingUp, DollarSign, AlertTriangle, Award, ChevronRight, Phone, User, Search
+  TrendingUp, DollarSign, AlertTriangle, Award, ChevronRight, Phone, User, Search, Zap
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
@@ -65,7 +65,7 @@ export default function SalesMelaCampaign() {
 
       // Set active campaign settings
       const settings = settingsRes || [];
-      const active = settings.find((s: any) => s.is_active) || settings[0] || null;
+      const active = settings.find((s: any) => s.is_active) || null;
       setActiveMela(active);
 
       setInventoryList(inventoryRes || []);
@@ -369,81 +369,92 @@ export default function SalesMelaCampaign() {
                   )}
                 </View>
 
-                {!activeMela && (
-                  <View style={styles.warningBanner}>
-                    <AlertTriangle size={18} color="#04a700" />
-                    <ThemedText style={styles.warningBannerText}>
-                      No active campaign found. Showing currently available mela inventory.
-                    </ThemedText>
-                  </View>
-                )}
-
-                <ThemedText style={styles.sectionSubtitle}>Available Models for Booking</ThemedText>
-
-                {filteredInventory.length === 0 ? (
-                  <View style={styles.emptyStockContainer}>
-                    <Package size={42} color="#94a3b8" />
-                    <ThemedText style={styles.emptyStockText}>
-                      {searchQuery || selectedBrandId !== null
-                        ? 'No matching vehicles found.'
-                        : 'No campaign stock available right now.'}
+                {!activeMela || !activeMela.is_active ? (
+                  <View style={styles.inactiveMelaContainer}>
+                    <AlertTriangle size={48} color="#ea580c" style={{ marginBottom: 12 }} />
+                    <ThemedText style={styles.inactiveMelaTitle}>Mela Campaign Inactive</ThemedText>
+                    <ThemedText style={styles.inactiveMelaDesc}>
+                      There is currently no active Mela Campaign configured by the owner. Please contact the owner or manager to enable it.
                     </ThemedText>
                   </View>
                 ) : (
-                  <View style={styles.stockList}>
-                    {filteredInventory.map((item) => {
-                      const isLow = item.remaining_quantity <= 3;
-                      return (
-                        <Pressable
-                          key={item.id}
-                          onPress={() => handleSelectInventory(item)}
-                          style={({ pressed }) => [
-                            styles.stockItemCard,
-                            pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }
-                          ]}
-                        >
-                          <View style={styles.stockHeader}>
-                            <View style={styles.modelCol}>
-                              <ThemedText style={styles.modelNameText}>
-                                {item.model_name || getModelName(item.vehicle_model)}
-                              </ThemedText>
-                              <ThemedText style={styles.brandNameText}>
-                                {item.brand_name || getBrandName(item.vehicle_model)}
-                              </ThemedText>
-                            </View>
-                            <View style={styles.priceBadge}>
-                              <ThemedText style={styles.priceBadgeText}>
-                                ₹{Math.round(item.price).toLocaleString('en-IN')}
-                              </ThemedText>
-                            </View>
-                          </View>
-                          <View style={styles.divider} />
-                          <View style={styles.stockGrid}>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Color Variant</ThemedText>
-                              <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
-                            </View>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Battery Type</ThemedText>
-                              <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
-                            </View>
-                          </View>
-                          <View style={styles.divider} />
-                          <View style={styles.footerRow}>
-                            <View style={[styles.stockStatusBadge, isLow && styles.lowStockBadge]}>
-                              <ThemedText style={[styles.stockStatusText, isLow && styles.lowStockText]}>
-                                {item.remaining_quantity} Units Left
-                              </ThemedText>
-                            </View>
-                            <View style={styles.bookCtaLink}>
-                              <ThemedText style={styles.bookCtaText}>Book EV</ThemedText>
-                              <ChevronRight size={14} color="#04a700" />
-                            </View>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                  <>
+                    <ThemedText style={styles.sectionSubtitle}>Available Models for Booking</ThemedText>
+
+                    {filteredInventory.length === 0 ? (
+                      <View style={styles.emptyStockContainer}>
+                        <Package size={42} color="#94a3b8" />
+                        <ThemedText style={styles.emptyStockText}>
+                          {searchQuery || selectedBrandId !== null
+                            ? 'No matching vehicles found.'
+                            : 'No campaign stock available right now.'}
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.stockList}>
+                        {filteredInventory.map((item) => {
+                          const isLow = item.remaining_quantity <= 3;
+                          return (
+                            <Pressable
+                              key={item.id}
+                              onPress={() => handleSelectInventory(item)}
+                              style={({ pressed }) => [
+                                styles.stockItemCard,
+                                pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }
+                              ]}
+                            >
+                              <View style={styles.stockHeader}>
+                                <View style={styles.modelCol}>
+                                  <ThemedText style={styles.modelNameText}>
+                                    {item.model_name || getModelName(item.vehicle_model)}
+                                  </ThemedText>
+                                  <ThemedText style={styles.brandNameText}>
+                                    {item.brand_name || getBrandName(item.vehicle_model)}
+                                  </ThemedText>
+                                </View>
+                                <View style={styles.priceBadge}>
+                                  <ThemedText style={styles.priceBadgeText}>
+                                    ₹{Math.round(item.price).toLocaleString('en-IN')}
+                                  </ThemedText>
+                                </View>
+                              </View>
+                              <View style={styles.divider} />
+                              
+                              <View style={styles.stockGrid}>
+                                <View style={styles.gridCell}>
+                                  <ThemedText style={styles.gridLabel}>COLOR VARIANT</ThemedText>
+                                  <View style={styles.valueWithIcon}>
+                                    <View style={[styles.colorIndicator, { backgroundColor: item.color.toLowerCase() === 'black' ? '#0f172a' : item.color.toLowerCase() === 'blue' ? '#2563eb' : item.color.toLowerCase() === 'red' ? '#ef4444' : item.color.toLowerCase() === 'green' ? '#10b981' : '#cbd5e1' }]} />
+                                    <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
+                                  </View>
+                                </View>
+                                <View style={styles.gridCell}>
+                                  <ThemedText style={styles.gridLabel}>BATTERY TYPE</ThemedText>
+                                  <View style={styles.valueWithIcon}>
+                                    <Zap size={13} color="#04a700" style={{ marginRight: 4 }} />
+                                    <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
+                                  </View>
+                                </View>
+                              </View>
+                              
+                              <View style={styles.divider} />
+                              <View style={styles.footerRow}>
+                                <View style={[styles.stockStatusBadge, isLow && styles.lowStockBadge]}>
+                                  <ThemedText style={[styles.stockStatusText, isLow && styles.lowStockText]}>
+                                    {item.remaining_quantity} Units Left
+                                  </ThemedText>
+                                </View>
+                                <View style={styles.bookCtaLink}>
+                                  <ThemedText style={styles.bookCtaText}>Book EV</ThemedText>
+                                  <ChevronRight size={14} color="#ffffff" />
+                                </View>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
             )}
@@ -969,16 +980,16 @@ const styles = StyleSheet.create({
   },
   stockItemCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    padding: 16,
+    padding: 18,
     gap: 12,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2
+    shadowColor: '#0a0e1a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3
   },
   stockHeader: {
     flexDirection: 'row',
@@ -990,25 +1001,28 @@ const styles = StyleSheet.create({
     flex: 1
   },
   modelNameText: {
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0f172a'
   },
   brandNameText: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: '#64748b',
-    fontWeight: '700',
-    textTransform: 'uppercase'
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1
   },
   priceBadge: {
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5
+    backgroundColor: '#f0fdf4',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
+    paddingHorizontal: 12,
+    paddingVertical: 6
   },
   priceBadgeText: {
-    color: '#04a700',
-    fontSize: 13,
+    color: '#166534',
+    fontSize: 14,
     fontWeight: '900',
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
@@ -1028,7 +1042,8 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '800',
     color: '#94a3b8',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
   },
   gridValue: {
     fontSize: 12.5,
@@ -1041,31 +1056,81 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   stockStatusBadge: {
-    backgroundColor: 'rgba(4, 167, 0, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#dcfce7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8
   },
   lowStockBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)'
+    backgroundColor: '#fef2f2',
+    borderColor: '#fee2e2'
   },
   stockStatusText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#04a700'
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803d'
   },
   lowStockText: {
-    color: '#ef4444'
+    color: '#b91c1c'
   },
   bookCtaLink: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#04a700',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
     gap: 4
   },
   bookCtaText: {
-    fontSize: 12,
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#ffffff'
+  },
+  inactiveMelaContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
+    elevation: 2,
+    marginTop: 20
+  },
+  inactiveMelaTitle: {
+    fontSize: 16,
     fontWeight: '800',
-    color: '#04a700'
+    color: '#0f172a',
+    marginTop: 8
+  },
+  inactiveMelaDesc: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 6,
+    fontWeight: '500'
+  },
+  valueWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3
+  },
+  colorIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
   },
   // ---- Bookings tab ----
   card: {

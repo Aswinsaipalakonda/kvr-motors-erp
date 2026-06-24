@@ -21,3 +21,13 @@ class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
         fields = '__all__'
+
+    def validate_phone_number(self, value):
+        import re
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Phone number must contain exactly 10 digits.")
+            return cleaned
+        return value
+

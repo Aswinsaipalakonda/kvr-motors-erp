@@ -18,6 +18,16 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
         model = AdvanceBooking
         fields = '__all__'
 
+    def validate_contact_number(self, value):
+        import re
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Contact number must contain exactly 10 digits.")
+            return cleaned
+        return value
+
+
     def validate(self, data):
         vehicle_unit = data.get('vehicle_unit')
         

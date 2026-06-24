@@ -104,6 +104,8 @@ export default function OwnerMelaCampaign() {
         setMelaEndDate(activeSetting.end_date || '');
         setMelaLocation(activeSetting.location || '');
         setIsActive(activeSetting.is_active ?? true);
+      } else {
+        setIsActive(false);
       }
 
       setInventoryList(inventoryRes || []);
@@ -478,8 +480,10 @@ export default function OwnerMelaCampaign() {
                 <View style={styles.heroBanner}>
                   <View style={styles.bannerRow}>
                     <View style={styles.pulseContainer}>
-                      <View style={styles.pulseDot} />
-                      <ThemedText style={styles.liveText}>CAMPAIGN LIVE</ThemedText>
+                      <View style={[styles.pulseDot, !isActive && { backgroundColor: '#cbd5e1' }]} />
+                      <ThemedText style={[styles.liveText, !isActive && { color: '#64748b' }]}>
+                        {isActive ? 'CAMPAIGN LIVE' : 'CAMPAIGN INACTIVE'}
+                      </ThemedText>
                     </View>
                     <ThemedText style={styles.dateText}>
                       📅 {melaStartDate || 'Start'} to {melaEndDate || 'End'}

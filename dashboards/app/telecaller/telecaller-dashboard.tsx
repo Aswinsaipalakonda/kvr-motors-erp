@@ -156,6 +156,11 @@ export default function TelecallerDashboard() {
       showToast("Please fill all required fields.", "error");
       return;
     }
+    const cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
 
     const payload = {
       customer_name: newLead.customer_name.trim(),
@@ -644,7 +649,7 @@ export default function TelecallerDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-            <input type="text" placeholder="e.g. 9848022334" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
+            <input type="tel" placeholder="e.g. 9876543210" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>

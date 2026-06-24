@@ -10,3 +10,13 @@ class LeadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lead
         fields = '__all__'
+
+    def validate_contact_number(self, value):
+        import re
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Contact number must contain exactly 10 digits.")
+            return cleaned
+        return value
+

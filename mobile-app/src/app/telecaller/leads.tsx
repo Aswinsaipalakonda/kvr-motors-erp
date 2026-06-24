@@ -221,6 +221,12 @@ export default function TelecallerLeads({
       return;
     }
 
+    const cleanPhone = regPhone.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      Alert.alert('Validation Error', 'Contact number must be exactly 10 digits.');
+      return;
+    }
+
     if (regFollowUpDate.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(regFollowUpDate.trim())) {
       Alert.alert('Validation Error', 'Follow-up date must be in YYYY-MM-DD format.');
       return;

@@ -30,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'full_name', 'role', 'branch', 'showroom', 'phone_number', 'is_active', 'password', 'first_name', 'last_name', 'date_of_birth', 'country', 'city', 'postal_code', 'expo_push_token')
-        read_only_fields = ('id', 'is_active')
+        read_only_fields = ('id',)
 
     def create(self, validated_data):
         password = validated_data.pop('password', 'password123')
@@ -38,6 +38,24 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+    def validate_phone_number(self, value):
+        import re
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Phone number must contain exactly 10 digits.")
+            return cleaned
+        return value
+
+    def validate_email(self, value):
+        import re
+        if value:
+            email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_regex, value):
+                raise serializers.ValidationError("Enter a valid email address.")
+        return value
+
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)

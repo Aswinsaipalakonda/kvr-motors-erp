@@ -649,6 +649,11 @@ export default function SupervisorDashboard() {
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
+    const cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
     const payload = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
@@ -717,6 +722,13 @@ export default function SupervisorDashboard() {
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBooking.customer_name.trim() || !newBooking.vehicle_model || !newBooking.advance_amount || !newBooking.expiry_date) return;
+    if (newBooking.contact_number.trim()) {
+      const cleanPhone = newBooking.contact_number.trim().replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        showToast("Contact number must contain exactly 10 digits.", "error");
+        return;
+      }
+    }
     try {
       if (editingBookingId) {
         await updateBooking(editingBookingId, {
@@ -2247,7 +2259,7 @@ export default function SupervisorDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-            <input type="text" placeholder="e.g. 9848022334" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
+            <input type="tel" placeholder="e.g. 9876543210" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
@@ -2316,7 +2328,7 @@ export default function SupervisorDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-            <input type="text" placeholder="e.g. 9848022334" value={newBooking.contact_number} onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
+            <input type="tel" placeholder="e.g. 9876543210" value={newBooking.contact_number} onChange={(e) => setNewBooking({ ...newBooking, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>

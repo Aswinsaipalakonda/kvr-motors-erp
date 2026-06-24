@@ -207,6 +207,12 @@ export default function SalesCheckout() {
       return;
     }
 
+    const cleanPhone = contactNumber.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      Alert.alert('Validation Error', 'Contact number must be exactly 10 digits.');
+      return;
+    }
+
     if (!vehicleResult) {
       Alert.alert('Missing Vehicle', 'Please select a vehicle unit using lookup.');
       return;
