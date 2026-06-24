@@ -192,11 +192,13 @@ export default function SalesMelaCampaign() {
     );
   };
 
-  const getModelName = (modelId: number) => {
+  const getModelName = (modelId?: number) => {
+    if (!modelId) return '';
     return models.find(m => m.id === modelId)?.model_name || `Model #${modelId}`;
   };
 
-  const getBrandName = (modelId: number) => {
+  const getBrandName = (modelId?: number) => {
+    if (!modelId) return 'EV';
     return models.find(m => m.id === modelId)?.brand_name || 'EV';
   };
 
@@ -244,9 +246,9 @@ export default function SalesMelaCampaign() {
   // Calculate pricing sum
   const getSummedPrice = () => {
     if (!selectedVehicle) return 0;
-    const vehiclePrice = selectedVehicle.price;
+    const vehiclePrice = parseFloat(selectedVehicle.price as any) || 0;
     const battery = getSelectedBattery();
-    const batteryPrice = battery ? battery.price : 0;
+    const batteryPrice = battery ? (parseFloat(battery.price as any) || 0) : 0;
     return vehiclePrice + batteryPrice;
   };
 

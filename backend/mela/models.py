@@ -3,7 +3,8 @@ from django.conf import settings
 from vehicles.models import VehicleModel
 
 class MelaVehicleStock(models.Model):
-    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_vehicles")
+    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_vehicles", null=True, blank=True)
+    model_name = models.CharField(max_length=100, default="", blank=True, help_text="Typed vehicle name")
     color = models.CharField(max_length=50, help_text="Selected color variant")
     price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Vehicle component mela price")
     initial_quantity = models.PositiveIntegerField(default=0)
@@ -15,10 +16,10 @@ class MelaVehicleStock(models.Model):
 
     class Meta:
         verbose_name_plural = "Mela Vehicle Stocks"
-        unique_together = ("vehicle_model", "color")
+        unique_together = ("model_name", "color")
 
     def __str__(self):
-        return f"{self.vehicle_model.model_name} ({self.color}) - Qty: {self.remaining_quantity}"
+        return f"{self.model_name} ({self.color}) - Qty: {self.remaining_quantity}"
 
 
 class MelaBatteryStock(models.Model):
@@ -48,7 +49,7 @@ class MelaVehicleBatteryCompatibility(models.Model):
         unique_together = ("vehicle_stock", "battery_stock")
 
     def __str__(self):
-        return f"{self.vehicle_stock.vehicle_model.model_name} ({self.vehicle_stock.color}) <-> {self.battery_stock.battery_name}"
+        return f"{self.vehicle_stock.model_name} ({self.vehicle_stock.color}) <-> {self.battery_stock.battery_name}"
 
 
 # Keep a shell MelaInventory model to preserve older database tables and references without breaking SQL queries
@@ -67,6 +68,13 @@ class MelaBooking(models.Model):
         ('unconfirmed', 'Unconfirmed Booking'),
         ('completed', 'Completed & Delivered'),
         ('cancelled', 'Cancelled'),
+    )
+
+    PAYMENT_CHOICES = (
+        ('cash', 'Cash'),
+        ('upi', 'UPI'),
+        ('card', 'Card'),
+        ('bajaj_finance', 'Bajaj Finance'),
     )
 
     booking_id = models.CharField(max_length=50, unique=True)
@@ -90,14 +98,20 @@ class MelaBooking(models.Model):
     
     price = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unconfirmed')
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cash')
+    payment_proof = models.ImageField(upload_to="mela_proofs/", null=True, blank=True)
     cash_collected = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.booking_id:
-            import datetime, random
-            self.booking_id = f"MELA-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+            import random
+            while True:
+                candidate = f"MELA-{random.randint(1000, 9999)}"
+                if not MelaBooking.objects.filter(booking_id=candidate).exists():
+                    self.booking_id = candidate
+                    break
         # Automatically sync legacy fields for compatibility
         if self.mela_vehicle:
             self.vehicle_model = self.mela_vehicle.vehicle_model

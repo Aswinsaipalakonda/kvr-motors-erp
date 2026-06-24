@@ -68,6 +68,7 @@ export default function OwnerMelaCampaign() {
   const [isVehicleModalVisible, setIsVehicleModalVisible] = useState(false);
   const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null);
   const [vehicleModelId, setVehicleModelId] = useState<number | null>(null);
+  const [vehicleModelName, setVehicleModelName] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
   const [vehiclePrice, setVehiclePrice] = useState('');
   const [vehicleQty, setVehicleQty] = useState('');
@@ -85,16 +86,8 @@ export default function OwnerMelaCampaign() {
   const [compatBatteryStockId, setCompatBatteryStockId] = useState<number | null>(null);
 
   // Dropdown lists selectors modals
-  const [isModelSelectorVisible, setIsModelSelectorVisible] = useState(false);
   const [isVehStockSelectorVisible, setIsVehStockSelectorVisible] = useState(false);
   const [isBatStockSelectorVisible, setIsBatStockSelectorVisible] = useState(false);
-
-  // Inline "Add New Model" inputs
-  const [showAddNewModel, setShowAddNewModel] = useState(false);
-  const [newModelName, setNewModelName] = useState('');
-  const [newModelBrand, setNewModelBrand] = useState<number | null>(null);
-  const [newModelPrice, setNewModelPrice] = useState('');
-  const [newModelColors, setNewModelColors] = useState('');
 
   // Load all required data
   const loadData = async (isPullToRefresh = false) => {
@@ -273,22 +266,22 @@ export default function OwnerMelaCampaign() {
   const handleOpenAddVehicle = () => {
     setEditingVehicleId(null);
     setVehicleModelId(null);
+    setVehicleModelName('');
     setVehicleColor('');
     setVehiclePrice('');
     setVehicleQty('');
     setVehicleRestockDate(null);
-    setShowAddNewModel(false);
     setIsVehicleModalVisible(true);
   };
 
   const handleOpenEditVehicle = (item: MelaVehicleStockInput) => {
     setEditingVehicleId(item.id || null);
-    setVehicleModelId(item.vehicle_model);
+    setVehicleModelId(item.vehicle_model || null);
+    setVehicleModelName(item.model_name || (item.vehicle_model ? getModelName(item.vehicle_model) : ''));
     setVehicleColor(item.color);
     setVehiclePrice(String(Math.round(item.price)));
     setVehicleQty(String(item.initial_quantity));
     setVehicleRestockDate(item.restock_date);
-    setShowAddNewModel(false);
     setIsVehicleModalVisible(true);
   };
 
@@ -315,38 +308,8 @@ export default function OwnerMelaCampaign() {
   };
 
   const handleSaveVehicle = async () => {
-    let finalModelId = vehicleModelId;
-    if (showAddNewModel) {
-      if (!newModelName.trim() || !newModelBrand || !newModelPrice.trim() || !newModelColors.trim()) {
-        Alert.alert('Required Fields', 'Please fill all details for the new model.');
-        return;
-      }
-      try {
-        setSubmittingStock(true);
-        const colorArray = newModelColors.split(',').map(c => c.trim()).filter(c => c !== '');
-        const createdModel = await createVehicleModel({
-          brand: newModelBrand,
-          model_name: newModelName.trim(),
-          base_price: parseFloat(newModelPrice),
-          color_variants: colorArray,
-          status: 'active'
-        });
-        finalModelId = createdModel.id;
-        setNewModelName('');
-        setNewModelBrand(null);
-        setNewModelPrice('');
-        setNewModelColors('');
-        setShowAddNewModel(false);
-      } catch (err) {
-        console.error(err);
-        Alert.alert('Error', 'Failed to create vehicle model.');
-        setSubmittingStock(false);
-        return;
-      }
-    }
-
-    if (!finalModelId) {
-      Alert.alert('Required Field', 'Please select a vehicle model.');
+    if (!vehicleModelName.trim()) {
+      Alert.alert('Required Field', 'Please enter a vehicle model name.');
       return;
     }
 
@@ -370,7 +333,8 @@ export default function OwnerMelaCampaign() {
       }
 
       const payload: MelaVehicleStockInput = {
-        vehicle_model: finalModelId,
+        vehicle_model: vehicleModelId || undefined,
+        model_name: vehicleModelName.trim(),
         color: vehicleColor.trim(),
         initial_quantity: qty,
         remaining_quantity: remainingQty,
@@ -537,11 +501,13 @@ export default function OwnerMelaCampaign() {
     ]);
   };
 
-  const getModelName = (modelId: number) => {
+  const getModelName = (modelId?: number) => {
+    if (!modelId) return '';
     return models.find(m => m.id === modelId)?.model_name || `Model #${modelId}`;
   };
 
-  const getBrandName = (modelId: number) => {
+  const getBrandName = (modelId?: number) => {
+    if (!modelId) return 'EV';
     return models.find(m => m.id === modelId)?.brand_name || 'EV';
   };
 
@@ -1182,111 +1148,26 @@ export default function OwnerMelaCampaign() {
               </View>
 
               <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-                {!editingVehicleId && (
-                  <View style={styles.inputGroup}>
-                    <ThemedText style={styles.inputLabel}>Vehicle Model</ThemedText>
-                    <Pressable
-                      onPress={() => setIsModelSelectorVisible(true)}
-                      style={styles.selectorBtn}
-                    >
-                      <ThemedText style={styles.selectorBtnText}>
-                        {showAddNewModel
-                          ? '(Create New Model)'
-                          : vehicleModelId
-                            ? getModelName(vehicleModelId)
-                            : 'Select Vehicle Model'}
-                      </ThemedText>
-                      <ChevronRight size={16} color="#94a3b8" />
-                    </Pressable>
-                  </View>
-                )}
-
-                {showAddNewModel && !editingVehicleId && (
-                  <View style={styles.nestedForm}>
-                    <ThemedText style={styles.nestedFormTitle}>Add New Vehicle Model</ThemedText>
-                    <View style={styles.inputGroup}>
-                      <ThemedText style={styles.inputLabel}>Model Name</ThemedText>
-                      <TextInput
-                        style={styles.nestedInput}
-                        placeholder="e.g. Varahi Zoom Max"
-                        placeholderTextColor="#94a3b8"
-                        value={newModelName}
-                        onChangeText={setNewModelName}
-                      />
-                    </View>
-                    <View style={styles.inputGroup}>
-                      <ThemedText style={styles.inputLabel}>Brand</ThemedText>
-                      <View style={styles.horizontalPills}>
-                        {brands.map((b) => (
-                          <Pressable
-                            key={b.id}
-                            onPress={() => setNewModelBrand(b.id)}
-                            style={[styles.pill, newModelBrand === b.id && styles.pillActive]}
-                          >
-                            <ThemedText style={[styles.pillText, newModelBrand === b.id && styles.pillTextActive]}>
-                              {b.name}
-                            </ThemedText>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                    <View style={styles.inputGroup}>
-                      <ThemedText style={styles.inputLabel}>Base Price (₹)</ThemedText>
-                      <TextInput
-                        style={styles.nestedInput}
-                        placeholder="e.g. 125000"
-                        placeholderTextColor="#94a3b8"
-                        keyboardType="numeric"
-                        value={newModelPrice}
-                        onChangeText={setNewModelPrice}
-                      />
-                    </View>
-                    <View style={styles.inputGroup}>
-                      <ThemedText style={styles.inputLabel}>Colors (Comma separated)</ThemedText>
-                      <TextInput
-                        style={styles.nestedInput}
-                        placeholder="e.g. Green, Red, Blue"
-                        placeholderTextColor="#94a3b8"
-                        value={newModelColors}
-                        onChangeText={setNewModelColors}
-                      />
-                    </View>
-                  </View>
-                )}
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Vehicle Model Name</ThemedText>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Okinawa Praise, AMO X1"
+                    placeholderTextColor="#94a3b8"
+                    value={vehicleModelName}
+                    onChangeText={setVehicleModelName}
+                  />
+                </View>
 
                 <View style={styles.inputGroup}>
                   <ThemedText style={styles.inputLabel}>Vehicle Color</ThemedText>
-                  {showAddNewModel ? (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. Green"
-                      placeholderTextColor="#94a3b8"
-                      value={vehicleColor}
-                      onChangeText={setVehicleColor}
-                    />
-                  ) : vehicleModelId ? (
-                    <View style={styles.horizontalPills}>
-                      {getAvailableColors().map((c) => (
-                        <Pressable
-                          key={c}
-                          onPress={() => setVehicleColor(c)}
-                          style={[styles.pill, vehicleColor.toLowerCase() === c.toLowerCase() && styles.pillActive]}
-                        >
-                          <ThemedText style={[styles.pillText, vehicleColor.toLowerCase() === c.toLowerCase() && styles.pillTextActive]}>
-                            {c}
-                          </ThemedText>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Select a model first"
-                      placeholderTextColor="#94a3b8"
-                      value={vehicleColor}
-                      onChangeText={setVehicleColor}
-                    />
-                  )}
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Red, Black"
+                    placeholderTextColor="#94a3b8"
+                    value={vehicleColor}
+                    onChangeText={setVehicleColor}
+                  />
                 </View>
 
                 <View style={styles.dateGrid}>
@@ -1516,53 +1397,7 @@ export default function OwnerMelaCampaign() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* List Selector Modal: Vehicle Model */}
-        <Modal
-          visible={isModelSelectorVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsModelSelectorVisible(false)}
-        >
-          <Pressable style={styles.modalOverlayList} onPress={() => setIsModelSelectorVisible(false)}>
-            <View style={styles.selectorModalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Vehicle Model</ThemedText>
-                <Pressable onPress={() => setIsModelSelectorVisible(false)}>
-                  <X size={20} color="#0f172a" />
-                </Pressable>
-              </View>
-              <FlatList
-                data={[
-                  { id: -1, model_name: '+ Add New Model', brand_name: 'CREATE NEW' },
-                  ...models.map(m => ({ id: m.id, model_name: m.model_name, brand_name: m.brand_name }))
-                ]}
-                keyExtractor={(item, index) => String(item.id || index)}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.selectListItem}
-                    onPress={() => {
-                      if (item.id === -1) {
-                        setShowAddNewModel(true);
-                        setVehicleModelId(null);
-                      } else {
-                        setShowAddNewModel(false);
-                        setVehicleModelId(item.id);
-                        const variants = models.find(m => m.id === item.id)?.color_variants || [];
-                        if (variants.length > 0) setVehicleColor(variants[0]);
-                      }
-                      setIsModelSelectorVisible(false);
-                    }}
-                  >
-                    <View>
-                      <ThemedText style={styles.listItemLabel}>{item.model_name}</ThemedText>
-                      <ThemedText style={styles.listItemSub}>{item.brand_name}</ThemedText>
-                    </View>
-                  </Pressable>
-                )}
-              />
-            </View>
-          </Pressable>
-        </Modal>
+
 
         {/* List Selector Modal: Campaign Vehicle Selection */}
         <Modal

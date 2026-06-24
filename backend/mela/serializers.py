@@ -6,23 +6,25 @@ from vehicles.models import VehicleModel
 
 
 class MelaVehicleStockSerializer(serializers.ModelSerializer):
-    model_name = serializers.CharField(source='vehicle_model.model_name', read_only=True)
-    brand_name = serializers.CharField(source='vehicle_model.brand.name', read_only=True)
-    color_options = serializers.ListField(source='vehicle_model.color_variants', read_only=True)
+    model_name = serializers.CharField(max_length=100, required=True)
+    brand_name = serializers.SerializerMethodField(read_only=True)
+    color_options = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = MelaVehicleStock
         fields = '__all__'
 
+    def get_brand_name(self, obj):
+        if obj.vehicle_model and obj.vehicle_model.brand:
+            return obj.vehicle_model.brand.name
+        return ""
+
+    def get_color_options(self, obj):
+        if obj.vehicle_model:
+            return obj.vehicle_model.color_variants
+        return []
+
     def validate(self, data):
-        vehicle_model = data.get('vehicle_model')
-        color = data.get('color')
-        if vehicle_model and color:
-            color_variants = vehicle_model.color_variants
-            if not any(c.lower() == color.lower() for c in color_variants):
-                raise serializers.ValidationError({
-                    "color": f"Color '{color}' is not available for model '{vehicle_model.model_name}'. Available colors are: {', '.join(color_variants)}."
-                })
         return data
 
 
@@ -33,7 +35,7 @@ class MelaBatteryStockSerializer(serializers.ModelSerializer):
 
 
 class MelaVehicleBatteryCompatibilitySerializer(serializers.ModelSerializer):
-    vehicle_model_name = serializers.CharField(source='vehicle_stock.vehicle_model.model_name', read_only=True)
+    vehicle_model_name = serializers.CharField(source='vehicle_stock.model_name', read_only=True)
     vehicle_color = serializers.CharField(source='vehicle_stock.color', read_only=True)
     battery_name = serializers.CharField(source='battery_stock.battery_name', read_only=True)
 
@@ -47,7 +49,7 @@ class MelaBookingSerializer(serializers.ModelSerializer):
     executive_serial_number = serializers.IntegerField(required=False, read_only=True)
     
     # Custom details for display
-    vehicle_model_name = serializers.CharField(source='mela_vehicle.vehicle_model.model_name', read_only=True)
+    vehicle_model_name = serializers.CharField(source='mela_vehicle.model_name', read_only=True)
     vehicle_color = serializers.CharField(source='mela_vehicle.color', read_only=True)
     battery_name = serializers.CharField(source='mela_battery.battery_name', read_only=True)
     
@@ -71,7 +73,7 @@ class MelaBookingSerializer(serializers.ModelSerializer):
             ).exists()
             if not is_compatible:
                 raise serializers.ValidationError(
-                    f"The selected battery '{mela_battery.battery_name}' is not supported by the vehicle model '{mela_vehicle.vehicle_model.model_name}' ({mela_vehicle.color})."
+                    f"The selected battery '{mela_battery.battery_name}' is not supported by the vehicle model '{mela_vehicle.model_name}' ({mela_vehicle.color})."
                 )
         return data
 
@@ -95,7 +97,7 @@ class MelaBookingSerializer(serializers.ModelSerializer):
 
             if vehicle_stock.remaining_quantity <= 0:
                 raise serializers.ValidationError({
-                    "mela_vehicle": f"Mela campaign stock for vehicle '{vehicle_stock.vehicle_model.model_name}' ({vehicle_stock.color}) is sold out."
+                    "mela_vehicle": f"Mela campaign stock for vehicle '{vehicle_stock.model_name}' ({vehicle_stock.color}) is sold out."
                 })
             if battery_stock.remaining_quantity <= 0:
                 raise serializers.ValidationError({

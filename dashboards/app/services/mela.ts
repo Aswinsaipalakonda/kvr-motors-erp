@@ -2,14 +2,14 @@ import api from "./api";
 
 export interface MelaVehicleStockInput {
   id?: number;
-  vehicle_model: number;
+  vehicle_model?: number | null;
+  model_name: string;
   color: string;
   price: number;
   initial_quantity: number;
   remaining_quantity: number;
   restock_date: string | null;
   is_active?: boolean;
-  model_name?: string;
   brand_name?: string;
   color_options?: string[];
 }
@@ -178,8 +178,8 @@ export const updateMelaBooking = async (id: number, data: Partial<MelaBooking>) 
   return response.data;
 };
 
-export const completeMelaBooking = async (id: number) => {
-  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`);
+export const completeMelaBooking = async (id: number, data?: FormData | { payment_type: string }) => {
+  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`, data);
   return response.data;
 };
 

@@ -2,7 +2,7 @@ import api from './api';
 
 export interface MelaVehicleStockInput {
   id?: number;
-  vehicle_model: number;
+  vehicle_model?: number;
   color: string;
   price: number;
   initial_quantity: number;
@@ -243,8 +243,10 @@ export const updateMelaBooking = async (id: number, data: Partial<MelaBooking>) 
   return response.data;
 };
 
-export const completeMelaBooking = async (id: number) => {
-  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`);
+export const completeMelaBooking = async (id: number, data?: FormData | { payment_type: string }) => {
+  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`, data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  });
   return response.data;
 };
 

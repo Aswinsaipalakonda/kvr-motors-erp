@@ -149,10 +149,27 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        payment_type = request.data.get('payment_type', 'cash').lower()
+        if payment_type not in ['cash', 'upi', 'card', 'bajaj_finance']:
+            return Response(
+                {"error": "Invalid payment type. Choose Cash, UPI, Card, or Bajaj Finance."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        payment_proof = request.FILES.get('payment_proof')
+        if payment_type != 'cash' and not payment_proof:
+            return Response(
+                {"error": f"Payment proof screenshot is required for {payment_type.upper()} payments."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         with transaction.atomic():
             booking.status = 'completed'
             booking.cash_collected = booking.price
             booking.completed_at = timezone.now()
+            booking.payment_type = payment_type
+            if payment_proof:
+                booking.payment_proof = payment_proof
             booking.save()
 
             # Record automated entry in LedgerEntry
@@ -162,14 +179,22 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
             if not branch_obj:
                 branch_obj = Branch.objects.first()
 
+            payment_mode_map = {
+                'cash': 'Cash',
+                'upi': 'UPI',
+                'card': 'Card',
+                'bajaj_finance': 'Bajaj Finance'
+            }
+            payment_mode_lbl = payment_mode_map.get(payment_type, 'Cash')
+
             if branch_obj:
                 LedgerEntry.objects.create(
                     ledger_type='sales_income',
                     branch=branch_obj,
-                    detail=f"Cash Collection for Mela Booking: {booking.booking_id} (Customer: {booking.customer_name})",
+                    detail=f"Mela Campaign Checkout (Booking: {booking.booking_id}, Customer: {booking.customer_name})",
                     income=booking.price,
                     expense=0.00,
-                    payment_mode='Cash',
+                    payment_mode=payment_mode_lbl,
                     approved_by=request.user
                 )
 
