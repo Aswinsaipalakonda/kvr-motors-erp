@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import api from "../services/api";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -216,9 +217,9 @@ export default function SalesDashboard() {
         getMelaInventory(),
         getMelaBookings(),
         getMelaSettingsList(),
-        api.get("/mela-vehicles/").then(r => r.data),
-        api.get("/mela-batteries/").then(r => r.data),
-        api.get("/mela-compatibilities/").then(r => r.data)
+        api.get("/mela-vehicles/").then((r: any) => r.data),
+        api.get("/mela-batteries/").then((r: any) => r.data),
+        api.get("/mela-compatibilities/").then((r: any) => r.data)
       ]);
       setMelaInventoryList(inv);
       setMelaBookingsList(bookings);
@@ -649,7 +650,8 @@ export default function SalesDashboard() {
                 );
               })}
             </div>
-                  {/* MELA VIEWS FOR SALES EXECUTIVE */}
+          )}
+          {/* MELA VIEWS FOR SALES EXECUTIVE */}
           {activeTab === "mela_booking_form" && (
             <div className="space-y-6 text-left">
               {!activeMela || !activeMela.is_active ? (

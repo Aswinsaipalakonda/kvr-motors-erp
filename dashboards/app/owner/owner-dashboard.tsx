@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import api from "../services/api";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -652,9 +653,9 @@ export default function OwnerDashboard() {
         getMelaBookings(),
         getMelaReports(),
         getMelaSettingsList(),
-        api.get("/mela-vehicles/").then(r => r.data),
-        api.get("/mela-batteries/").then(r => r.data),
-        api.get("/mela-compatibilities/").then(r => r.data)
+        api.get("/mela-vehicles/").then((r: any) => r.data),
+        api.get("/mela-batteries/").then((r: any) => r.data),
+        api.get("/mela-compatibilities/").then((r: any) => r.data)
       ]);
       setMelaInventoryList(inv);
       setMelaBookingsList(bookings);
@@ -2464,7 +2465,9 @@ export default function OwnerDashboard() {
                   </form>
                 </div>
               </div>
-             {activeTab === "mela_inventory" && (
+            </div>
+          )}
+          {activeTab === "mela_inventory" && (
             <div className="space-y-6 text-left">
               {/* Campaign stock list & Add stock forms */}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
