@@ -222,7 +222,7 @@ export default function OwnerMelaCampaign() {
     try {
       setCheckoutLoading(true);
       setFoundBooking(null);
-      const bookings = await getMelaBookings({ booking_id: melaSearchQuery.trim() });
+      const bookings = await getMelaBookings({ booking_id: melaSearchQuery.trim().toUpperCase() });
       if (bookings && bookings.length > 0) {
         setFoundBooking(bookings[0]);
       } else {

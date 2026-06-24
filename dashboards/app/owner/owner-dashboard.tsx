@@ -931,7 +931,7 @@ export default function OwnerDashboard() {
     setCompletedOrderDetails(null);
     setCheckoutPaymentType("cash");
     setCheckoutPaymentProof(null);
-    const q = melaSearchQuery.trim();
+    const q = melaSearchQuery.trim().toUpperCase();
     if (!q) {
       setMelaCheckoutError("Please enter a Booking ID.");
       return;
