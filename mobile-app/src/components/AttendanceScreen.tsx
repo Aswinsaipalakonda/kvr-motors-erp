@@ -127,27 +127,20 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   // This is now only called when user explicitly taps "Grant Location Access" or recaptures location
   const checkAndRequestLocationPermission = async () => {
     try {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      setLocationStatus(status);
-      if (status === Location.PermissionStatus.GRANTED) {
+      const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
+      setLocationStatus(reqStatus);
+      if (reqStatus === Location.PermissionStatus.GRANTED) {
         resolveCurrentLocation();
         return true;
       } else {
-        const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
-        setLocationStatus(reqStatus);
-        if (reqStatus === Location.PermissionStatus.GRANTED) {
-          resolveCurrentLocation();
-          return true;
-        } else {
-          Alert.alert(
-            'Location Required',
-            'Location permission is permanently denied or restricted. Please go to your device Settings to enable location services for this app.'
-          );
-          return false;
-        }
+        Alert.alert(
+          'Location Required',
+          'Location permission was denied. Please check your system Settings to ensure location access is enabled for this app.'
+        );
+        return false;
       }
     } catch (err) {
-      console.warn('Error fetching location permission:', err);
+      console.warn('Error requesting location permission:', err);
       return false;
     }
   };
@@ -205,22 +198,15 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     }
 
     // 2. Location permission check and prompt if missing
-    let locStatus = locationStatus;
-    const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
-    locStatus = currentStatus;
-    setLocationStatus(currentStatus);
+    let { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+    setLocationStatus(locStatus);
     
     if (locStatus !== Location.PermissionStatus.GRANTED) {
-      const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
-      locStatus = reqStatus;
-      setLocationStatus(reqStatus);
-      if (reqStatus !== Location.PermissionStatus.GRANTED) {
-        Alert.alert(
-          'Permission Required',
-          'Location access was denied. Please go to settings and enable location services for this app to mark attendance.'
-        );
-        return;
-      }
+      Alert.alert(
+        'Permission Required',
+        'Location access is required to verify your workplace check-in. If you turned on location and still see this, please go to your system settings to grant KVR Motors access.'
+      );
+      return;
     }
 
     // 3. Ensure coordinates are resolved
