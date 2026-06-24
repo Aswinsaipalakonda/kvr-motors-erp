@@ -1,25 +1,43 @@
 import api from "./api";
 
-export interface MelaInventoryInput {
+export interface MelaVehicleStockInput {
   id?: number;
   vehicle_model: number;
   color: string;
-  battery_type: string;
+  price: number;
   initial_quantity: number;
   remaining_quantity: number;
-  price: number;
+  restock_date: string | null;
   is_active?: boolean;
   model_name?: string;
   brand_name?: string;
   color_options?: string[];
 }
 
+export interface MelaBatteryStockInput {
+  id?: number;
+  battery_name: string;
+  price: number;
+  initial_quantity: number;
+  remaining_quantity: number;
+  restock_date: string | null;
+  is_active?: boolean;
+}
+
+export interface MelaVehicleBatteryCompatibilityInput {
+  id?: number;
+  vehicle_stock: number;
+  battery_stock: number;
+  vehicle_model_name?: string;
+  vehicle_color?: string;
+  battery_name?: string;
+}
+
 export interface MelaBookingInput {
   customer_name: string;
   customer_phone: string;
-  vehicle_model: number;
-  color: string;
-  battery_type: string;
+  mela_vehicle: number;
+  mela_battery: number;
 }
 
 export interface MelaBooking {
@@ -29,6 +47,8 @@ export interface MelaBooking {
   customer_phone: string;
   sales_executive: number;
   executive_serial_number: number;
+  mela_vehicle: number;
+  mela_battery: number;
   vehicle_model: number;
   color: string;
   battery_type: string;
@@ -38,8 +58,9 @@ export interface MelaBooking {
   cash_collected: number;
   created_at: string;
   completed_at: string | null;
-  model_name?: string;
-  brand_name?: string;
+  vehicle_model_name?: string;
+  vehicle_color?: string;
+  battery_name?: string;
   executive_name?: string;
 }
 
@@ -63,18 +84,77 @@ export interface MelaReports {
   }>;
 }
 
+// Mela Vehicle Stock APIs
+export const getMelaVehicles = async (params?: any) => {
+  const response = await api.get<MelaVehicleStockInput[]>("/mela-vehicles/", { params });
+  return response.data;
+};
+
+export const createMelaVehicle = async (data: MelaVehicleStockInput) => {
+  const response = await api.post<MelaVehicleStockInput>("/mela-vehicles/", data);
+  return response.data;
+};
+
+export const updateMelaVehicle = async (id: number, data: Partial<MelaVehicleStockInput>) => {
+  const response = await api.patch<MelaVehicleStockInput>(`/mela-vehicles/${id}/`, data);
+  return response.data;
+};
+
+export const deleteMelaVehicle = async (id: number) => {
+  const response = await api.delete(`/mela-vehicles/${id}/`);
+  return response.data;
+};
+
+// Mela Battery Stock APIs
+export const getMelaBatteries = async (params?: any) => {
+  const response = await api.get<MelaBatteryStockInput[]>("/mela-batteries/", { params });
+  return response.data;
+};
+
+export const createMelaBattery = async (data: MelaBatteryStockInput) => {
+  const response = await api.post<MelaBatteryStockInput>("/mela-batteries/", data);
+  return response.data;
+};
+
+export const updateMelaBattery = async (id: number, data: Partial<MelaBatteryStockInput>) => {
+  const response = await api.patch<MelaBatteryStockInput>(`/mela-batteries/${id}/`, data);
+  return response.data;
+};
+
+export const deleteMelaBattery = async (id: number) => {
+  const response = await api.delete(`/mela-batteries/${id}/`);
+  return response.data;
+};
+
+// Mela Vehicle-Battery Compatibilities APIs
+export const getMelaCompatibilities = async (params?: any) => {
+  const response = await api.get<MelaVehicleBatteryCompatibilityInput[]>("/mela-compatibilities/", { params });
+  return response.data;
+};
+
+export const createMelaCompatibility = async (data: MelaVehicleBatteryCompatibilityInput) => {
+  const response = await api.post<MelaVehicleBatteryCompatibilityInput>("/mela-compatibilities/", data);
+  return response.data;
+};
+
+export const deleteMelaCompatibility = async (id: number) => {
+  const response = await api.delete(`/mela-compatibilities/${id}/`);
+  return response.data;
+};
+
+// Mock legacy MelaInventory fallback
 export const getMelaInventory = async (params?: any) => {
-  const response = await api.get<MelaInventoryInput[]>("/mela-inventory/", { params });
+  const response = await api.get<any[]>("/mela-inventory/", { params });
   return response.data;
 };
 
-export const createMelaInventory = async (data: MelaInventoryInput) => {
-  const response = await api.post<MelaInventoryInput>("/mela-inventory/", data);
+export const createMelaInventory = async (data: any) => {
+  const response = await api.post<any>("/mela-inventory/", data);
   return response.data;
 };
 
-export const updateMelaInventory = async (id: number, data: Partial<MelaInventoryInput>) => {
-  const response = await api.patch<MelaInventoryInput>(`/mela-inventory/${id}/`, data);
+export const updateMelaInventory = async (id: number, data: any) => {
+  const response = await api.patch<any>(`/mela-inventory/${id}/`, data);
   return response.data;
 };
 

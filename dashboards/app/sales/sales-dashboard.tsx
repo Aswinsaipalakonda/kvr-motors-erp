@@ -201,16 +201,30 @@ export default function SalesDashboard() {
     }
   };
 
+  const [melaVehiclesList, setMelaVehiclesList] = useState<any[]>([]);
+  const [melaBatteriesList, setMelaBatteriesList] = useState<any[]>([]);
+  const [melaCompatibilitiesList, setMelaCompatibilitiesList] = useState<any[]>([]);
+
+  // Selection states for booking
+  const [selectedMelaVehicleId, setSelectedMelaVehicleId] = useState("");
+  const [selectedMelaBatteryId, setSelectedMelaBatteryId] = useState("");
+
   const loadMelaData = async () => {
     try {
       setMelaLoading(true);
-      const [inv, bookings, settings] = await Promise.all([
+      const [inv, bookings, settings, vehicles, batteries, compatibilities] = await Promise.all([
         getMelaInventory(),
         getMelaBookings(),
-        getMelaSettingsList()
+        getMelaSettingsList(),
+        api.get("/mela-vehicles/").then(r => r.data),
+        api.get("/mela-batteries/").then(r => r.data),
+        api.get("/mela-compatibilities/").then(r => r.data)
       ]);
       setMelaInventoryList(inv);
       setMelaBookingsList(bookings);
+      setMelaVehiclesList(vehicles);
+      setMelaBatteriesList(batteries);
+      setMelaCompatibilitiesList(compatibilities);
       const active = settings.find((s: any) => s.is_active) || null;
       setActiveMela(active);
     } catch (e) {
@@ -222,16 +236,15 @@ export default function SalesDashboard() {
 
   const handleMelaBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!melaBookingName.trim() || !melaBookingPhone.trim() || !melaBookingModel || !melaBookingColor) {
+    if (!melaBookingName.trim() || !melaBookingPhone.trim() || !selectedMelaVehicleId || !selectedMelaBatteryId) {
       showToast("Please fill all required booking fields.", "error");
       return;
     }
     const payload = {
       customer_name: melaBookingName.trim(),
       customer_phone: melaBookingPhone.trim(),
-      vehicle_model: parseInt(melaBookingModel),
-      color: melaBookingColor,
-      battery_type: melaBookingBattery
+      mela_vehicle: parseInt(selectedMelaVehicleId),
+      mela_battery: parseInt(selectedMelaBatteryId)
     };
     try {
       setMelaLoading(true);
@@ -240,9 +253,8 @@ export default function SalesDashboard() {
       showToast("Mela Booking created successfully!");
       setMelaBookingName("");
       setMelaBookingPhone("");
-      setMelaBookingModel("");
-      setMelaBookingColor("");
-      setMelaBookingBattery("graphene");
+      setSelectedMelaVehicleId("");
+      setSelectedMelaBatteryId("");
       loadMelaData();
     } catch (err: any) {
       console.error("Failed to place Mela booking:", err);
@@ -637,8 +649,7 @@ export default function SalesDashboard() {
                 );
               })}
             </div>
-          )}
-          {/* MELA VIEWS FOR SALES EXECUTIVE */}
+                  {/* MELA VIEWS FOR SALES EXECUTIVE */}
           {activeTab === "mela_booking_form" && (
             <div className="space-y-6 text-left">
               {!activeMela || !activeMela.is_active ? (
@@ -655,63 +666,106 @@ export default function SalesDashboard() {
                 <>
                   <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   
-                  {/* Catalog Grid */}
-                  <div className="xl:col-span-2 space-y-4">
+                  {/* Catalog Selector Grid */}
+                  <div className="xl:col-span-2 space-y-6">
                     <div className="mb-2">
-                      <h3 className="text-sm font-black text-slate-805 tracking-tight">Active Mela Campaign Stock</h3>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Select a vehicle from the catalog to book it at campaign prices.</p>
+                      <h3 className="text-sm font-black text-slate-805 tracking-tight">Active Mela Campaign Catalog</h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Configure your selection by choosing a vehicle first, then a supported battery.</p>
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {melaInventoryList.filter(inv => inv.remaining_quantity > 0).map((inv) => (
-                        <button
-                          key={inv.id}
-                          type="button"
-                          onClick={() => {
-                            setMelaBookingModel(String(inv.vehicle_model));
-                            setMelaBookingColor(inv.color);
-                            setMelaBookingBattery(inv.battery_type);
-                            showToast(`Selected ${inv.model_name} (${inv.color})`);
-                          }}
-                          className={`group bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all text-left flex flex-col justify-between h-40 cursor-pointer ${
-                            melaBookingModel === String(inv.vehicle_model) &&
-                            melaBookingColor === inv.color &&
-                            melaBookingBattery === inv.battery_type
-                              ? "border-[#04a700] ring-2 ring-[#04a700]/15"
-                              : "border-slate-200/70"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wide">
-                                {inv.brand_name || "EV Model"}
-                              </span>
-                              <span className="bg-[#04a700]/10 text-[#04a700] border border-[#04a700]/20 rounded-full px-2 py-0.5 text-[9px] font-bold">
-                                {inv.remaining_quantity} Available
-                              </span>
-                            </div>
-                            <h4 className="text-sm font-extrabold text-slate-800 mt-1 leading-tight group-hover:text-[#04a700]">
-                              {inv.model_name}
-                            </h4>
-                            <div className="text-[10px] text-slate-500 font-bold mt-1.5 flex gap-2">
-                              <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">🎨 {inv.color}</span>
-                              <span className="capitalize bg-slate-50 px-2 py-0.5 rounded border border-slate-200">⚡ {inv.battery_type}</span>
-                            </div>
-                          </div>
 
-                          <div className="flex justify-between items-end border-t border-slate-100 pt-2.5">
-                            <span className="text-emerald-700 font-mono font-black text-sm">
-                              ₹ {parseFloat(inv.price).toLocaleString("en-IN")}
-                            </span>
-                            <span className="text-[10px] text-[#04a700] font-extrabold group-hover:translate-x-0.5 transition-transform">
-                              Select Spec
-                            </span>
+                    <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4">
+                      {/* Vehicle selection */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">1. Select Campaign Vehicle Model</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {melaVehiclesList?.map((v) => {
+                            const isLow = v.remaining_quantity <= 2;
+                            const isSelected = selectedMelaVehicleId === String(v.id);
+                            return (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedMelaVehicleId(String(v.id));
+                                  setSelectedMelaBatteryId(""); // reset battery choice
+                                }}
+                                className={`p-4 rounded-xl border text-left transition-all relative ${
+                                  isSelected
+                                    ? "border-[#04a700] bg-emerald-50/20 ring-2 ring-[#04a700]/15"
+                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                }`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-bold text-slate-800">{v.model_name}</span>
+                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                    isLow ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                                  }`}>
+                                    {v.remaining_quantity} left
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-450 font-semibold mt-1">Color: {v.color}</div>
+                                <div className="text-xs font-bold text-emerald-700 mt-2">₹ {parseFloat(v.price).toLocaleString("en-IN")}</div>
+                                {isLow && (
+                                  <div className="text-[9px] text-rose-600 font-bold mt-1">
+                                    ⚠️ Low Stock! {v.restock_date ? `Expected Restock: ${v.restock_date}` : ""}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Battery selection (Filtered by Compatibility) */}
+                      {selectedMelaVehicleId && (
+                        <div className="space-y-2 pt-4 border-t border-slate-100 animate-fadeIn">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">2. Select Supported Battery Type</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(() => {
+                              // Filter compatibility mappings matching the selected vehicle id
+                              const compatibleBatteryIds = melaCompatibilitiesList
+                                ?.filter(c => String(c.vehicle_stock) === selectedMelaVehicleId)
+                                .map(c => c.battery_stock);
+
+                              const filteredBatteries = melaBatteriesList?.filter(b => compatibleBatteryIds?.includes(b.id));
+
+                              if (filteredBatteries?.length === 0) {
+                                return <p className="text-[11px] text-slate-400">No compatible batteries registered for this vehicle.</p>;
+                              }
+
+                              return filteredBatteries?.map((b) => {
+                                const isLow = b.remaining_quantity <= 2;
+                                const isSelected = selectedMelaBatteryId === String(b.id);
+                                return (
+                                  <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => setSelectedMelaBatteryId(String(b.id))}
+                                    className={`p-4 rounded-xl border text-left transition-all relative ${
+                                      isSelected
+                                        ? "border-[#04a700] bg-emerald-50/20 ring-2 ring-[#04a700]/15"
+                                        : "border-slate-200 hover:border-slate-300 bg-white"
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-xs font-bold text-slate-800">{b.battery_name}</span>
+                                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                        isLow ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                                      }`}>
+                                        {b.remaining_quantity} left
+                                      </span>
+                                    </div>
+                                    <div className="text-xs font-bold text-emerald-700 mt-2">₹ {parseFloat(b.price).toLocaleString("en-IN")}</div>
+                                    {isLow && (
+                                      <div className="text-[9px] text-rose-600 font-bold mt-1">
+                                        ⚠️ Low Stock! {b.restock_date ? `Expected Restock: ${b.restock_date}` : ""}
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              });
+                            })()}
                           </div>
-                        </button>
-                      ))}
-                      {melaInventoryList.filter(inv => inv.remaining_quantity > 0).length === 0 && (
-                        <div className="col-span-2 py-12 text-center text-slate-400 font-semibold bg-white border border-dashed border-slate-200 rounded-2xl">
-                          All campaign vehicles are sold out!
                         </div>
                       )}
                     </div>
@@ -724,7 +778,7 @@ export default function SalesDashboard() {
                       <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Enter customer details to reserve the selected EV configuration.</p>
                     </div>
 
-                    <form onSubmit={melaBookingModel ? handleMelaBookingSubmit : (e) => { e.preventDefault(); showToast("Please select a vehicle from the catalog first.", "error"); }} className="space-y-4 text-xs font-semibold text-slate-650">
+                    <form onSubmit={handleMelaBookingSubmit} className="space-y-4 text-xs font-semibold text-slate-655">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
                         <input
@@ -753,32 +807,37 @@ export default function SalesDashboard() {
                         <div className="flex justify-between">
                           <span className="text-slate-400 font-bold">Selected Model:</span>
                           <span className="text-slate-800 font-extrabold">
-                            {melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel)?.model_name || "None Selected"}
+                            {melaVehiclesList.find(v => String(v.id) === selectedMelaVehicleId)?.model_name || "None Selected"}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400 font-bold">Color variant:</span>
-                          <span className="text-slate-800 font-extrabold capitalize">{melaBookingColor || "—"}</span>
+                          <span className="text-slate-800 font-extrabold capitalize">
+                            {melaVehiclesList.find(v => String(v.id) === selectedMelaVehicleId)?.color || "—"}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400 font-bold">Battery Option:</span>
-                          <span className="text-slate-800 font-extrabold capitalize">{melaBookingBattery || "—"}</span>
+                          <span className="text-slate-800 font-extrabold capitalize">
+                            {melaBatteriesList.find(b => String(b.id) === selectedMelaBatteryId)?.battery_name || "—"}
+                          </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400 font-bold">Mela Price:</span>
+                        <div className="flex justify-between text-sm pt-2 border-t border-slate-100">
+                          <span className="text-slate-600 font-black">Total Price:</span>
                           <span className="text-emerald-700 font-black font-mono">
-                            {melaBookingModel
-                              ? `₹ ${parseFloat(melaInventoryList.find(i => String(i.vehicle_model) === melaBookingModel && i.color === melaBookingColor && i.battery_type === melaBookingBattery)?.price || '0').toLocaleString('en-IN')}`
-                              : "—"
-                            }
+                            {(() => {
+                              const vPrice = parseFloat(melaVehiclesList.find(v => String(v.id) === selectedMelaVehicleId)?.price || "0");
+                              const bPrice = parseFloat(melaBatteriesList.find(b => String(b.id) === selectedMelaBatteryId)?.price || "0");
+                              return vPrice || bPrice ? `₹ ${(vPrice + bPrice).toLocaleString("en-IN")}` : "—";
+                            })()}
                           </span>
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        disabled={melaLoading}
-                        className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center flex justify-center items-center gap-1.5"
+                        disabled={melaLoading || !selectedMelaVehicleId || !selectedMelaBatteryId}
+                        className="w-full bg-[#04a700] hover:bg-[#038a00] text-white font-bold py-2.5 px-4 rounded-xl cursor-pointer shadow-md shadow-[#04a700]/25 transition-all text-center flex justify-center items-center gap-1.5 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         {melaLoading ? (
                           <>

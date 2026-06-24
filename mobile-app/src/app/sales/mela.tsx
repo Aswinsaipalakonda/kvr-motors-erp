@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Alert,
-  RefreshControl, BackHandler, Modal, Platform, KeyboardAvoidingView
+  RefreshControl, BackHandler, Modal, Platform, KeyboardAvoidingView, FlatList
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,9 +12,11 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
-  getMelaSettingsList, getMelaInventory, getVehicleModels, getVehicleBrands,
+  getMelaSettingsList, getVehicleModels, getVehicleBrands,
   getMelaBookings, createMelaBooking, updateMelaBooking,
-  MelaInventoryInput, MelaSettingsInput, VehicleModel, VehicleBrand, MelaBooking
+  getMelaVehicles, getMelaBatteries, getMelaCompatibilities,
+  MelaSettingsInput, VehicleModel, VehicleBrand, MelaBooking,
+  MelaVehicleStockInput, MelaBatteryStockInput, MelaVehicleBatteryCompatibilityInput
 } from '@/services/mela';
 
 type SalesMelaTab = 'catalog' | 'bookings' | 'performance';
@@ -28,7 +30,9 @@ export default function SalesMelaCampaign() {
 
   // Mela settings and listings
   const [activeMela, setActiveMela] = useState<MelaSettingsInput | null>(null);
-  const [inventoryList, setInventoryList] = useState<MelaInventoryInput[]>([]);
+  const [melaVehicles, setMelaVehicles] = useState<MelaVehicleStockInput[]>([]);
+  const [melaBatteries, setMelaBatteries] = useState<MelaBatteryStockInput[]>([]);
+  const [melaCompatibilities, setMelaCompatibilities] = useState<MelaVehicleBatteryCompatibilityInput[]>([]);
   const [bookingsList, setBookingsList] = useState<MelaBooking[]>([]);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
@@ -41,10 +45,12 @@ export default function SalesMelaCampaign() {
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
   // Booking Modal & details inputs
-  const [selectedInventory, setSelectedInventory] = useState<MelaInventoryInput | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<MelaVehicleStockInput | null>(null);
+  const [selectedBatteryId, setSelectedBatteryId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
+  const [isBatterySelectorVisible, setIsBatterySelectorVisible] = useState(false);
 
   // Success Confirmation Modal
   const [createdBooking, setCreatedBooking] = useState<MelaBooking | null>(null);
@@ -55,12 +61,22 @@ export default function SalesMelaCampaign() {
     try {
       if (!isPullToRefresh) setIsLoading(true);
 
-      const [settingsRes, inventoryRes, bookingsRes, modelsRes, brandsRes] = await Promise.all([
+      const [
+        settingsRes,
+        bookingsRes,
+        modelsRes,
+        brandsRes,
+        vehiclesRes,
+        batteriesRes,
+        compatibilitiesRes
+      ] = await Promise.all([
         getMelaSettingsList(),
-        getMelaInventory({ is_active: true }),
         getMelaBookings(),
         getVehicleModels(),
-        getVehicleBrands()
+        getVehicleBrands(),
+        getMelaVehicles().catch(() => []),
+        getMelaBatteries().catch(() => []),
+        getMelaCompatibilities().catch(() => [])
       ]);
 
       // Set active campaign settings
@@ -68,10 +84,12 @@ export default function SalesMelaCampaign() {
       const active = settings.find((s: any) => s.is_active) || null;
       setActiveMela(active);
 
-      setInventoryList(inventoryRes || []);
       setBookingsList(bookingsRes || []);
       setModels(modelsRes || []);
       setBrands(brandsRes || []);
+      setMelaVehicles(vehiclesRes || []);
+      setMelaBatteries(batteriesRes || []);
+      setMelaCompatibilities(compatibilitiesRes || []);
     } catch (err) {
       console.error('Failed to load Sales Mela data:', err);
       Alert.alert('Sync Error', 'Unable to fetch latest campaign data from server.');
@@ -102,7 +120,11 @@ export default function SalesMelaCampaign() {
 
   // Submit Booking handler
   const handlePlaceBooking = async () => {
-    if (!selectedInventory) return;
+    if (!selectedVehicle) return;
+    if (!selectedBatteryId) {
+      Alert.alert('Required Field', 'Please select a compatible battery.');
+      return;
+    }
     if (!customerName.trim()) {
       Alert.alert('Required Field', 'Please enter the customer\'s name.');
       return;
@@ -118,9 +140,8 @@ export default function SalesMelaCampaign() {
       const payload = {
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
-        vehicle_model: selectedInventory.vehicle_model,
-        color: selectedInventory.color,
-        battery_type: selectedInventory.battery_type
+        mela_vehicle: selectedVehicle.id!,
+        mela_battery: selectedBatteryId
       };
 
       const result = await createMelaBooking(payload);
@@ -131,9 +152,9 @@ export default function SalesMelaCampaign() {
       // Reset inputs
       setCustomerName('');
       setCustomerPhone('');
-      setSelectedInventory(null);
+      setSelectedVehicle(null);
+      setSelectedBatteryId(null);
 
-      // Reload lists
       loadData();
     } catch (err: any) {
       console.error('Failed to submit booking:', err);
@@ -171,12 +192,6 @@ export default function SalesMelaCampaign() {
     );
   };
 
-  // Open booking details flow
-  const handleSelectInventory = (item: MelaInventoryInput) => {
-    setSelectedInventory(item);
-    setIsBookingModalVisible(true);
-  };
-
   const getModelName = (modelId: number) => {
     return models.find(m => m.id === modelId)?.model_name || `Model #${modelId}`;
   };
@@ -193,29 +208,47 @@ export default function SalesMelaCampaign() {
     .reduce((sum, b) => sum + parseFloat(b.price || '0'), 0);
   const pendingBookings = bookingsList.filter(b => b.status === 'unconfirmed').length;
 
-  const filteredInventory = inventoryList.filter(item => {
-    // 1. Stock check: remaining_quantity > 0
-    if (item.remaining_quantity <= 0) return false;
-
-    // 2. Brand check
+  // Filter vehicles
+  const filteredVehicles = melaVehicles.filter(item => {
+    // Brand check
     if (selectedBrandId !== null) {
       const model = models.find(m => m.id === item.vehicle_model);
       if (model?.brand !== selectedBrandId) return false;
     }
 
-    // 3. Search query check
+    // Search query check
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       const modelName = (item.model_name || getModelName(item.vehicle_model) || '').toLowerCase();
       const brandName = (item.brand_name || getBrandName(item.vehicle_model) || '').toLowerCase();
       const color = (item.color || '').toLowerCase();
-      const battery = (item.battery_type || '').toLowerCase();
-      
-      return modelName.includes(query) || brandName.includes(query) || color.includes(query) || battery.includes(query);
+
+      return modelName.includes(query) || brandName.includes(query) || color.includes(query);
     }
 
     return true;
   });
+
+  // Get compatible batteries for selected vehicle
+  const getCompatibleBatteries = () => {
+    if (!selectedVehicle) return [];
+    const compatList = melaCompatibilities.filter(c => c.vehicle_stock === selectedVehicle.id);
+    return melaBatteries.filter(b => compatList.some(c => c.battery_stock === b.id));
+  };
+
+  // Selected Battery details helper
+  const getSelectedBattery = () => {
+    return melaBatteries.find(b => b.id === selectedBatteryId) || null;
+  };
+
+  // Calculate pricing sum
+  const getSummedPrice = () => {
+    if (!selectedVehicle) return 0;
+    const vehiclePrice = selectedVehicle.price;
+    const battery = getSelectedBattery();
+    const batteryPrice = battery ? battery.price : 0;
+    return vehiclePrice + batteryPrice;
+  };
 
   return (
     <FadeScaleTransition>
@@ -307,7 +340,7 @@ export default function SalesMelaCampaign() {
                     <Search size={18} color="#94a3b8" />
                     <TextInput
                       style={styles.searchInput}
-                      placeholder="Search name, color, battery..."
+                      placeholder="Search name, color..."
                       placeholderTextColor="#94a3b8"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
@@ -379,28 +412,38 @@ export default function SalesMelaCampaign() {
                   </View>
                 ) : (
                   <>
-                    <ThemedText style={styles.sectionSubtitle}>Available Models for Booking</ThemedText>
+                    <ThemedText style={styles.sectionSubtitle}>Available Vehicles for Booking</ThemedText>
 
-                    {filteredInventory.length === 0 ? (
+                    {filteredVehicles.length === 0 ? (
                       <View style={styles.emptyStockContainer}>
                         <Package size={42} color="#94a3b8" />
                         <ThemedText style={styles.emptyStockText}>
                           {searchQuery || selectedBrandId !== null
                             ? 'No matching vehicles found.'
-                            : 'No campaign stock available right now.'}
+                            : 'No campaign vehicles available right now.'}
                         </ThemedText>
                       </View>
                     ) : (
                       <View style={styles.stockList}>
-                        {filteredInventory.map((item) => {
-                          const isLow = item.remaining_quantity <= 3;
+                        {filteredVehicles.map((item) => {
+                          const isLow = item.remaining_quantity <= 2;
+                          const isOutOfStock = item.remaining_quantity <= 0;
                           return (
                             <Pressable
                               key={item.id}
-                              onPress={() => handleSelectInventory(item)}
+                              onPress={() => {
+                                if (isOutOfStock) {
+                                  Alert.alert('Out of Stock', `This vehicle is currently out of stock.${item.restock_date ? ` Expected restock: ${item.restock_date}` : ''}`);
+                                  return;
+                                }
+                                setSelectedVehicle(item);
+                                setSelectedBatteryId(null);
+                                setIsBookingModalVisible(true);
+                              }}
                               style={({ pressed }) => [
                                 styles.stockItemCard,
-                                pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }
+                                isOutOfStock && { opacity: 0.65 },
+                                pressed && !isOutOfStock && { opacity: 0.9, transform: [{ scale: 0.99 }] }
                               ]}
                             >
                               <View style={styles.stockHeader}>
@@ -428,26 +471,24 @@ export default function SalesMelaCampaign() {
                                     <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
                                   </View>
                                 </View>
-                                <View style={styles.gridCell}>
-                                  <ThemedText style={styles.gridLabel}>BATTERY TYPE</ThemedText>
-                                  <View style={styles.valueWithIcon}>
-                                    <Zap size={13} color="#04a700" style={{ marginRight: 4 }} />
-                                    <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
-                                  </View>
-                                </View>
                               </View>
                               
                               <View style={styles.divider} />
                               <View style={styles.footerRow}>
-                                <View style={[styles.stockStatusBadge, isLow && styles.lowStockBadge]}>
-                                  <ThemedText style={[styles.stockStatusText, isLow && styles.lowStockText]}>
-                                    {item.remaining_quantity} Units Left
+                                <View style={[styles.stockStatusBadge, isLow && styles.lowStockBadge, isOutOfStock && { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                  <ThemedText style={[styles.stockStatusText, isLow && styles.lowStockText, isOutOfStock && { color: '#ef4444' }]}>
+                                    {isOutOfStock ? 'OUT OF STOCK' : `${item.remaining_quantity} Units Left`}
                                   </ThemedText>
                                 </View>
-                                <View style={styles.bookCtaLink}>
-                                  <ThemedText style={styles.bookCtaText}>Book EV</ThemedText>
-                                  <ChevronRight size={14} color="#ffffff" />
-                                </View>
+                                {item.restock_date && isOutOfStock && (
+                                  <ThemedText style={styles.restockLabel}>Restock: {item.restock_date}</ThemedText>
+                                )}
+                                {!isOutOfStock && (
+                                  <View style={styles.bookCtaLink}>
+                                    <ThemedText style={styles.bookCtaText}>Book EV</ThemedText>
+                                    <ChevronRight size={14} color="#ffffff" />
+                                  </View>
+                                )}
                               </View>
                             </Pressable>
                           );
@@ -482,7 +523,7 @@ export default function SalesMelaCampaign() {
                             : { bg: 'rgba(217, 119, 6, 0.12)', text: '#b45309', label: 'PENDING PAY' };
 
                         return (
-                          <View key={item.id} style={styles.bookingItemCard}>
+                          <View key={`b-${item.id}`} style={styles.bookingItemCard}>
                             <View style={styles.foundHeader}>
                               <ThemedText style={styles.foundBookingId}>{item.booking_id}</ThemedText>
                               <View style={[styles.statusBadgeInline, { backgroundColor: statusColors.bg }]}>
@@ -504,11 +545,11 @@ export default function SalesMelaCampaign() {
                               </View>
                               <View style={styles.detailsRow}>
                                 <ThemedText style={styles.detailLbl}>EV Model</ThemedText>
-                                <ThemedText style={styles.detailVal}>{item.model_name || getModelName(item.vehicle_model)}</ThemedText>
+                                <ThemedText style={styles.detailVal}>{item.vehicle_model_name}</ThemedText>
                               </View>
                               <View style={styles.detailsRow}>
                                 <ThemedText style={styles.detailLbl}>Specs</ThemedText>
-                                <ThemedText style={styles.detailVal}>{item.color} • {item.battery_type}</ThemedText>
+                                <ThemedText style={styles.detailVal}>{item.vehicle_color} • {item.battery_name}</ThemedText>
                               </View>
                               <View style={styles.detailsRow}>
                                 <ThemedText style={styles.detailLbl}>Price</ThemedText>
@@ -573,13 +614,13 @@ export default function SalesMelaCampaign() {
                   <ThemedText style={styles.cardTitle}>Recent Activity Log</ThemedText>
                   <View style={styles.ratioList}>
                     {bookingsList.slice(0, 8).map((b) => (
-                      <View key={b.id} style={styles.activityItem}>
+                      <View key={`act-${b.id}`} style={styles.activityItem}>
                         <View style={styles.activityDotWrapper}>
                           <View style={[styles.activityDot, { backgroundColor: b.status === 'completed' ? '#04a700' : b.status === 'cancelled' ? '#64748b' : '#b45309' }]} />
                         </View>
                         <View style={styles.activityTextCol}>
                           <ThemedText style={styles.activityText}>
-                            Booked <ThemedText style={{ fontWeight: 'bold' }}>{b.model_name || getModelName(b.vehicle_model)}</ThemedText> ({b.color}) for {b.customer_name}
+                            Booked <ThemedText style={{ fontWeight: 'bold' }}>{b.vehicle_model_name}</ThemedText> ({b.vehicle_color}) for {b.customer_name}
                           </ThemedText>
                           <ThemedText style={styles.activityTime}>
                             ID: {b.booking_id} • Status: {b.status_display || b.status}
@@ -617,24 +658,64 @@ export default function SalesMelaCampaign() {
                 </Pressable>
               </View>
 
-              {selectedInventory && (
+              {selectedVehicle && (
                 <ScrollView contentContainerStyle={styles.modalFormContent} keyboardShouldPersistTaps="handled">
-                  {/* Selected EV Details summary */}
+                  {/* Selected EV Vehicle summary */}
                   <View style={styles.selectedEvSummary}>
                     <View>
                       <ThemedText style={styles.evSummaryTitle}>
-                        {selectedInventory.model_name || getModelName(selectedInventory.vehicle_model)}
+                        {selectedVehicle.model_name || getModelName(selectedVehicle.vehicle_model)}
                       </ThemedText>
                       <ThemedText style={styles.evSummarySpecs}>
-                        Variant: {selectedInventory.color} • Battery: {selectedInventory.battery_type}
+                        Variant Color: {selectedVehicle.color} • Vehicle Price: ₹{selectedVehicle.price.toLocaleString('en-IN')}
                       </ThemedText>
                     </View>
-                    <ThemedText style={styles.evSummaryPrice}>
-                      ₹{Math.round(selectedInventory.price).toLocaleString('en-IN')}
-                    </ThemedText>
                   </View>
 
                   <View style={styles.formContainer}>
+                    {/* Battery Selection */}
+                    <View style={styles.inputGroup}>
+                      <ThemedText style={styles.inputLabel}>Select Compatible Battery</ThemedText>
+                      <Pressable
+                        onPress={() => setIsBatterySelectorVisible(true)}
+                        style={styles.selectorBtn}
+                      >
+                        <ThemedText style={styles.selectorBtnText}>
+                          {selectedBatteryId
+                            ? (() => {
+                                const found = melaBatteries.find(b => b.id === selectedBatteryId);
+                                return found ? `${found.battery_name} (+₹${found.price.toLocaleString('en-IN')})` : 'Select Battery';
+                              })()
+                            : 'Choose compatible battery'}
+                        </ThemedText>
+                        <ChevronRight size={16} color="#94a3b8" />
+                      </Pressable>
+                    </View>
+
+                    {/* Low stock expected restock display for selected battery */}
+                    {(() => {
+                      const bat = getSelectedBattery();
+                      if (bat && bat.remaining_quantity <= 2) {
+                        return (
+                          <View style={styles.warningBox}>
+                            <AlertTriangle size={14} color="#ea580c" />
+                            <ThemedText style={styles.warningText}>
+                              Selected Battery is low on stock ({bat.remaining_quantity} left).
+                              {bat.restock_date ? ` Expected restock: ${bat.restock_date}` : ''}
+                            </ThemedText>
+                          </View>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Dynamically Summed Pricing Card */}
+                    <View style={styles.priceSumCard}>
+                      <ThemedText style={styles.priceSumLabel}>Total Pricing</ThemedText>
+                      <ThemedText style={styles.priceSumValue}>₹{getSummedPrice().toLocaleString('en-IN')}</ThemedText>
+                    </View>
+
+                    {/* Customer Inputs */}
                     <View style={styles.inputGroup}>
                       <View style={styles.inputLabelRow}>
                         <User size={13} color="#64748b" />
@@ -693,6 +774,55 @@ export default function SalesMelaCampaign() {
           </KeyboardAvoidingView>
         </Modal>
 
+        {/* List Selector Modal: Battery Selection */}
+        <Modal
+          visible={isBatterySelectorVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsBatterySelectorVisible(false)}
+        >
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsBatterySelectorVisible(false)}>
+            <View style={styles.selectorModalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Choose Battery Variant</ThemedText>
+                <Pressable onPress={() => setIsBatterySelectorVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+              <FlatList
+                data={getCompatibleBatteries()}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => {
+                  const isLow = item.remaining_quantity <= 2;
+                  const isOutOfStock = item.remaining_quantity <= 0;
+                  return (
+                    <Pressable
+                      style={[styles.selectListItem, isOutOfStock && { opacity: 0.5 }]}
+                      disabled={isOutOfStock}
+                      onPress={() => {
+                        setSelectedBatteryId(item.id!);
+                        setIsBatterySelectorVisible(false);
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles.listItemLabel}>{item.battery_name}</ThemedText>
+                        <ThemedText style={[styles.listItemSub, isLow && { color: '#ef4444' }]}>
+                          {isOutOfStock ? 'OUT OF STOCK' : isLow ? `Only ${item.remaining_quantity} left!` : `${item.remaining_quantity} available`}
+                          {item.restock_date && isOutOfStock ? ` (Restock: ${item.restock_date})` : ''}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={styles.priceSumValueText}>+ ₹{item.price.toLocaleString('en-IN')}</ThemedText>
+                    </Pressable>
+                  );
+                }}
+                ListEmptyComponent={
+                  <ThemedText style={styles.emptyTextCenter}>No compatible batteries configured.</ThemedText>
+                }
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
         {/* BOOKING CONFIRMATION SUCCESS MODAL */}
         <Modal
           visible={isSuccessModalVisible}
@@ -726,13 +856,13 @@ export default function SalesMelaCampaign() {
                   <View style={styles.receiptRow}>
                     <ThemedText style={styles.receiptLabel}>EV Model</ThemedText>
                     <ThemedText style={styles.receiptValue}>
-                      {createdBooking.model_name || getModelName(createdBooking.vehicle_model)}
+                      {createdBooking.vehicle_model_name}
                     </ThemedText>
                   </View>
                   <View style={styles.receiptRow}>
                     <ThemedText style={styles.receiptLabel}>Specs</ThemedText>
                     <ThemedText style={styles.receiptValue}>
-                      {createdBooking.color} • {createdBooking.battery_type}
+                      {createdBooking.vehicle_color} • {createdBooking.battery_name}
                     </ThemedText>
                   </View>
                   <View style={styles.receiptRow}>
@@ -807,24 +937,6 @@ const styles = StyleSheet.create({
     marginTop: 22,
     marginBottom: 6
   },
-  headerDatesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  headerDatesText: {
-    color: '#86efac',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  headerDateSeparator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#64748b',
-    marginHorizontal: 4,
-  },
   mainTitle: {
     fontSize: 26,
     lineHeight: 34,
@@ -839,24 +951,41 @@ const styles = StyleSheet.create({
     color: '#04a700',
     letterSpacing: -0.5
   },
+  headerDatesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 6
+  },
+  headerDatesText: {
+    fontSize: 11.5,
+    color: '#cbd5e1',
+    fontWeight: '700'
+  },
+  headerDateSeparator: {
+    width: 1.5,
+    height: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginHorizontal: 4
+  },
   tabSelectorBar: {
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#e2e8f0'
   },
   tabScrollContent: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    gap: 12,
-    justifyContent: 'space-between'
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8
   },
   tabItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: '#f1f5f9'
@@ -897,16 +1026,8 @@ const styles = StyleSheet.create({
   tabSection: {
     gap: 16
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 4
-  },
-  // ---- Catalog tab ----
   searchFilterSection: {
-    gap: 12,
-    marginBottom: 4,
+    gap: 12
   },
   searchContainer: {
     flexDirection: 'row',
@@ -915,77 +1036,105 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
     borderRadius: 14,
-    height: 46,
     paddingHorizontal: 14,
-    gap: 10,
+    height: 46
   },
   searchInput: {
     flex: 1,
+    marginLeft: 8,
+    fontSize: 13.5,
     color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '500',
-    padding: 0,
+    fontWeight: '600'
   },
   brandScrollWrapper: {
-    marginTop: 2,
+    marginHorizontal: -16
   },
   brandScroll: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    paddingLeft: 16
   },
   brandPillContainer: {
-    flexDirection: 'row',
+    paddingRight: 32,
     gap: 8,
-    paddingBottom: 4,
+    flexDirection: 'row'
   },
   brandPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8
   },
   brandPillActive: {
     backgroundColor: 'rgba(4, 167, 0, 0.1)',
-    borderColor: '#04a700',
+    borderColor: '#04a700'
   },
   brandPillText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
+    fontWeight: '700',
+    color: '#64748b'
   },
   brandPillTextActive: {
-    color: '#04a700',
+    color: '#04a700'
   },
-  warningBanner: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+  inactiveMelaContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    textAlign: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(4, 167, 0, 0.25)',
-    borderRadius: 16,
-    padding: 14,
-    gap: 10,
-    alignItems: 'center'
+    borderColor: '#f1f5f9',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
+    marginTop: 20
   },
-  warningBannerText: {
-    flex: 1,
+  inactiveMelaTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 6
+  },
+  inactiveMelaDesc: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18
+  },
+  sectionSubtitle: {
     fontSize: 12,
-    color: '#04a700',
-    fontWeight: '700',
-    lineHeight: 17
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: -4
+  },
+  emptyStockContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 8
+  },
+  emptyStockText: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    fontWeight: '600'
   },
   stockList: {
     gap: 14
   },
   stockItemCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    padding: 18,
+    padding: 16,
     gap: 12,
-    shadowColor: '#0a0e1a',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.04,
     shadowRadius: 16,
@@ -994,37 +1143,33 @@ const styles = StyleSheet.create({
   stockHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start'
+    alignItems: 'center'
   },
   modelCol: {
     gap: 2,
     flex: 1
   },
   modelNameText: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15.5,
+    fontWeight: 'bold',
     color: '#0f172a'
   },
   brandNameText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#64748b',
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   priceBadge: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dcfce7',
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    backgroundColor: 'rgba(4, 167, 0, 0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5
   },
   priceBadgeText: {
-    color: '#166534',
     fontSize: 14,
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+    fontWeight: 'bold',
+    color: '#04a700'
   },
   divider: {
     height: 1,
@@ -1036,14 +1181,23 @@ const styles = StyleSheet.create({
   },
   gridCell: {
     flex: 1,
-    gap: 2
+    gap: 4
   },
   gridLabel: {
     fontSize: 9.5,
     fontWeight: '800',
     color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
+    textTransform: 'uppercase'
+  },
+  valueWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  colorIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6
   },
   gridValue: {
     fontSize: 12.5,
@@ -1056,114 +1210,65 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   stockStatusBadge: {
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#dcfce7',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
   lowStockBadge: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fee2e2'
+    backgroundColor: 'rgba(249, 115, 22, 0.1)'
   },
   stockStatusText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#15803d'
+    fontWeight: '800',
+    color: '#04a700'
   },
   lowStockText: {
-    color: '#b91c1c'
+    color: '#ea580c'
   },
   bookCtaLink: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#04a700',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     gap: 4
   },
   bookCtaText: {
+    color: '#ffffff',
     fontSize: 11.5,
-    fontWeight: 'bold',
-    color: '#ffffff'
+    fontWeight: '800'
   },
-  inactiveMelaContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 2,
-    marginTop: 20
+  restockLabel: {
+    fontSize: 10.5,
+    color: '#ef4444',
+    fontWeight: 'bold'
   },
-  inactiveMelaTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 8
-  },
-  inactiveMelaDesc: {
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 6,
-    fontWeight: '500'
-  },
-  valueWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3
-  },
-  colorIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
-  },
-  // ---- Bookings tab ----
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 3
+    borderColor: '#f1f5f9'
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3
+    color: '#0f172a'
   },
   cardDesc: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
-    marginBottom: 14,
-    lineHeight: 17
+    marginBottom: 14
   },
   bookingItemCard: {
     backgroundColor: '#f8fafc',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 14,
+    padding: 16,
     gap: 12
   },
   foundHeader: {
@@ -1172,9 +1277,9 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   foundBookingId: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '900',
-    color: '#334155',
+    color: '#04a700',
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
   statusBadgeInline: {
@@ -1184,11 +1289,10 @@ const styles = StyleSheet.create({
   },
   statusTextInline: {
     fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.3
+    fontWeight: '900'
   },
   detailsBlock: {
-    gap: 8
+    gap: 10
   },
   detailsRow: {
     flexDirection: 'row',
@@ -1206,35 +1310,34 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   detailValPrice: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '900',
     color: '#04a700',
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
   cancelBookingBtn: {
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
-    borderRadius: 10,
-    height: 38,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 4
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    borderRadius: 10,
+    height: 36,
+    backgroundColor: 'rgba(239,68,68,0.03)'
   },
   cancelBookingBtnText: {
-    color: '#ef4444',
     fontSize: 11.5,
-    fontWeight: '800'
+    fontWeight: '700',
+    color: '#ef4444'
   },
   completedReceipt: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(4, 167, 0, 0.06)',
+    backgroundColor: 'rgba(4, 167, 0, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(4, 167, 0, 0.15)',
+    borderColor: 'rgba(4, 167, 0, 0.18)',
     padding: 10,
     borderRadius: 10,
     gap: 6
@@ -1244,19 +1347,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800'
   },
-  emptyStockContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 8
-  },
-  emptyStockText: {
-    fontSize: 12.5,
-    color: '#64748b',
-    textAlign: 'center',
-    fontWeight: '500'
-  },
-  // ---- Performance tab ----
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1270,12 +1360,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    gap: 6,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2
+    gap: 6
   },
   statVal: {
     fontSize: 16,
@@ -1289,17 +1374,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   ratioList: {
-    gap: 12,
+    gap: 14,
     marginTop: 8
   },
   activityItem: {
     flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start'
+    gap: 12
   },
   activityDotWrapper: {
-    paddingTop: 4,
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingTop: 3
   },
   activityDot: {
     width: 8,
@@ -1313,10 +1397,10 @@ const styles = StyleSheet.create({
   activityText: {
     fontSize: 12,
     color: '#334155',
-    lineHeight: 16
+    fontWeight: '600'
   },
   activityTime: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#94a3b8',
     fontWeight: '700'
   },
@@ -1324,9 +1408,8 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#64748b',
     textAlign: 'center',
-    paddingVertical: 14
+    paddingVertical: 20
   },
-  // ---- Modals & Overlay ----
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.4)',
@@ -1337,7 +1420,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '90%',
-    minHeight: '50%'
+    minHeight: '60%'
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1359,15 +1442,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   selectedEvSummary: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 14,
-    padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 4
+    borderColor: '#e2e8f0'
   },
   evSummaryTitle: {
     fontSize: 14,
@@ -1379,12 +1461,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontWeight: '600',
     marginTop: 2
-  },
-  evSummaryPrice: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#04a700',
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
   formContainer: {
     gap: 16
@@ -1414,6 +1490,59 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '600'
   },
+  selectorBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  selectorBtnText: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600'
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(249, 115, 22, 0.08)',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    gap: 8
+  },
+  warningText: {
+    fontSize: 11,
+    color: '#ea580c',
+    fontWeight: '600',
+    flex: 1
+  },
+  priceSumCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(4, 167, 0, 0.06)',
+    borderWidth: 1.5,
+    borderColor: '#86efac',
+    borderRadius: 14,
+    padding: 14
+  },
+  priceSumLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#04a700'
+  },
+  priceSumValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#04a700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
+  },
   submitStockBtn: {
     backgroundColor: '#04a700',
     borderRadius: 999,
@@ -1432,32 +1561,64 @@ const styles = StyleSheet.create({
   bookingNote: {
     fontSize: 11,
     color: '#64748b',
-    fontWeight: '500',
-    lineHeight: 16,
     textAlign: 'center',
-    marginTop: 6
+    lineHeight: 16,
+    paddingHorizontal: 10
   },
-  // Success Confirmation modal
   modalOverlayList: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: 20
+  },
+  selectorModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10
+  },
+  selectListItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  listItemLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0f172a'
+  },
+  listItemSub: {
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 2
+  },
+  priceSumValueText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#04a700'
   },
   successModalContent: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 24,
     width: '100%',
-    maxWidth: 360,
     alignItems: 'center',
-    gap: 16,
-    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10
   },
   successBadge: {
     width: 72,
@@ -1466,34 +1627,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#04a700',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#04a700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6
+    marginBottom: 16
   },
   successTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#0f172a',
-    textAlign: 'center'
+    marginBottom: 8
   },
   successSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748b',
     textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 17
+    lineHeight: 18,
+    marginBottom: 20,
+    paddingHorizontal: 10
   },
   receiptContainer: {
     backgroundColor: '#f8fafc',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 14,
+    padding: 16,
     width: '100%',
-    gap: 8,
-    marginTop: 4
+    gap: 10,
+    marginBottom: 24
   },
   receiptRow: {
     flexDirection: 'row',
@@ -1501,40 +1659,39 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   receiptLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#64748b',
     fontWeight: '600'
   },
-  receiptValue: {
-    fontSize: 11,
-    color: '#0f172a',
-    fontWeight: '800'
-  },
   receiptValueId: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '900',
     color: '#04a700',
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
+  receiptValue: {
+    fontSize: 11.5,
+    color: '#0f172a',
+    fontWeight: '800'
+  },
   receiptValuePrice: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '900',
     color: '#04a700',
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
   receiptDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 4
+    backgroundColor: '#cbd5e1',
+    borderStyle: 'dashed'
   },
   closeSuccessBtn: {
     backgroundColor: '#0f172a',
     borderRadius: 999,
     height: 44,
-    width: '100%',
+    paddingHorizontal: 28,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8
+    justifyContent: 'center'
   },
   closeSuccessBtnText: {
     color: '#ffffff',

@@ -8,24 +8,17 @@ from django.db.models import Sum, Count, Q
 from django.core.cache import cache
 import datetime
 
-from .models import MelaInventory, MelaBooking, MelaSettings
-from .serializers import MelaInventorySerializer, MelaBookingSerializer, MelaSettingsSerializer
+from .models import MelaVehicleStock, MelaBatteryStock, MelaVehicleBatteryCompatibility, MelaBooking, MelaSettings, MelaInventory
+from .serializers import (
+    MelaVehicleStockSerializer, MelaBatteryStockSerializer,
+    MelaVehicleBatteryCompatibilitySerializer, MelaBookingSerializer,
+    MelaSettingsSerializer, MelaInventorySerializer
+)
 from branches.models import Branch
 from ledger.models import LedgerEntry
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-
-def get_cache_key(prefix, query_params=None, user_id=None):
-    parts = [prefix]
-    if user_id:
-        parts.append(f"user_{user_id}")
-    if query_params:
-        # Sort query params to ensure consistent key name
-        sorted_params = sorted(query_params.items())
-        param_str = "&".join([f"{k}={v}" for k, v in sorted_params])
-        parts.append(param_str)
-    return ":".join(parts)
 
 def clear_mela_cache(prefixes):
     try:
@@ -39,49 +32,72 @@ def clear_mela_cache(prefixes):
         else:
             cache.clear()
     except Exception as e:
-        print(f"Failed to clear cache by prefix: {e}")
+        print(f"Failed to clear cache: {e}")
         try:
             cache.clear()
         except:
             pass
 
-class MelaInventoryViewSet(viewsets.ModelViewSet):
-    serializer_class = MelaInventorySerializer
-    filterset_fields = ['vehicle_model', 'color', 'battery_type', 'is_active']
 
-    def get_queryset(self):
-        queryset = MelaInventory.objects.all()
-        
-        vehicle_model = self.request.query_params.get('vehicle_model')
-        if vehicle_model:
-            queryset = queryset.filter(vehicle_model_id=vehicle_model)
-            
-        color = self.request.query_params.get('color')
-        if color:
-            queryset = queryset.filter(color__iexact=color)
-            
-        battery_type = self.request.query_params.get('battery_type')
-        if battery_type:
-            queryset = queryset.filter(battery_type=battery_type)
-            
-        is_active = self.request.query_params.get('is_active')
-        if is_active:
-            is_active_bool = is_active.lower() in ['true', '1']
-            queryset = queryset.filter(is_active=is_active_bool)
-            
-        return queryset.order_by('vehicle_model__model_name')
+class MelaVehicleStockViewSet(viewsets.ModelViewSet):
+    serializer_class = MelaVehicleStockSerializer
+    queryset = MelaVehicleStock.objects.all().order_by('vehicle_model__model_name')
+    filterset_fields = ['vehicle_model', 'color', 'is_active']
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
-        clear_mela_cache(["mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
-        clear_mela_cache(["mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
-        clear_mela_cache(["mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
+
+
+class MelaBatteryStockViewSet(viewsets.ModelViewSet):
+    serializer_class = MelaBatteryStockSerializer
+    queryset = MelaBatteryStock.objects.all().order_by('battery_name')
+    filterset_fields = ['is_active']
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        clear_mela_cache(["mela"])
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        clear_mela_cache(["mela"])
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        clear_mela_cache(["mela"])
+
+
+class MelaVehicleBatteryCompatibilityViewSet(viewsets.ModelViewSet):
+    serializer_class = MelaVehicleBatteryCompatibilitySerializer
+    queryset = MelaVehicleBatteryCompatibility.objects.all()
+    filterset_fields = ['vehicle_stock', 'battery_stock']
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        clear_mela_cache(["mela"])
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        clear_mela_cache(["mela"])
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        clear_mela_cache(["mela"])
+
+
+# Keep a mock MelaInventoryViewSet to preserve routing backward compatibility
+class MelaInventoryViewSet(viewsets.ModelViewSet):
+    serializer_class = MelaInventorySerializer
+    queryset = MelaInventory.objects.all()
+    filterset_fields = ['vehicle_model', 'color', 'battery_type', 'is_active']
 
 
 class MelaBookingViewSet(viewsets.ModelViewSet):
@@ -93,13 +109,11 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
         if user.is_anonymous:
             return MelaBooking.objects.none()
         
-        # Base queryset based on role
         if user.role in ['owner', 'admin']:
             queryset = MelaBooking.objects.all()
         else:
             queryset = MelaBooking.objects.filter(sales_executive=user)
 
-        # Manual query parameters filtering
         booking_id = self.request.query_params.get('booking_id')
         if booking_id:
             queryset = queryset.filter(booking_id=booking_id)
@@ -116,15 +130,15 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
-        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
-        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
-        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     @action(detail=True, methods=['post'], url_path='complete')
     def complete_booking(self, request, pk=None):
@@ -149,7 +163,6 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
                 branch_obj = Branch.objects.first()
 
             if branch_obj:
-                # Ledger entries generated here are verified for cash collection
                 LedgerEntry.objects.create(
                     ledger_type='sales_income',
                     branch=branch_obj,
@@ -160,7 +173,7 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
                     approved_by=request.user
                 )
 
-        clear_mela_cache(["mela_bookings_list", "mela_inventory_list", "mela_reports"])
+        clear_mela_cache(["mela"])
         serializer = self.get_serializer(booking)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -168,13 +181,11 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
 class MelaReportsView(APIView):
     def get(self, request):
         user = request.user
-        # Allow owner, admin or supervisor to view report statistics
         if not user.is_authenticated or user.role not in ['owner', 'admin', 'supervisor']:
             return Response({"error": "Unauthorized to view Mela campaign reports."}, status=status.HTTP_403_FORBIDDEN)
 
         today = timezone.localdate()
 
-        # Summary calculations
         total_bookings = MelaBooking.objects.count()
         unconfirmed_bookings = MelaBooking.objects.filter(status='unconfirmed').count()
         completed_bookings = MelaBooking.objects.filter(status='completed').count()
@@ -191,7 +202,6 @@ class MelaReportsView(APIView):
             completed_at__date=today
         ).count()
 
-        # Leaderboard calculation across sales executives (supporting 'sales', 'sales_executive', 'owner', 'admin', and 'supervisor' roles)
         executives = User.objects.filter(role__in=['sales_executive', 'sales', 'owner', 'admin', 'supervisor'])
         exec_performance = []
         for exe in executives:
@@ -208,7 +218,6 @@ class MelaReportsView(APIView):
                 "total_revenue": float(revenue),
             })
 
-        # Order by completed bookings desc
         exec_performance.sort(key=lambda x: x['completed_bookings'], reverse=True)
 
         data = {
@@ -233,12 +242,12 @@ class MelaSettingsViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
-        clear_mela_cache(["mela_settings_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
-        clear_mela_cache(["mela_settings_list", "mela_reports"])
+        clear_mela_cache(["mela"])
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
-        clear_mela_cache(["mela_settings_list", "mela_reports"])
+        clear_mela_cache(["mela"])

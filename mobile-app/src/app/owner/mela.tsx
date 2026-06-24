@@ -17,13 +17,17 @@ import api from '@/services/api';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
   getMelaSettingsList, createMelaSettings, updateMelaSettings,
-  getMelaInventory, createMelaInventory, updateMelaInventory, deleteMelaInventory,
   getVehicleModels, createVehicleModel, getMelaReports, getMelaBookings,
-  completeMelaBooking, getVehicleBrands, MelaInventoryInput,
-  MelaSettingsInput, VehicleModel, VehicleBrand, MelaReports, MelaBooking
+  completeMelaBooking, getVehicleBrands, MelaSettingsInput, VehicleModel,
+  VehicleBrand, MelaReports, MelaBooking, getMelaVehicles, createMelaVehicle,
+  updateMelaVehicle, deleteMelaVehicle, getMelaBatteries, createMelaBattery,
+  updateMelaBattery, deleteMelaBattery, getMelaCompatibilities, createMelaCompatibility,
+  deleteMelaCompatibility, MelaVehicleStockInput, MelaBatteryStockInput,
+  MelaVehicleBatteryCompatibilityInput
 } from '@/services/mela';
 
 type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'leaderboard' | 'settings';
+type StockSubTab = 'vehicles' | 'batteries' | 'compatibility';
 
 export default function OwnerMelaCampaign() {
   const router = useRouter();
@@ -31,6 +35,7 @@ export default function OwnerMelaCampaign() {
 
   // Tab State
   const [activeTab, setActiveTab] = useState<OwnerMelaTab>('overview');
+  const [stockSubTab, setStockSubTab] = useState<StockSubTab>('vehicles');
 
   // Settings state
   const [melaSettingsId, setMelaSettingsId] = useState<number | null>(null);
@@ -41,7 +46,9 @@ export default function OwnerMelaCampaign() {
   const [isActive, setIsActive] = useState(true);
 
   // List states
-  const [inventoryList, setInventoryList] = useState<MelaInventoryInput[]>([]);
+  const [melaVehicles, setMelaVehicles] = useState<MelaVehicleStockInput[]>([]);
+  const [melaBatteries, setMelaBatteries] = useState<MelaBatteryStockInput[]>([]);
+  const [melaCompatibilities, setMelaCompatibilities] = useState<MelaVehicleBatteryCompatibilityInput[]>([]);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
   const [melaReports, setMelaReports] = useState<MelaReports | null>(null);
@@ -57,18 +64,30 @@ export default function OwnerMelaCampaign() {
   const [submittingSettings, setSubmittingSettings] = useState(false);
   const [submittingStock, setSubmittingStock] = useState(false);
 
-  // Add/Edit stock modal state
-  const [isStockModalVisible, setIsStockModalVisible] = useState(false);
-  const [editingStockId, setEditingStockId] = useState<number | null>(null);
-  const [stockModelId, setStockModelId] = useState<number | null>(null);
-  const [stockColor, setStockColor] = useState('');
-  const [stockBattery, setStockBattery] = useState('');
-  const [stockQty, setStockQty] = useState('');
-  const [stockPrice, setStockPrice] = useState('');
+  // Modals for CRUD
+  const [isVehicleModalVisible, setIsVehicleModalVisible] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null);
+  const [vehicleModelId, setVehicleModelId] = useState<number | null>(null);
+  const [vehicleColor, setVehicleColor] = useState('');
+  const [vehiclePrice, setVehiclePrice] = useState('');
+  const [vehicleQty, setVehicleQty] = useState('');
+  const [vehicleRestockDate, setVehicleRestockDate] = useState<string | null>(null);
+
+  const [isBatteryModalVisible, setIsBatteryModalVisible] = useState(false);
+  const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
+  const [batteryName, setBatteryName] = useState('');
+  const [batteryPrice, setBatteryPrice] = useState('');
+  const [batteryQty, setBatteryQty] = useState('');
+  const [batteryRestockDate, setBatteryRestockDate] = useState<string | null>(null);
+
+  const [isCompatibilityModalVisible, setIsCompatibilityModalVisible] = useState(false);
+  const [compatVehicleStockId, setCompatVehicleStockId] = useState<number | null>(null);
+  const [compatBatteryStockId, setCompatBatteryStockId] = useState<number | null>(null);
 
   // Dropdown lists selectors modals
   const [isModelSelectorVisible, setIsModelSelectorVisible] = useState(false);
-  const [isBatterySelectorVisible, setIsBatterySelectorVisible] = useState(false);
+  const [isVehStockSelectorVisible, setIsVehStockSelectorVisible] = useState(false);
+  const [isBatStockSelectorVisible, setIsBatStockSelectorVisible] = useState(false);
 
   // Inline "Add New Model" inputs
   const [showAddNewModel, setShowAddNewModel] = useState(false);
@@ -77,21 +96,27 @@ export default function OwnerMelaCampaign() {
   const [newModelPrice, setNewModelPrice] = useState('');
   const [newModelColors, setNewModelColors] = useState('');
 
-  // Inline "Add New Battery Spec" inputs
-  const [showAddNewBattery, setShowAddNewBattery] = useState(false);
-  const [newBatteryName, setNewBatteryName] = useState('');
-
   // Load all required data
   const loadData = async (isPullToRefresh = false) => {
     try {
       if (!isPullToRefresh) setIsLoading(true);
 
-      const [settingsRes, inventoryRes, modelsRes, brandsRes, reportsRes] = await Promise.all([
+      const [
+        settingsRes,
+        modelsRes,
+        brandsRes,
+        reportsRes,
+        vehiclesRes,
+        batteriesRes,
+        compatibilitiesRes
+      ] = await Promise.all([
         getMelaSettingsList(),
-        getMelaInventory(),
         getVehicleModels(),
         getVehicleBrands(),
-        getMelaReports().catch(() => null) // Suppress reports fail to keep stock/settings loading
+        getMelaReports().catch(() => null),
+        getMelaVehicles().catch(() => []),
+        getMelaBatteries().catch(() => []),
+        getMelaCompatibilities().catch(() => [])
       ]);
 
       // Set settings
@@ -108,9 +133,12 @@ export default function OwnerMelaCampaign() {
         setIsActive(false);
       }
 
-      setInventoryList(inventoryRes || []);
       setModels(modelsRes || []);
       setBrands(brandsRes || []);
+      setMelaVehicles(vehiclesRes || []);
+      setMelaBatteries(batteriesRes || []);
+      setMelaCompatibilities(compatibilitiesRes || []);
+
       if (reportsRes) {
         setMelaReports(reportsRes);
       }
@@ -241,62 +269,56 @@ export default function OwnerMelaCampaign() {
     );
   };
 
-  // Stock operations helpers
-  const handleOpenAddStock = () => {
-    setEditingStockId(null);
-    setStockModelId(null);
-    setStockColor('');
-    setStockBattery('');
-    setStockQty('');
-    setStockPrice('');
+  // VEHICLE CRUD Actions
+  const handleOpenAddVehicle = () => {
+    setEditingVehicleId(null);
+    setVehicleModelId(null);
+    setVehicleColor('');
+    setVehiclePrice('');
+    setVehicleQty('');
+    setVehicleRestockDate(null);
     setShowAddNewModel(false);
-    setShowAddNewBattery(false);
-    setIsStockModalVisible(true);
+    setIsVehicleModalVisible(true);
   };
 
-  const handleOpenEditStock = (item: MelaInventoryInput) => {
-    setEditingStockId(item.id || null);
-    setStockModelId(item.vehicle_model);
-    setStockColor(item.color);
-    setStockBattery(item.battery_type);
-    setStockQty(String(item.initial_quantity));
-    setStockPrice(String(Math.round(item.price)));
+  const handleOpenEditVehicle = (item: MelaVehicleStockInput) => {
+    setEditingVehicleId(item.id || null);
+    setVehicleModelId(item.vehicle_model);
+    setVehicleColor(item.color);
+    setVehiclePrice(String(Math.round(item.price)));
+    setVehicleQty(String(item.initial_quantity));
+    setVehicleRestockDate(item.restock_date);
     setShowAddNewModel(false);
-    setShowAddNewBattery(false);
-    setIsStockModalVisible(true);
+    setIsVehicleModalVisible(true);
   };
 
-  const handleDeleteStock = (id: number) => {
-    Alert.alert(
-      'Remove Stock',
-      'Are you sure you want to remove this vehicle from the Mela campaign?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await deleteMelaInventory(id);
-              Alert.alert('Success', 'Stock item removed successfully.');
-              loadData();
-            } catch (err) {
-              console.error('Failed to delete stock:', err);
-              Alert.alert('Error', 'Failed to delete stock item.');
-              setIsLoading(false);
-            }
+  const handleDeleteVehicle = (id: number) => {
+    Alert.alert('Remove Vehicle', 'Remove this vehicle from campaign stock?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            await deleteMelaVehicle(id);
+            Alert.alert('Success', 'Campaign vehicle removed.');
+            loadData();
+          } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Failed to remove vehicle.');
+            setIsLoading(false);
           }
         }
-      ]
-    );
+      }
+    ]);
   };
 
-  const handleSaveStock = async () => {
-    let finalModelId = stockModelId;
+  const handleSaveVehicle = async () => {
+    let finalModelId = vehicleModelId;
     if (showAddNewModel) {
       if (!newModelName.trim() || !newModelBrand || !newModelPrice.trim() || !newModelColors.trim()) {
-        Alert.alert('Required Fields', 'Please fill all details for the new vehicle model.');
+        Alert.alert('Required Fields', 'Please fill all details for the new model.');
         return;
       }
       try {
@@ -316,80 +338,203 @@ export default function OwnerMelaCampaign() {
         setNewModelColors('');
         setShowAddNewModel(false);
       } catch (err) {
-        console.error('Failed to create new model:', err);
-        Alert.alert('Error', 'Failed to create new vehicle model.');
+        console.error(err);
+        Alert.alert('Error', 'Failed to create vehicle model.');
         setSubmittingStock(false);
         return;
       }
     }
 
     if (!finalModelId) {
-      Alert.alert('Required Field', 'Please select or add a vehicle model.');
+      Alert.alert('Required Field', 'Please select a vehicle model.');
       return;
     }
 
-    let finalBattery = stockBattery;
-    if (showAddNewBattery) {
-      if (!newBatteryName.trim()) {
-        Alert.alert('Required Field', 'Please enter the custom battery spec name.');
-        return;
-      }
-      finalBattery = newBatteryName.trim();
-      setNewBatteryName('');
-      setShowAddNewBattery(false);
-    }
-
-    if (!finalBattery.trim()) {
-      Alert.alert('Required Field', 'Please select or add a battery type.');
-      return;
-    }
-
-    if (!stockColor.trim() || !stockQty.trim() || !stockPrice.trim()) {
+    if (!vehicleColor.trim() || !vehicleQty.trim() || !vehiclePrice.trim()) {
       Alert.alert('Required Fields', 'Color, Quantity, and Special Price are required.');
       return;
     }
 
     try {
       setSubmittingStock(true);
-      const qty = parseInt(stockQty);
-      const price = parseFloat(stockPrice);
+      const qty = parseInt(vehicleQty);
+      const price = parseFloat(vehiclePrice);
 
       let remainingQty = qty;
-      if (editingStockId) {
-        const existing = inventoryList.find(item => item.id === editingStockId);
+      if (editingVehicleId) {
+        const existing = melaVehicles.find(item => item.id === editingVehicleId);
         if (existing) {
           const diff = qty - existing.initial_quantity;
           remainingQty = Math.max(0, existing.remaining_quantity + diff);
         }
       }
 
-      const payload: MelaInventoryInput = {
+      const payload: MelaVehicleStockInput = {
         vehicle_model: finalModelId,
-        color: stockColor.trim(),
-        battery_type: finalBattery.trim(),
+        color: vehicleColor.trim(),
         initial_quantity: qty,
         remaining_quantity: remainingQty,
         price: price,
+        restock_date: vehicleRestockDate || null,
         is_active: true
       };
 
-      if (editingStockId) {
-        await updateMelaInventory(editingStockId, payload);
-        Alert.alert('Success', 'Stock updated successfully.');
+      if (editingVehicleId) {
+        await updateMelaVehicle(editingVehicleId, payload);
+        Alert.alert('Success', 'Vehicle stock updated.');
       } else {
-        await createMelaInventory(payload);
-        Alert.alert('Success', 'Stock added successfully.');
+        await createMelaVehicle(payload);
+        Alert.alert('Success', 'Vehicle stock added.');
       }
 
-      setIsStockModalVisible(false);
+      setIsVehicleModalVisible(false);
       loadData();
     } catch (err: any) {
-      console.error('Failed to save Mela stock:', err);
-      const errMsg = err.response?.data?.color || err.response?.data?.non_field_errors || 'Failed to save stock item. Ensure color variant exists on model.';
-      Alert.alert('Validation Error', String(errMsg));
+      console.error(err);
+      Alert.alert('Error', 'Failed to save vehicle stock.');
     } finally {
       setSubmittingStock(false);
     }
+  };
+
+  // BATTERY CRUD Actions
+  const handleOpenAddBattery = () => {
+    setEditingBatteryId(null);
+    setBatteryName('');
+    setBatteryPrice('');
+    setBatteryQty('');
+    setBatteryRestockDate(null);
+    setIsBatteryModalVisible(true);
+  };
+
+  const handleOpenEditBattery = (item: MelaBatteryStockInput) => {
+    setEditingBatteryId(item.id || null);
+    setBatteryName(item.battery_name);
+    setBatteryPrice(String(Math.round(item.price)));
+    setBatteryQty(String(item.initial_quantity));
+    setBatteryRestockDate(item.restock_date);
+    setIsBatteryModalVisible(true);
+  };
+
+  const handleDeleteBattery = (id: number) => {
+    Alert.alert('Remove Battery', 'Remove this battery from campaign stock?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            await deleteMelaBattery(id);
+            Alert.alert('Success', 'Campaign battery removed.');
+            loadData();
+          } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Failed to remove battery.');
+            setIsLoading(false);
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleSaveBattery = async () => {
+    if (!batteryName.trim() || !batteryQty.trim() || !batteryPrice.trim()) {
+      Alert.alert('Required Fields', 'Name, Quantity, and Price are required.');
+      return;
+    }
+
+    try {
+      setSubmittingStock(true);
+      const qty = parseInt(batteryQty);
+      const price = parseFloat(batteryPrice);
+
+      let remainingQty = qty;
+      if (editingBatteryId) {
+        const existing = melaBatteries.find(item => item.id === editingBatteryId);
+        if (existing) {
+          const diff = qty - existing.initial_quantity;
+          remainingQty = Math.max(0, existing.remaining_quantity + diff);
+        }
+      }
+
+      const payload: MelaBatteryStockInput = {
+        battery_name: batteryName.trim(),
+        initial_quantity: qty,
+        remaining_quantity: remainingQty,
+        price: price,
+        restock_date: batteryRestockDate || null,
+        is_active: true
+      };
+
+      if (editingBatteryId) {
+        await updateMelaBattery(editingBatteryId, payload);
+        Alert.alert('Success', 'Battery stock updated.');
+      } else {
+        await createMelaBattery(payload);
+        Alert.alert('Success', 'Battery stock added.');
+      }
+
+      setIsBatteryModalVisible(false);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to save battery stock.');
+    } finally {
+      setSubmittingStock(false);
+    }
+  };
+
+  // COMPATIBILITY Actions
+  const handleOpenAddCompatibility = () => {
+    setCompatVehicleStockId(null);
+    setCompatBatteryStockId(null);
+    setIsCompatibilityModalVisible(true);
+  };
+
+  const handleSaveCompatibility = async () => {
+    if (!compatVehicleStockId || !compatBatteryStockId) {
+      Alert.alert('Required Fields', 'Please select both vehicle and battery.');
+      return;
+    }
+
+    try {
+      setSubmittingStock(true);
+      await createMelaCompatibility({
+        vehicle_stock: compatVehicleStockId,
+        battery_stock: compatBatteryStockId
+      });
+      Alert.alert('Success', 'Compatibility mapping saved.');
+      setIsCompatibilityModalVisible(false);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to save mapping. It may already exist.');
+    } finally {
+      setSubmittingStock(false);
+    }
+  };
+
+  const handleDeleteCompatibility = (id: number) => {
+    Alert.alert('Remove Compatibility', 'Remove this compatibility mapping?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            await deleteMelaCompatibility(id);
+            Alert.alert('Success', 'Mapping removed.');
+            loadData();
+          } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Failed to remove mapping.');
+            setIsLoading(false);
+          }
+        }
+      }
+    ]);
   };
 
   const getModelName = (modelId: number) => {
@@ -401,11 +546,14 @@ export default function OwnerMelaCampaign() {
   };
 
   const getAvailableColors = () => {
-    if (!stockModelId) return [];
-    return models.find(m => m.id === stockModelId)?.color_variants || [];
+    if (!vehicleModelId) return [];
+    return models.find(m => m.id === vehicleModelId)?.color_variants || [];
   };
 
-  const defaultBatteriesList = ['graphene', 'Li-24', 'Li-30', 'Li-40'];
+  // Find low stock items (<=2 units remaining)
+  const lowStockVehicles = melaVehicles.filter(v => v.remaining_quantity <= 2);
+  const lowStockBatteries = melaBatteries.filter(b => b.remaining_quantity <= 2);
+  const hasLowStock = lowStockVehicles.length > 0 || lowStockBatteries.length > 0;
 
   return (
     <FadeScaleTransition>
@@ -473,6 +621,26 @@ export default function OwnerMelaCampaign() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" />
             }
           >
+            {/* Low stock alerts banner */}
+            {activeTab === 'overview' && hasLowStock && (
+              <View style={styles.alertBanner}>
+                <View style={styles.alertHeaderRow}>
+                  <AlertTriangle size={18} color="#ef4444" />
+                  <ThemedText style={styles.alertBannerTitle}>Low Stock Warning (2 or less remaining)</ThemedText>
+                </View>
+                {lowStockVehicles.map(v => (
+                  <ThemedText key={`alert-v-${v.id}`} style={styles.alertText}>
+                    • Vehicle: {v.model_name || getModelName(v.vehicle_model)} ({v.color}) - Only {v.remaining_quantity} left! {v.restock_date ? `(Restock expected: ${v.restock_date})` : ''}
+                  </ThemedText>
+                ))}
+                {lowStockBatteries.map(b => (
+                  <ThemedText key={`alert-b-${b.id}`} style={styles.alertText}>
+                    • Battery: {b.battery_name} - Only {b.remaining_quantity} left! {b.restock_date ? `(Restock expected: ${b.restock_date})` : ''}
+                  </ThemedText>
+                ))}
+              </View>
+            )}
+
             {/* TAB 1: OVERVIEW */}
             {activeTab === 'overview' && (
               <View style={styles.tabSection}>
@@ -524,39 +692,74 @@ export default function OwnerMelaCampaign() {
                   </View>
                 </View>
 
-                {/* Stock progress indicators list */}
+                {/* Campaign Vehicle stock progress list */}
                 <View style={styles.card}>
-                  <ThemedText style={styles.cardTitle}>Live Inventory Ratio</ThemedText>
+                  <ThemedText style={styles.cardTitle}>Vehicles Stock Status</ThemedText>
                   <View style={styles.ratioList}>
-                    {inventoryList.map((item) => {
+                    {melaVehicles.map((item) => {
                       const ratio = item.initial_quantity > 0 ? (item.remaining_quantity / item.initial_quantity) : 0;
                       const percentage = Math.round(ratio * 100);
-                      const isLow = item.remaining_quantity <= 3;
+                      const isLow = item.remaining_quantity <= 2;
 
                       return (
-                        <View key={item.id} style={styles.ratioItem}>
+                        <View key={`prog-v-${item.id}`} style={styles.ratioItem}>
                           <View style={styles.ratioHeader}>
                             <View>
                               <ThemedText style={styles.ratioModel}>
                                 {item.model_name || getModelName(item.vehicle_model)}
                               </ThemedText>
                               <ThemedText style={styles.ratioSpecs}>
-                                {item.color} • {item.battery_type}
+                                Color: {item.color} • Price: ₹{item.price.toLocaleString('en-IN')}
                               </ThemedText>
                             </View>
                             <ThemedText style={[styles.ratioCount, isLow && styles.lowStockCount]}>
                               {item.remaining_quantity} / {item.initial_quantity} Left
                             </ThemedText>
                           </View>
-                          {/* Progress bar */}
                           <View style={styles.progressBarTrack}>
                             <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: isLow ? '#ef4444' : '#04a700' }]} />
                           </View>
                         </View>
                       );
                     })}
-                    {inventoryList.length === 0 && (
+                    {melaVehicles.length === 0 && (
                       <ThemedText style={styles.emptyTextCenter}>No active vehicles added to campaign.</ThemedText>
+                    )}
+                  </View>
+                </View>
+
+                {/* Campaign Battery stock progress list */}
+                <View style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>Batteries Stock Status</ThemedText>
+                  <View style={styles.ratioList}>
+                    {melaBatteries.map((item) => {
+                      const ratio = item.initial_quantity > 0 ? (item.remaining_quantity / item.initial_quantity) : 0;
+                      const percentage = Math.round(ratio * 100);
+                      const isLow = item.remaining_quantity <= 2;
+
+                      return (
+                        <View key={`prog-b-${item.id}`} style={styles.ratioItem}>
+                          <View style={styles.ratioHeader}>
+                            <View>
+                              <ThemedText style={styles.ratioModel}>
+                                {item.battery_name}
+                              </ThemedText>
+                              <ThemedText style={styles.ratioSpecs}>
+                                Price: ₹{item.price.toLocaleString('en-IN')}
+                              </ThemedText>
+                            </View>
+                            <ThemedText style={[styles.ratioCount, isLow && styles.lowStockCount]}>
+                              {item.remaining_quantity} / {item.initial_quantity} Left
+                            </ThemedText>
+                          </View>
+                          <View style={styles.progressBarTrack}>
+                            <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: isLow ? '#ef4444' : '#04a700' }]} />
+                          </View>
+                        </View>
+                      );
+                    })}
+                    {melaBatteries.length === 0 && (
+                      <ThemedText style={styles.emptyTextCenter}>No batteries added to campaign.</ThemedText>
                     )}
                   </View>
                 </View>
@@ -566,66 +769,189 @@ export default function OwnerMelaCampaign() {
             {/* TAB 2: INVENTORY STOCK */}
             {activeTab === 'stock' && (
               <View style={styles.tabSection}>
-                <View style={styles.card}>
-                  <View style={styles.cardHeaderRow}>
-                    <ThemedText style={styles.cardTitle}>Mela Campaign Inventory</ThemedText>
-                    <Pressable onPress={handleOpenAddStock} style={styles.addStockBtn}>
-                      <Plus size={14} color="#ffffff" />
-                      <ThemedText style={styles.addStockBtnText}>Add Stock</ThemedText>
+                {/* Sub Tab Selector */}
+                <View style={styles.subTabContainer}>
+                  {[
+                    { id: 'vehicles', label: 'Vehicles' },
+                    { id: 'batteries', label: 'Batteries' },
+                    { id: 'compatibility', label: 'Compatibilities' }
+                  ].map(sub => (
+                    <Pressable
+                      key={sub.id}
+                      onPress={() => setStockSubTab(sub.id as StockSubTab)}
+                      style={[styles.subTabItem, stockSubTab === sub.id && styles.subTabActive]}
+                    >
+                      <ThemedText style={[styles.subTabText, stockSubTab === sub.id && styles.subTabActiveText]}>
+                        {sub.label}
+                      </ThemedText>
                     </Pressable>
-                  </View>
+                  ))}
+                </View>
 
-                  {inventoryList.length === 0 ? (
-                    <View style={styles.emptyStockContainer}>
-                      <Package size={42} color="#94a3b8" />
-                      <ThemedText style={styles.emptyStockText}>No stocks configured yet.</ThemedText>
+                {/* Sub Tab 1: Vehicles */}
+                {stockSubTab === 'vehicles' && (
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <ThemedText style={styles.cardTitle}>Mela Campaign Vehicles</ThemedText>
+                      <Pressable onPress={handleOpenAddVehicle} style={styles.addStockBtn}>
+                        <Plus size={14} color="#ffffff" />
+                        <ThemedText style={styles.addStockBtnText}>Add Vehicle</ThemedText>
+                      </Pressable>
                     </View>
-                  ) : (
-                    <View style={styles.stockList}>
-                      {inventoryList.map((item) => (
-                        <View key={item.id} style={styles.stockItemCard}>
-                          <View style={styles.stockHeader}>
-                            <View style={styles.modelCol}>
-                              <ThemedText style={styles.modelNameText}>
-                                {item.model_name || getModelName(item.vehicle_model)}
-                              </ThemedText>
-                              <ThemedText style={styles.brandNameText}>
-                                {item.brand_name || getBrandName(item.vehicle_model)}
-                              </ThemedText>
+
+                    {melaVehicles.length === 0 ? (
+                      <View style={styles.emptyStockContainer}>
+                        <Package size={42} color="#94a3b8" />
+                        <ThemedText style={styles.emptyStockText}>No campaign vehicles registered yet.</ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.stockList}>
+                        {melaVehicles.map((item) => (
+                          <View key={`v-${item.id}`} style={styles.stockItemCard}>
+                            <View style={styles.stockHeader}>
+                              <View style={styles.modelCol}>
+                                <ThemedText style={styles.modelNameText}>
+                                  {item.model_name || getModelName(item.vehicle_model)}
+                                </ThemedText>
+                                <ThemedText style={styles.brandNameText}>
+                                  {item.brand_name || getBrandName(item.vehicle_model)}
+                                </ThemedText>
+                              </View>
+                              <View style={styles.actionRow}>
+                                <Pressable onPress={() => handleOpenEditVehicle(item)} style={styles.iconBtn}>
+                                  <Edit2 size={15} color="#2563eb" />
+                                </Pressable>
+                                <Pressable onPress={() => handleDeleteVehicle(item.id!)} style={styles.iconBtn}>
+                                  <Trash2 size={15} color="#ef4444" />
+                                </Pressable>
+                              </View>
                             </View>
-                            <View style={styles.actionRow}>
-                              <Pressable onPress={() => handleOpenEditStock(item)} style={styles.iconBtn}>
-                                <Edit2 size={15} color="#2563eb" />
-                              </Pressable>
-                              <Pressable onPress={() => handleDeleteStock(item.id!)} style={styles.iconBtn}>
+                            <View style={styles.divider} />
+                            <View style={styles.stockGrid}>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Color</ThemedText>
+                                <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Stock</ThemedText>
+                                <ThemedText style={styles.gridValue}>{item.remaining_quantity} / {item.initial_quantity} Units</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Price</ThemedText>
+                                <ThemedText style={styles.gridValuePrice}>₹{item.price.toLocaleString('en-IN')}</ThemedText>
+                              </View>
+                              {item.restock_date && (
+                                <View style={styles.gridCell}>
+                                  <ThemedText style={styles.gridLabel}>Restock Date</ThemedText>
+                                  <ThemedText style={[styles.gridValue, { color: '#ef4444' }]}>{item.restock_date}</ThemedText>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Sub Tab 2: Batteries */}
+                {stockSubTab === 'batteries' && (
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <ThemedText style={styles.cardTitle}>Mela Campaign Batteries</ThemedText>
+                      <Pressable onPress={handleOpenAddBattery} style={styles.addStockBtn}>
+                        <Plus size={14} color="#ffffff" />
+                        <ThemedText style={styles.addStockBtnText}>Add Battery</ThemedText>
+                      </Pressable>
+                    </View>
+
+                    {melaBatteries.length === 0 ? (
+                      <View style={styles.emptyStockContainer}>
+                        <BatteryCharging size={42} color="#94a3b8" />
+                        <ThemedText style={styles.emptyStockText}>No campaign batteries registered yet.</ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.stockList}>
+                        {melaBatteries.map((item) => (
+                          <View key={`b-${item.id}`} style={styles.stockItemCard}>
+                            <View style={styles.stockHeader}>
+                              <View style={styles.modelCol}>
+                                <ThemedText style={styles.modelNameText}>
+                                  {item.battery_name}
+                                </ThemedText>
+                              </View>
+                              <View style={styles.actionRow}>
+                                <Pressable onPress={() => handleOpenEditBattery(item)} style={styles.iconBtn}>
+                                  <Edit2 size={15} color="#2563eb" />
+                                </Pressable>
+                                <Pressable onPress={() => handleDeleteBattery(item.id!)} style={styles.iconBtn}>
+                                  <Trash2 size={15} color="#ef4444" />
+                                </Pressable>
+                              </View>
+                            </View>
+                            <View style={styles.divider} />
+                            <View style={styles.stockGrid}>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Stock</ThemedText>
+                                <ThemedText style={styles.gridValue}>{item.remaining_quantity} / {item.initial_quantity} Units</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Price</ThemedText>
+                                <ThemedText style={styles.gridValuePrice}>₹{item.price.toLocaleString('en-IN')}</ThemedText>
+                              </View>
+                              {item.restock_date && (
+                                <View style={styles.gridCell}>
+                                  <ThemedText style={styles.gridLabel}>Restock Date</ThemedText>
+                                  <ThemedText style={[styles.gridValue, { color: '#ef4444' }]}>{item.restock_date}</ThemedText>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Sub Tab 3: Compatibilities */}
+                {stockSubTab === 'compatibility' && (
+                  <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                      <ThemedText style={styles.cardTitle}>EV Compatibility Settings</ThemedText>
+                      <Pressable onPress={handleOpenAddCompatibility} style={styles.addStockBtn}>
+                        <Plus size={14} color="#ffffff" />
+                        <ThemedText style={styles.addStockBtnText}>Map Support</ThemedText>
+                      </Pressable>
+                    </View>
+
+                    {melaCompatibilities.length === 0 ? (
+                      <View style={styles.emptyStockContainer}>
+                        <Zap size={42} color="#94a3b8" />
+                        <ThemedText style={styles.emptyStockText}>No battery compatibilities mapped yet.</ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.stockList}>
+                        {melaCompatibilities.map((item) => (
+                          <View key={`c-${item.id}`} style={styles.stockItemCard}>
+                            <View style={styles.stockHeader}>
+                              <View style={styles.modelCol}>
+                                <ThemedText style={styles.modelNameText}>
+                                  {item.vehicle_model_name} ({item.vehicle_color})
+                                </ThemedText>
+                                <ThemedText style={styles.brandNameText}>
+                                  Supports: {item.battery_name}
+                                </ThemedText>
+                              </View>
+                              <Pressable onPress={() => handleDeleteCompatibility(item.id!)} style={styles.iconBtn}>
                                 <Trash2 size={15} color="#ef4444" />
                               </Pressable>
                             </View>
                           </View>
-                          <View style={styles.divider} />
-                          <View style={styles.stockGrid}>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Color</ThemedText>
-                              <ThemedText style={styles.gridValue}>{item.color}</ThemedText>
-                            </View>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Battery</ThemedText>
-                              <ThemedText style={styles.gridValue}>{item.battery_type}</ThemedText>
-                            </View>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Initial Stock</ThemedText>
-                              <ThemedText style={styles.gridValue}>{item.initial_quantity} Units</ThemedText>
-                            </View>
-                            <View style={styles.gridCell}>
-                              <ThemedText style={styles.gridLabel}>Price</ThemedText>
-                              <ThemedText style={styles.gridValuePrice}>₹{Math.round(item.price).toLocaleString('en-IN')}</ThemedText>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
             )}
 
@@ -677,14 +1003,14 @@ export default function OwnerMelaCampaign() {
                         </View>
                         <View style={styles.detailsRow}>
                           <ThemedText style={styles.detailLbl}>EV Model Details</ThemedText>
-                          <ThemedText style={styles.detailVal}>{foundBooking.model_name || getModelName(foundBooking.vehicle_model)}</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.vehicle_model_name}</ThemedText>
                         </View>
                         <View style={styles.detailsRow}>
                           <ThemedText style={styles.detailLbl}>Variant Specs</ThemedText>
-                          <ThemedText style={styles.detailVal}>{foundBooking.color} / {foundBooking.battery_type}</ThemedText>
+                          <ThemedText style={styles.detailVal}>{foundBooking.vehicle_color} / {foundBooking.battery_name}</ThemedText>
                         </View>
                         <View style={styles.detailsRow}>
-                          <ThemedText style={styles.detailLbl}>Sales executive</ThemedText>
+                          <ThemedText style={styles.detailLbl}>Sales Executive</ThemedText>
                           <ThemedText style={styles.detailVal}>{foundBooking.executive_name || 'Executive'} (Serial #{foundBooking.executive_serial_number})</ThemedText>
                         </View>
                         <View style={styles.detailsRow}>
@@ -757,7 +1083,7 @@ export default function OwnerMelaCampaign() {
                       <ThemedText style={styles.inputLabel}>Mela Campaign Name</ThemedText>
                       <TextInput
                         style={styles.input}
-                        placeholder="e.g. Grand Monsoon Mela"
+                        placeholder="e.g. Grand Grand Monsoon Mela"
                         placeholderTextColor="#94a3b8"
                         value={melaName}
                         onChangeText={setMelaName}
@@ -834,12 +1160,12 @@ export default function OwnerMelaCampaign() {
           </ScrollView>
         )}
 
-        {/* Add/Edit Stock Modal */}
+        {/* Modal: Add/Edit Campaign Vehicle */}
         <Modal
-          visible={isStockModalVisible}
+          visible={isVehicleModalVisible}
           transparent={true}
           animationType="slide"
-          onRequestClose={() => setIsStockModalVisible(false)}
+          onRequestClose={() => setIsVehicleModalVisible(false)}
         >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -848,15 +1174,15 @@ export default function OwnerMelaCampaign() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>
-                  {editingStockId ? 'Edit Campaign Stock' : 'Add Vehicle Stock'}
+                  {editingVehicleId ? 'Edit Campaign Vehicle' : 'Add Campaign Vehicle'}
                 </ThemedText>
-                <Pressable onPress={() => setIsStockModalVisible(false)}>
+                <Pressable onPress={() => setIsVehicleModalVisible(false)}>
                   <X size={20} color="#0f172a" />
                 </Pressable>
               </View>
 
               <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
-                {!editingStockId && (
+                {!editingVehicleId && (
                   <View style={styles.inputGroup}>
                     <ThemedText style={styles.inputLabel}>Vehicle Model</ThemedText>
                     <Pressable
@@ -866,8 +1192,8 @@ export default function OwnerMelaCampaign() {
                       <ThemedText style={styles.selectorBtnText}>
                         {showAddNewModel
                           ? '(Create New Model)'
-                          : stockModelId
-                            ? getModelName(stockModelId)
+                          : vehicleModelId
+                            ? getModelName(vehicleModelId)
                             : 'Select Vehicle Model'}
                       </ThemedText>
                       <ChevronRight size={16} color="#94a3b8" />
@@ -875,7 +1201,7 @@ export default function OwnerMelaCampaign() {
                   </View>
                 )}
 
-                {showAddNewModel && !editingStockId && (
+                {showAddNewModel && !editingVehicleId && (
                   <View style={styles.nestedForm}>
                     <ThemedText style={styles.nestedFormTitle}>Add New Vehicle Model</ThemedText>
                     <View style={styles.inputGroup}>
@@ -935,18 +1261,18 @@ export default function OwnerMelaCampaign() {
                       style={styles.input}
                       placeholder="e.g. Green"
                       placeholderTextColor="#94a3b8"
-                      value={stockColor}
-                      onChangeText={setStockColor}
+                      value={vehicleColor}
+                      onChangeText={setVehicleColor}
                     />
-                  ) : stockModelId ? (
+                  ) : vehicleModelId ? (
                     <View style={styles.horizontalPills}>
                       {getAvailableColors().map((c) => (
                         <Pressable
                           key={c}
-                          onPress={() => setStockColor(c)}
-                          style={[styles.pill, stockColor.toLowerCase() === c.toLowerCase() && styles.pillActive]}
+                          onPress={() => setVehicleColor(c)}
+                          style={[styles.pill, vehicleColor.toLowerCase() === c.toLowerCase() && styles.pillActive]}
                         >
-                          <ThemedText style={[styles.pillText, stockColor.toLowerCase() === c.toLowerCase() && styles.pillTextActive]}>
+                          <ThemedText style={[styles.pillText, vehicleColor.toLowerCase() === c.toLowerCase() && styles.pillTextActive]}>
                             {c}
                           </ThemedText>
                         </Pressable>
@@ -957,41 +1283,11 @@ export default function OwnerMelaCampaign() {
                       style={styles.input}
                       placeholder="Select a model first"
                       placeholderTextColor="#94a3b8"
-                      value={stockColor}
-                      onChangeText={setStockColor}
+                      value={vehicleColor}
+                      onChangeText={setVehicleColor}
                     />
                   )}
                 </View>
-
-                <View style={styles.inputGroup}>
-                  <ThemedText style={styles.inputLabel}>Battery Specification</ThemedText>
-                  <Pressable
-                    onPress={() => setIsBatterySelectorVisible(true)}
-                    style={styles.selectorBtn}
-                  >
-                    <ThemedText style={styles.selectorBtnText}>
-                      {showAddNewBattery
-                        ? '(Create Custom Battery)'
-                        : stockBattery
-                          ? stockBattery
-                          : 'Select Battery spec'}
-                    </ThemedText>
-                    <ChevronRight size={16} color="#94a3b8" />
-                  </Pressable>
-                </View>
-
-                {showAddNewBattery && (
-                  <View style={styles.nestedForm}>
-                    <ThemedText style={styles.nestedFormTitle}>Add Custom Battery Spec</ThemedText>
-                    <TextInput
-                      style={styles.nestedInput}
-                      placeholder="e.g. Li-50 Ultra"
-                      placeholderTextColor="#94a3b8"
-                      value={newBatteryName}
-                      onChangeText={setNewBatteryName}
-                    />
-                  </View>
-                )}
 
                 <View style={styles.dateGrid}>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -1001,8 +1297,8 @@ export default function OwnerMelaCampaign() {
                       placeholder="e.g. 15"
                       placeholderTextColor="#94a3b8"
                       keyboardType="numeric"
-                      value={stockQty}
-                      onChangeText={setStockQty}
+                      value={vehicleQty}
+                      onChangeText={setVehicleQty}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -1012,14 +1308,23 @@ export default function OwnerMelaCampaign() {
                       placeholder="e.g. 95000"
                       placeholderTextColor="#94a3b8"
                       keyboardType="numeric"
-                      value={stockPrice}
-                      onChangeText={setStockPrice}
+                      value={vehiclePrice}
+                      onChangeText={setVehiclePrice}
                     />
                   </View>
                 </View>
 
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Expected Restock Date</ThemedText>
+                  <DatePicker
+                    value={vehicleRestockDate || ''}
+                    onChange={setVehicleRestockDate}
+                    placeholder="Select restock date"
+                  />
+                </View>
+
                 <Pressable
-                  onPress={handleSaveStock}
+                  onPress={handleSaveVehicle}
                   disabled={submittingStock}
                   style={({ pressed }) => [
                     styles.submitStockBtn,
@@ -1033,7 +1338,7 @@ export default function OwnerMelaCampaign() {
                     <>
                       <CheckCircle2 size={16} color="#ffffff" />
                       <ThemedText style={styles.saveBtnText}>
-                        {editingStockId ? 'Update Stock' : 'Add Stock'}
+                        {editingVehicleId ? 'Update Vehicle' : 'Add Vehicle'}
                       </ThemedText>
                     </>
                   )}
@@ -1043,7 +1348,175 @@ export default function OwnerMelaCampaign() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* Modal selectors lists */}
+        {/* Modal: Add/Edit Campaign Battery */}
+        <Modal
+          visible={isBatteryModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setIsBatteryModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>
+                  {editingBatteryId ? 'Edit Campaign Battery' : 'Add Campaign Battery'}
+                </ThemedText>
+                <Pressable onPress={() => setIsBatteryModalVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+
+              <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Battery Specification Name</ThemedText>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 5 battery Graphine"
+                    placeholderTextColor="#94a3b8"
+                    value={batteryName}
+                    onChangeText={setBatteryName}
+                  />
+                </View>
+
+                <View style={styles.dateGrid}>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <ThemedText style={styles.inputLabel}>Initial Stock Qty</ThemedText>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 10"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      value={batteryQty}
+                      onChangeText={setBatteryQty}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <ThemedText style={styles.inputLabel}>Special Price (₹)</ThemedText>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 25000"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      value={batteryPrice}
+                      onChangeText={setBatteryPrice}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Expected Restock Date</ThemedText>
+                  <DatePicker
+                    value={batteryRestockDate || ''}
+                    onChange={setBatteryRestockDate}
+                    placeholder="Select restock date"
+                  />
+                </View>
+
+                <Pressable
+                  onPress={handleSaveBattery}
+                  disabled={submittingStock}
+                  style={({ pressed }) => [
+                    styles.submitStockBtn,
+                    pressed && { opacity: 0.85 },
+                    submittingStock && { opacity: 0.7 }
+                  ]}
+                >
+                  {submittingStock ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#ffffff" />
+                      <ThemedText style={styles.saveBtnText}>
+                        {editingBatteryId ? 'Update Battery' : 'Add Battery'}
+                      </ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Modal: Map Compatibility */}
+        <Modal
+          visible={isCompatibilityModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setIsCompatibilityModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Map EV Compatibility</ThemedText>
+                <Pressable onPress={() => setIsCompatibilityModalVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+
+              <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Select Campaign Vehicle</ThemedText>
+                  <Pressable
+                    onPress={() => setIsVehStockSelectorVisible(true)}
+                    style={styles.selectorBtn}
+                  >
+                    <ThemedText style={styles.selectorBtnText}>
+                      {compatVehicleStockId
+                        ? (() => {
+                            const found = melaVehicles.find(v => v.id === compatVehicleStockId);
+                            return found ? `${found.model_name || getModelName(found.vehicle_model)} (${found.color})` : 'Select Vehicle';
+                          })()
+                        : 'Select Campaign Vehicle'}
+                    </ThemedText>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </Pressable>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Select Campaign Battery</ThemedText>
+                  <Pressable
+                    onPress={() => setIsBatStockSelectorVisible(true)}
+                    style={styles.selectorBtn}
+                  >
+                    <ThemedText style={styles.selectorBtnText}>
+                      {compatBatteryStockId
+                        ? melaBatteries.find(b => b.id === compatBatteryStockId)?.battery_name || 'Select Battery'
+                        : 'Select Campaign Battery'}
+                    </ThemedText>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  onPress={handleSaveCompatibility}
+                  disabled={submittingStock}
+                  style={({ pressed }) => [
+                    styles.submitStockBtn,
+                    pressed && { opacity: 0.85 },
+                    submittingStock && { opacity: 0.7 }
+                  ]}
+                >
+                  {submittingStock ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#ffffff" />
+                      <ThemedText style={styles.saveBtnText}>Save Compatibility Map</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* List Selector Modal: Vehicle Model */}
         <Modal
           visible={isModelSelectorVisible}
           transparent={true}
@@ -1070,12 +1543,12 @@ export default function OwnerMelaCampaign() {
                     onPress={() => {
                       if (item.id === -1) {
                         setShowAddNewModel(true);
-                        setStockModelId(null);
+                        setVehicleModelId(null);
                       } else {
                         setShowAddNewModel(false);
-                        setStockModelId(item.id);
+                        setVehicleModelId(item.id);
                         const variants = models.find(m => m.id === item.id)?.color_variants || [];
-                        if (variants.length > 0) setStockColor(variants[0]);
+                        if (variants.length > 0) setVehicleColor(variants[0]);
                       }
                       setIsModelSelectorVisible(false);
                     }}
@@ -1091,41 +1564,69 @@ export default function OwnerMelaCampaign() {
           </Pressable>
         </Modal>
 
+        {/* List Selector Modal: Campaign Vehicle Selection */}
         <Modal
-          visible={isBatterySelectorVisible}
+          visible={isVehStockSelectorVisible}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setIsBatterySelectorVisible(false)}
+          onRequestClose={() => setIsVehStockSelectorVisible(false)}
         >
-          <Pressable style={styles.modalOverlayList} onPress={() => setIsBatterySelectorVisible(false)}>
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsVehStockSelectorVisible(false)}>
             <View style={styles.selectorModalContent}>
               <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Battery Specification</ThemedText>
-                <Pressable onPress={() => setIsBatterySelectorVisible(false)}>
+                <ThemedText style={styles.modalTitle}>Select Campaign Vehicle</ThemedText>
+                <Pressable onPress={() => setIsVehStockSelectorVisible(false)}>
                   <X size={20} color="#0f172a" />
                 </Pressable>
               </View>
               <FlatList
-                data={[
-                  { key: 'add-new', label: '+ Add Custom Battery Spec' },
-                  ...defaultBatteriesList.map(b => ({ key: b, label: b }))
-                ]}
-                keyExtractor={(item) => item.key}
+                data={melaVehicles}
+                keyExtractor={(item) => String(item.id)}
                 renderItem={({ item }) => (
                   <Pressable
                     style={styles.selectListItem}
                     onPress={() => {
-                      if (item.key === 'add-new') {
-                        setShowAddNewBattery(true);
-                        setStockBattery('');
-                      } else {
-                        setShowAddNewBattery(false);
-                        setStockBattery(item.key);
-                      }
-                      setIsBatterySelectorVisible(false);
+                      setCompatVehicleStockId(item.id!);
+                      setIsVehStockSelectorVisible(false);
                     }}
                   >
-                    <ThemedText style={styles.listItemLabel}>{item.label}</ThemedText>
+                    <ThemedText style={styles.listItemLabel}>
+                      {item.model_name || getModelName(item.vehicle_model)} ({item.color})
+                    </ThemedText>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* List Selector Modal: Campaign Battery Selection */}
+        <Modal
+          visible={isBatStockSelectorVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsBatStockSelectorVisible(false)}
+        >
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsBatStockSelectorVisible(false)}>
+            <View style={styles.selectorModalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Campaign Battery</ThemedText>
+                <Pressable onPress={() => setIsBatStockSelectorVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+              <FlatList
+                data={melaBatteries}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.selectListItem}
+                    onPress={() => {
+                      setCompatBatteryStockId(item.id!);
+                      setIsBatStockSelectorVisible(false);
+                    }}
+                  >
+                    <ThemedText style={styles.listItemLabel}>{item.battery_name}</ThemedText>
                   </Pressable>
                 )}
               />
@@ -1256,7 +1757,30 @@ const styles = StyleSheet.create({
   tabSection: {
     gap: 16
   },
-  // ---- Overview tab ----
+  alertBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
+    borderRadius: 16,
+    padding: 14,
+    gap: 6
+  },
+  alertHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4
+  },
+  alertBannerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ef4444'
+  },
+  alertText: {
+    fontSize: 11.5,
+    color: '#334155',
+    fontWeight: '600'
+  },
   heroBanner: {
     backgroundColor: '#0f172a',
     borderRadius: 20,
@@ -1372,7 +1896,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4
   },
-  // ---- Stock Tab ----
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
@@ -1505,7 +2028,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#04a700'
   },
-  // ---- Checkout Tab ----
   searchBarRow: {
     flexDirection: 'row',
     gap: 10,
@@ -1645,7 +2167,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginTop: 2,
   },
-  // ---- Leaderboard Tab ----
   leaderboardList: {
     gap: 12
   },
@@ -1695,7 +2216,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#04a700'
   },
-  // ---- Global Modals ----
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.4)',
@@ -1815,7 +2335,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     width: '100%',
     maxHeight: '75%',
-    shadowColor: '#005',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
@@ -1848,7 +2368,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 20
   },
-  // ---- Settings Tab Form ----
   formContainer: {
     gap: 16
   },
@@ -1890,5 +2409,35 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '800'
+  },
+  // Sub-tabs styling
+  subTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 8
+  },
+  subTabItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 10
+  },
+  subTabActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  subTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b'
+  },
+  subTabActiveText: {
+    color: '#0f172a'
   }
 });

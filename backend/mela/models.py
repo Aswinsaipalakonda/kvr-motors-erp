@@ -2,30 +2,64 @@ from django.db import models
 from django.conf import settings
 from vehicles.models import VehicleModel
 
-class MelaInventory(models.Model):
-    BATTERY_CHOICES = (
-        ('graphene', 'Graphene'),
-        ('Li-24', 'Li-24'),
-        ('Li-30', 'Li-30'),
-        ('Li-40', 'Li-40'),
-    )
-
-    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_inventories")
+class MelaVehicleStock(models.Model):
+    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_vehicles")
     color = models.CharField(max_length=50, help_text="Selected color variant")
-    battery_type = models.CharField(max_length=50, help_text="Battery capacity/spec")
+    price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Vehicle component mela price")
     initial_quantity = models.PositiveIntegerField(default=0)
     remaining_quantity = models.PositiveIntegerField(default=0)
-    price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Special campaign price")
+    restock_date = models.DateField(null=True, blank=True, help_text="Date when stock is expected to arrive")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name_plural = "Mela Inventories"
-        unique_together = ("vehicle_model", "color", "battery_type")
+        verbose_name_plural = "Mela Vehicle Stocks"
+        unique_together = ("vehicle_model", "color")
 
     def __str__(self):
-        return f"{self.vehicle_model.model_name} ({self.color}, {self.battery_type}) - Qty: {self.remaining_quantity}"
+        return f"{self.vehicle_model.model_name} ({self.color}) - Qty: {self.remaining_quantity}"
+
+
+class MelaBatteryStock(models.Model):
+    battery_name = models.CharField(max_length=100, unique=True, help_text="e.g. 4 battery Graphene")
+    price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Battery component mela price")
+    initial_quantity = models.PositiveIntegerField(default=0)
+    remaining_quantity = models.PositiveIntegerField(default=0)
+    restock_date = models.DateField(null=True, blank=True, help_text="Date when stock is expected to arrive")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Mela Battery Stocks"
+
+    def __str__(self):
+        return f"{self.battery_name} - Qty: {self.remaining_quantity}"
+
+
+class MelaVehicleBatteryCompatibility(models.Model):
+    vehicle_stock = models.ForeignKey(MelaVehicleStock, on_delete=models.CASCADE, related_name="supported_compatibilities")
+    battery_stock = models.ForeignKey(MelaBatteryStock, on_delete=models.CASCADE, related_name="supported_compatibilities")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Mela Vehicle Battery Compatibilities"
+        unique_together = ("vehicle_stock", "battery_stock")
+
+    def __str__(self):
+        return f"{self.vehicle_stock.vehicle_model.model_name} ({self.vehicle_stock.color}) <-> {self.battery_stock.battery_name}"
+
+
+# Keep a shell MelaInventory model to preserve older database tables and references without breaking SQL queries
+class MelaInventory(models.Model):
+    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE)
+    color = models.CharField(max_length=50)
+    battery_type = models.CharField(max_length=50)
+    initial_quantity = models.PositiveIntegerField(default=0)
+    remaining_quantity = models.PositiveIntegerField(default=0)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    is_active = models.BooleanField(default=True)
 
 
 class MelaBooking(models.Model):
@@ -46,11 +80,15 @@ class MelaBooking(models.Model):
     # Sequential running serial number specifically for this executive
     executive_serial_number = models.PositiveIntegerField()
     
-    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_bookings")
-    color = models.CharField(max_length=50)
-    battery_type = models.CharField(max_length=50)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
+    mela_vehicle = models.ForeignKey(MelaVehicleStock, on_delete=models.CASCADE, related_name="bookings", null=True)
+    mela_battery = models.ForeignKey(MelaBatteryStock, on_delete=models.CASCADE, related_name="bookings", null=True)
     
+    # Keep original fields but allow NULL to maintain backward compatibility during migration
+    vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="mela_bookings", null=True, blank=True)
+    color = models.CharField(max_length=50, null=True, blank=True)
+    battery_type = models.CharField(max_length=50, null=True, blank=True)
+    
+    price = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unconfirmed')
     cash_collected = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -59,8 +97,13 @@ class MelaBooking(models.Model):
     def save(self, *args, **kwargs):
         if not self.booking_id:
             import datetime, random
-            # Generate unique booking ID
             self.booking_id = f"MELA-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        # Automatically sync legacy fields for compatibility
+        if self.mela_vehicle:
+            self.vehicle_model = self.mela_vehicle.vehicle_model
+            self.color = self.mela_vehicle.color
+        if self.mela_battery:
+            self.battery_type = self.mela_battery.battery_name
         super().save(*args, **kwargs)
 
     def __str__(self):
