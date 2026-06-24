@@ -217,6 +217,9 @@ export default function OwnerDashboard() {
   const [melaInvBattery, setMelaInvBattery] = useState("graphene");
   const [melaInvQty, setMelaInvQty] = useState("");
   const [melaInvPrice, setMelaInvPrice] = useState("");
+  const [newBatteryName, setNewBatteryName] = useState("");
+  const [newBatteryPrice, setNewBatteryPrice] = useState("");
+  const [newBatteryQty, setNewBatteryQty] = useState("");
 
   // Mela Stock Adjustments & Groups
   const [melaStockLogs, setMelaStockLogs] = useState<any[]>([
@@ -3259,7 +3262,8 @@ export default function OwnerDashboard() {
                             <input
                               type="text"
                               placeholder="e.g. 4 battery Graphene"
-                              id="batteryNameInput"
+                              value={newBatteryName || ""}
+                              onChange={(e) => setNewBatteryName(e.target.value)}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                             />
                           </div>
@@ -3269,7 +3273,8 @@ export default function OwnerDashboard() {
                               <input
                                 type="number"
                                 placeholder="Price"
-                                id="batteryPriceInput"
+                                value={newBatteryPrice || ""}
+                                onChange={(e) => setNewBatteryPrice(e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                               />
                             </div>
@@ -3278,7 +3283,8 @@ export default function OwnerDashboard() {
                               <input
                                 type="number"
                                 placeholder="Qty"
-                                id="batteryQtyInput"
+                                value={newBatteryQty || ""}
+                                onChange={(e) => setNewBatteryQty(e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                               />
                             </div>
@@ -3286,25 +3292,22 @@ export default function OwnerDashboard() {
                           <button
                             type="button"
                             onClick={async () => {
-                              const nameInput = document.getElementById("batteryNameInput") as HTMLInputElement;
-                              const priceInput = document.getElementById("batteryPriceInput") as HTMLInputElement;
-                              const qtyInput = document.getElementById("batteryQtyInput") as HTMLInputElement;
-                              if (!nameInput?.value.trim() || !priceInput?.value || !qtyInput?.value) {
+                              if (!newBatteryName.trim() || !newBatteryPrice || !newBatteryQty) {
                                 showToast("Please fill all battery fields.", "error");
                                 return;
                               }
                               try {
                                 await api.post("/mela-batteries/", {
-                                  battery_name: nameInput.value.trim(),
-                                  price: parseFloat(priceInput.value),
-                                  initial_quantity: parseInt(qtyInput.value),
-                                  remaining_quantity: parseInt(qtyInput.value),
+                                  battery_name: newBatteryName.trim(),
+                                  price: parseFloat(newBatteryPrice),
+                                  initial_quantity: parseInt(newBatteryQty),
+                                  remaining_quantity: parseInt(newBatteryQty),
                                   is_active: true
                                 });
                                 showToast("Battery registered successfully.");
-                                nameInput.value = "";
-                                priceInput.value = "";
-                                qtyInput.value = "";
+                                setNewBatteryName("");
+                                setNewBatteryPrice("");
+                                setNewBatteryQty("");
                                 loadMelaData();
                               } catch (err: any) {
                                 showToast(err.response?.data?.error || "Failed to register battery.", "error");
