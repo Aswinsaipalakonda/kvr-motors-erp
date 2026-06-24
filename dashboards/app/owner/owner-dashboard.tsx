@@ -2726,6 +2726,133 @@ export default function OwnerDashboard() {
 
               </div>
 
+              {/* Recent Campaign Orders Section */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-800 leading-tight">
+                      Recent Campaign Bookings
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Latest reservations, delivery statuses, and collection details.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigateTo("mela_orders")}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 font-extrabold cursor-pointer"
+                  >
+                    View All Orders &rarr;
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase">
+                        <th className="py-3 px-3">Booking ID</th>
+                        <th className="py-3 px-3">Customer</th>
+                        <th className="py-3 px-3">Model</th>
+                        <th className="py-3 px-3">Specs</th>
+                        <th className="py-3 px-3">Mela Price</th>
+                        <th className="py-3 px-3">Payment</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {melaBookingsList.slice(0, 5).map((b) => {
+                        const statusColors: Record<string, string> = {
+                          completed: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+                          unconfirmed: "bg-amber-50 text-amber-700 border border-amber-100",
+                          cancelled: "bg-rose-50 text-rose-700 border border-rose-100"
+                        };
+                        const statusColor = statusColors[b.status] || "bg-slate-50 text-slate-700 border border-slate-100";
+                        const paymentLabels: Record<string, string> = {
+                          cash: "Cash",
+                          upi: "UPI",
+                          card: "Card",
+                          bajaj_finance: "Bajaj Finance"
+                        };
+                        const paymentLbl = paymentLabels[b.payment_type || ""] || (b.payment_type ? b.payment_type.toUpperCase() : "Cash");
+
+                        return (
+                          <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50 text-xs transition-colors">
+                            <td className="py-3 px-3 font-black text-emerald-700 font-mono">{b.booking_id}</td>
+                            <td className="py-3 px-3 font-semibold text-slate-700">
+                              <div>{b.customer_name}</div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">{b.customer_phone}</div>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-800">{b.vehicle_model_name || b.model_name || "Custom"}</td>
+                            <td className="py-3 px-3 text-slate-500 font-medium">{b.vehicle_color || b.color} / {b.battery_name || b.battery_type}</td>
+                            <td className="py-3 px-3 font-bold font-mono text-emerald-600">₹ {parseFloat(b.price).toLocaleString("en-IN")}</td>
+                            <td className="py-3 px-3">
+                              <span className="font-extrabold text-slate-600 text-[10px] uppercase bg-slate-100 px-2 py-0.5 rounded">{paymentLbl}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${statusColor}`}>
+                                {b.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-2.5">
+                                {b.payment_proof && (
+                                  <a
+                                    href={b.payment_proof}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    <span>Proof</span>
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    const msg =
+                                      `*KVR MOTORS - MELA ORDER RECEIPT*\n` +
+                                      `=============================\n` +
+                                      `*Booking ID:* ${b.booking_id}\n` +
+                                      `*Customer:* ${b.customer_name}\n` +
+                                      `*Phone:* ${b.customer_phone}\n` +
+                                      `-----------------------------\n` +
+                                      `*Vehicle:* ${b.vehicle_model_name || b.model_name || ""}\n` +
+                                      `*Color:* ${b.color || b.vehicle_color || ""}\n` +
+                                      `*Battery:* ${b.battery_type || b.battery_name || ""}\n` +
+                                      `-----------------------------\n` +
+                                      `*Total Paid:* ₹${parseFloat(b.price).toLocaleString("en-IN")}\n` +
+                                      `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
+                                      `*Status:* Confirmed & Delivered\n` +
+                                      `=============================\n` +
+                                      `Thank you for purchasing with KVR Motors!`;
+                                    window.open(`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(b.customer_phone)}&text=${encodeURIComponent(msg)}`, "_blank");
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-[#25D366] hover:bg-[#25D366]/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Share to WhatsApp"
+                                >
+                                  <Share2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handlePrintReceipt(b)}
+                                  className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Print Receipt"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {melaBookingsList.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">No bookings registered yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
 
 
               {/* Campaign Groups / Teams Section */}
