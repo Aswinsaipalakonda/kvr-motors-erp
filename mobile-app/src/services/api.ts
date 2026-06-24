@@ -30,7 +30,7 @@ const safePromiseAny = async <T>(promises: Promise<T>[]): Promise<T> => {
 
 const pingUrl = async (url: string): Promise<string> => {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 3000);
+  const id = setTimeout(() => controller.abort(), 5000);
   try {
     await fetch(url, {
       method: 'GET',
@@ -39,9 +39,8 @@ const pingUrl = async (url: string): Promise<string> => {
     clearTimeout(id);
     return url;
   } catch (err) {
-    throw err;
-  } finally {
     clearTimeout(id);
+    throw err;
   }
 };
 
@@ -100,6 +99,8 @@ export const getBaseHostUrl = async (): Promise<string> => {
     } catch {
       resolvedBaseUrl = candidates[0] || 'http://127.0.0.1:8000';
       baseHostUrl = resolvedBaseUrl;
+      authApi.defaults.baseURL = `${resolvedBaseUrl}/api/auth`;
+      api.defaults.baseURL = `${resolvedBaseUrl}/api/v1`;
       return resolvedBaseUrl;
     }
   })();
@@ -109,7 +110,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
 
 export const authApi = create({
   baseURL: `${baseHostUrl}/api/auth`,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -127,7 +128,7 @@ authApi.interceptors.request.use(
 
 const api = create({
   baseURL: `${baseHostUrl}/api/v1`,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
