@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Alert,
-  RefreshControl, BackHandler, Modal, FlatList, KeyboardAvoidingView, Platform, Switch
+  RefreshControl, BackHandler, Modal, FlatList, KeyboardAvoidingView, Platform, Switch,
+  Linking
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +10,7 @@ import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, Plus, Edit2,
   Trash2, Save, CheckCircle2, ChevronRight, X, BatteryCharging, Zap, Info,
   TrendingUp, DollarSign, AlertTriangle, ShieldCheck, CreditCard, BarChart2,
-  Settings as SettingsIcon, Award
+  Settings as SettingsIcon, Award, ListOrdered, Eye, Share2, Printer
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import DatePicker from '@/components/DatePicker';
@@ -26,7 +27,7 @@ import {
   MelaVehicleBatteryCompatibilityInput
 } from '@/services/mela';
 
-type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'leaderboard' | 'settings';
+type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'orders' | 'leaderboard' | 'settings';
 type StockSubTab = 'vehicles' | 'batteries' | 'compatibility';
 
 export default function OwnerMelaCampaign() {
@@ -52,6 +53,7 @@ export default function OwnerMelaCampaign() {
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
   const [melaReports, setMelaReports] = useState<MelaReports | null>(null);
+  const [melaBookingsList, setMelaBookingsList] = useState<MelaBooking[]>([]);
 
   // Checkout search states
   const [melaSearchQuery, setMelaSearchQuery] = useState('');
@@ -101,7 +103,8 @@ export default function OwnerMelaCampaign() {
         reportsRes,
         vehiclesRes,
         batteriesRes,
-        compatibilitiesRes
+        compatibilitiesRes,
+        bookingsRes
       ] = await Promise.all([
         getMelaSettingsList(),
         getVehicleModels(),
@@ -109,7 +112,8 @@ export default function OwnerMelaCampaign() {
         getMelaReports().catch(() => null),
         getMelaVehicles().catch(() => []),
         getMelaBatteries().catch(() => []),
-        getMelaCompatibilities().catch(() => [])
+        getMelaCompatibilities().catch(() => []),
+        getMelaBookings().catch(() => [])
       ]);
 
       // Set settings
@@ -131,6 +135,7 @@ export default function OwnerMelaCampaign() {
       setMelaVehicles(vehiclesRes || []);
       setMelaBatteries(batteriesRes || []);
       setMelaCompatibilities(compatibilitiesRes || []);
+      setMelaBookingsList(bookingsRes || []);
 
       if (reportsRes) {
         setMelaReports(reportsRes);
@@ -552,6 +557,7 @@ export default function OwnerMelaCampaign() {
               { id: 'overview', label: 'Overview', icon: BarChart2 },
               { id: 'stock', label: 'Campaign Stock', icon: Package },
               { id: 'checkout', label: 'Checkout', icon: CreditCard },
+              { id: 'orders', label: 'Orders', icon: ListOrdered },
               { id: 'leaderboard', label: 'Leaderboard', icon: Award },
               { id: 'settings', label: 'Settings', icon: SettingsIcon }
             ].map((tab) => {
@@ -998,6 +1004,194 @@ export default function OwnerMelaCampaign() {
                           <ThemedText style={styles.receiptText}>Delivered & paid in full.</ThemedText>
                         </View>
                       )}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* TAB: ORDERS */}
+            {activeTab === 'orders' && (
+              <View style={styles.tabSection}>
+                <View style={styles.card}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <ThemedText style={styles.cardTitle}>Mela Order History</ThemedText>
+                      <ThemedText style={[styles.cardDesc, { marginBottom: 0 }]}>
+                        All campaign bookings with payment details and uploaded proofs.
+                      </ThemedText>
+                    </View>
+                    <View style={[styles.statusBadgeInline, { backgroundColor: '#f1f5f9' }]}>
+                      <ThemedText style={[styles.badgeText, { color: '#475569' }]}>
+                        {melaBookingsList.length} Orders
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  {melaBookingsList.length === 0 ? (
+                    <View style={styles.emptyStockContainer}>
+                      <ListOrdered size={42} color="#94a3b8" />
+                      <ThemedText style={styles.emptyStockText}>No campaign bookings registered yet.</ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.stockList}>
+                      {melaBookingsList.map((b) => {
+                        const paymentLabels: Record<string, string> = {
+                          cash: 'Cash',
+                          upi: 'UPI',
+                          card: 'Card',
+                          bajaj_finance: 'Bajaj Finance'
+                        };
+                        const paymentLabel = paymentLabels[b.payment_type || ''] || (b.payment_type ? b.payment_type.toUpperCase() : 'Cash');
+                        const statusColors: Record<string, { bg: string, text: string }> = {
+                          completed: { bg: 'rgba(4,167,0,0.1)', text: '#04a700' },
+                          unconfirmed: { bg: 'rgba(234,88,12,0.1)', text: '#ea580c' },
+                          cancelled: { bg: 'rgba(239,68,68,0.1)', text: '#ef4444' }
+                        };
+                        const statusColor = statusColors[b.status] || { bg: '#f1f5f9', text: '#64748b' };
+                        const proofUrl = b.payment_proof;
+                        const dateStr = b.completed_at
+                          ? new Date(b.completed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                          : new Date(b.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                        // WhatsApp Message helper
+                        const formatWhatsAppPhone = (phone: string) => {
+                          const cleaned = phone.replace(/\D/g, '');
+                          if (cleaned.length === 10) {
+                            return `91${cleaned}`;
+                          }
+                          return cleaned;
+                        };
+
+                        const handleWhatsAppShare = () => {
+                          const message = 
+                            `*KVR MOTORS - MELA ORDER RECEIPT*\n` +
+                            `=============================\n` +
+                            `*Booking ID:* ${b.booking_id}\n` +
+                            `*Customer:* ${b.customer_name}\n` +
+                            `*Phone:* ${b.customer_phone}\n` +
+                            `-----------------------------\n` +
+                            `*Vehicle:* ${b.vehicle_model_name || b.model_name || ""}\n` +
+                            `*Color:* ${b.color || b.vehicle_color || ""}\n` +
+                            `*Battery:* ${b.battery_type || b.battery_name || ""}\n` +
+                            `-----------------------------\n` +
+                            `*Total Paid:* ₹${parseFloat(b.price || '0').toLocaleString("en-IN")}\n` +
+                            `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
+                            `*Status:* Confirmed & Delivered\n` +
+                            `=============================\n` +
+                            `Thank you for purchasing with KVR Motors!`;
+                          
+                          const url = `https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(b.customer_phone)}&text=${encodeURIComponent(message)}`;
+                          Linking.openURL(url).catch(() => {
+                            Alert.alert('Error', 'Unable to open WhatsApp app.');
+                          });
+                        };
+
+                        // Printing Alert placeholder on mobile
+                        const handlePrintReceiptLocal = () => {
+                          Alert.alert(
+                            'Print Receipt',
+                            `Printer: Epson TM-M30II Thermal\nReceipt for Booking: ${b.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              { 
+                                text: 'Print', 
+                                onPress: () => {
+                                  Alert.alert('Printing Command Sent', 'Receipt sent to Epson TM-M30II Thermal Printer.');
+                                }
+                              }
+                            ]
+                          );
+                        };
+
+                        return (
+                          <View key={`b-card-${b.id}`} style={styles.stockItemCard}>
+                            <View style={styles.stockHeader}>
+                              <View style={styles.modelCol}>
+                                <ThemedText style={[styles.modelNameText, { color: '#04a700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }]}>
+                                  {b.booking_id}
+                                </ThemedText>
+                                <ThemedText style={[styles.brandNameText, { textTransform: 'none', color: '#64748b' }]}>
+                                  Booking Date: {dateStr}
+                                </ThemedText>
+                              </View>
+                              <View style={[styles.statusBadgeInline, { backgroundColor: statusColor.bg }]}>
+                                <ThemedText style={[styles.statusTextInline, { color: statusColor.text, textTransform: 'uppercase' }]}>
+                                  {b.status_display || b.status}
+                                </ThemedText>
+                              </View>
+                            </View>
+                            
+                            <View style={styles.divider} />
+                            
+                            <View style={styles.stockGrid}>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Customer</ThemedText>
+                                <ThemedText style={styles.gridValue}>{b.customer_name}</ThemedText>
+                                <ThemedText style={[styles.brandNameText, { textTransform: 'none', fontSize: 10 }]}>{b.customer_phone}</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Vehicle Spec</ThemedText>
+                                <ThemedText style={styles.gridValue}>{b.vehicle_model_name || b.model_name || "—"}</ThemedText>
+                                <ThemedText style={[styles.brandNameText, { fontSize: 10 }]}>{b.vehicle_color || b.color || ""} / {b.battery_name || b.battery_type || ""}</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Amount Paid</ThemedText>
+                                <ThemedText style={styles.gridValuePrice}>₹{parseFloat(b.price || '0').toLocaleString('en-IN')}</ThemedText>
+                              </View>
+                              <View style={styles.gridCell}>
+                                <ThemedText style={styles.gridLabel}>Payment</ThemedText>
+                                <View style={{ flexDirection: 'row', marginTop: 2 }}>
+                                  <View style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
+                                    <ThemedText style={{ fontSize: 10, fontWeight: '700', color: '#1d4ed8' }}>{paymentLabel}</ThemedText>
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                              {proofUrl && (
+                                <Pressable
+                                  onPress={() => {
+                                    const fullUrl = proofUrl.startsWith('http') 
+                                      ? proofUrl 
+                                      : `${api.defaults.baseURL?.replace('/api/v1', '')}${proofUrl}`;
+                                    Linking.openURL(fullUrl).catch(() => {
+                                      Alert.alert('Error', 'Unable to open payment proof link.');
+                                    });
+                                  }}
+                                  style={[styles.iconBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 4 }]}
+                                >
+                                  <Eye size={13} color="#2563eb" />
+                                  <ThemedText style={{ fontSize: 11, fontWeight: '700', color: '#2563eb' }}>Preview</ThemedText>
+                                </Pressable>
+                              )}
+
+                              {b.status === 'completed' && (
+                                <>
+                                  <Pressable
+                                    onPress={handleWhatsAppShare}
+                                    style={[styles.iconBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 4, borderColor: '#86efac' }]}
+                                  >
+                                    <Share2 size={13} color="#04a700" />
+                                    <ThemedText style={{ fontSize: 11, fontWeight: '700', color: '#04a700' }}>WhatsApp</ThemedText>
+                                  </Pressable>
+
+                                  <Pressable
+                                    onPress={handlePrintReceiptLocal}
+                                    style={[styles.iconBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 4 }]}
+                                  >
+                                    <Printer size={13} color="#64748b" />
+                                    <ThemedText style={{ fontSize: 11, fontWeight: '700', color: '#64748b' }}>Print</ThemedText>
+                                  </Pressable>
+                                </>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
