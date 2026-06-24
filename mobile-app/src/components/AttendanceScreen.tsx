@@ -177,7 +177,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         setLocationName('Showroom Workspace');
       }
     } catch (err) {
-      console.warn('Location unavailable, using fallback:', err?.message || err);
+      console.warn('Location unavailable, using fallback:', (err as any)?.message || err);
       setLocationName('Autocaptured Location');
     } finally {
       setIsResolvingLocation(false);
@@ -238,7 +238,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
           setLocationName('Showroom Workspace');
         }
       } catch (err) {
-        console.warn('Location unavailable during check-in, using fallback:', err?.message || err);
+        console.warn('Location unavailable during check-in, using fallback:', (err as any)?.message || err);
         setLocationName('Autocaptured Location');
       } finally {
         setIsResolvingLocation(false);

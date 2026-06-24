@@ -2643,18 +2643,36 @@ export default function OwnerDashboard() {
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                         <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Add Vehicle Stock</span>
                         <div className="space-y-2">
-                          <select
-                            value={melaInvModel}
-                            onChange={(e) => setMelaInvModel(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
-                          >
-                            <option value="">-- Choose Model --</option>
-                            {vehicleModelsList.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.brand_name || m.brand} - {m.model_name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex gap-2">
+                            <select
+                              value={melaInvModel}
+                              onChange={(e) => setMelaInvModel(e.target.value)}
+                              className="flex-1 bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
+                            >
+                              <option value="">-- Choose Model --</option>
+                              {vehicleModelsList.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.brand_name || m.brand} - {m.model_name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingModelId(null);
+                                setNewModelBrand("");
+                                setNewModelName("");
+                                setNewModelPrice("");
+                                setNewModelBattery("");
+                                setNewModelColors("");
+                                setNewModelStatus("active");
+                                setIsAddVehicleOpen(true);
+                              }}
+                              className="bg-emerald-600 hover:bg-[#038a00] text-white font-bold px-3 rounded-lg text-xs transition-all cursor-pointer whitespace-nowrap"
+                            >
+                              + New Model
+                            </button>
+                          </div>
                           <input
                             type="text"
                             placeholder="Color Variant (e.g. Red, Black)"

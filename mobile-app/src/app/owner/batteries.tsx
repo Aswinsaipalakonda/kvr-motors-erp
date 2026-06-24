@@ -534,7 +534,7 @@ export default function OwnerBatteries() {
         {/* LOCATION PICKER SHEET */}
         <Modal visible={isLocationPickerOpen} transparent animationType="fade">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.pickerModalBackdrop} onPress={() => setIsLocationPickerOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsLocationPickerOpen(false)} />
             <View style={styles.pickerModalSheet}>
               <ThemedText style={styles.pickerModalTitle}>Select Stock Location</ThemedText>
               <FlatList

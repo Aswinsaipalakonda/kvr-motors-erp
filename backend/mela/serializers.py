@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.db.models import F, Max
-from .models import MelaVehicleStock, MelaBatteryStock, MelaVehicleBatteryCompatibility, MelaBooking, MelaSettings
+from .models import MelaVehicleStock, MelaBatteryStock, MelaVehicleBatteryCompatibility, MelaBooking, MelaSettings, MelaInventory
 from vehicles.models import VehicleModel
+
 
 class MelaVehicleStockSerializer(serializers.ModelSerializer):
     model_name = serializers.CharField(source='vehicle_model.model_name', read_only=True)
@@ -171,3 +172,9 @@ class MelaSettingsSerializer(serializers.ModelSerializer):
         if 'end_date' in data and data['end_date'] == '':
             data['end_date'] = None
         return super().to_internal_value(data)
+
+
+class MelaInventorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MelaInventory
+        fields = '__all__'

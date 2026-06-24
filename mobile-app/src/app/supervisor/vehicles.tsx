@@ -587,7 +587,7 @@ export default function SupervisorVehicles() {
         {/* MODEL PICKER SHEET */}
         <Modal visible={isModelPickerOpen} transparent animationType="fade">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.pickerModalBackdrop} onPress={() => setIsModelPickerOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsModelPickerOpen(false)} />
             <View style={styles.pickerModalSheet}>
               <ThemedText style={styles.pickerModalTitle}>Select Catalog Model</ThemedText>
               <FlatList
@@ -610,7 +610,7 @@ export default function SupervisorVehicles() {
         {/* BRANCH PICKER SHEET */}
         <Modal visible={isBranchPickerOpen} transparent animationType="fade">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.pickerModalBackdrop} onPress={() => setIsBranchPickerOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsBranchPickerOpen(false)} />
             <View style={styles.pickerModalSheet}>
               <ThemedText style={styles.pickerModalTitle}>Select Branch Outlet</ThemedText>
               <FlatList
@@ -638,7 +638,7 @@ export default function SupervisorVehicles() {
         {/* SHOWROOM PICKER SHEET */}
         <Modal visible={isShowroomPickerOpen} transparent animationType="fade">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.pickerModalBackdrop} onPress={() => setIsShowroomPickerOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsShowroomPickerOpen(false)} />
             <View style={styles.pickerModalSheet}>
               <ThemedText style={styles.pickerModalTitle}>Select Showroom Outlet</ThemedText>
               <FlatList
@@ -661,7 +661,7 @@ export default function SupervisorVehicles() {
         {/* LOCATION PICKER SHEET */}
         <Modal visible={isLocationPickerOpen} transparent animationType="fade">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.pickerModalBackdrop} onPress={() => setIsLocationPickerOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsLocationPickerOpen(false)} />
             <View style={styles.pickerModalSheet}>
               <ThemedText style={styles.pickerModalTitle}>Select Yard Location</ThemedText>
               <FlatList
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
   listContainer: { gap: 14 },
-  emptyContainer: { backgroundColor: '#ffffff', borderRadius: 18, borderWith: 1, borderColor: '#f1f5f9', paddingVertical: 60, alignItems: 'center', gap: 10 },
+  emptyContainer: { backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#f1f5f9', paddingVertical: 60, alignItems: 'center', gap: 10 },
   emptyText: { fontSize: 13, color: '#94a3b8', fontWeight: '600' },
   itemCard: {
     backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#f1f5f9', padding: 16, gap: 12,
