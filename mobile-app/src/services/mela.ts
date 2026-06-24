@@ -97,6 +97,9 @@ export interface MelaBooking {
   vehicle_color?: string;
   battery_name?: string;
   executive_name?: string;
+  model_name?: string;
+  payment_type?: string;
+  payment_proof_url?: string;
 }
 
 export interface MelaReports {

@@ -10,11 +10,12 @@ import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, Plus, Edit2,
   Trash2, Save, CheckCircle2, ChevronRight, X, BatteryCharging, Zap, Info,
   TrendingUp, DollarSign, AlertTriangle, ShieldCheck, CreditCard, BarChart2,
-  Settings as SettingsIcon, Award, ListOrdered, Eye, Share2, Printer
+  Settings as SettingsIcon, Award, ListOrdered, Eye, Share2, Printer, Upload
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import DatePicker from '@/components/DatePicker';
 import api from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import {
   getMelaSettingsList, createMelaSettings, updateMelaSettings,
@@ -59,6 +60,10 @@ export default function OwnerMelaCampaign() {
   const [melaSearchQuery, setMelaSearchQuery] = useState('');
   const [foundBooking, setFoundBooking] = useState<MelaBooking | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutPaymentType, setCheckoutPaymentType] = useState<string>('cash');
+  const [isPaymentTypeSelectorVisible, setIsPaymentTypeSelectorVisible] = useState(false);
+  const [completedOrderDetails, setCompletedOrderDetails] = useState<MelaBooking | null>(null);
+  const [checkoutPaymentProof, setCheckoutPaymentProof] = useState<{ uri: string; name: string; type: string } | null>(null);
 
   // Loading & refresh states
   const [isLoading, setIsLoading] = useState(true);
@@ -236,28 +241,61 @@ export default function OwnerMelaCampaign() {
     }
   };
 
-  // Mela Checkout collect cash
+  // Payment type labels
+  const paymentTypeOptions = [
+    { value: 'cash', label: 'Cash Payment' },
+    { value: 'upi', label: 'UPI / Online Transfer' },
+    { value: 'card', label: 'Debit / Credit Card' },
+    { value: 'bajaj_finance', label: 'Bajaj Finance' }
+  ];
+
+  const getPaymentTypeLabel = (val: string) => {
+    return paymentTypeOptions.find(o => o.value === val)?.label || val;
+  };
+
+  // Mela Checkout with payment type
   const handleFinalizeCheckout = async () => {
     if (!foundBooking) return;
 
+    if (checkoutPaymentType !== 'cash' && !checkoutPaymentProof) {
+      Alert.alert('Required', 'Please upload a payment screenshot / proof first.');
+      return;
+    }
+
+    const paymentLabel = getPaymentTypeLabel(checkoutPaymentType);
+
     Alert.alert(
-      'Collect Cash & Deliver',
-      `Confirm cash collection of ₹${parseFloat(foundBooking.price).toLocaleString('en-IN')} for Booking: ${foundBooking.booking_id}?`,
+      'Complete Payment & Finalize',
+      `Confirm ${paymentLabel} collection of ₹${parseFloat(foundBooking.price).toLocaleString('en-IN')} for Booking: ${foundBooking.booking_id}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Confirm Collection',
+          text: 'Confirm & Finalize',
           onPress: async () => {
             try {
               setCheckoutLoading(true);
-              await completeMelaBooking(foundBooking.id);
-              Alert.alert('Success', 'Payment collected and order finalized successfully.');
-              setMelaSearchQuery('');
+              const formData = new FormData();
+              formData.append('payment_type', checkoutPaymentType);
+
+              if (checkoutPaymentType !== 'cash' && checkoutPaymentProof) {
+                // Append file to FormData
+                formData.append('payment_proof', {
+                  uri: checkoutPaymentProof.uri,
+                  name: checkoutPaymentProof.name,
+                  type: checkoutPaymentProof.type
+                } as any);
+              }
+
+              const result = await completeMelaBooking(foundBooking.id, formData);
+              setCompletedOrderDetails(result);
               setFoundBooking(null);
+              setMelaSearchQuery('');
+              setCheckoutPaymentType('cash');
+              setCheckoutPaymentProof(null);
               loadData();
             } catch (err) {
               console.error('Finalize checkout failed:', err);
-              Alert.alert('Error', 'Failed to complete cash checkout transaction.');
+              Alert.alert('Error', 'Failed to complete checkout transaction.');
             } finally {
               setCheckoutLoading(false);
             }
@@ -265,6 +303,33 @@ export default function OwnerMelaCampaign() {
         }
       ]
     );
+  };
+
+  const handlePickPaymentProof = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please grant photo library access to upload a payment screenshot.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const filename = asset.fileName || `proof_${Date.now()}.jpg`;
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+      
+      setCheckoutPaymentProof({
+        uri: asset.uri,
+        name: filename,
+        type: type
+      });
+    }
   };
 
   // VEHICLE CRUD Actions
@@ -931,13 +996,13 @@ export default function OwnerMelaCampaign() {
             {activeTab === 'checkout' && (
               <View style={styles.tabSection}>
                 <View style={styles.card}>
-                  <ThemedText style={styles.cardTitle}>Cash Payment Delivery</ThemedText>
-                  <ThemedText style={styles.cardDesc}>Enter customer's reserved Mela Booking ID to complete pay collections.</ThemedText>
+                  <ThemedText style={styles.cardTitle}>Payment Checkout</ThemedText>
+                  <ThemedText style={styles.cardDesc}>Enter customer's reserved Mela Booking ID to complete payment collection.</ThemedText>
 
                   <View style={styles.searchBarRow}>
                     <TextInput
                       style={styles.searchInputField}
-                      placeholder="e.g. MELA-20260623-1002"
+                      placeholder="e.g. MELA-3147"
                       placeholderTextColor="#94a3b8"
                       value={melaSearchQuery}
                       onChangeText={setMelaSearchQuery}
@@ -992,10 +1057,57 @@ export default function OwnerMelaCampaign() {
                       </View>
 
                       {foundBooking.status === 'unconfirmed' && (
-                        <Pressable onPress={handleFinalizeCheckout} style={styles.collectCashBtn}>
-                          <DollarSign size={16} color="#ffffff" />
-                          <ThemedText style={styles.collectCashBtnText}>Collect Cash & Deliver EV</ThemedText>
-                        </Pressable>
+                        <View style={{ gap: 12, marginTop: 4 }}>
+                          <View style={styles.divider} />
+
+                          {/* Payment Type Selector */}
+                          <View style={styles.inputGroup}>
+                            <ThemedText style={styles.inputLabel}>Select Payment Method</ThemedText>
+                            <Pressable
+                              onPress={() => setIsPaymentTypeSelectorVisible(true)}
+                              style={styles.selectorBtn}
+                            >
+                              <ThemedText style={styles.selectorBtnText}>
+                                {getPaymentTypeLabel(checkoutPaymentType)}
+                              </ThemedText>
+                              <ChevronRight size={16} color="#94a3b8" />
+                            </Pressable>
+                          </View>
+
+                          {/* Screenshot Upload for non-cash payments */}
+                          {checkoutPaymentType !== 'cash' && (
+                            <View style={styles.inputGroup}>
+                              <ThemedText style={styles.inputLabel}>Upload Payment Screenshot / Proof</ThemedText>
+                              <Pressable
+                                onPress={handlePickPaymentProof}
+                                style={{
+                                  borderWidth: 2,
+                                  borderStyle: 'dashed',
+                                  borderColor: checkoutPaymentProof ? '#04a700' : '#cbd5e1',
+                                  borderRadius: 14,
+                                  padding: 20,
+                                  backgroundColor: '#f8fafc',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 8
+                                }}
+                              >
+                                <Upload size={24} color={checkoutPaymentProof ? '#04a700' : '#64748b'} />
+                                <ThemedText style={{ fontSize: 13, fontWeight: '700', color: checkoutPaymentProof ? '#04a700' : '#0f172a', textAlign: 'center' }}>
+                                  {checkoutPaymentProof ? checkoutPaymentProof.name : 'Tap to upload screenshot'}
+                                </ThemedText>
+                                <ThemedText style={{ fontSize: 10, color: '#94a3b8' }}>
+                                  JPEG, PNG up to 5MB
+                                </ThemedText>
+                              </Pressable>
+                            </View>
+                          )}
+
+                          <Pressable onPress={handleFinalizeCheckout} style={styles.collectCashBtn}>
+                            <DollarSign size={16} color="#ffffff" />
+                            <ThemedText style={styles.collectCashBtnText}>Complete Payment & Finalize Order</ThemedText>
+                          </Pressable>
+                        </View>
                       )}
 
                       {foundBooking.status === 'completed' && (
@@ -1004,6 +1116,79 @@ export default function OwnerMelaCampaign() {
                           <ThemedText style={styles.receiptText}>Delivered & paid in full.</ThemedText>
                         </View>
                       )}
+                    </View>
+                  )}
+
+                  {/* Completed Order Details with WhatsApp/Print */}
+                  {completedOrderDetails && (
+                    <View style={[styles.bookingFoundCard, { borderColor: 'rgba(4,167,0,0.3)', backgroundColor: '#FAFDFB' }]}>
+                      <View style={{ alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(4,167,0,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                          <CheckCircle2 size={20} color="#04a700" />
+                        </View>
+                        <ThemedText style={{ fontSize: 14, fontWeight: '900', color: '#04a700' }}>Checkout Completed!</ThemedText>
+                        <ThemedText style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>The vehicle booking is finalized and logged.</ThemedText>
+                      </View>
+                      <View style={styles.divider} />
+                      <View style={styles.detailsBlock}>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Booking ID</ThemedText>
+                          <ThemedText style={[styles.detailVal, { color: '#04a700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }]}>{completedOrderDetails.booking_id}</ThemedText>
+                        </View>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Customer</ThemedText>
+                          <ThemedText style={styles.detailVal}>{completedOrderDetails.customer_name}</ThemedText>
+                        </View>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Amount Paid</ThemedText>
+                          <ThemedText style={styles.detailValPrice}>₹{parseFloat(completedOrderDetails.price).toLocaleString('en-IN')}</ThemedText>
+                        </View>
+                        <View style={styles.detailsRow}>
+                          <ThemedText style={styles.detailLbl}>Payment Mode</ThemedText>
+                          <ThemedText style={styles.detailVal}>{(completedOrderDetails.payment_type || 'cash').toUpperCase()}</ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.divider} />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                        <Pressable
+                          onPress={() => {
+                            const formatPhone = (phone: string) => {
+                              const cleaned = phone.replace(/\D/g, '');
+                              return cleaned.length === 10 ? `91${cleaned}` : cleaned;
+                            };
+                            const message =
+                              `*KVR MOTORS - MELA ORDER RECEIPT*\n` +
+                              `=============================\n` +
+                              `*Booking ID:* ${completedOrderDetails.booking_id}\n` +
+                              `*Customer:* ${completedOrderDetails.customer_name}\n` +
+                              `*Phone:* ${completedOrderDetails.customer_phone}\n` +
+                              `-----------------------------\n` +
+                              `*Vehicle:* ${completedOrderDetails.vehicle_model_name || completedOrderDetails.model_name || ''}\n` +
+                              `*Color:* ${completedOrderDetails.color || completedOrderDetails.vehicle_color || ''}\n` +
+                              `*Battery:* ${completedOrderDetails.battery_type || completedOrderDetails.battery_name || ''}\n` +
+                              `-----------------------------\n` +
+                              `*Total Paid:* ₹${parseFloat(completedOrderDetails.price).toLocaleString('en-IN')}\n` +
+                              `*Payment Mode:* ${(completedOrderDetails.payment_type || 'CASH').toUpperCase()}\n` +
+                              `*Status:* Confirmed & Delivered\n` +
+                              `=============================\n` +
+                              `Thank you for purchasing with KVR Motors!`;
+                            Linking.openURL(`https://api.whatsapp.com/send?phone=${formatPhone(completedOrderDetails.customer_phone)}&text=${encodeURIComponent(message)}`).catch(() => Alert.alert('Error', 'Unable to open WhatsApp.'));
+                          }}
+                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#25D366' }]}
+                        >
+                          <Share2 size={16} color="#ffffff" />
+                          <ThemedText style={styles.collectCashBtnText}>WhatsApp</ThemedText>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            setCompletedOrderDetails(null);
+                          }}
+                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#475569' }]}
+                        >
+                          <CheckCircle2 size={16} color="#ffffff" />
+                          <ThemedText style={styles.collectCashBtnText}>New Checkout</ThemedText>
+                        </Pressable>
+                      </View>
                     </View>
                   )}
                 </View>
@@ -1656,6 +1841,45 @@ export default function OwnerMelaCampaign() {
                     }}
                   >
                     <ThemedText style={styles.listItemLabel}>{item.battery_name}</ThemedText>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Payment Type Selector Modal */}
+        <Modal
+          visible={isPaymentTypeSelectorVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsPaymentTypeSelectorVisible(false)}
+        >
+          <Pressable style={styles.modalOverlayList} onPress={() => setIsPaymentTypeSelectorVisible(false)}>
+            <View style={styles.selectorModalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Payment Method</ThemedText>
+                <Pressable onPress={() => setIsPaymentTypeSelectorVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+              <FlatList
+                data={paymentTypeOptions}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[styles.selectListItem, checkoutPaymentType === item.value && { backgroundColor: 'rgba(4,167,0,0.06)' }]}
+                    onPress={() => {
+                      setCheckoutPaymentType(item.value);
+                      setIsPaymentTypeSelectorVisible(false);
+                    }}
+                  >
+                    <ThemedText style={[styles.listItemLabel, checkoutPaymentType === item.value && { color: '#04a700' }]}>
+                      {item.label}
+                    </ThemedText>
+                    {checkoutPaymentType === item.value && (
+                      <CheckCircle2 size={18} color="#04a700" />
+                    )}
                   </Pressable>
                 )}
               />
@@ -2467,6 +2691,22 @@ const styles = StyleSheet.create({
     color: '#64748b'
   },
   subTabActiveText: {
+    color: '#0f172a'
+  },
+  selectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44
+  },
+  selectorBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#0f172a'
   }
 });
