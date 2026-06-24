@@ -73,7 +73,9 @@ import {
   BarChart2,
   Settings,
   Upload,
-  Share2
+  Share2,
+  ListOrdered,
+  Eye
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -2401,6 +2403,7 @@ export default function OwnerDashboard() {
                 { id: "mela_dashboard", label: "Overview", icon: LayoutDashboard },
                 { id: "mela_inventory", label: "Stock", icon: Boxes },
                 { id: "mela_checkout", label: "Checkout", icon: CreditCard },
+                { id: "mela_orders", label: "Orders", icon: ListOrdered },
                 { id: "mela_reports", label: "Leaderboard", icon: BarChart2 },
                 { id: "mela_settings", label: "Settings", icon: Settings },
               ].map((tab) => {
@@ -3844,6 +3847,155 @@ export default function OwnerDashboard() {
                         Checkout Another Booking
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "mela_orders" && (
+            <div className="space-y-6 text-left">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">Mela Order History</h3>
+                    <p className="text-xs font-semibold text-slate-400 mt-0.5">All campaign bookings with payment details and uploaded proofs.</p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 uppercase">
+                    {melaBookingsList.length} Total Orders
+                  </span>
+                </div>
+
+                {melaBookingsList.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <ListOrdered className="mx-auto h-10 w-10 text-slate-250 mb-3" />
+                    <p className="text-xs font-bold text-slate-400">No mela bookings found yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-2">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase">
+                          <th className="py-3 px-3">Booking ID</th>
+                          <th className="py-3 px-3">Customer</th>
+                          <th className="py-3 px-3">Vehicle</th>
+                          <th className="py-3 px-3">Amount</th>
+                          <th className="py-3 px-3">Payment</th>
+                          <th className="py-3 px-3">Status</th>
+                          <th className="py-3 px-3">Date</th>
+                          <th className="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {melaBookingsList.map((b: any) => {
+                          const paymentLabels: Record<string, string> = {
+                            cash: "Cash",
+                            upi: "UPI",
+                            card: "Card",
+                            bajaj_finance: "Bajaj Finance"
+                          };
+                          const paymentLabel = paymentLabels[b.payment_type] || (b.payment_type ? b.payment_type.toUpperCase() : "Cash");
+                          const statusColors: Record<string, string> = {
+                            completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+                            unconfirmed: "bg-amber-50 text-amber-700 border-amber-100",
+                            cancelled: "bg-rose-50 text-rose-700 border-rose-100"
+                          };
+                          const statusBg = statusColors[b.status] || "bg-slate-50 text-slate-600 border-slate-100";
+                          const proofUrl = b.payment_proof;
+
+                          return (
+                            <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3.5 px-3 font-black text-[#04a700] font-mono tracking-wide">{b.booking_id}</td>
+                              <td className="py-3.5 px-3">
+                                <div className="font-bold text-slate-800">{b.customer_name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{b.customer_phone}</div>
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <div className="font-bold text-slate-700">{b.vehicle_model_name || b.model_name || "—"}</div>
+                                <div className="text-[10px] text-slate-400 capitalize">{b.color || b.vehicle_color || ""} / {b.battery_type || b.battery_name || ""}</div>
+                              </td>
+                              <td className="py-3.5 px-3 font-black text-slate-855 font-mono">₹{parseFloat(b.price).toLocaleString("en-IN")}</td>
+                              <td className="py-3.5 px-3">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                                  {paymentLabel}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${statusBg}`}>
+                                  {b.status_display || b.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-3 text-slate-500 font-semibold">
+                                {b.completed_at
+                                  ? new Date(b.completed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                  : new Date(b.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  {proofUrl && (
+                                    <a
+                                      href={proofUrl.startsWith("http") ? proofUrl : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api/v1", "")}${proofUrl}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md"
+                                      title="Preview Payment Proof"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      Preview
+                                    </a>
+                                  )}
+                                  
+                                  {b.status === "completed" && (
+                                    <>
+                                      <a
+                                        href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(b.customer_phone)}&text=${encodeURIComponent(
+                                          `*KVR MOTORS - MELA ORDER RECEIPT*\n` +
+                                          `=============================\n` +
+                                          `*Booking ID:* ${b.booking_id}\n` +
+                                          `*Customer:* ${b.customer_name}\n` +
+                                          `*Phone:* ${b.customer_phone}\n` +
+                                          `-----------------------------\n` +
+                                          `*Vehicle:* ${b.vehicle_model_name || b.model_name || ""}\n` +
+                                          `*Color:* ${b.color || b.vehicle_color || ""}\n` +
+                                          `*Battery:* ${b.battery_type || b.battery_name || ""}\n` +
+                                          `-----------------------------\n` +
+                                          `*Total Paid:* ₹${parseFloat(b.price).toLocaleString("en-IN")}\n` +
+                                          `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
+                                          `*Status:* Confirmed & Delivered\n` +
+                                          `=============================\n` +
+                                          `Thank you for purchasing with KVR Motors!`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 hover:underline transition-colors bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-md"
+                                        title="Share Receipt on WhatsApp"
+                                      >
+                                        <Share2 className="h-3 w-3" />
+                                        WhatsApp
+                                      </a>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handlePrintReceipt(b)}
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-slate-800 hover:underline transition-colors bg-slate-50 hover:bg-slate-100 px-2 py-1 rounded-md border border-slate-100"
+                                        title="Print Receipt"
+                                      >
+                                        <Printer className="h-3 w-3" />
+                                        Print
+                                      </button>
+                                    </>
+                                  )}
+                                  
+                                  {!proofUrl && b.status !== "completed" && (
+                                    <span className="text-[10px] text-slate-305 font-semibold">—</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>

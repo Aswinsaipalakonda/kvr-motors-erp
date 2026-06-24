@@ -62,6 +62,9 @@ export interface MelaBooking {
   vehicle_color?: string;
   battery_name?: string;
   executive_name?: string;
+  payment_type?: string;
+  payment_proof?: string | null;
+  model_name?: string;
 }
 
 export interface MelaReports {
@@ -179,7 +182,10 @@ export const updateMelaBooking = async (id: number, data: Partial<MelaBooking>) 
 };
 
 export const completeMelaBooking = async (id: number, data?: FormData | { payment_type: string }) => {
-  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`, data);
+  const config = data instanceof FormData
+    ? { headers: { "Content-Type": "multipart/form-data" } }
+    : undefined;
+  const response = await api.post<MelaBooking>(`/mela-bookings/${id}/complete/`, data, config);
   return response.data;
 };
 

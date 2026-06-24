@@ -24,6 +24,7 @@ export default function MelaSubSidebar({ role, activeTab, setActiveTab }: MelaSu
     { id: "mela_dashboard", label: "Mela Overview", icon: LayoutDashboard },
     { id: "mela_inventory", label: "Campaign Stock", icon: Boxes },
     { id: "mela_checkout", label: "Cash Checkout", icon: CreditCard },
+    { id: "mela_orders", label: "Order History", icon: ListOrdered },
     { id: "mela_reports", label: "Sales & Leaderboard", icon: BarChart2 },
     { id: "mela_settings", label: "About & Settings", icon: Settings },
   ];
