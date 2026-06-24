@@ -341,7 +341,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       );
     }
 
-    if (!cameraPermission?.granted) {
+    const hasCamAccess = cameraPermission?.granted;
+    if (!hasCamAccess) {
       return (
         <View style={styles.cameraPlaceholder}>
           <Camera size={44} color="#64748b" style={{ marginBottom: 12 }} />
@@ -349,7 +350,15 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
           <ThemedText style={styles.permissionDesc}>
             Camera permission is required to capture your workplace photo.
           </ThemedText>
-          <Pressable onPress={requestCameraPermission} style={styles.grantBtn}>
+          <Pressable 
+            onPress={async () => {
+              const res = await requestCameraPermission();
+              if (res.granted) {
+                setActiveCamera(true);
+              }
+            }} 
+            style={styles.grantBtn}
+          >
             <ThemedText style={styles.grantBtnText}>Grant Camera Access</ThemedText>
           </Pressable>
         </View>
@@ -360,6 +369,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       <View style={styles.cameraContainer}>
         {activeCamera && (
           <CameraView
+            key={`camera-active-${isActive}`}
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
             facing="front"
