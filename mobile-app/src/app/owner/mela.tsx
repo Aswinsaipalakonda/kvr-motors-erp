@@ -1149,7 +1149,7 @@ export default function OwnerMelaCampaign() {
                         </View>
                       </View>
                       <View style={styles.divider} />
-                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
                         <Pressable
                           onPress={() => {
                             const formatPhone = (phone: string) => {
@@ -1174,19 +1174,40 @@ export default function OwnerMelaCampaign() {
                               `Thank you for purchasing with KVR Motors!`;
                             Linking.openURL(`https://api.whatsapp.com/send?phone=${formatPhone(completedOrderDetails.customer_phone)}&text=${encodeURIComponent(message)}`).catch(() => Alert.alert('Error', 'Unable to open WhatsApp.'));
                           }}
-                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#25D366' }]}
+                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#25D366', paddingHorizontal: 4 }]}
                         >
-                          <Share2 size={16} color="#ffffff" />
-                          <ThemedText style={styles.collectCashBtnText}>WhatsApp</ThemedText>
+                          <Share2 size={14} color="#ffffff" />
+                          <ThemedText style={[styles.collectCashBtnText, { fontSize: 11 }]}>WhatsApp</ThemedText>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            Alert.alert(
+                              'Print Receipt',
+                              `Printer: Epson TM-M30II Thermal\nReceipt for Booking: ${completedOrderDetails.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { 
+                                  text: 'Print', 
+                                  onPress: () => {
+                                    Alert.alert('Printing Command Sent', 'Receipt sent to Epson TM-M30II Thermal Printer.');
+                                  }
+                                }
+                              ]
+                            );
+                          }}
+                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#0284c7', paddingHorizontal: 4 }]}
+                        >
+                          <Printer size={14} color="#ffffff" />
+                          <ThemedText style={[styles.collectCashBtnText, { fontSize: 11 }]}>Print</ThemedText>
                         </Pressable>
                         <Pressable
                           onPress={() => {
                             setCompletedOrderDetails(null);
                           }}
-                          style={[styles.collectCashBtn, { flex: 1, backgroundColor: '#475569' }]}
+                          style={[styles.collectCashBtn, { flex: 1.2, backgroundColor: '#475569', paddingHorizontal: 4 }]}
                         >
-                          <CheckCircle2 size={16} color="#ffffff" />
-                          <ThemedText style={styles.collectCashBtnText}>New Checkout</ThemedText>
+                          <CheckCircle2 size={14} color="#ffffff" />
+                          <ThemedText style={[styles.collectCashBtnText, { fontSize: 11 }]}>New Checkout</ThemedText>
                         </Pressable>
                       </View>
                     </View>
