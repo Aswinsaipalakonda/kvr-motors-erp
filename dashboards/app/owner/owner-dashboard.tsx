@@ -1054,7 +1054,7 @@ export default function OwnerDashboard() {
 
   const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.username.trim() || !newUser.fullName.trim() || !newUser.email.trim() || !newUser.password) {
+    if (!newUser.username.trim() || !newUser.fullName.trim() || !newUser.email.trim()) {
       showToast("Please fill all required fields.", "error");
       return;
     }
@@ -1076,7 +1076,7 @@ export default function OwnerDashboard() {
         full_name: newUser.fullName.trim(),
         email: newUser.email.trim(),
         phone_number: newUser.phoneNumber.trim() || null,
-        password: newUser.password,
+        password: "password123",
         role: newUser.role,
         branch: newUser.branch ? newUser.branch.trim() : null,
         showroom: newUser.showroom ? newUser.showroom.trim() : null,
@@ -1088,7 +1088,7 @@ export default function OwnerDashboard() {
         email: "",
         phoneNumber: "",
         password: "",
-        role: "sales",
+        role: "sales_executive",
         branch: "",
         showroom: ""
       });
@@ -4993,19 +4993,6 @@ export default function OwnerDashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Password</label>
-              <input
-                type="password"
-                value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                placeholder="••••••••"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-                required
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
               <input
                 type="text"
@@ -5016,6 +5003,8 @@ export default function OwnerDashboard() {
                 required
               />
             </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
               <input
@@ -5029,17 +5018,17 @@ export default function OwnerDashboard() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
-            <input
-              type="email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              placeholder="e.g. nikhil@kvrmotors.com"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              required
-            />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
+              <input
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="e.g. nikhil@kvrmotors.com"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
@@ -5053,6 +5042,7 @@ export default function OwnerDashboard() {
               <option value="supervisor">Supervisor</option>
               <option value="sales_executive">Sales Executive</option>
               <option value="telecaller">Telecaller</option>
+              <option value="staff">Staff</option>
             </select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

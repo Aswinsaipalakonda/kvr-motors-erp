@@ -90,7 +90,9 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       // 1. Request Camera Permission
       const camRes = await requestCameraPermission();
       if (camRes.granted) {
-        setActiveCamera(isActive);
+        setActiveCamera(true);
+      } else {
+        setActiveCamera(false);
       }
 
       // 2. Request Location Permission
@@ -112,29 +114,46 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       setActiveCamera(false);
     } else if (cameraPermission?.granted && !isCheckedInToday) {
       setActiveCamera(true);
+    } else if (isActive && !cameraPermission?.granted) {
+      // Actively request if active but not granted yet
+      requestCameraPermission().then(res => {
+        if (res.granted) {
+          setActiveCamera(true);
+        }
+      });
     }
   }, [isActive, cameraPermission?.granted, isCheckedInToday]);
 
-  // This is now only called when user explicitly taps "Grant Location Access"
+  // This is now only called when user explicitly taps "Grant Location Access" or recaptures location
   const checkAndRequestLocationPermission = async () => {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    setLocationStatus(status);
-    if (status === Location.PermissionStatus.GRANTED) {
-      resolveCurrentLocation();
-    } else {
-      // Only prompt if not already granted
-      await requestLocationPermission();
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationStatus(status);
+      if (status === Location.PermissionStatus.GRANTED) {
+        resolveCurrentLocation();
+        return true;
+      } else {
+        const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
+        setLocationStatus(reqStatus);
+        if (reqStatus === Location.PermissionStatus.GRANTED) {
+          resolveCurrentLocation();
+          return true;
+        } else {
+          Alert.alert(
+            'Location Required',
+            'Location permission is permanently denied or restricted. Please go to your device Settings to enable location services for this app.'
+          );
+          return false;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching location permission:', err);
+      return false;
     }
   };
 
   const requestLocationPermission = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    setLocationStatus(status);
-    if (status === Location.PermissionStatus.GRANTED) {
-      resolveCurrentLocation();
-    } else {
-      Alert.alert('Permission Denied', 'Location access is required to verify your workplace check-in.');
-    }
+    return checkAndRequestLocationPermission();
   };
 
   const resolveCurrentLocation = async () => {
@@ -187,12 +206,19 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
 
     // 2. Location permission check and prompt if missing
     let locStatus = locationStatus;
+    const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
+    locStatus = currentStatus;
+    setLocationStatus(currentStatus);
+    
     if (locStatus !== Location.PermissionStatus.GRANTED) {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      locStatus = status;
-      setLocationStatus(status);
-      if (status !== Location.PermissionStatus.GRANTED) {
-        Alert.alert('Permission Denied', 'Location access is required to verify your workplace check-in.');
+      const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
+      locStatus = reqStatus;
+      setLocationStatus(reqStatus);
+      if (reqStatus !== Location.PermissionStatus.GRANTED) {
+        Alert.alert(
+          'Permission Required',
+          'Location access was denied. Please go to settings and enable location services for this app to mark attendance.'
+        );
         return;
       }
     }
