@@ -1002,7 +1002,7 @@ export default function OwnerMelaCampaign() {
                   <View style={styles.searchBarRow}>
                     <TextInput
                       style={styles.searchInputField}
-                      placeholder="e.g. MELA-3147"
+                      placeholder="e.g. MELA-XXXX"
                       placeholderTextColor="#94a3b8"
                       value={melaSearchQuery}
                       onChangeText={setMelaSearchQuery}

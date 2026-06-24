@@ -3184,7 +3184,7 @@ export default function OwnerDashboard() {
                             <input
                               type="text"
                               placeholder="e.g. Okinawa Praise, AMO X1"
-                              value={melaInvModel}
+                              value={melaInvModel || ""}
                               onChange={(e) => setMelaInvModel(e.target.value)}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                             />
@@ -3194,7 +3194,7 @@ export default function OwnerDashboard() {
                             <input
                               type="text"
                               placeholder="e.g. Red, Black"
-                              value={melaInvColor}
+                              value={melaInvColor || ""}
                               onChange={(e) => setMelaInvColor(e.target.value)}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                             />
@@ -3205,7 +3205,7 @@ export default function OwnerDashboard() {
                               <input
                                 type="number"
                                 placeholder="Price"
-                                value={melaInvPrice}
+                                value={melaInvPrice || ""}
                                 onChange={(e) => setMelaInvPrice(e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                               />
@@ -3215,7 +3215,7 @@ export default function OwnerDashboard() {
                               <input
                                 type="number"
                                 placeholder="Qty"
-                                value={melaInvQty}
+                                value={melaInvQty || ""}
                                 onChange={(e) => setMelaInvQty(e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                               />
