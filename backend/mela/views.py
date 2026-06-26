@@ -44,6 +44,57 @@ class MelaVehicleStockViewSet(viewsets.ModelViewSet):
     queryset = MelaVehicleStock.objects.all().order_by('vehicle_model__model_name')
     filterset_fields = ['vehicle_model', 'color', 'is_active']
 
+    def create(self, request, *args, **kwargs):
+        color_str = request.data.get('color', '').strip()
+        if not color_str:
+            return Response({"color": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Split color by comma
+        colors = [c.strip() for c in color_str.split(',') if c.strip()]
+        if not colors:
+            return Response({"color": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            
+        model_name = request.data.get('model_name', '').strip()
+        
+        # Automatically lookup vehicle_model by name if not provided
+        vehicle_model_id = request.data.get('vehicle_model')
+        if model_name and not vehicle_model_id:
+            from vehicles.models import VehicleModel
+            vehicle_model = VehicleModel.objects.filter(model_name__iexact=model_name).first()
+            if vehicle_model:
+                vehicle_model_id = vehicle_model.id
+
+        created_instances = []
+        all_errors = []
+
+        try:
+            with transaction.atomic():
+                for color in colors:
+                    color_data = request.data.copy()
+                    color_data['color'] = color
+                    if vehicle_model_id:
+                        color_data['vehicle_model'] = vehicle_model_id
+                        
+                    serializer = self.get_serializer(data=color_data)
+                    if serializer.is_valid():
+                        instance = serializer.save()
+                        created_instances.append(instance)
+                    else:
+                        # Collect and structure the error message
+                        for field, errs in serializer.errors.items():
+                            all_errors.append(f"{color}: {field} - {', '.join(errs)}")
+                        raise ValueError("Validation failed")
+        except ValueError:
+            # transaction rollback is automatic
+            return Response({"error": " | ".join(all_errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Clear Mela cache
+        clear_mela_cache(["mela"])
+
+        # Return serialized first created instance to preserve single-object signature
+        serializer = self.get_serializer(created_instances[0])
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         super().perform_create(serializer)
         clear_mela_cache(["mela"])

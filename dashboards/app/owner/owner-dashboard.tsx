@@ -674,12 +674,14 @@ export default function OwnerDashboard() {
   const [editVehiclePrice, setEditVehiclePrice] = useState("");
   const [editVehicleInitialQty, setEditVehicleInitialQty] = useState("");
   const [editVehicleRemainingQty, setEditVehicleRemainingQty] = useState("");
+  const [editVehicleRestockDate, setEditVehicleRestockDate] = useState("");
 
   const [editingMelaBatteryId, setEditingMelaBatteryId] = useState<number | null>(null);
   const [editBatteryName, setEditBatteryName] = useState("");
   const [editBatteryPrice, setEditBatteryPrice] = useState("");
   const [editBatteryInitialQty, setEditBatteryInitialQty] = useState("");
   const [editBatteryRemainingQty, setEditBatteryRemainingQty] = useState("");
+  const [editBatteryRestockDate, setEditBatteryRestockDate] = useState("");
 
   const loadMelaData = async () => {
     try {
@@ -763,7 +765,8 @@ export default function OwnerDashboard() {
         color: editVehicleColor.trim(),
         price: parseFloat(editVehiclePrice),
         initial_quantity: parseInt(editVehicleInitialQty),
-        remaining_quantity: parseInt(editVehicleRemainingQty)
+        remaining_quantity: parseInt(editVehicleRemainingQty),
+        restock_date: editVehicleRestockDate || null
       });
       showToast("Campaign vehicle details updated.");
       setEditingMelaVehicleId(null);
@@ -783,7 +786,8 @@ export default function OwnerDashboard() {
         battery_name: editBatteryName.trim(),
         price: parseFloat(editBatteryPrice),
         initial_quantity: parseInt(editBatteryInitialQty),
-        remaining_quantity: parseInt(editBatteryRemainingQty)
+        remaining_quantity: parseInt(editBatteryRemainingQty),
+        restock_date: editBatteryRestockDate || null
       });
       showToast("Campaign battery details updated.");
       setEditingMelaBatteryId(null);
@@ -3096,20 +3100,16 @@ export default function OwnerDashboard() {
                               )}
                             </td>
                             <td className="py-3 px-5 font-mono">
-                              <input
-                                type="date"
-                                value={v.restock_date || ""}
-                                onChange={async (e) => {
-                                  try {
-                                    await api.patch(`/mela-vehicles/${v.id}/`, { restock_date: e.target.value || null });
-                                    showToast("Restock date saved successfully.");
-                                    loadMelaData();
-                                  } catch {
-                                    showToast("Failed to save restock date.", "error");
-                                  }
-                                }}
-                                className="bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
-                              />
+                              {isEditing ? (
+                                <input
+                                  type="date"
+                                  value={editVehicleRestockDate}
+                                  onChange={(e) => setEditVehicleRestockDate(e.target.value)}
+                                  className="bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
+                                />
+                              ) : (
+                                <span>{v.restock_date || "-"}</span>
+                              )}
                             </td>
                             <td className="py-3 px-5 whitespace-nowrap space-x-2">
                               {isEditing ? (
@@ -3140,6 +3140,7 @@ export default function OwnerDashboard() {
                                       setEditVehiclePrice(String(v.price || ""));
                                       setEditVehicleInitialQty(String(v.initial_quantity || ""));
                                       setEditVehicleRemainingQty(String(v.remaining_quantity || ""));
+                                      setEditVehicleRestockDate(v.restock_date || "");
                                     }}
                                     className="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
                                   >
@@ -3234,20 +3235,16 @@ export default function OwnerDashboard() {
                               )}
                             </td>
                             <td className="py-3 px-5 font-mono">
-                              <input
-                                type="date"
-                                value={b.restock_date || ""}
-                                onChange={async (e) => {
-                                  try {
-                                    await api.patch(`/mela-batteries/${b.id}/`, { restock_date: e.target.value || null });
-                                    showToast("Restock date saved successfully.");
-                                    loadMelaData();
-                                  } catch {
-                                    showToast("Failed to save restock date.", "error");
-                                  }
-                                }}
-                                className="bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
-                              />
+                              {isEditing ? (
+                                <input
+                                  type="date"
+                                  value={editBatteryRestockDate}
+                                  onChange={(e) => setEditBatteryRestockDate(e.target.value)}
+                                  className="bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
+                                />
+                              ) : (
+                                <span>{b.restock_date || "-"}</span>
+                              )}
                             </td>
                             <td className="py-3 px-5 whitespace-nowrap space-x-2">
                               {isEditing ? (
@@ -3277,6 +3274,7 @@ export default function OwnerDashboard() {
                                       setEditBatteryPrice(String(b.price || ""));
                                       setEditBatteryInitialQty(String(b.initial_quantity || ""));
                                       setEditBatteryRemainingQty(String(b.remaining_quantity || ""));
+                                      setEditBatteryRestockDate(b.restock_date || "");
                                     }}
                                     className="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
                                   >

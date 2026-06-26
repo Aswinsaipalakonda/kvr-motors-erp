@@ -1,8 +1,59 @@
 import os
+import base64
 from django.conf import settings
 from django.core.files.base import ContentFile
 from io import BytesIO
 from xhtml2pdf import pisa
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from xhtml2pdf.context import pisaContext
+
+# Monkeypatch loadFont to load standard system fonts directly on Windows/Linux,
+# avoiding PermissionError on Windows.
+original_loadFont = pisaContext.loadFont
+
+def patched_loadFont(self, names, src, encoding="WinAnsiEncoding", bold=0, italic=0):
+    if names and ("rupeefont" in str(names).lower() or "customfont" in str(names).lower() or "arial" in str(names).lower() or "helvetica" in str(names).lower()):
+        # Try to resolve a system font
+        font_path = None
+        for p in ["C:\\Windows\\Fonts\\arial.ttf", "C:\\Windows\\Fonts\\calibri.ttf", 
+                  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 
+                  "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"]:
+            if os.path.exists(p):
+                font_path = p
+                break
+                
+        if font_path:
+            if isinstance(names, list):
+                fontAlias = names
+            else:
+                fontAlias = [x.lower().strip() for x in names.split(",") if x]
+            fontName = fontAlias[0]
+            fullFontName = "%s_%d%d" % (fontName, bold, italic)
+            
+            if fullFontName not in self.fontList:
+                try:
+                    ttf_font = TTFont(fullFontName, font_path)
+                    pdfmetrics.registerFont(ttf_font)
+                    
+                    from reportlab.lib.fonts import addMapping
+                    for b in (0, 1):
+                        for it in (0, 1):
+                            if ("%s_%d%d" % (fontName, b, it)) not in self.fontList:
+                                addMapping(fontName, b, it, fullFontName)
+                                
+                    self.registerFont(fontName, [*fontAlias, fullFontName])
+                    return
+                except Exception as e:
+                    pass
+                    
+    return original_loadFont(self, names, src, encoding, bold, italic)
+
+# Hook it globally
+import xhtml2pdf.context
+import xhtml2pdf.document
+xhtml2pdf.context.pisaContext.loadFont = patched_loadFont
+xhtml2pdf.document.pisaContext.loadFont = patched_loadFont
 
 def number_to_words(number):
     # Simple fallback implementation of number to words for major values
@@ -32,6 +83,15 @@ def number_to_words(number):
     except:
         return f"{number} Rupees Only"
 
+def get_image_base64(path):
+    try:
+        with open(path, "rb") as image_file:
+            encoded = base64.b64encode(image_file.read()).decode('utf-8')
+            return f"data:image/png;base64,{encoded}"
+    except Exception as e:
+        print(f"Error encoding image {path}: {e}")
+        return ""
+
 def generate_invoice_pdf(booking):
     total = float(booking.price)
     taxable = round(total / 1.05, 2)
@@ -58,18 +118,29 @@ def generate_invoice_pdf(booking):
     }
     payment_mode_text = pm_map.get(booking.payment_type, booking.payment_type.upper() if booking.payment_type else 'Cash')
 
+    # Base64 encode logo and signature
+    icon_path = os.path.join(settings.BASE_DIR.parent, 'dashboards', 'app', 'icon.png')
+    signature_path = os.path.join(settings.BASE_DIR.parent, 'dashboards', 'app', 'signature.png')
+    
+    logo_base64 = get_image_base64(icon_path)
+    signature_base64 = get_image_base64(signature_path)
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <style>
             @page {{
-                size: a4 portrait;
-                margin: 1.5cm;
+                size: a4 landscape;
+                margin: 0.8cm;
             }}
-            body {{
-                font-family: Helvetica, Arial, sans-serif;
+            @font-face {{
+                font-family: RupeeFont;
+                src: url('arial.ttf');
+            }}
+            body, p, div, span, td, th, h1, h2, h3, h4, h5, h6 {{
+                font-family: RupeeFont, sans-serif !important;
                 font-size: 8px;
                 line-height: 1.2;
                 color: #000;
@@ -196,14 +267,23 @@ def generate_invoice_pdf(booking):
         <table class="header-table">
             <tr>
                 <td class="logo-section">
-                    <div class="logo-title">KVR MOTORS</div>
-                    <div class="logo-subtitle">
-                        GROUND FLOOR, 54-1-13, ISUKATHOTA, MADDILAPALEM, KRANTHINAGAR, VISHAKAPATNAM, ANDHRAPRADESH,<br/>
-                        Phone no.: 9391099576<br/>
-                        Email: kvr.kinetic@gmail.com<br/>
-                        GSTIN: 37GEWPK2874E1ZU<br/>
-                        State: 37-Andhra Pradesh
-                    </div>
+                    <table style="width: 100%; border: none; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 15%; border: none; padding: 0; vertical-align: middle;">
+                                <img src="{logo_base64}" style="width: 45px; height: 45px;" />
+                            </td>
+                            <td style="width: 85%; border: none; padding: 0 0 0 8px; vertical-align: top;">
+                                <div class="logo-title">KVR MOTORS</div>
+                                <div class="logo-subtitle">
+                                    GROUND FLOOR, 54-1-13, ISUKATHOTA, MADDILAPALEM, KRANTHINAGAR, VISHAKAPATNAM, ANDHRAPRADESH,<br/>
+                                    Phone no.: 9391099576<br/>
+                                    Email: kvr.kinetic@gmail.com<br/>
+                                    GSTIN: 37GEWPK2874E1ZU<br/>
+                                    State: 37-Andhra Pradesh
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
                 <td class="meta-section">
                     <table class="meta-table">
@@ -240,14 +320,14 @@ def generate_invoice_pdf(booking):
             <thead>
                 <tr>
                     <th style="width: 5%;">#</th>
-                    <th style="width: 45%;">Item name</th>
+                    <th style="width: 35%;">Item name</th>
                     <th style="width: 10%;">HSN/ SAC</th>
                     <th style="width: 10%;">Colour</th>
                     <th style="width: 5%;">Qty</th>
                     <th style="width: 5%;">Unit</th>
                     <th style="width: 10%;">Price/ Unit</th>
-                    <th style="width: 10%;">GST</th>
-                    <th style="width: 10%;">Amount</th>
+                    <th style="width: 12%;">GST</th>
+                    <th style="width: 13%;">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -357,11 +437,11 @@ def generate_invoice_pdf(booking):
                     Thanks You!<br/>
                     Please Refer to Terms and Conditions in Page 2
                 </td>
-                <td class="text-center">
+                <td class="text-center" style="vertical-align: top;">
                     <span class="bold">For : KVR MOTORS</span>
-                    <br/><br/><br/>
-                    <span class="bold" style="text-decoration: underline; font-style: italic; font-size: 9px;">K.V. Raghava Reddy</span>
                     <br/><br/>
+                    <img src="{signature_base64}" style="width: 80px; height: 32px; display: block; margin: 0 auto;" />
+                    <br/>
                     <span class="bold">Proprietor</span>
                 </td>
             </tr>
@@ -370,9 +450,24 @@ def generate_invoice_pdf(booking):
     </html>
     """
 
+    def link_callback(uri, rel):
+        if uri == 'arial.ttf':
+            # Resolve system font path
+            for p in ["C:\\Windows\\Fonts\\arial.ttf", "C:\\Windows\\Fonts\\calibri.ttf", 
+                      "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 
+                      "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"]:
+                if os.path.exists(p):
+                    return p
+        return uri
+
     # Generate PDF using BytesIO
     pdf_buffer = BytesIO()
-    pisa_status = pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=pdf_buffer)
+    pisa_status = pisa.CreatePDF(
+        html_content, 
+        dest=pdf_buffer,
+        encoding="utf-8",
+        link_callback=link_callback
+    )
     
     if pisa_status.err:
         raise Exception("Failed to generate PDF invoice via xhtml2pdf")
