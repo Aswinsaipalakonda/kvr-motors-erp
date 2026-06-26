@@ -228,6 +228,7 @@ export default function SalesMelaCampaign() {
       return modelName.includes(query) || brandName.includes(query) || color.includes(query);
     }
 
+    return true;
   });
 
   // Get active brands represented in current Mela vehicles stock list
