@@ -159,7 +159,15 @@ class MelaBookingSerializer(serializers.ModelSerializer):
                     else:
                         raise serializers.ValidationError({"status": "Cannot restore booking. Battery stock is sold out."})
 
-            return super().update(instance, validated_data)
+            booking = super().update(instance, validated_data)
+            if old_status != 'delivered' and new_status == 'delivered':
+                from .invoice_generator import generate_invoice_pdf
+                try:
+                    generate_invoice_pdf(booking)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Failed to generate invoice: {e}", exc_info=True)
+            return booking
 
 
 class MelaSettingsSerializer(serializers.ModelSerializer):

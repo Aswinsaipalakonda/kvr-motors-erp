@@ -33,7 +33,8 @@ import {
   getMelaReports,
   getMelaSettingsList,
   createMelaSettings,
-  updateMelaSettings
+  updateMelaSettings,
+  updateMelaBooking
 } from "../services/mela";
 import {
   TrendingUp,
@@ -75,7 +76,9 @@ import {
   Upload,
   Share2,
   ListOrdered,
-  Eye
+  Eye,
+  FileText,
+  PenLine
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -201,6 +204,13 @@ export default function OwnerDashboard() {
   const [completedOrderDetails, setCompletedOrderDetails] = useState<any>(null);
   const [isAddMelaInventoryOpen, setIsAddMelaInventoryOpen] = useState(false);
   const [editingMelaInventoryId, setEditingMelaInventoryId] = useState<number | null>(null);
+
+  // Edit Customer States
+  const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
+  const [editCustomerBookingId, setEditCustomerBookingId] = useState<number | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState("");
+  const [editCustomerPhone, setEditCustomerPhone] = useState("");
+  const [editCustomerLoading, setEditCustomerLoading] = useState(false);
 
   // Mela Settings States
   const [melaSettingsList, setMelaSettingsList] = useState<any[]>([]);
@@ -1209,6 +1219,39 @@ export default function OwnerDashboard() {
       showToast(String(msg), "error");
     } finally {
       setMelaCheckoutLoading(false);
+    }
+  };
+
+  const getInvoicePdfUrl = (path: string | null | undefined) => {
+    if (!path) return "";
+    return path.startsWith("http")
+      ? path
+      : `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api/v1", "")}${path}`;
+  };
+
+  const handleOpenEditCustomer = (booking: any) => {
+    setEditCustomerBookingId(booking.id);
+    setEditCustomerName(booking.customer_name);
+    setEditCustomerPhone(booking.customer_phone);
+    setIsEditCustomerOpen(true);
+  };
+
+  const handleEditCustomerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCustomerBookingId) return;
+    try {
+      setEditCustomerLoading(true);
+      await updateMelaBooking(editCustomerBookingId, {
+        customer_name: editCustomerName,
+        customer_phone: editCustomerPhone,
+      });
+      showToast("Customer details updated successfully!");
+      setIsEditCustomerOpen(false);
+      loadMelaData();
+    } catch (err: any) {
+      showToast(err.response?.data?.error || "Failed to update customer details", "error");
+    } finally {
+      setEditCustomerLoading(false);
     }
   };
 
@@ -2821,7 +2864,8 @@ export default function OwnerDashboard() {
                                       `-----------------------------\n` +
                                       `*Total Paid:* ₹${parseFloat(b.price).toLocaleString("en-IN")}\n` +
                                       `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
-                                      `*Status:* Confirmed & Delivered\n` +
+                                      `*Status:* Confirmed\n` +
+                                      (b.status === "delivered" && b.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(b.invoice_pdf)}\n` : "") +
                                       `=============================\n` +
                                       `Thank you for purchasing with KVR Motors!`;
                                     window.open(`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(b.customer_phone)}&text=${encodeURIComponent(msg)}`, "_blank");
@@ -3816,11 +3860,11 @@ export default function OwnerDashboard() {
                             </div>
                           )}
 
-                          {melaFoundBooking.status === "completed" && (
+                          {(melaFoundBooking.status === "completed" || melaFoundBooking.status === "delivered") && (
                             <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
                               <div className="flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-xs bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
                                 <CheckCircle2 className="h-4.5 w-4.5" />
-                                <span>Order completed, fully paid, and delivered on {new Date(melaFoundBooking.completed_at).toLocaleString()}.</span>
+                                <span>Order is {melaFoundBooking.status} and fully paid on {new Date(melaFoundBooking.completed_at).toLocaleString()}.</span>
                               </div>
 
                               <div className="grid grid-cols-2 gap-3 pt-2">
@@ -3838,7 +3882,8 @@ export default function OwnerDashboard() {
                                     `-----------------------------\n` +
                                     `*Total Paid:* ₹${parseFloat(melaFoundBooking.price).toLocaleString("en-IN")}\n` +
                                     `*Payment Mode:* ${(melaFoundBooking.payment_type || "CASH").toUpperCase()}\n` +
-                                    `*Status:* Confirmed & Delivered\n` +
+                                    `*Status:* Confirmed\n` +
+                                    (melaFoundBooking.status === "delivered" && melaFoundBooking.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(melaFoundBooking.invoice_pdf)}\n` : "") +
                                     `=============================\n` +
                                     `Thank you for purchasing with KVR Motors!`
                                   )}`}
@@ -3943,7 +3988,8 @@ export default function OwnerDashboard() {
                             `-----------------------------\n` +
                             `*Total Paid:* ₹${parseFloat(completedOrderDetails.price).toLocaleString("en-IN")}\n` +
                             `*Payment Mode:* ${(completedOrderDetails.payment_type || "CASH").toUpperCase()}\n` +
-                            `*Status:* Confirmed & Delivered\n` +
+                            `*Status:* Confirmed\n` +
+                            (completedOrderDetails.status === "delivered" && completedOrderDetails.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(completedOrderDetails.invoice_pdf)}\n` : "") +
                             `=============================\n` +
                             `Thank you for purchasing with KVR Motors!`
                           )}`}
@@ -4027,6 +4073,7 @@ export default function OwnerDashboard() {
                           const paymentLabel = paymentLabels[b.payment_type] || (b.payment_type ? b.payment_type.toUpperCase() : "Cash");
                           const statusColors: Record<string, string> = {
                             completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+                            delivered: "bg-indigo-50 text-indigo-700 border-indigo-100",
                             unconfirmed: "bg-amber-50 text-amber-700 border-amber-100",
                             cancelled: "bg-rose-50 text-rose-700 border-rose-100"
                           };
@@ -4037,8 +4084,19 @@ export default function OwnerDashboard() {
                             <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                               <td className="py-3.5 px-3 font-black text-[#04a700] font-mono tracking-wide">{b.booking_id}</td>
                               <td className="py-3.5 px-3">
-                                <div className="font-bold text-slate-800">{b.customer_name}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{b.customer_phone}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <div>
+                                    <div className="font-bold text-slate-800">{b.customer_name}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">{b.customer_phone}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleOpenEditCustomer(b)}
+                                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                                    title="Edit Customer"
+                                  >
+                                    <PenLine className="h-3 w-3" />
+                                  </button>
+                                </div>
                               </td>
                               <td className="py-3.5 px-3">
                                 <div className="font-bold text-slate-700">{b.vehicle_model_name || b.model_name || "—"}</div>
@@ -4051,9 +4109,26 @@ export default function OwnerDashboard() {
                                 </span>
                               </td>
                               <td className="py-3.5 px-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${statusBg}`}>
-                                  {b.status_display || b.status}
-                                </span>
+                                <select
+                                  value={b.status}
+                                  onChange={async (e) => {
+                                    const nextStatus = e.target.value as any;
+                                    if (nextStatus === b.status) return;
+                                    try {
+                                      await updateMelaBooking(b.id, { status: nextStatus });
+                                      showToast(`Booking status updated to ${nextStatus}!`);
+                                      loadMelaData();
+                                    } catch (err: any) {
+                                      showToast(err.response?.data?.error || "Failed to update status", "error");
+                                    }
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border cursor-pointer bg-white outline-none ${statusBg}`}
+                                >
+                                  <option value="unconfirmed">Unconfirmed</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="delivered">Delivered</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
                               </td>
                               <td className="py-3.5 px-3 text-slate-500 font-semibold">
                                 {b.completed_at
@@ -4075,7 +4150,7 @@ export default function OwnerDashboard() {
                                     </a>
                                   )}
                                   
-                                  {b.status === "completed" && (
+                                  {(b.status === "completed" || b.status === "delivered") && (
                                     <>
                                       <a
                                         href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(b.customer_phone)}&text=${encodeURIComponent(
@@ -4091,7 +4166,8 @@ export default function OwnerDashboard() {
                                           `-----------------------------\n` +
                                           `*Total Paid:* ₹${parseFloat(b.price).toLocaleString("en-IN")}\n` +
                                           `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
-                                          `*Status:* Confirmed & Delivered\n` +
+                                          `*Status:* Confirmed\n` +
+                                          (b.status === "delivered" && b.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(b.invoice_pdf)}\n` : "") +
                                           `=============================\n` +
                                           `Thank you for purchasing with KVR Motors!`
                                         )}`}
@@ -4113,11 +4189,24 @@ export default function OwnerDashboard() {
                                         <Printer className="h-3 w-3" />
                                         Print
                                       </button>
+
+                                      {b.status === "delivered" && b.invoice_pdf && (
+                                        <a
+                                          href={getInvoicePdfUrl(b.invoice_pdf)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-md"
+                                          title="View Tax Invoice"
+                                        >
+                                          <FileText className="h-3 w-3" />
+                                          Invoice
+                                        </a>
+                                      )}
                                     </>
                                   )}
                                   
-                                  {!proofUrl && b.status !== "completed" && (
-                                    <span className="text-[10px] text-slate-305 font-semibold">—</span>
+                                  {!proofUrl && b.status !== "completed" && b.status !== "delivered" && (
+                                    <span className="text-[10px] text-slate-300 font-semibold">—</span>
                                   )}
                                 </div>
                               </td>
@@ -6128,6 +6217,47 @@ export default function OwnerDashboard() {
       {/* Mobile bottom navigation */}
       <BottomNav role="owner" activeTab={activeTab} />
       {/* MODALS */}
+      <Modal isOpen={isEditCustomerOpen} onClose={() => setIsEditCustomerOpen(false)} title="Edit Customer Details">
+        <form onSubmit={handleEditCustomerSubmit} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+            <input 
+              type="text" 
+              value={editCustomerName}
+              onChange={(e) => setEditCustomerName(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
+            <input 
+              type="tel" 
+              value={editCustomerPhone}
+              onChange={(e) => setEditCustomerPhone(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              required 
+            />
+          </div>
+          <div className="flex gap-2 pt-2 justify-end">
+            <button 
+              type="button" 
+              onClick={() => setIsEditCustomerOpen(false)}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={editCustomerLoading}
+              className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-6 rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer disabled:opacity-50"
+            >
+              {editCustomerLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal isOpen={isAddBranchOpen} onClose={() => { resetBranchForm(); setIsAddBranchOpen(false); }} title={editingBranchId ? "Edit Showroom / Branch Outlet" : "Create New Showroom / Branch Outlet"}>
         <form onSubmit={handleAddBranchSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">

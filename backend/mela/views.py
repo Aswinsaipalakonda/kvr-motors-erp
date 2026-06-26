@@ -213,17 +213,17 @@ class MelaReportsView(APIView):
 
         total_bookings = MelaBooking.objects.count()
         unconfirmed_bookings = MelaBooking.objects.filter(status='unconfirmed').count()
-        completed_bookings = MelaBooking.objects.filter(status='completed').count()
+        completed_bookings = MelaBooking.objects.filter(status__in=['completed', 'delivered']).count()
         cancelled_bookings = MelaBooking.objects.filter(status='cancelled').count()
 
-        total_sales_revenue = MelaBooking.objects.filter(status='completed').aggregate(total=Sum('price'))['total'] or 0.0
+        total_sales_revenue = MelaBooking.objects.filter(status__in=['completed', 'delivered']).aggregate(total=Sum('price'))['total'] or 0.0
         daily_sales_revenue = MelaBooking.objects.filter(
-            status='completed',
+            status__in=['completed', 'delivered'],
             completed_at__date=today
         ).aggregate(total=Sum('price'))['total'] or 0.0
 
         daily_completed_count = MelaBooking.objects.filter(
-            status='completed',
+            status__in=['completed', 'delivered'],
             completed_at__date=today
         ).count()
 
@@ -231,8 +231,8 @@ class MelaReportsView(APIView):
         exec_performance = []
         for exe in executives:
             bookings_count = MelaBooking.objects.filter(sales_executive=exe).count()
-            completed_count = MelaBooking.objects.filter(sales_executive=exe, status='completed').count()
-            revenue = MelaBooking.objects.filter(sales_executive=exe, status='completed').aggregate(total=Sum('price'))['total'] or 0.0
+            completed_count = MelaBooking.objects.filter(sales_executive=exe, status__in=['completed', 'delivered']).count()
+            revenue = MelaBooking.objects.filter(sales_executive=exe, status__in=['completed', 'delivered']).aggregate(total=Sum('price'))['total'] or 0.0
             
             exec_performance.append({
                 "id": exe.id,

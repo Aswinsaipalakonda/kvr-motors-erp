@@ -10,7 +10,7 @@ import {
   ArrowLeft, Sparkles, CalendarDays, MapPin, Package, Plus, Edit2,
   Trash2, Save, CheckCircle2, ChevronRight, X, BatteryCharging, Zap, Info,
   TrendingUp, DollarSign, AlertTriangle, ShieldCheck, CreditCard, BarChart2,
-  Settings as SettingsIcon, Award, ListOrdered, Eye, Share2, Printer, Upload
+  Settings as SettingsIcon, Award, ListOrdered, Eye, Share2, Printer, Upload, PenLine, FileText
 } from 'lucide-react-native';
 import { ThemedText } from '@/components/themed-text';
 import DatePicker from '@/components/DatePicker';
@@ -25,7 +25,7 @@ import {
   updateMelaVehicle, deleteMelaVehicle, getMelaBatteries, createMelaBattery,
   updateMelaBattery, deleteMelaBattery, getMelaCompatibilities, createMelaCompatibility,
   deleteMelaCompatibility, MelaVehicleStockInput, MelaBatteryStockInput,
-  MelaVehicleBatteryCompatibilityInput
+  MelaVehicleBatteryCompatibilityInput, updateMelaBooking
 } from '@/services/mela';
 
 type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'orders' | 'leaderboard' | 'settings';
@@ -65,6 +65,13 @@ export default function OwnerMelaCampaign() {
   const [completedOrderDetails, setCompletedOrderDetails] = useState<MelaBooking | null>(null);
   const [checkoutPaymentProof, setCheckoutPaymentProof] = useState<{ uri: string; name: string; type: string } | null>(null);
 
+  // Edit Customer Modal States
+  const [isEditCustomerModalVisible, setIsEditCustomerModalVisible] = useState(false);
+  const [editCustomerBookingId, setEditCustomerBookingId] = useState<number | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [updatingCustomer, setUpdatingCustomer] = useState(false);
+
   // Loading & refresh states
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,6 +102,64 @@ export default function OwnerMelaCampaign() {
   // Dropdown lists selectors modals
   const [isVehStockSelectorVisible, setIsVehStockSelectorVisible] = useState(false);
   const [isBatStockSelectorVisible, setIsBatStockSelectorVisible] = useState(false);
+
+  const getInvoicePdfUrl = (path: string | null | undefined) => {
+    if (!path) return '';
+    return path.startsWith('http')
+      ? path
+      : `${api.defaults.baseURL?.replace('/api/v1', '')}${path}`;
+  };
+
+  const handleOpenEditCustomer = (booking: MelaBooking) => {
+    setEditCustomerBookingId(booking.id);
+    setEditCustomerName(booking.customer_name);
+    setEditCustomerPhone(booking.customer_phone);
+    setIsEditCustomerModalVisible(true);
+  };
+
+  const handleUpdateCustomer = async () => {
+    if (!editCustomerBookingId) return;
+    try {
+      setUpdatingCustomer(true);
+      await updateMelaBooking(editCustomerBookingId, {
+        customer_name: editCustomerName,
+        customer_phone: editCustomerPhone,
+      });
+      Alert.alert('Success', 'Customer details updated successfully.');
+      setIsEditCustomerModalVisible(false);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update customer details.');
+    } finally {
+      setUpdatingCustomer(false);
+    }
+  };
+
+  const handleStatusChange = (bookingId: number) => {
+    Alert.alert(
+      'Update Booking Status',
+      'Select the new status for this order:',
+      [
+        { text: 'Unconfirmed', onPress: () => updateStatus(bookingId, 'unconfirmed') },
+        { text: 'Completed', onPress: () => updateStatus(bookingId, 'completed') },
+        { text: 'Delivered', onPress: () => updateStatus(bookingId, 'delivered') },
+        { text: 'Cancelled', style: 'destructive', onPress: () => updateStatus(bookingId, 'cancelled') },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const updateStatus = async (bookingId: number, newStatus: string) => {
+    try {
+      await updateMelaBooking(bookingId, { status: newStatus as any });
+      Alert.alert('Success', `Booking status updated to ${newStatus}.`);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update status.');
+    }
+  };
 
   // Load all required data
   const loadData = async (isPullToRefresh = false) => {
@@ -1169,7 +1234,8 @@ export default function OwnerMelaCampaign() {
                               `-----------------------------\n` +
                               `*Total Paid:* ₹${parseFloat(completedOrderDetails.price).toLocaleString('en-IN')}\n` +
                               `*Payment Mode:* ${(completedOrderDetails.payment_type || 'CASH').toUpperCase()}\n` +
-                              `*Status:* Confirmed & Delivered\n` +
+                              `*Status:* Confirmed\n` +
+                              (completedOrderDetails.status === 'delivered' && completedOrderDetails.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(completedOrderDetails.invoice_pdf)}\n` : "") +
                               `=============================\n` +
                               `Thank you for purchasing with KVR Motors!`;
                             Linking.openURL(`https://api.whatsapp.com/send?phone=${formatPhone(completedOrderDetails.customer_phone)}&text=${encodeURIComponent(message)}`).catch(() => Alert.alert('Error', 'Unable to open WhatsApp.'));
@@ -1251,6 +1317,7 @@ export default function OwnerMelaCampaign() {
                         const paymentLabel = paymentLabels[b.payment_type || ''] || (b.payment_type ? b.payment_type.toUpperCase() : 'Cash');
                         const statusColors: Record<string, { bg: string, text: string }> = {
                           completed: { bg: 'rgba(4,167,0,0.1)', text: '#04a700' },
+                          delivered: { bg: 'rgba(99,102,241,0.1)', text: '#4f46e5' },
                           unconfirmed: { bg: 'rgba(234,88,12,0.1)', text: '#ea580c' },
                           cancelled: { bg: 'rgba(239,68,68,0.1)', text: '#ef4444' }
                         };
@@ -1283,7 +1350,8 @@ export default function OwnerMelaCampaign() {
                             `-----------------------------\n` +
                             `*Total Paid:* ₹${parseFloat(b.price || '0').toLocaleString("en-IN")}\n` +
                             `*Payment Mode:* ${(b.payment_type || "CASH").toUpperCase()}\n` +
-                            `*Status:* Confirmed & Delivered\n` +
+                            `*Status:* Confirmed\n` +
+                            (b.status === 'delivered' && b.invoice_pdf ? `-----------------------------\n*Invoice:* ${getInvoicePdfUrl(b.invoice_pdf)}\n` : "") +
                             `=============================\n` +
                             `Thank you for purchasing with KVR Motors!`;
                           
@@ -1321,18 +1389,26 @@ export default function OwnerMelaCampaign() {
                                   Booking Date: {dateStr}
                                 </ThemedText>
                               </View>
-                              <View style={[styles.statusBadgeInline, { backgroundColor: statusColor.bg }]}>
+                              <Pressable
+                                onPress={() => handleStatusChange(b.id)}
+                                style={[styles.statusBadgeInline, { backgroundColor: statusColor.bg }]}
+                              >
                                 <ThemedText style={[styles.statusTextInline, { color: statusColor.text, textTransform: 'uppercase' }]}>
                                   {b.status_display || b.status}
                                 </ThemedText>
-                              </View>
+                              </Pressable>
                             </View>
                             
                             <View style={styles.divider} />
                             
                             <View style={styles.stockGrid}>
                               <View style={styles.gridCell}>
-                                <ThemedText style={styles.gridLabel}>Customer</ThemedText>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                  <ThemedText style={styles.gridLabel}>Customer</ThemedText>
+                                  <Pressable onPress={() => handleOpenEditCustomer(b)}>
+                                    <PenLine size={10} color="#2563eb" />
+                                  </Pressable>
+                                </View>
                                 <ThemedText style={styles.gridValue}>{b.customer_name}</ThemedText>
                                 <ThemedText style={[styles.brandNameText, { textTransform: 'none', fontSize: 10 }]}>{b.customer_phone}</ThemedText>
                               </View>
@@ -1375,7 +1451,7 @@ export default function OwnerMelaCampaign() {
                                 </Pressable>
                               )}
 
-                              {b.status === 'completed' && (
+                              {(b.status === 'completed' || b.status === 'delivered') && (
                                 <>
                                   <Pressable
                                     onPress={handleWhatsAppShare}
@@ -1392,6 +1468,20 @@ export default function OwnerMelaCampaign() {
                                     <Printer size={13} color="#64748b" />
                                     <ThemedText style={{ fontSize: 11, fontWeight: '700', color: '#64748b' }}>Print</ThemedText>
                                   </Pressable>
+
+                                  {b.status === 'delivered' && b.invoice_pdf && (
+                                    <Pressable
+                                      onPress={() => {
+                                        Linking.openURL(getInvoicePdfUrl(b.invoice_pdf)).catch(() => {
+                                          Alert.alert('Error', 'Unable to open invoice PDF link.');
+                                        });
+                                      }}
+                                      style={[styles.iconBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 4, borderColor: '#a5b4fc' }]}
+                                    >
+                                      <FileText size={13} color="#4f46e5" />
+                                      <ThemedText style={{ fontSize: 11, fontWeight: '700', color: '#4f46e5' }}>Invoice</ThemedText>
+                                    </Pressable>
+                                  )}
                                 </>
                               )}
                             </View>
@@ -1789,6 +1879,72 @@ export default function OwnerMelaCampaign() {
                     <>
                       <CheckCircle2 size={16} color="#ffffff" />
                       <ThemedText style={styles.saveBtnText}>Save Compatibility Map</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Edit Customer Details Modal */}
+        <Modal
+          visible={isEditCustomerModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setIsEditCustomerModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Edit Customer Details</ThemedText>
+                <Pressable onPress={() => setIsEditCustomerModalVisible(false)}>
+                  <X size={20} color="#0f172a" />
+                </Pressable>
+              </View>
+
+              <ScrollView contentContainerStyle={styles.modalFormContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Customer Name</ThemedText>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter customer name"
+                    placeholderTextColor="#94a3b8"
+                    value={editCustomerName}
+                    onChangeText={setEditCustomerName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.inputLabel}>Customer Phone</ThemedText>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter customer phone"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    value={editCustomerPhone}
+                    onChangeText={setEditCustomerPhone}
+                  />
+                </View>
+
+                <Pressable
+                  onPress={handleUpdateCustomer}
+                  disabled={updatingCustomer}
+                  style={({ pressed }) => [
+                    styles.submitStockBtn,
+                    pressed && { opacity: 0.85 },
+                    updatingCustomer && { opacity: 0.7 }
+                  ]}
+                >
+                  {updatingCustomer ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#ffffff" />
+                      <ThemedText style={styles.saveBtnText}>Save Changes</ThemedText>
                     </>
                   )}
                 </Pressable>
@@ -2712,22 +2868,6 @@ const styles = StyleSheet.create({
     color: '#64748b'
   },
   subTabActiveText: {
-    color: '#0f172a'
-  },
-  selectorBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 44
-  },
-  selectorBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
     color: '#0f172a'
   }
 });

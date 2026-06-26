@@ -925,6 +925,8 @@ export default function SalesDashboard() {
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${
                         bk.status === "completed"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : bk.status === "delivered"
+                          ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                           : bk.status === "cancelled"
                           ? "bg-rose-50 text-rose-750 border border-rose-200"
                           : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -970,14 +972,14 @@ export default function SalesDashboard() {
                 />
                 <DashboardCard
                   title="My Completed Sales"
-                  value={`${melaBookingsList.filter(b => b.status === "completed").length} Deliveries`}
+                  value={`${melaBookingsList.filter(b => b.status === "completed" || b.status === "delivered").length} Deliveries`}
                   description="Checked out by owner"
                   icon={CheckCircle2}
                   color="emerald"
                 />
                 <DashboardCard
                   title="My Campaign Billing"
-                  value={`₹ ${melaBookingsList.filter(b => b.status === "completed").reduce((sum, b) => sum + parseFloat(b.price), 0).toLocaleString("en-IN")}`}
+                  value={`₹ ${melaBookingsList.filter(b => b.status === "completed" || b.status === "delivered").reduce((sum, b) => sum + parseFloat(b.price), 0).toLocaleString("en-IN")}`}
                   description="Total revenue generated"
                   icon={DollarSign}
                   color="emerald"
@@ -999,7 +1001,7 @@ export default function SalesDashboard() {
                     <td className="py-3 px-5 text-slate-450 font-semibold">{new Date(bk.created_at).toLocaleDateString()}</td>
                     <td className="py-3 px-5">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${
-                        bk.status === "completed" ? "bg-emerald-50 text-emerald-700" : bk.status === "cancelled" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700"
+                        bk.status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : bk.status === "delivered" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : bk.status === "cancelled" ? "bg-rose-50 text-rose-600 border border-rose-100" : "bg-amber-50 text-amber-700 border border-amber-100"
                       }`}>
                         {bk.status}
                       </span>

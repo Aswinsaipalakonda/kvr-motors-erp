@@ -53,7 +53,7 @@ export interface MelaBooking {
   color: string;
   battery_type: string;
   price: number;
-  status: 'unconfirmed' | 'completed' | 'cancelled';
+  status: 'unconfirmed' | 'completed' | 'delivered' | 'cancelled';
   status_display: string;
   cash_collected: number;
   created_at: string;
@@ -65,6 +65,7 @@ export interface MelaBooking {
   payment_type?: string;
   payment_proof?: string | null;
   model_name?: string;
+  invoice_pdf?: string | null;
 }
 
 export interface MelaReports {

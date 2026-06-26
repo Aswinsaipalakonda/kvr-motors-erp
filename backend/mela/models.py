@@ -66,7 +66,8 @@ class MelaInventory(models.Model):
 class MelaBooking(models.Model):
     STATUS_CHOICES = (
         ('unconfirmed', 'Unconfirmed Booking'),
-        ('completed', 'Completed & Delivered'),
+        ('completed', 'Completed'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     )
 
@@ -103,6 +104,11 @@ class MelaBooking(models.Model):
     cash_collected = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    invoice_pdf = models.FileField(upload_to="mela_invoices/", null=True, blank=True)
+    vin_no = models.CharField(max_length=100, default="", blank=True)
+    motor_no = models.CharField(max_length=100, default="", blank=True)
+    battery_no = models.CharField(max_length=100, default="", blank=True)
+    charger_no = models.CharField(max_length=100, default="", blank=True)
 
     def save(self, *args, **kwargs):
         if not self.booking_id:

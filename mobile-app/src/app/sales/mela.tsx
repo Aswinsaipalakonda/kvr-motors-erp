@@ -204,9 +204,9 @@ export default function SalesMelaCampaign() {
 
   // Local Performance metrics calculations
   const totalBookings = bookingsList.length;
-  const completedBookings = bookingsList.filter(b => b.status === 'completed').length;
+  const completedBookings = bookingsList.filter(b => b.status === 'completed' || b.status === 'delivered').length;
   const totalRevenue = bookingsList
-    .filter(b => b.status === 'completed')
+    .filter(b => b.status === 'completed' || b.status === 'delivered')
     .reduce((sum, b) => sum + parseFloat(b.price || '0'), 0);
   const pendingBookings = bookingsList.filter(b => b.status === 'unconfirmed').length;
 
@@ -519,7 +519,9 @@ export default function SalesMelaCampaign() {
                       {bookingsList.map((item) => {
                         const statusColors = 
                           item.status === 'completed'
-                            ? { bg: 'rgba(4, 167, 0, 0.12)', text: '#04a700', label: 'DELIVERED' }
+                            ? { bg: 'rgba(4, 167, 0, 0.12)', text: '#04a700', label: 'COMPLETED' }
+                            : item.status === 'delivered'
+                            ? { bg: 'rgba(99, 102, 241, 0.12)', text: '#4f46e5', label: 'DELIVERED' }
                             : item.status === 'cancelled'
                             ? { bg: 'rgba(100, 116, 139, 0.12)', text: '#64748b', label: 'CANCELLED' }
                             : { bg: 'rgba(217, 119, 6, 0.12)', text: '#b45309', label: 'PENDING PAY' };
