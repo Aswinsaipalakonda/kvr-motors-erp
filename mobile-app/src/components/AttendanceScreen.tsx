@@ -8,7 +8,7 @@ import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-cam
 import * as Location from 'expo-location';
 import { 
   Camera, MapPin, CheckCircle2, AlertTriangle, ArrowLeft, Clock, History, 
-  MapPinned, Sparkles, Navigation 
+  MapPinned, Sparkles, Navigation, RefreshCw, Zap, ZapOff
 } from 'lucide-react-native';
 import { ThemedText } from './themed-text';
 import FadeScaleTransition from './FadeScaleTransition';
@@ -53,6 +53,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const [todayLog, setTodayLog] = useState<AttendanceLog | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [tempPhotoUri, setTempPhotoUri] = useState<string | null>(null);
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
+  const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
 
   // Load existing attendance logs and check-in state
   const loadAttendanceData = async () => {
@@ -303,7 +305,14 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     if (capturedPhoto) {
       return (
         <View style={styles.cameraContainer}>
-          <Image source={{ uri: capturedPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <Image 
+            source={{ uri: capturedPhoto }} 
+            style={[
+              StyleSheet.absoluteFillObject,
+              facing === 'front' && { transform: [{ scaleX: -1 }] }
+            ]} 
+            resizeMode="cover" 
+          />
           <View style={styles.retakeOverlay}>
             <Pressable onPress={handleRetakeImage} style={styles.retakeBtn}>
               <ThemedText style={styles.retakeBtnText}>Retake Image</ThemedText>
@@ -493,7 +502,14 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
             {tempPhotoUri ? (
               // Photo Review State
               <View style={StyleSheet.absoluteFillObject}>
-                <Image source={{ uri: tempPhotoUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                <Image 
+                  source={{ uri: tempPhotoUri }} 
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    facing === 'front' && { transform: [{ scaleX: -1 }] }
+                  ]} 
+                  resizeMode="cover" 
+                />
                 <View style={styles.reviewOverlay}>
                   <ThemedText style={styles.reviewTitle}>Preview Selfie</ThemedText>
                   <View style={styles.modalButtonRow}>
@@ -522,21 +538,52 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
                 <CameraView
                   ref={cameraRef}
                   style={StyleSheet.absoluteFillObject}
-                  facing="front"
+                  facing={facing}
+                  flash={flash}
                 />
                 {/* Facial overlay frame */}
                 <View style={styles.cameraOverlay} pointerEvents="none">
                   <View style={styles.faceTarget} />
                   <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
                 </View>
-                {/* Controls */}
-                <View style={styles.modalControls}>
+
+                {/* Top controls (Flip & Flash) */}
+                <View style={styles.cameraHeaderControls}>
                   <Pressable 
                     onPress={() => setShowCameraModal(false)} 
-                    style={styles.modalCloseBtn}
+                    style={styles.circleIconButton}
                   >
-                    <ArrowLeft size={20} color="#ffffff" />
+                    <ArrowLeft size={22} color="#ffffff" />
                   </Pressable>
+
+                  <View style={styles.rightTopControls}>
+                    {/* Flash toggle */}
+                    <Pressable 
+                      onPress={() => {
+                        setFlash(prev => prev === 'off' ? 'on' : prev === 'on' ? 'auto' : 'off');
+                      }} 
+                      style={styles.circleIconButton}
+                    >
+                      {flash === 'off' ? (
+                        <ZapOff size={20} color="#ffffff" />
+                      ) : (
+                        <Zap size={20} color={flash === 'on' ? '#eab308' : '#38bdf8'} />
+                      )}
+                    </Pressable>
+
+                    {/* Camera flip */}
+                    <Pressable 
+                      onPress={() => setFacing(prev => prev === 'front' ? 'back' : 'front')} 
+                      style={styles.circleIconButton}
+                    >
+                      <RefreshCw size={20} color="#ffffff" />
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* Controls */}
+                <View style={styles.modalControls}>
+                  <View style={{ width: 44 }} />
                   <Pressable 
                     onPress={async () => {
                       if (cameraRef.current) {
@@ -806,5 +853,31 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: '#ffffff',
+  },
+  cameraHeaderControls: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  rightTopControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  circleIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
 });
