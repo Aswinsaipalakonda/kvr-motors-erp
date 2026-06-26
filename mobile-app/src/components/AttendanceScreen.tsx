@@ -131,17 +131,17 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       }
 
       // 2. Check and request location permission
-      const { status: currentStatus, canAskAgain } = await Location.getForegroundPermissionsAsync();
+      const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
       let locGranted = currentStatus === Location.PermissionStatus.GRANTED;
 
       if (!locGranted) {
-        const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
+        const { status: reqStatus, canAskAgain: postCanAskAgain } = await Location.requestForegroundPermissionsAsync();
         locGranted = reqStatus === Location.PermissionStatus.GRANTED;
         if (!locGranted) {
-          if (!canAskAgain) {
+          if (!postCanAskAgain) {
             Alert.alert(
-              'Location Permission Required',
-              'Location access is required to verify your workplace check-in. Please allow location access in your device settings.',
+              'App Location Permission Required',
+              'You have enabled device location services (GPS), but this app still needs permission to access it.\n\nPlease tap "Open Settings", select "Permissions", and allow "Location" access.',
               [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -308,7 +308,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
           <Image 
             source={{ uri: capturedPhoto }} 
             style={[
-              StyleSheet.absoluteFillObject,
+              styles.capturedImage,
               facing === 'front' && { transform: [{ scaleX: -1 }] }
             ]} 
             resizeMode="cover" 
@@ -704,12 +704,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
+  capturedImage: {
+    width: '100%',
+    height: '100%',
+  },
   retakeOverlay: {
     position: 'absolute',
     bottom: 16,
     left: 0,
     right: 0,
+    width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   retakeBtn: {
     backgroundColor: 'rgba(15, 23, 42, 0.75)',
