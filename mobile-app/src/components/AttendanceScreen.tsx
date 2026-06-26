@@ -216,7 +216,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
 
       // 2. Launch native camera app
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         cameraType: ImagePicker.CameraType.front,
         allowsEditing: false,
         quality: 0.7,
@@ -274,7 +274,11 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       loadAttendanceData();
     } catch (err: any) {
       console.error('Check-in failed:', err);
-      const msg = err.response?.data?.detail || 'An error occurred while marking your attendance.';
+      const msg = err.response?.data?.detail 
+        || (Array.isArray(err.response?.data) ? err.response.data.join(', ') : null)
+        || (typeof err.response?.data === 'object' ? JSON.stringify(err.response.data) : null)
+        || err.message 
+        || 'An error occurred while marking your attendance.';
       Alert.alert('Check-in Failed', msg);
     } finally {
       setIsSubmitting(false);

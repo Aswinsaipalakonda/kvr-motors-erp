@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 class Attendance(models.Model):
     STATUS_CHOICES = (
@@ -12,8 +13,8 @@ class Attendance(models.Model):
         on_delete=models.CASCADE, 
         related_name='attendances'
     )
-    date = models.DateField(auto_now_add=True)
-    check_in = models.DateTimeField(auto_now_add=True)
+    date = models.DateField(default=timezone.localdate)
+    check_in = models.DateTimeField(default=timezone.now)
     check_out = models.DateTimeField(null=True, blank=True)
     
     # Geolocation fields

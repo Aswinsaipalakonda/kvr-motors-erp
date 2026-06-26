@@ -38,9 +38,12 @@ class AttendanceViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         # Check if already checked in today
         if Attendance.objects.filter(user=user, date=today).exists():
             raise serializers.ValidationError({"detail": "You have already checked in for today."})
-            
-        serializer.save(user=user, date=today, check_in=timezone.now(), status='pending')
-        self.clear_cache()
+        
+        try:
+            serializer.save(user=user, date=today, check_in=timezone.now(), status='pending')
+            self.clear_cache()
+        except Exception as e:
+            raise serializers.ValidationError({"detail": str(e)})
 
     @action(detail=True, methods=['patch', 'post'], url_path='verify')
     def verify_attendance(self, request, pk=None):
