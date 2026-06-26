@@ -22,7 +22,10 @@ import {
   Smartphone,
   Cpu,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MapPin,
+  Lock,
+  Download
 } from "lucide-react";
 
 export default function Home() {
@@ -102,63 +105,6 @@ export default function Home() {
   const handleNext = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
-
-  const portals = [
-    {
-      title: "Owner Analytics Portal",
-      role: "owner",
-      path: "/owner",
-      gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
-      borderColor: "border-emerald-500/30 hover:border-emerald-500/60",
-      glowColor: "shadow-emerald-500/10",
-      accentText: "text-[#04a700]",
-      icon: ShieldCheck,
-      description: "Complete strategic oversight and high-level branch statistics.",
-      features: [
-        { label: "Consolidated P&L & targets", icon: TrendingUp },
-        { label: "Multi-outlet branches registry", icon: Building2 },
-        { label: "Master purchase orders control", icon: ShoppingBag },
-        { label: "Comprehensive user access controls", icon: Layers }
-      ],
-      actionText: "Enter Portal"
-    },
-    {
-      title: "Supervisor Control Panel",
-      role: "supervisor",
-      path: "/supervisor",
-      gradient: "from-blue-500/20 via-indigo-500/10 to-transparent",
-      borderColor: "border-blue-500/30 hover:border-blue-500/60",
-      glowColor: "shadow-blue-500/10",
-      accentText: "text-blue-400",
-      icon: Activity,
-      description: "Live warehouse allocations, stock management, and lock overrides.",
-      features: [
-        { label: "Real-time stock inflows & dispatches", icon: Boxes },
-        { label: "Pre-Delivery Inspection (PDI) passes", icon: Car },
-        { label: "Battery lock authorization overrides", icon: Battery },
-        { label: "Inter-branch transfer requests queue", icon: ArrowRight }
-      ],
-      actionText: "Launch Panel"
-    },
-    {
-      title: "Sales Executive Terminal",
-      role: "sales",
-      path: "/sales",
-      gradient: "from-teal-500/20 via-cyan-500/10 to-transparent",
-      borderColor: "border-teal-500/30 hover:border-teal-500/60",
-      glowColor: "shadow-teal-500/10",
-      accentText: "text-teal-400",
-      icon: Compass,
-      description: "Personalized leads CRM, booking receipt generation, and customer care.",
-      features: [
-        { label: "Active leads pipeline monitoring", icon: Compass },
-        { label: "Instant VIN vehicle auto-fill fetcher", icon: Car },
-        { label: "Advance booking receipts generator", icon: CreditCard },
-        { label: "Follow-up schedules & calendars", icon: ArrowRight }
-      ],
-      actionText: "Open Terminal"
-    }
-  ];
 
   const bentoFeatures = [
     {
@@ -246,7 +192,7 @@ export default function Home() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[65%] h-[65%] bg-teal-500/8 rounded-full blur-[160px]" />
       </div>
 
-      {/* Header (Opulea Style) */}
+      {/* Header */}
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between border-b border-white/5 relative z-10 select-none">
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0 bg-white rounded-xl p-1.5 flex items-center justify-center border border-white/10 shadow-lg">
@@ -268,22 +214,19 @@ export default function Home() {
         {/* Navigation center links */}
         <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-400">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#portals" className="hover:text-white transition-colors">Portals</a>
+          <a href="#mobile-app" className="hover:text-white transition-colors">Mobile App</a>
+          <a href="#branches" className="hover:text-white transition-colors">Showrooms</a>
           <a href="#statistics" className="hover:text-white transition-colors">Statistics</a>
-          <a href="#docs" className="hover:text-white transition-colors">Documentation</a>
         </nav>
 
         <div className="flex items-center gap-6">
-          <Link href="/login" className="text-xs font-bold text-slate-400 hover:text-white transition-all">
-            Login
-          </Link>
-          <Link href="/login" className="text-xs font-black text-white bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-600 px-5 py-2.5 rounded-full shadow-lg shadow-[#04a700]/20 hover:scale-[1.03] transition-all duration-200">
-            Start Free Trial
+          <Link href="/login" className="text-xs font-black text-white bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-600 px-6 py-3 rounded-full shadow-lg shadow-[#04a700]/25 hover:scale-[1.03] transition-all duration-200">
+            Sign In to ERP
           </Link>
         </div>
       </header>
 
-      {/* Main Content containing Hero */}
+      {/* Main Content */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col justify-center relative z-10">
         
         {/* 1. Slideshow Hero Section */}
@@ -364,20 +307,17 @@ export default function Home() {
                   {/* CTAs */}
                   <div className={`pt-2 flex flex-wrap gap-4 transition-all duration-750 ease-out delay-300 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                     <Link href="/login" className="py-3 px-8 bg-gradient-to-r from-[#04a700] to-emerald-600 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs rounded-full shadow-lg shadow-[#04a700]/25 transition-all cursor-pointer hover:scale-[1.02] hover:shadow-[#04a700]/35">
-                      Start Free Trial
-                    </Link>
-                    <Link href="/login" className="py-3 px-8 border border-white/10 hover:border-white/20 text-white hover:bg-white/5 font-bold text-xs rounded-full transition-all cursor-pointer">
-                      Book a Demo
+                      Enter Platform
                     </Link>
                   </div>
 
                   {/* Checklist */}
                   <div className={`pt-2 flex items-center gap-6 text-[10px] text-slate-500 font-semibold select-none transition-all duration-750 ease-out delay-300 transform ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                     <span className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> No Credit Card Required
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> Secure Enterprise Gateway
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> Free 14-Day Trial
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#04a700]" /> Multi-Branch Sync
                     </span>
                   </div>
                 </div>
@@ -471,78 +411,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 2. Portal Hub Section */}
-        <div id="portals" className="mb-28 scroll-mt-12">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Access Your ERP Hub</h2>
-            <p className="text-sm text-slate-400 font-semibold max-w-xl mx-auto leading-relaxed">
-              Authenticate via your specific business terminal deck below to manage operational workflows.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {portals.map((portal, idx) => {
-              const PortalIcon = portal.icon;
-              return (
-                <div 
-                  key={idx} 
-                  className={`bg-white/[0.01] border ${portal.borderColor} rounded-3xl p-7 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:${portal.glowColor} hover:scale-[1.01] transition-all duration-300 group h-124`}
-                >
-                  <div>
-                    {/* Top Header inside Card */}
-                    <div className="flex items-center justify-between mb-6">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        Terminal 0{idx + 1}
-                      </span>
-                      <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                        <PortalIcon className="h-5 w-5" />
-                      </div>
-                    </div>
-
-                    {/* Title & Description */}
-                    <div className="space-y-2 mb-6">
-                      <h3 className="text-xl font-bold text-white group-hover:text-[#04a700] transition-colors">
-                        {portal.title}
-                      </h3>
-                      <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                        {portal.description}
-                      </p>
-                    </div>
-
-                    {/* Feature Bullets */}
-                    <div className="space-y-3.5 pt-5 border-t border-white/5">
-                      <span className="text-[9px] font-extrabold text-[#04a700] uppercase tracking-wider block text-left">
-                        Core Modules
-                      </span>
-                      <ul className="space-y-2.5">
-                        {portal.features.map((feature, fIdx) => {
-                          const FeatIcon = feature.icon;
-                          return (
-                            <li key={fIdx} className="flex items-center gap-2.5 text-[11px] font-bold text-slate-300">
-                              <FeatIcon className="h-3.5 w-3.5 text-slate-500" />
-                              <span>{feature.label}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Direct Action Link */}
-                  <Link href={portal.path} className="block mt-8">
-                    <div className={`w-full py-3 rounded-2xl bg-white/5 hover:bg-[#04a700] border border-white/10 hover:border-transparent text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer`}>
-                      <span>{portal.actionText}</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </Link>
-
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 3. Bento Features Section */}
+        {/* 2. Bento Features Section */}
         <div id="features" className="mb-28 scroll-mt-12 space-y-12">
           <div className="text-center max-w-2xl mx-auto space-y-3">
             <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Engineered for Performance</h2>
@@ -572,7 +441,160 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 4. Statistics Panel */}
+        {/* 3. Mobile App Showcase Section (Mirrors Image 2 Layout) */}
+        <div id="mobile-app" className="mb-28 scroll-mt-12 bg-white/[0.01] border border-white/5 rounded-[2.5rem] py-16 px-8 sm:px-12 backdrop-blur-sm relative overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-[350px] h-[350px] bg-[#04a700]/5 rounded-full blur-[100px] pointer-events-none" />
+          
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">
+              Delight your team with a <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-450 to-teal-400 font-bold">premium app</span>
+            </h2>
+            <p className="text-sm text-slate-400 font-semibold max-w-2xl mx-auto leading-relaxed">
+              Empower your field workforce with our beautiful mobile app. Track attendance with GPS verification, verify vehicles, perform Pre-Delivery Inspections, and manage leads all in one place.
+            </p>
+          </div>
+
+          {/* Mobile phone mockups side-by-side (iPhone 15 dynamic island style) */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12 lg:gap-20 max-w-4xl mx-auto mb-16">
+            
+            {/* Phone Mockup 1 */}
+            <div className="flex flex-col items-center">
+              {/* Phone Outer Shell */}
+              <div className="relative border-slate-800 bg-slate-900 border-[12px] rounded-[3rem] h-[520px] w-[256px] shadow-2xl shadow-[#04a700]/10 overflow-hidden ring-1 ring-white/10">
+                {/* Speaker Ear Piece */}
+                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-28 h-4.5 bg-black rounded-full z-30 flex items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-900 rounded-full" />
+                </div>
+                {/* Screen Content Wrapper */}
+                <div className="rounded-[2.2rem] overflow-hidden w-full h-full bg-[#090d16] relative">
+                  <Image 
+                    src="/app-images/1.png" 
+                    fill 
+                    className="object-cover" 
+                    alt="KVR Mobile App Showroom Screen" 
+                  />
+                </div>
+              </div>
+              
+              {/* Overlaid Pill Button */}
+              <div className="mt-6 bg-white text-slate-900 font-extrabold text-xs px-6 py-2.5 rounded-full shadow-lg border border-slate-100 hover:scale-105 transition-all select-none">
+                Showroom Operations
+              </div>
+            </div>
+
+            {/* Phone Mockup 2 */}
+            <div className="flex flex-col items-center">
+              {/* Phone Outer Shell */}
+              <div className="relative border-slate-800 bg-slate-900 border-[12px] rounded-[3rem] h-[520px] w-[256px] shadow-2xl shadow-teal-500/10 overflow-hidden ring-1 ring-white/10">
+                {/* Speaker Ear Piece */}
+                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-28 h-4.5 bg-black rounded-full z-30 flex items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-900 rounded-full" />
+                </div>
+                {/* Screen Content Wrapper */}
+                <div className="rounded-[2.2rem] overflow-hidden w-full h-full bg-[#090d16] relative">
+                  <Image 
+                    src="/app-images/2.png" 
+                    fill 
+                    className="object-cover" 
+                    alt="KVR Mobile App Attendance Screen" 
+                  />
+                </div>
+              </div>
+              
+              {/* Overlaid Pill Button */}
+              <div className="mt-6 bg-white text-slate-900 font-extrabold text-xs px-6 py-2.5 rounded-full shadow-lg border border-slate-100 hover:scale-105 transition-all select-none">
+                Attendance & GPS
+              </div>
+            </div>
+
+          </div>
+
+          {/* Three Feature Highlights below phone mockups */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-white/5 max-w-4xl mx-auto">
+            <div className="text-center space-y-2">
+              <div className="mx-auto h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                <MapPin className="h-5 w-5 text-emerald-450" />
+              </div>
+              <h4 className="font-bold text-white text-sm">GPS Clock-in Verification</h4>
+              <p className="text-slate-400 text-xs leading-relaxed">Geofenced location checks and front-camera verification ensure authentic staff attendance.</p>
+            </div>
+
+            <div className="text-center space-y-2">
+              <div className="mx-auto h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                <Smartphone className="h-5 w-5 text-emerald-450" />
+              </div>
+              <h4 className="font-bold text-white text-sm">PDI Stock Checkups</h4>
+              <p className="text-slate-400 text-xs leading-relaxed">Instantly verify chassis VIN barcodes and log vehicle health before dealer dispatch.</p>
+            </div>
+
+            <div className="text-center space-y-2">
+              <div className="mx-auto h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                <Compass className="h-5 w-5 text-emerald-450" />
+              </div>
+              <h4 className="font-bold text-white text-sm">Direct Field CRM</h4>
+              <p className="text-slate-400 text-xs leading-relaxed">Track customer conversations, log advance booking payments, and follow up instantly.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Showroom Branch Outlets Section */}
+        <div id="branches" className="mb-28 scroll-mt-12 space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Our Showroom Branches</h2>
+            <p className="text-sm text-slate-400 font-semibold leading-relaxed">
+              Serving our customers across multiple modern state-of-the-art showrooms.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-gradient-to-b from-slate-900/60 to-slate-950 border border-white/5 rounded-3xl p-6 hover:border-[#04a700]/30 transition-all duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[#04a700]">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Visakhapatnam</h3>
+                  <span className="text-[10px] text-emerald-450 font-bold">Main Headquarters</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                Our central operational branch managing administrative actions, master procurement, and wholesale dispatches.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-b from-slate-900/60 to-slate-950 border border-white/5 rounded-3xl p-6 hover:border-[#04a700]/30 transition-all duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[#04a700]">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Srikakulam</h3>
+                  <span className="text-[10px] text-emerald-450 font-bold">Showroom & Warehouse</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                Srikakulam outlet managing retail registrations, local stock, and battery allocations under strict supervisor audit.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-b from-slate-900/60 to-slate-950 border border-white/5 rounded-3xl p-6 hover:border-[#04a700]/30 transition-all duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[#04a700]">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Kakinada</h3>
+                  <span className="text-[10px] text-emerald-450 font-bold">Distribution Point</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                Our regional outlet streamlining dealership transfers and logistics operations across neighboring regions.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Statistics Panel */}
         <div id="statistics" className="scroll-mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-white/[0.01] border border-white/5 rounded-3xl max-w-5xl mx-auto text-center backdrop-blur-sm">
           <div className="space-y-1">
             <span className="block text-2xl sm:text-3xl font-black text-white font-mono">3</span>
@@ -598,11 +620,11 @@ export default function Home() {
       <footer className="w-full max-w-7xl mx-auto px-6 py-8 border-t border-white/5 text-center text-[10px] font-bold text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
         <span>© 2026 KVR Motors ERP Systems. All rights reserved.</span>
         <div className="flex items-center gap-5">
-          <a href="#" className="hover:text-slate-350 transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-350 transition-colors">Terms of Service</a>
+          <a href="#" className="hover:text-slate-300 transition-colors">Terms of Service</a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-350 transition-colors">System Support overrides</a>
+          <a href="#" className="hover:text-slate-300 transition-colors">System Support</a>
         </div>
       </footer>
 

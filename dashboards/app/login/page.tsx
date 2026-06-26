@@ -51,7 +51,7 @@ function LoginForm() {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       {errorMsg && (
-        <div className="bg-red-50 border border-red-100 text-red-800 rounded-xl p-3.5 text-xs font-semibold flex items-start gap-2.5 animate-shake">
+        <div className="bg-red-50 border border-red-100 text-red-800 rounded-2xl p-4 text-xs font-semibold flex items-start gap-2.5 animate-shake">
           <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-600 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
@@ -59,11 +59,11 @@ function LoginForm() {
 
       {/* Username Field */}
       <div>
-        <label htmlFor="username" className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2">
+        <label htmlFor="username" className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 pl-2">
           Username or Email
         </label>
-        <div className="relative rounded-xl shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+        <div className="relative rounded-full shadow-sm">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400">
             <User className="h-4 w-4 text-slate-400" />
           </div>
           <input
@@ -74,7 +74,7 @@ function LoginForm() {
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-650 bg-slate-50/50 transition-all duration-200 text-slate-800"
+            className="block w-full pl-12 pr-5 py-4 border border-slate-200 rounded-full text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-slate-50/50 transition-all duration-200 text-slate-800"
             placeholder="Enter your username"
           />
         </div>
@@ -82,13 +82,13 @@ function LoginForm() {
 
       {/* Password Field */}
       <div>
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-center mb-2 pl-2">
           <label htmlFor="password" className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">
             Password
           </label>
         </div>
-        <div className="relative rounded-xl shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-450">
+        <div className="relative rounded-full shadow-sm">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-4 w-4 text-slate-400" />
           </div>
           <input
@@ -99,15 +99,15 @@ function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-450 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-650 bg-slate-50/50 transition-all duration-200 text-slate-800"
+            className="block w-full pl-12 pr-5 py-4 border border-slate-200 rounded-full text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-slate-50/50 transition-all duration-200 text-slate-800"
             placeholder="Enter your password"
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs font-semibold">
-        <label className="flex items-center text-slate-500 cursor-pointer text-slate-400">
-          <input type="checkbox" className="mr-2 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500" />
+      <div className="flex items-center justify-between text-xs font-semibold px-2">
+        <label className="flex items-center text-slate-500 cursor-pointer">
+          <input type="checkbox" className="mr-2 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
           Remember me
         </label>
         <span className="text-emerald-700 hover:text-emerald-800 cursor-pointer transition-colors">
@@ -120,7 +120,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting || authLoading}
-          className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-emerald-700/10 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
+          className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-full shadow-lg shadow-emerald-700/10 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
         >
           {(isSubmitting || authLoading) ? (
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />
@@ -171,17 +171,17 @@ export default function LoginPage() {
         </div>
 
         {/* Top Header - Logo and Brand Name */}
-        <div className="relative z-10 flex items-center gap-3 select-none">
-          <div className="h-10 w-10 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-md">
+        <div className="relative z-10 flex items-center gap-4 select-none">
+          <div className="h-16 w-16 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg border border-slate-100">
             <Image
               src="/logo.png"
               alt="KVR Motors Logo"
-              width={28}
-              height={28}
+              width={48}
+              height={48}
               className="object-contain"
             />
           </div>
-          <span className="text-lg font-black tracking-wider uppercase text-white">KVR Motors</span>
+          <span className="text-xl font-black tracking-wider uppercase text-white">KVR Motors</span>
         </div>
 
         {/* Marketing copy mimicking structure of 3rd image */}
@@ -237,23 +237,23 @@ export default function LoginPage() {
       <div className="w-full lg:w-5/12 xl:w-4/12 bg-white flex flex-col justify-between p-8 sm:p-16 lg:rounded-l-[40px] shadow-2xl relative z-10">
         
         {/* Mobile top bar (only shown on mobile/tablet) */}
-        <div className="flex items-center gap-3 lg:hidden mb-12 select-none justify-center">
-          <div className="h-10 w-10 bg-white rounded-xl p-1.5 flex items-center justify-center border border-slate-105 shadow-sm">
+        <div className="flex items-center gap-4 lg:hidden mb-12 select-none justify-center">
+          <div className="h-16 w-16 bg-white rounded-2xl p-2.5 flex items-center justify-center border border-slate-100 shadow-md">
             <Image
               src="/logo.png"
               alt="KVR Motors Logo"
-              width={28}
-              height={28}
+              width={48}
+              height={48}
               className="object-contain"
             />
           </div>
-          <span className="text-lg font-black tracking-wider uppercase text-slate-900">KVR Motors</span>
+          <span className="text-xl font-black tracking-wider uppercase text-slate-900">KVR Motors</span>
         </div>
 
         {/* Inner centered form wrapper */}
         <div className="my-auto w-full max-w-sm mx-auto">
           <div className="mb-8">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome back</h2>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome back</h2>
             <p className="text-slate-500 text-sm mt-2 font-semibold">Sign in to continue managing your business.</p>
           </div>
 
