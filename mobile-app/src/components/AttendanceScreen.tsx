@@ -314,15 +314,24 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
 
     if (capturedPhoto) {
       return (
-        <View style={styles.cameraContainer}>
+        <View style={styles.previewCard}>
           <Image 
             source={{ uri: capturedPhoto }} 
-            style={styles.capturedImage} 
+            style={styles.previewThumbnail} 
             contentFit="cover" 
           />
-          <View style={styles.retakeOverlay}>
-            <Pressable onPress={handleRetakeImage} style={styles.retakeBtn}>
-              <ThemedText style={styles.retakeBtnText}>Retake Image</ThemedText>
+          <View style={styles.previewInfo}>
+            <ThemedText style={styles.previewStatusTitle}>Selfie Captured</ThemedText>
+            <ThemedText style={styles.previewStatusDesc}>Ready for check-in verification</ThemedText>
+            <Pressable 
+              onPress={handleRetakeImage} 
+              style={({ pressed }) => [
+                styles.retakeBtnLink,
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <RefreshCw size={14} color="#04a700" style={{ marginRight: 6 }} />
+              <ThemedText style={styles.retakeBtnLinkText}>Retake Photo</ThemedText>
             </Pressable>
           </View>
         </View>
@@ -524,9 +533,46 @@ const styles = StyleSheet.create({
   mainTitle: { fontSize: 26, lineHeight: 34, fontWeight: '300', color: '#ffffff', letterSpacing: -0.5 },
   accentTitle: { fontSize: 28, lineHeight: 36, fontWeight: 'bold', color: '#04a700', letterSpacing: -0.5 },
   content: { padding: 20, gap: 16 },
-  cameraContainer: {
-    height: 320, borderRadius: 24, backgroundColor: '#000', overflow: 'hidden', position: 'relative',
-    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.15)',
+  previewCard: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    alignItems: 'center',
+    gap: 16,
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  previewThumbnail: {
+    width: 90,
+    height: 120,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+  },
+  previewInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  previewStatusTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  previewStatusDesc: {
+    fontSize: 12.5,
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  retakeBtnLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
+  retakeBtnLinkText: {
+    color: '#04a700',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
@@ -591,32 +637,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
-  capturedImage: {
-    width: '100%',
-    height: '100%',
-  },
-  retakeOverlay: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retakeBtn: {
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  retakeBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+
   historySection: { marginTop: 10, gap: 12 },
   historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4 },
   historyTitle: { fontSize: 15.5, fontWeight: 'bold', color: '#0f172a' },
