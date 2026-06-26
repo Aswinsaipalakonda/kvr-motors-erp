@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
-  Platform, Dimensions, Linking
-} from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform, Dimensions, Linking, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -49,6 +46,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [todayLog, setTodayLog] = useState<AttendanceLog | null>(null);
 
   // Load existing attendance logs and check-in state
@@ -71,7 +69,13 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     } finally {
       setIsLoadingLogs(false);
     }
-  };
+  }
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAttendanceData();
+    setRefreshing(false);
+  };;
 
   // Request permissions when tab becomes active to prepare camera and location
   useEffect(() => {
@@ -252,8 +256,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         type: 'image/jpeg',
       } as any);
       
-      formData.append('latitude', coords.latitude.toString());
-      formData.append('longitude', coords.longitude.toString());
+      formData.append('latitude', coords.latitude.toFixed(6).toString());
+      formData.append('longitude', coords.longitude.toFixed(6).toString());
       formData.append('location_name', locationName || 'Showroom Workspace');
 
       // Post to backend
@@ -385,6 +389,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 90 }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#04a700" colors={["#04a700"]} />}
         >
           <View style={styles.content}>
             {/* Camera / Status Box */}
