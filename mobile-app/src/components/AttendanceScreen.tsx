@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Image,
-  Platform, Dimensions, Linking
+  Platform, Dimensions, Linking, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
@@ -156,7 +156,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced
+        accuracy: Location.Accuracy.High
       });
       
       const newCoords = {
@@ -377,8 +377,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               </Pressable>
             )}
 
-            {/* Workplace Location Resolution - only visible once photo is captured */}
-            {!isCheckedInToday && capturedPhoto && (
+            {/* Workplace Location Resolution - Always visible */}
+            {!isCheckedInToday && (
               <View style={styles.locationCard}>
                 <View style={styles.locationHeader}>
                   <MapPin size={18} color="#04a700" />
@@ -423,15 +423,15 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               </View>
             )}
 
-            {/* Submit Attendance Button - only active once photo and location are captured */}
-            {!isCheckedInToday && capturedPhoto && (
+            {/* Submit Attendance Button - Always visible, disabled until both resolved */}
+            {!isCheckedInToday && (
               <Pressable 
                 onPress={handleSubmitAttendance}
-                disabled={isSubmitting || isResolvingLocation || !coords}
+                disabled={isSubmitting || isResolvingLocation || !capturedPhoto || !coords}
                 style={({ pressed }) => [
                   styles.checkInBtn, 
-                  (isSubmitting || isResolvingLocation || !coords) && { opacity: 0.6, backgroundColor: '#cbd5e1' },
-                  pressed && !(isSubmitting || isResolvingLocation || !coords) && { transform: [{ scale: 0.98 }] }
+                  (isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { opacity: 0.6, backgroundColor: '#cbd5e1' },
+                  pressed && !(isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { transform: [{ scale: 0.98 }] }
                 ]}
               >
                 <CheckCircle2 size={20} color="#ffffff" style={{ marginRight: 8 }} />
@@ -483,7 +483,12 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         </ScrollView>
 
         {/* Full-Screen Camera Overlay Modal */}
-        {showCameraModal && (
+        <Modal
+          visible={showCameraModal}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={() => setShowCameraModal(false)}
+        >
           <View style={styles.modalContainer}>
             {tempPhotoUri ? (
               // Photo Review State
@@ -557,7 +562,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               </View>
             )}
           </View>
-        )}
+        </Modal>
       </View>
     </FadeScaleTransition>
   );
