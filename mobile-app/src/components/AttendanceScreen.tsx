@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Image,
+  View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
   Platform, Dimensions, Linking, Modal
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -141,7 +142,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
           if (!postCanAskAgain) {
             Alert.alert(
               'App Location Permission Required',
-              'You have enabled device location services (GPS), but this app still needs permission to access it.\n\nPlease tap "Open Settings", select "Permissions", and allow "Location" access.',
+              'You have enabled device location services (GPS), but this app still needs permission to access it.\n\nPlease tap "Open Settings", select "Permissions", and allow "Location" access (if you are running via Expo Go, you must grant Location permission to the "Expo Go" app itself in your phone settings).',
               [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -311,7 +312,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               styles.capturedImage,
               facing === 'front' && { transform: [{ scaleX: -1 }] }
             ]} 
-            resizeMode="cover" 
+            contentFit="cover" 
           />
           <View style={styles.retakeOverlay}>
             <Pressable onPress={handleRetakeImage} style={styles.retakeBtn}>
@@ -508,7 +509,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
                     StyleSheet.absoluteFillObject,
                     facing === 'front' && { transform: [{ scaleX: -1 }] }
                   ]} 
-                  resizeMode="cover" 
+                  contentFit="cover" 
                 />
                 <View style={styles.reviewOverlay}>
                   <ThemedText style={styles.reviewTitle}>Preview Selfie</ThemedText>

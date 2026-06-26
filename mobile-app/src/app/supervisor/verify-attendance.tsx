@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Alert, 
+  View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, 
   RefreshControl, TextInput, BackHandler
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { 
   ArrowLeft, CheckCircle2, XCircle, MapPin, Clock, FileText,
@@ -132,8 +133,16 @@ export default function SupervisorVerifyAttendance() {
 
   const getImageUrl = (path: string) => {
     if (!path) return '';
-    if (path.startsWith('http')) return path;
-    return `${baseHostUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+    let resolvedPath = path;
+    if (resolvedPath.includes('localhost:8000') || resolvedPath.includes('127.0.0.1:8000')) {
+      resolvedPath = resolvedPath
+        .replace('http://localhost:8000', '')
+        .replace('http://127.0.0.1:8000', '')
+        .replace('https://localhost:8000', '')
+        .replace('https://127.0.0.1:8000', '');
+    }
+    if (resolvedPath.startsWith('http')) return resolvedPath;
+    return `${baseHostUrl}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`;
   };
 
   const getRoleBadgeLabel = (role: string) => {
@@ -343,7 +352,7 @@ export default function SupervisorVerifyAttendance() {
                               <Image 
                                 source={{ uri: getImageUrl(record.photo) }} 
                                 style={styles.capturedPhoto} 
-                                resizeMode="cover"
+                                contentFit="cover"
                               />
                             ) : (
                               <View style={styles.photoFallback}>
