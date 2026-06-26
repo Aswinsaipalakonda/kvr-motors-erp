@@ -228,8 +228,15 @@ export default function SalesMelaCampaign() {
       return modelName.includes(query) || brandName.includes(query) || color.includes(query);
     }
 
-    return true;
   });
+
+  // Get active brands represented in current Mela vehicles stock list
+  const activeBrands = brands.filter(brand =>
+    melaVehicles.some(item => {
+      const model = models.find(m => m.id === item.vehicle_model);
+      return model?.brand === brand.id;
+    })
+  );
 
   // Get compatible batteries for selected vehicle
   const getCompatibleBatteries = () => {
@@ -380,7 +387,7 @@ export default function SalesMelaCampaign() {
                             All Brands
                           </ThemedText>
                         </Pressable>
-                        {brands.map((brand) => (
+                        {activeBrands.map((brand) => (
                           <Pressable
                             key={brand.id}
                             onPress={() => setSelectedBrandId(brand.id)}
