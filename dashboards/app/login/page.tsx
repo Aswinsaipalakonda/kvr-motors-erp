@@ -7,9 +7,11 @@ import { useAuth } from "../context/AuthContext";
 import { 
   Lock, 
   User, 
-  Sparkles, 
   ArrowRight, 
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Zap,
+  TrendingUp
 } from "lucide-react";
 
 function LoginForm() {
@@ -22,7 +24,6 @@ function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Show redirect warnings if redirected via route middleware
     const fromPath = searchParams.get("from");
     if (fromPath) {
       setErrorMsg("Please authenticate to access the requested system portal.");
@@ -47,26 +48,8 @@ function LoginForm() {
     }
   };
 
-  // Quick Demo credentials loader for high UX testing
-  const handleQuickLogin = (role: string) => {
-    const credentials: Record<string, { u: string; p: string }> = {
-      owner: { u: "owner", p: "owner123" },
-      supervisor: { u: "supervisor", p: "super123" },
-      sales: { u: "sales", p: "sales123" },
-      telecaller: { u: "telecaller", p: "tele123" }
-    };
-    
-    const cred = credentials[role];
-    if (cred) {
-      setUsername(cred.u);
-      setPassword(cred.p);
-      setErrorMsg("");
-    }
-  };
-
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      {/* Validation Errors Indicator */}
+    <form className="space-y-6" onSubmit={handleSubmit}>
       {errorMsg && (
         <div className="bg-red-50 border border-red-100 text-red-800 rounded-xl p-3.5 text-xs font-semibold flex items-start gap-2.5 animate-shake">
           <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-600 mt-0.5" />
@@ -76,12 +59,12 @@ function LoginForm() {
 
       {/* Username Field */}
       <div>
-        <label htmlFor="username" className="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
-          Username
+        <label htmlFor="username" className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2">
+          Username or Email
         </label>
         <div className="relative rounded-xl shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <User className="h-4 w-4" />
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <User className="h-4 w-4 text-slate-400" />
           </div>
           <input
             type="text"
@@ -91,20 +74,22 @@ function LoginForm() {
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white/60 transition-all duration-200"
-            placeholder="Enter username"
+            className="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-650 bg-slate-50/50 transition-all duration-200 text-slate-800"
+            placeholder="Enter your username"
           />
         </div>
       </div>
 
       {/* Password Field */}
       <div>
-        <label htmlFor="password" className="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
-          Password
-        </label>
+        <div className="flex justify-between items-center mb-2">
+          <label htmlFor="password" className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+            Password
+          </label>
+        </div>
         <div className="relative rounded-xl shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <Lock className="h-4 w-4" />
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-450">
+            <Lock className="h-4 w-4 text-slate-400" />
           </div>
           <input
             type="password"
@@ -114,10 +99,20 @@ function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white/60 transition-all duration-200"
-            placeholder="••••••••"
+            className="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm font-semibold placeholder-slate-450 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-650 bg-slate-50/50 transition-all duration-200 text-slate-800"
+            placeholder="Enter your password"
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs font-semibold">
+        <label className="flex items-center text-slate-500 cursor-pointer text-slate-400">
+          <input type="checkbox" className="mr-2 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500" />
+          Remember me
+        </label>
+        <span className="text-emerald-700 hover:text-emerald-800 cursor-pointer transition-colors">
+          Forgot password?
+        </span>
       </div>
 
       {/* CTA Submit Button */}
@@ -125,57 +120,17 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting || authLoading}
-          className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
+          className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-emerald-700/10 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
         >
           {(isSubmitting || authLoading) ? (
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />
           ) : (
             <>
-              <span>Enter Platform</span>
+              <span>Sign in</span>
               <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover:translate-x-1" />
             </>
           )}
         </button>
-      </div>
-
-      {/* Quick Demo Helper Section for Seamless UX Validation */}
-      <div className="mt-8 pt-6 border-t border-slate-100 text-center select-none">
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800/80 uppercase tracking-widest mb-3 bg-emerald-50 border border-emerald-100/50 px-2 py-1 rounded-full">
-          <Sparkles className="h-3 w-3" /> Quick Demo Autoloaders
-        </span>
-        <div className="grid grid-cols-4 gap-2 mt-1">
-          <button
-            type="button"
-            onClick={() => handleQuickLogin("owner")}
-            className="py-2 px-1 text-[10px] font-bold bg-emerald-50 border border-emerald-100 hover:bg-emerald-500/10 active:scale-95 text-emerald-950 rounded-lg transition-all duration-150 cursor-pointer"
-          >
-            Owner
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin("supervisor")}
-            className="py-2 px-1 text-[10px] font-bold bg-blue-50 border border-blue-100 hover:bg-blue-500/10 active:scale-95 text-blue-950 rounded-lg transition-all duration-150 cursor-pointer"
-          >
-            Supervisor
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin("sales")}
-            className="py-2 px-1 text-[10px] font-bold bg-teal-50 border border-teal-100 hover:bg-teal-500/10 active:scale-95 text-teal-950 rounded-lg transition-all duration-150 cursor-pointer"
-          >
-            Sales Exec
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin("telecaller")}
-            className="py-2 px-1 text-[10px] font-bold bg-purple-50 border border-purple-100 hover:bg-purple-500/10 active:scale-95 text-purple-950 rounded-lg transition-all duration-150 cursor-pointer"
-          >
-            Telecaller
-          </button>
-        </div>
-        <p className="text-[9px] font-medium text-slate-400 mt-3 italic">
-          Click a helper to pre-fill test developer sandbox credentials.
-        </p>
       </div>
     </form>
   );
@@ -190,64 +145,133 @@ export default function LoginPage() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#FAFDFB] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-3 border-emerald-100 border-t-emerald-600" />
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-3 border-emerald-900 border-t-emerald-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFDFB] relative flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans antialiased overflow-hidden text-slate-800">
+    <div className="min-h-screen flex flex-col lg:flex-row font-sans antialiased bg-slate-950 overflow-x-hidden">
       
-      {/* Background radial gradient glow spheres */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-emerald-100/30 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-teal-100/30 rounded-full blur-[140px]" />
-      </div>
+      {/* Left Section - Hero banner (visible on desktop) */}
+      <div className="hidden lg:flex lg:w-7/12 xl:w-8/12 text-white p-16 flex-col justify-between relative overflow-hidden bg-slate-950">
+        
+        {/* Background Image Layer with low opacity for high contrast */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/ev_showroom_login_hero.png"
+            alt="EV Showroom background"
+            fill
+            priority
+            className="object-cover opacity-45 mix-blend-lighten"
+          />
+          {/* Subtle gradient overlay to match image 3 layout feel but in brand colors */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-950/80 to-emerald-950/40" />
+        </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 select-none">
-        {/* Brand Logo & Header */}
-        <div className="flex flex-col items-center justify-center gap-3">
-          <div className="relative h-14 w-14 bg-white rounded-2xl p-2.5 flex items-center justify-center border border-emerald-100/80 shadow-md shadow-emerald-950/4">
+        {/* Top Header - Logo and Brand Name */}
+        <div className="relative z-10 flex items-center gap-3 select-none">
+          <div className="h-10 w-10 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-md">
             <Image
               src="/logo.png"
               alt="KVR Motors Logo"
-              width={40}
-              height={40}
+              width={28}
+              height={28}
               className="object-contain"
-              priority
             />
           </div>
-          <div className="text-center mt-2">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 uppercase leading-none">
-              KVR Motors
-            </h2>
-            <span className="text-[10px] font-bold text-emerald-800/80 uppercase tracking-widest mt-1.5 block">
-              Enterprise Resource Portal
-            </span>
+          <span className="text-lg font-black tracking-wider uppercase text-white">KVR Motors</span>
+        </div>
+
+        {/* Marketing copy mimicking structure of 3rd image */}
+        <div className="relative z-10 my-auto max-w-xl">
+          <h1 className="text-4xl xl:text-5xl font-light tracking-tight text-white leading-tight">
+            Manage your <span className="font-extrabold text-emerald-450">EV Business</span> Brilliantly.
+          </h1>
+          <p className="text-slate-300 text-base mt-6 leading-relaxed">
+            All-in-one platform to manage showroom operations, warehouse stock movements, sales leads pipeline, staff performance, and scale your dealership network.
+          </p>
+
+          {/* Bullet points mirroring Opulea screen styling */}
+          <div className="mt-12 space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <Zap className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Smart Showrooms</h3>
+                <p className="text-slate-400 text-xs mt-1">Real-time tracking of vehicle inventory, statuses, and battery allocations.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Lead Conversion</h3>
+                <p className="text-slate-400 text-xs mt-1">Nurture sales leads, monitor pipeline velocity, and view performance logs.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Secure Operations</h3>
+                <p className="text-slate-400 text-xs mt-1">Role-based access control, supervisor verification, and automated audits.</p>
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Footer text */}
+        <div className="relative z-10 text-xs font-semibold text-slate-500">
+          © {new Date().getFullYear()} KVR Motors ERP. All rights reserved.
         </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
-        {/* Glassmorphic Form Card */}
-        <div className="bg-white/80 backdrop-blur-md py-8 px-6 sm:px-10 border border-emerald-100/60 rounded-3xl shadow-xl shadow-emerald-950/4">
-          
-          <div className="mb-6 text-center">
-            <h3 className="text-lg font-extrabold text-slate-900">Sign in to your account</h3>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Enter your ERP terminal access credentials</p>
+      {/* Right Section - Login form container */}
+      <div className="w-full lg:w-5/12 xl:w-4/12 bg-white flex flex-col justify-between p-8 sm:p-16 lg:rounded-l-[40px] shadow-2xl relative z-10">
+        
+        {/* Mobile top bar (only shown on mobile/tablet) */}
+        <div className="flex items-center gap-3 lg:hidden mb-12 select-none justify-center">
+          <div className="h-10 w-10 bg-white rounded-xl p-1.5 flex items-center justify-center border border-slate-105 shadow-sm">
+            <Image
+              src="/logo.png"
+              alt="KVR Motors Logo"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
+          </div>
+          <span className="text-lg font-black tracking-wider uppercase text-slate-900">KVR Motors</span>
+        </div>
+
+        {/* Inner centered form wrapper */}
+        <div className="my-auto w-full max-w-sm mx-auto">
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome back</h2>
+            <p className="text-slate-500 text-sm mt-2 font-semibold">Sign in to continue managing your business.</p>
           </div>
 
           <Suspense fallback={
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-3 border-emerald-100 border-t-emerald-600" />
+              <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-100 border-t-emerald-600" />
             </div>
           }>
             <LoginForm />
           </Suspense>
+        </div>
 
+        {/* Mobile footer */}
+        <div className="text-center text-xs font-semibold text-slate-400 mt-12 lg:hidden">
+          © {new Date().getFullYear()} KVR Motors ERP.
         </div>
       </div>
+
     </div>
   );
 }
