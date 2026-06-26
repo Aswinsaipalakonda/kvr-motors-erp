@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Image,
-  Platform, Dimensions
+  Platform, Dimensions, Linking
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
 import * as Location from 'expo-location';
 import { 
   Camera, MapPin, CheckCircle2, AlertTriangle, ArrowLeft, Clock, History, 
@@ -42,6 +42,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationName, setLocationName] = useState<string>('');
+  const [locationTimestamp, setLocationTimestamp] = useState<string | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   
   // App flow states
@@ -84,23 +85,18 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     }
   }, [isActive, hasInitialized]);
 
-  // Request permissions actively on mount
+  // Request permissions silently on mount
   const requestPermissionsOnMount = async () => {
     try {
-      // 1. Request Camera Permission
-      const camRes = await requestCameraPermission();
-      if (camRes.granted) {
+      // Check camera permission silently
+      const { status: camStatus } = await ExpoCamera.getCameraPermissionsAsync();
+      if (camStatus === 'granted') {
         setActiveCamera(true);
-      } else {
-        setActiveCamera(false);
       }
 
-      // 2. Request Location Permission
-      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+      // Check location permission silently
+      const { status: locStatus } = await Location.getForegroundPermissionsAsync();
       setLocationStatus(locStatus);
-      if (locStatus === Location.PermissionStatus.GRANTED) {
-        resolveCurrentLocation();
-      }
     } catch (err) {
       console.error('Failed to request permissions on mount:', err);
     } finally {
@@ -112,46 +108,56 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   useEffect(() => {
     if (!isActive) {
       setActiveCamera(false);
-    } else if (cameraPermission?.granted && !isCheckedInToday) {
+    } else if (cameraPermission?.granted && !isCheckedInToday && !capturedPhoto) {
       setActiveCamera(true);
-    } else if (isActive && !cameraPermission?.granted) {
-      // Actively request if active but not granted yet
-      requestCameraPermission().then(res => {
-        if (res.granted) {
-          setActiveCamera(true);
-        }
-      });
     }
-  }, [isActive, cameraPermission?.granted, isCheckedInToday]);
-
-  // This is now only called when user explicitly taps "Grant Location Access" or recaptures location
-  const checkAndRequestLocationPermission = async () => {
-    try {
-      const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
-      setLocationStatus(reqStatus);
-      if (reqStatus === Location.PermissionStatus.GRANTED) {
-        resolveCurrentLocation();
-        return true;
-      } else {
-        Alert.alert(
-          'Location Required',
-          'Location permission was denied. Please check your system Settings to ensure location access is enabled for this app.'
-        );
-        return false;
-      }
-    } catch (err) {
-      console.warn('Error requesting location permission:', err);
-      return false;
-    }
-  };
-
-  const requestLocationPermission = async () => {
-    return checkAndRequestLocationPermission();
-  };
+  }, [isActive, cameraPermission?.granted, isCheckedInToday, capturedPhoto]);
 
   const resolveCurrentLocation = async () => {
     try {
       setIsResolvingLocation(true);
+      
+      // 1. Check if location services are enabled
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert(
+          'Location Services Off',
+          'Please turn on your device location services/GPS and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+
+      // 2. Check and request location permission
+      const { status: currentStatus, canAskAgain } = await Location.getForegroundPermissionsAsync();
+      let locGranted = currentStatus === Location.PermissionStatus.GRANTED;
+
+      if (!locGranted) {
+        const { status: reqStatus } = await Location.requestForegroundPermissionsAsync();
+        locGranted = reqStatus === Location.PermissionStatus.GRANTED;
+        if (!locGranted) {
+          if (!canAskAgain) {
+            Alert.alert(
+              'Location Permission Required',
+              'Location access is required to verify your workplace check-in. Please allow location access in your device settings.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() }
+              ]
+            );
+          } else {
+            Alert.alert(
+              'Permission Denied',
+              'Location access was denied. You must grant location permission to capture your current location.'
+            );
+          }
+          return;
+        }
+      }
+
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced
       });
@@ -161,6 +167,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         longitude: location.coords.longitude
       };
       setCoords(newCoords);
+      setLocationTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
       // Reverse geocoding for human readable address
       const geocoded = await Location.reverseGeocodeAsync(newCoords);
@@ -176,116 +183,113 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       } else {
         setLocationName('Showroom Workspace');
       }
-    } catch (err) {
-      console.warn('Location unavailable, using fallback:', (err as any)?.message || err);
-      setLocationName('Autocaptured Location');
+    } catch (err: any) {
+      console.warn('Location unavailable:', err?.message || err);
+      Alert.alert('Location Error', 'Unable to capture location: ' + (err?.message || err));
     } finally {
       setIsResolvingLocation(false);
     }
   };
 
-  const handleCaptureAndCheckIn = async () => {
-    // 1. Camera permission check and prompt if missing
-    let camGranted = cameraPermission?.granted;
-    if (!camGranted) {
+  const handleTakeImage = async () => {
+    try {
+      // 1. Request camera permission
       const res = await requestCameraPermission();
-      camGranted = res.granted;
-      if (!camGranted) {
-        Alert.alert('Permission Denied', 'Camera access is required for attendance facial verification.');
+      if (!res.granted) {
+        if (!res.canAskAgain) {
+          Alert.alert(
+            'Camera Permission Required',
+            'Camera access is required to take your check-in photo. Please allow camera access in your device settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Permission Denied',
+            'Camera access was denied. You must grant camera access to take your check-in photo.'
+          );
+        }
         return;
       }
-      setActiveCamera(true);
-    }
 
-    // 2. Location permission check and prompt if missing
-    let { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-    setLocationStatus(locStatus);
-    
-    if (locStatus !== Location.PermissionStatus.GRANTED) {
-      Alert.alert(
-        'Permission Required',
-        'Location access is required to verify your workplace check-in. If you turned on location and still see this, please go to your system settings to grant KVR Motors access.'
-      );
-      return;
-    }
-
-    // 3. Ensure coordinates are resolved
-    let currentCoords = coords;
-    if (!currentCoords) {
-      setIsResolvingLocation(true);
-      try {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced
-        });
-        currentCoords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        };
-        setCoords(currentCoords);
-
-        // Geocode coordinates
-        const geocoded = await Location.reverseGeocodeAsync(currentCoords);
-        if (geocoded && geocoded[0]) {
-          const address = geocoded[0];
-          const name = [
-            address.name,
-            address.street,
-            address.city,
-            address.region
-          ].filter(Boolean).slice(0, 2).join(', ') || 'Showroom Workspace';
-          setLocationName(name);
-        } else {
-          setLocationName('Showroom Workspace');
-        }
-      } catch (err) {
-        console.warn('Location unavailable during check-in, using fallback:', (err as any)?.message || err);
-        setLocationName('Autocaptured Location');
-      } finally {
-        setIsResolvingLocation(false);
+      // 2. Start camera if not active
+      if (!activeCamera && !capturedPhoto) {
+        setActiveCamera(true);
+        return;
       }
-    }
 
-    // 4. Ensure camera ref is ready
-    if (!cameraRef.current) {
-      Alert.alert('Camera Initializing', 'The camera is preparing. Please tap the button again in 1 second.');
+      // 3. If camera is active, take photo
+      if (activeCamera && cameraRef.current) {
+        setIsSubmitting(true);
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.7,
+          skipProcessing: false
+        });
+        if (photo?.uri) {
+          setCapturedPhoto(photo.uri);
+          setActiveCamera(false);
+        } else {
+          Alert.alert('Capture Error', 'Failed to capture photo.');
+        }
+      } else {
+        if (capturedPhoto) {
+          setCapturedPhoto(null);
+          setActiveCamera(true);
+        } else {
+          Alert.alert('Camera Initializing', 'The camera is preparing. Please tap the button again in 1 second.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Take image error:', err);
+      Alert.alert('Camera Error', err?.message || 'Failed to capture image.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRetakeImage = () => {
+    setCapturedPhoto(null);
+    setActiveCamera(true);
+  };
+
+  const handleSubmitAttendance = async () => {
+    if (!capturedPhoto || !coords) {
+      Alert.alert('Missing Details', 'Please capture both your check-in photo and location before submitting.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      
-      // 1. Capture photo
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
-        skipProcessing: false
-      });
 
-      if (!photo?.uri) {
-        throw new Error('Photo capture failed.');
-      }
-
-      setCapturedPhoto(photo.uri);
-
-      // 2. Prepare upload payload
+      // Prepare upload payload
       const formData = new FormData();
       formData.append('photo', {
-        uri: Platform.OS === 'ios' ? photo.uri.replace('file://', '') : photo.uri,
+        uri: Platform.OS === 'ios' ? capturedPhoto.replace('file://', '') : capturedPhoto,
         name: 'attendance_checkin.jpg',
         type: 'image/jpeg',
       } as any);
       
-      formData.append('latitude', (currentCoords?.latitude || 0).toString());
-      formData.append('longitude', (currentCoords?.longitude || 0).toString());
+      formData.append('latitude', coords.latitude.toString());
+      formData.append('longitude', coords.longitude.toString());
       formData.append('location_name', locationName || 'Showroom Workspace');
 
-      // 3. Post to backend
-      const res = await api.post('/attendance/', formData, {
+      // Post to backend
+      await api.post('/attendance/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         }
       });
 
       Alert.alert('Success', 'Attendance marked successfully! Awaiting supervisor verification.');
+      
+      // Clear states
+      setCapturedPhoto(null);
+      setCoords(null);
+      setLocationTimestamp(null);
+      setLocationName('');
+      
       loadAttendanceData();
     } catch (err: any) {
       console.error('Check-in failed:', err);
@@ -327,6 +331,19 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       );
     }
 
+    if (capturedPhoto) {
+      return (
+        <View style={styles.cameraContainer}>
+          <Image source={{ uri: capturedPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <View style={styles.retakeOverlay}>
+            <Pressable onPress={handleRetakeImage} style={styles.retakeBtn}>
+              <ThemedText style={styles.retakeBtnText}>Retake Image</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+
     const hasCamAccess = cameraPermission?.granted;
     if (!hasCamAccess) {
       return (
@@ -341,6 +358,15 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               const res = await requestCameraPermission();
               if (res.granted) {
                 setActiveCamera(true);
+              } else {
+                Alert.alert(
+                  'Camera Permission Required',
+                  'Camera access was denied. Please check your system Settings to ensure camera access is enabled for this app.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => Linking.openSettings() }
+                  ]
+                );
               }
             }} 
             style={styles.grantBtn}
@@ -353,19 +379,29 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
 
     return (
       <View style={styles.cameraContainer}>
-        {activeCamera && (
+        {activeCamera ? (
           <CameraView
             key={`camera-active-${isActive}`}
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
             facing="front"
           />
+        ) : (
+          <View style={styles.cameraPlaceholder}>
+            <Camera size={44} color="#64748b" style={{ marginBottom: 12 }} />
+            <ThemedText style={styles.permissionTitle}>Camera Inactive</ThemedText>
+            <ThemedText style={styles.permissionDesc}>
+              Tap "Take Image" to activate the camera.
+            </ThemedText>
+          </View>
         )}
-        {/* Facial Guide Frame overlay */}
-        <View style={styles.cameraOverlay} pointerEvents="none">
-          <View style={styles.faceTarget} />
-          <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
-        </View>
+        {activeCamera && (
+          /* Facial Guide Frame overlay */
+          <View style={styles.cameraOverlay} pointerEvents="none">
+            <View style={styles.faceTarget} />
+            <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
+          </View>
+        )}
 
         {isSubmitting && (
           <View style={styles.submittingOverlay}>
@@ -415,6 +451,23 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
             {renderCameraSection()}
 
             {/* Workplace Location Resolution */}
+            {/* Take Image Button */}
+            {!isCheckedInToday && (
+              <Pressable 
+                onPress={handleTakeImage}
+                style={({ pressed }) => [
+                  styles.checkInBtnOutline,
+                  pressed && { transform: [{ scale: 0.98 }] }
+                ]}
+              >
+                <Camera size={18} color="#04a700" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.checkInBtnOutlineText}>
+                  {activeCamera ? 'CAPTURE PHOTO' : capturedPhoto ? 'RETAKE PHOTO' : 'TAKE IMAGE'}
+                </ThemedText>
+              </Pressable>
+            )}
+
+            {/* Workplace Location Resolution */}
             {!isCheckedInToday && (
               <View style={styles.locationCard}>
                 <View style={styles.locationHeader}>
@@ -432,32 +485,47 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
                       {locationName || 'GPS Location not resolved'}
                     </ThemedText>
                     {coords && (
-                      <ThemedText style={styles.coordinates}>
-                        Lat: {coords.latitude.toFixed(5)}, Lng: {coords.longitude.toFixed(5)}
-                      </ThemedText>
+                      <>
+                        <ThemedText style={styles.coordinates}>
+                          Lat: {coords.latitude.toFixed(5)}, Lng: {coords.longitude.toFixed(5)}
+                        </ThemedText>
+                        {locationTimestamp && (
+                          <ThemedText style={styles.coordinates}>
+                            Captured at: {locationTimestamp}
+                          </ThemedText>
+                        )}
+                      </>
                     )}
-                    <Pressable onPress={resolveCurrentLocation} style={styles.refreshLocBtn}>
-                      <Navigation size={12} color="#04a700" />
-                      <ThemedText style={styles.refreshLocText}>Recapture Location</ThemedText>
+                    <Pressable 
+                      onPress={resolveCurrentLocation} 
+                      style={({ pressed }) => [
+                        styles.checkInBtnOutline,
+                        pressed && { transform: [{ scale: 0.98 }] }
+                      ]}
+                    >
+                      <Navigation size={18} color="#04a700" style={{ marginRight: 8 }} />
+                      <ThemedText style={styles.checkInBtnOutlineText}>
+                        {coords ? 'RECAPTURE LOCATION' : 'CAPTURE LOCATION'}
+                      </ThemedText>
                     </Pressable>
                   </View>
                 )}
               </View>
             )}
 
-            {/* Check-in Trigger Button */}
+            {/* Submit Attendance Button */}
             {!isCheckedInToday && (
               <Pressable 
-                onPress={handleCaptureAndCheckIn}
-                disabled={isSubmitting || isResolvingLocation}
+                onPress={handleSubmitAttendance}
+                disabled={isSubmitting || isResolvingLocation || !capturedPhoto || !coords}
                 style={({ pressed }) => [
                   styles.checkInBtn, 
-                  (isSubmitting || isResolvingLocation) && { opacity: 0.6 },
-                  pressed && { scale: 0.98 }
+                  (isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { opacity: 0.6, backgroundColor: '#cbd5e1' },
+                  pressed && !(isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { transform: [{ scale: 0.98 }] }
                 ]}
               >
-                <Camera size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                <ThemedText style={styles.checkInBtnText}>CAPTURE & MARK ATTENDANCE</ThemedText>
+                <CheckCircle2 size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.checkInBtnText}>SUBMIT ATTENDANCE</ThemedText>
               </Pressable>
             )}
 
@@ -580,6 +648,43 @@ const styles = StyleSheet.create({
     borderRadius: 999, height: 54, boxShadow: '0 8px 18px rgba(4, 167, 0, 0.28)',
   },
   checkInBtnText: { color: '#ffffff', fontSize: 14.5, fontWeight: 'bold', letterSpacing: 0.5 },
+  checkInBtnOutline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#04a700',
+    borderRadius: 999,
+    height: 48,
+    marginTop: 8,
+  },
+  checkInBtnOutlineText: {
+    color: '#04a700',
+    fontSize: 13.5,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  retakeOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  retakeBtn: {
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  retakeBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   historySection: { marginTop: 10, gap: 12 },
   historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4 },
   historyTitle: { fontSize: 15.5, fontWeight: 'bold', color: '#0f172a' },
