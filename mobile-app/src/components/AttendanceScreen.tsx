@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert,
-  Platform, Dimensions, Linking, Modal
+  Platform, Dimensions, Linking
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { 
   Camera, MapPin, CheckCircle2, AlertTriangle, ArrowLeft, Clock, History, 
-  MapPinned, Sparkles, Navigation, RefreshCw, Zap, ZapOff
+  MapPinned, Sparkles, Navigation, RefreshCw
 } from 'lucide-react-native';
 import { ThemedText } from './themed-text';
 import FadeScaleTransition from './FadeScaleTransition';
@@ -32,10 +32,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const cameraRef = useRef<CameraView>(null);
 
   // Permissions state — check silently on mount, prompt only when user taps a feature
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [locationStatus, setLocationStatus] = useState<Location.PermissionStatus | null>(null);
   const [permissionsChecked, setPermissionsChecked] = useState(false);
 
@@ -52,10 +50,6 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
   const [todayLog, setTodayLog] = useState<AttendanceLog | null>(null);
-  const [showCameraModal, setShowCameraModal] = useState(false);
-  const [tempPhotoUri, setTempPhotoUri] = useState<string | null>(null);
-  const [facing, setFacing] = useState<'front' | 'back'>('front');
-  const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
 
   // Load existing attendance logs and check-in state
   const loadAttendanceData = async () => {
@@ -194,27 +188,43 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const handleTakeImage = async () => {
     try {
       // 1. Request camera permission
-      const res = await requestCameraPermission();
-      if (!res.granted) {
-        if (!res.canAskAgain) {
-          Alert.alert(
-            'Camera Permission Required',
-            'Camera access is required to take your check-in photo. Please allow camera access in your device settings.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() }
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Permission Denied',
-            'Camera access was denied. You must grant camera access to take your check-in photo.'
-          );
+      const { status: currentStatus } = await ImagePicker.getCameraPermissionsAsync();
+      let granted = currentStatus === ImagePicker.PermissionStatus.GRANTED;
+
+      if (!granted) {
+        const { status: reqStatus, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+        granted = reqStatus === ImagePicker.PermissionStatus.GRANTED;
+        if (!granted) {
+          if (!canAskAgain) {
+            Alert.alert(
+              'Camera Permission Required',
+              'Camera access is required to take your check-in photo. Please allow camera access in your device settings (or in "Expo Go" settings if using Expo Go).',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() }
+              ]
+            );
+          } else {
+            Alert.alert(
+              'Permission Denied',
+              'Camera access was denied. You must grant camera access to take your check-in photo.'
+            );
+          }
+          return;
         }
-        return;
       }
 
-      setShowCameraModal(true);
+      // 2. Launch native camera app
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        cameraType: ImagePicker.CameraType.front,
+        allowsEditing: false,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setCapturedPhoto(result.assets[0].uri);
+      }
     } catch (err: any) {
       console.error('Take image error:', err);
       Alert.alert('Camera Error', err?.message || 'Failed to capture image.');
@@ -222,8 +232,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   };
 
   const handleRetakeImage = () => {
-    setCapturedPhoto(null);
-    setShowCameraModal(true);
+    handleTakeImage();
   };
 
   const handleSubmitAttendance = async () => {
@@ -308,10 +317,7 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         <View style={styles.cameraContainer}>
           <Image 
             source={{ uri: capturedPhoto }} 
-            style={[
-              styles.capturedImage,
-              facing === 'front' && { transform: [{ scaleX: -1 }] }
-            ]} 
+            style={styles.capturedImage} 
             contentFit="cover" 
           />
           <View style={styles.retakeOverlay}>
@@ -491,126 +497,6 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
             </View>
           </View>
         </ScrollView>
-
-        {/* Full-Screen Camera Overlay Modal */}
-        <Modal
-          visible={showCameraModal}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setShowCameraModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            {tempPhotoUri ? (
-              // Photo Review State
-              <View style={StyleSheet.absoluteFillObject}>
-                <Image 
-                  source={{ uri: tempPhotoUri }} 
-                  style={[
-                    StyleSheet.absoluteFillObject,
-                    facing === 'front' && { transform: [{ scaleX: -1 }] }
-                  ]} 
-                  contentFit="cover" 
-                />
-                <View style={styles.reviewOverlay}>
-                  <ThemedText style={styles.reviewTitle}>Preview Selfie</ThemedText>
-                  <View style={styles.modalButtonRow}>
-                    <Pressable 
-                      onPress={() => setTempPhotoUri(null)} 
-                      style={styles.modalCancelBtn}
-                    >
-                      <ThemedText style={styles.modalCancelBtnText}>RETAKE</ThemedText>
-                    </Pressable>
-                    <Pressable 
-                      onPress={() => {
-                        setCapturedPhoto(tempPhotoUri);
-                        setShowCameraModal(false);
-                        setTempPhotoUri(null);
-                      }} 
-                      style={styles.modalConfirmBtn}
-                    >
-                      <ThemedText style={styles.modalConfirmBtnText}>USE PHOTO</ThemedText>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              // Active Camera State
-              <View style={StyleSheet.absoluteFillObject}>
-                <CameraView
-                  ref={cameraRef}
-                  style={StyleSheet.absoluteFillObject}
-                  facing={facing}
-                  flash={flash}
-                />
-                {/* Facial overlay frame */}
-                <View style={styles.cameraOverlay} pointerEvents="none">
-                  <View style={styles.faceTarget} />
-                  <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
-                </View>
-
-                {/* Top controls (Flip & Flash) */}
-                <View style={styles.cameraHeaderControls}>
-                  <Pressable 
-                    onPress={() => setShowCameraModal(false)} 
-                    style={styles.circleIconButton}
-                  >
-                    <ArrowLeft size={22} color="#ffffff" />
-                  </Pressable>
-
-                  <View style={styles.rightTopControls}>
-                    {/* Flash toggle */}
-                    <Pressable 
-                      onPress={() => {
-                        setFlash(prev => prev === 'off' ? 'on' : prev === 'on' ? 'auto' : 'off');
-                      }} 
-                      style={styles.circleIconButton}
-                    >
-                      {flash === 'off' ? (
-                        <ZapOff size={20} color="#ffffff" />
-                      ) : (
-                        <Zap size={20} color={flash === 'on' ? '#eab308' : '#38bdf8'} />
-                      )}
-                    </Pressable>
-
-                    {/* Camera flip */}
-                    <Pressable 
-                      onPress={() => setFacing(prev => prev === 'front' ? 'back' : 'front')} 
-                      style={styles.circleIconButton}
-                    >
-                      <RefreshCw size={20} color="#ffffff" />
-                    </Pressable>
-                  </View>
-                </View>
-
-                {/* Controls */}
-                <View style={styles.modalControls}>
-                  <View style={{ width: 44 }} />
-                  <Pressable 
-                    onPress={async () => {
-                      if (cameraRef.current) {
-                        try {
-                          const photo = await cameraRef.current.takePictureAsync({
-                            quality: 0.7,
-                            skipProcessing: false
-                          });
-                          if (photo?.uri) {
-                            setTempPhotoUri(photo.uri);
-                          }
-                        } catch (err) {
-                          Alert.alert('Capture Error', 'Failed to take photo.');
-                        }
-                      }
-                    }} 
-                    style={styles.modalCaptureBtn}
-                  >
-                    <View style={styles.modalCaptureInner} />
-                  </Pressable>
-                  <View style={{ width: 44 }} />
-                </View>
-              </View>
-            )}
-          </View>
-        </Modal>
       </View>
     </FadeScaleTransition>
   );
