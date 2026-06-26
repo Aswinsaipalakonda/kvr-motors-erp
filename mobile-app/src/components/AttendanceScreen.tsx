@@ -51,7 +51,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isCheckedInToday, setIsCheckedInToday] = useState(false);
   const [todayLog, setTodayLog] = useState<AttendanceLog | null>(null);
-  const [activeCamera, setActiveCamera] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [tempPhotoUri, setTempPhotoUri] = useState<string | null>(null);
 
   // Load existing attendance logs and check-in state
   const loadAttendanceData = async () => {
@@ -67,7 +68,6 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       if (todayRecord) {
         setIsCheckedInToday(true);
         setTodayLog(todayRecord);
-        setActiveCamera(false);
       }
     } catch (err) {
       console.error('Failed to load attendance logs:', err);
@@ -88,12 +88,6 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
   // Request permissions silently on mount
   const requestPermissionsOnMount = async () => {
     try {
-      // Check camera permission silently
-      const { status: camStatus } = await ExpoCamera.getCameraPermissionsAsync();
-      if (camStatus === 'granted') {
-        setActiveCamera(true);
-      }
-
       // Check location permission silently
       const { status: locStatus } = await Location.getForegroundPermissionsAsync();
       setLocationStatus(locStatus);
@@ -104,31 +98,34 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
     }
   };
 
-  // Manage camera state based on active status and permission
-  useEffect(() => {
-    if (!isActive) {
-      setActiveCamera(false);
-    } else if (cameraPermission?.granted && !isCheckedInToday && !capturedPhoto) {
-      setActiveCamera(true);
-    }
-  }, [isActive, cameraPermission?.granted, isCheckedInToday, capturedPhoto]);
-
   const resolveCurrentLocation = async () => {
     try {
       setIsResolvingLocation(true);
       
-      // 1. Check if location services are enabled
+      // 1. Check and request location services / GPS accuracy (Android standard prompt)
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
-        Alert.alert(
-          'Location Services Off',
-          'Please turn on your device location services/GPS and try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return;
+        if (Platform.OS === 'android') {
+          try {
+            await Location.enableNetworkProviderAsync();
+          } catch (e) {
+            Alert.alert(
+              'Location Accuracy Required',
+              'To proceed, please turn on device location services to verify check-in.'
+            );
+            return;
+          }
+        } else {
+          Alert.alert(
+            'Location Services Off',
+            'Please enable your device location services/GPS and try again.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+          return;
+        }
       }
 
       // 2. Check and request location permission
@@ -214,44 +211,16 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
         return;
       }
 
-      // 2. Start camera if not active
-      if (!activeCamera && !capturedPhoto) {
-        setActiveCamera(true);
-        return;
-      }
-
-      // 3. If camera is active, take photo
-      if (activeCamera && cameraRef.current) {
-        setIsSubmitting(true);
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.7,
-          skipProcessing: false
-        });
-        if (photo?.uri) {
-          setCapturedPhoto(photo.uri);
-          setActiveCamera(false);
-        } else {
-          Alert.alert('Capture Error', 'Failed to capture photo.');
-        }
-      } else {
-        if (capturedPhoto) {
-          setCapturedPhoto(null);
-          setActiveCamera(true);
-        } else {
-          Alert.alert('Camera Initializing', 'The camera is preparing. Please tap the button again in 1 second.');
-        }
-      }
+      setShowCameraModal(true);
     } catch (err: any) {
       console.error('Take image error:', err);
       Alert.alert('Camera Error', err?.message || 'Failed to capture image.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleRetakeImage = () => {
     setCapturedPhoto(null);
-    setActiveCamera(true);
+    setShowCameraModal(true);
   };
 
   const handleSubmitAttendance = async () => {
@@ -344,71 +313,13 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
       );
     }
 
-    const hasCamAccess = cameraPermission?.granted;
-    if (!hasCamAccess) {
-      return (
-        <View style={styles.cameraPlaceholder}>
-          <Camera size={44} color="#64748b" style={{ marginBottom: 12 }} />
-          <ThemedText style={styles.permissionTitle}>Facial Check-in Camera</ThemedText>
-          <ThemedText style={styles.permissionDesc}>
-            Camera permission is required to capture your workplace photo.
-          </ThemedText>
-          <Pressable 
-            onPress={async () => {
-              const res = await requestCameraPermission();
-              if (res.granted) {
-                setActiveCamera(true);
-              } else {
-                Alert.alert(
-                  'Camera Permission Required',
-                  'Camera access was denied. Please check your system Settings to ensure camera access is enabled for this app.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Open Settings', onPress: () => Linking.openSettings() }
-                  ]
-                );
-              }
-            }} 
-            style={styles.grantBtn}
-          >
-            <ThemedText style={styles.grantBtnText}>Grant Camera Access</ThemedText>
-          </Pressable>
-        </View>
-      );
-    }
-
     return (
-      <View style={styles.cameraContainer}>
-        {activeCamera ? (
-          <CameraView
-            key={`camera-active-${isActive}`}
-            ref={cameraRef}
-            style={StyleSheet.absoluteFillObject}
-            facing="front"
-          />
-        ) : (
-          <View style={styles.cameraPlaceholder}>
-            <Camera size={44} color="#64748b" style={{ marginBottom: 12 }} />
-            <ThemedText style={styles.permissionTitle}>Camera Inactive</ThemedText>
-            <ThemedText style={styles.permissionDesc}>
-              Tap "Take Image" to activate the camera.
-            </ThemedText>
-          </View>
-        )}
-        {activeCamera && (
-          /* Facial Guide Frame overlay */
-          <View style={styles.cameraOverlay} pointerEvents="none">
-            <View style={styles.faceTarget} />
-            <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
-          </View>
-        )}
-
-        {isSubmitting && (
-          <View style={styles.submittingOverlay}>
-            <ActivityIndicator size="large" color="#04a700" />
-            <ThemedText style={styles.submittingText}>Registering Check-in...</ThemedText>
-          </View>
-        )}
+      <View style={styles.guidanceCard}>
+        <Camera size={36} color="#04a700" style={{ marginBottom: 12 }} />
+        <ThemedText style={styles.guidanceTitle}>Selfie Verification</ThemedText>
+        <ThemedText style={styles.guidanceDesc}>
+          To check in, please first take a photo. This helps verify your identity at the workplace.
+        </ThemedText>
       </View>
     );
   };
@@ -450,9 +361,8 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
             {/* Camera / Status Box */}
             {renderCameraSection()}
 
-            {/* Workplace Location Resolution */}
             {/* Take Image Button */}
-            {!isCheckedInToday && (
+            {!isCheckedInToday && !capturedPhoto && (
               <Pressable 
                 onPress={handleTakeImage}
                 style={({ pressed }) => [
@@ -462,13 +372,13 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               >
                 <Camera size={18} color="#04a700" style={{ marginRight: 8 }} />
                 <ThemedText style={styles.checkInBtnOutlineText}>
-                  {activeCamera ? 'CAPTURE PHOTO' : capturedPhoto ? 'RETAKE PHOTO' : 'TAKE IMAGE'}
+                  CAPTURE PHOTO
                 </ThemedText>
               </Pressable>
             )}
 
-            {/* Workplace Location Resolution */}
-            {!isCheckedInToday && (
+            {/* Workplace Location Resolution - only visible once photo is captured */}
+            {!isCheckedInToday && capturedPhoto && (
               <View style={styles.locationCard}>
                 <View style={styles.locationHeader}>
                   <MapPin size={18} color="#04a700" />
@@ -513,15 +423,15 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
               </View>
             )}
 
-            {/* Submit Attendance Button */}
-            {!isCheckedInToday && (
+            {/* Submit Attendance Button - only active once photo and location are captured */}
+            {!isCheckedInToday && capturedPhoto && (
               <Pressable 
                 onPress={handleSubmitAttendance}
-                disabled={isSubmitting || isResolvingLocation || !capturedPhoto || !coords}
+                disabled={isSubmitting || isResolvingLocation || !coords}
                 style={({ pressed }) => [
                   styles.checkInBtn, 
-                  (isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { opacity: 0.6, backgroundColor: '#cbd5e1' },
-                  pressed && !(isSubmitting || isResolvingLocation || !capturedPhoto || !coords) && { transform: [{ scale: 0.98 }] }
+                  (isSubmitting || isResolvingLocation || !coords) && { opacity: 0.6, backgroundColor: '#cbd5e1' },
+                  pressed && !(isSubmitting || isResolvingLocation || !coords) && { transform: [{ scale: 0.98 }] }
                 ]}
               >
                 <CheckCircle2 size={20} color="#ffffff" style={{ marginRight: 8 }} />
@@ -571,6 +481,83 @@ export default function AttendanceScreen({ role, isActive = true }: { role: stri
             </View>
           </View>
         </ScrollView>
+
+        {/* Full-Screen Camera Overlay Modal */}
+        {showCameraModal && (
+          <View style={styles.modalContainer}>
+            {tempPhotoUri ? (
+              // Photo Review State
+              <View style={StyleSheet.absoluteFillObject}>
+                <Image source={{ uri: tempPhotoUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                <View style={styles.reviewOverlay}>
+                  <ThemedText style={styles.reviewTitle}>Preview Selfie</ThemedText>
+                  <View style={styles.modalButtonRow}>
+                    <Pressable 
+                      onPress={() => setTempPhotoUri(null)} 
+                      style={styles.modalCancelBtn}
+                    >
+                      <ThemedText style={styles.modalCancelBtnText}>RETAKE</ThemedText>
+                    </Pressable>
+                    <Pressable 
+                      onPress={() => {
+                        setCapturedPhoto(tempPhotoUri);
+                        setShowCameraModal(false);
+                        setTempPhotoUri(null);
+                      }} 
+                      style={styles.modalConfirmBtn}
+                    >
+                      <ThemedText style={styles.modalConfirmBtnText}>USE PHOTO</ThemedText>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              // Active Camera State
+              <View style={StyleSheet.absoluteFillObject}>
+                <CameraView
+                  ref={cameraRef}
+                  style={StyleSheet.absoluteFillObject}
+                  facing="front"
+                />
+                {/* Facial overlay frame */}
+                <View style={styles.cameraOverlay} pointerEvents="none">
+                  <View style={styles.faceTarget} />
+                  <ThemedText style={styles.overlayHint}>Position face inside the target frame</ThemedText>
+                </View>
+                {/* Controls */}
+                <View style={styles.modalControls}>
+                  <Pressable 
+                    onPress={() => setShowCameraModal(false)} 
+                    style={styles.modalCloseBtn}
+                  >
+                    <ArrowLeft size={20} color="#ffffff" />
+                  </Pressable>
+                  <Pressable 
+                    onPress={async () => {
+                      if (cameraRef.current) {
+                        try {
+                          const photo = await cameraRef.current.takePictureAsync({
+                            quality: 0.7,
+                            skipProcessing: false
+                          });
+                          if (photo?.uri) {
+                            setTempPhotoUri(photo.uri);
+                          }
+                        } catch (err) {
+                          Alert.alert('Capture Error', 'Failed to take photo.');
+                        }
+                      }
+                    }} 
+                    style={styles.modalCaptureBtn}
+                  >
+                    <View style={styles.modalCaptureInner} />
+                  </Pressable>
+                  <View style={{ width: 44 }} />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </FadeScaleTransition>
   );
@@ -700,4 +687,119 @@ const styles = StyleSheet.create({
   logLocation: { fontSize: 11, color: '#94a3b8', marginTop: 2, maxWidth: '85%' },
   logStatusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   logStatusText: { fontSize: 10, fontWeight: 'bold' },
+  guidanceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)',
+  },
+  guidanceTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 6,
+  },
+  guidanceDesc: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  modalContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    zIndex: 9999,
+  },
+  reviewOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+  },
+  reviewTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 24,
+    textShadowColor: '#000',
+    textShadowRadius: 6,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    height: 52,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    backgroundColor: '#04a700',
+    height: 52,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(4, 167, 0, 0.3)',
+  },
+  modalConfirmBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  modalControls: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 36,
+  },
+  modalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  modalCaptureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  modalCaptureInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ffffff',
+  },
 });
