@@ -11,7 +11,9 @@ import {
   AlertCircle,
   ShieldCheck,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 function LoginForm() {
@@ -20,6 +22,7 @@ function LoginForm() {
   
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,7 +55,7 @@ function LoginForm() {
     <form className="space-y-6" onSubmit={handleSubmit}>
       {errorMsg && (
         <div className="bg-red-50 border border-red-100 text-red-800 rounded-2xl p-4 text-xs font-semibold flex items-start gap-2.5 animate-shake">
-          <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-600 mt-0.5" />
+          <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-650 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -92,16 +95,23 @@ function LoginForm() {
             <Lock className="h-4 w-4 text-slate-400" />
           </div>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             name="password"
             id="password"
             autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full pl-12 pr-5 py-4 border border-slate-200 rounded-full text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-slate-50/50 transition-all duration-200 text-slate-800"
+            className="block w-full pl-12 pr-12 py-4 border border-slate-200 rounded-full text-sm font-semibold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-650 bg-slate-50/50 transition-all duration-200 text-slate-800"
             placeholder="Enter your password"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
@@ -110,9 +120,6 @@ function LoginForm() {
           <input type="checkbox" className="mr-2 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
           Remember me
         </label>
-        <span className="text-emerald-700 hover:text-emerald-800 cursor-pointer transition-colors">
-          Forgot password?
-        </span>
       </div>
 
       {/* CTA Submit Button */}
@@ -120,7 +127,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting || authLoading}
-          className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-full shadow-lg shadow-emerald-700/10 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
+          className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-full shadow-lg shadow-emerald-700/10 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-705 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 transition-all duration-300 group cursor-pointer"
         >
           {(isSubmitting || authLoading) ? (
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />

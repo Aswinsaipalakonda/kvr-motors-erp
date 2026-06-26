@@ -493,7 +493,7 @@ export default function Home() {
                 {/* Screen Content Wrapper */}
                 <div className="rounded-[2.2rem] overflow-hidden w-full h-full bg-[#090d16] relative">
                   <Image 
-                    src="/app-images/2.png" 
+                    src="/app-images/3.png" 
                     fill 
                     className="object-cover" 
                     alt="KVR Mobile App Attendance Screen" 

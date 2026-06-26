@@ -72,9 +72,6 @@ export default function LoginScreen() {
                   <View style={styles.inputGroup}>
                     <View style={styles.labelRow}>
                       <ThemedText style={styles.label}>PASSWORD</ThemedText>
-                      <Pressable onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
-                        <ThemedText style={styles.forgotText}>Forgot password?</ThemedText>
-                      </Pressable>
                     </View>
                     <View style={styles.inputWrapper}>
                       <Lock size={18} color="#94a3b8" style={styles.inputIcon} />
