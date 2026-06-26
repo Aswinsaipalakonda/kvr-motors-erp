@@ -27,6 +27,7 @@ import {
   deleteMelaCompatibility, MelaVehicleStockInput, MelaBatteryStockInput,
   MelaVehicleBatteryCompatibilityInput, updateMelaBooking
 } from '@/services/mela';
+import * as Print from 'expo-print';
 
 type OwnerMelaTab = 'overview' | 'stock' | 'checkout' | 'orders' | 'leaderboard' | 'settings';
 type StockSubTab = 'vehicles' | 'batteries' | 'compatibility';
@@ -108,6 +109,215 @@ export default function OwnerMelaCampaign() {
     return path.startsWith('http')
       ? path
       : `${api.defaults.baseURL?.replace('/api/v1', '')}${path}`;
+  };
+
+  const printThermalReceipt = async (booking: any) => {
+    try {
+      const formattedDate = booking.completed_at
+        ? new Date(booking.completed_at).toLocaleString("en-IN", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : new Date().toLocaleString("en-IN", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+
+      const priceStr = parseFloat(booking.price).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+      const paymentTypeMap: Record<string, string> = {
+        cash: "CASH",
+        upi: "UPI / ONLINE",
+        card: "DEBIT/CREDIT CARD",
+        bajaj_finance: "BAJAJ FINANCE"
+      };
+      const paymentLbl = paymentTypeMap[booking.payment_type] || booking.payment_type.toUpperCase();
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Receipt - ${booking.booking_id}</title>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body {
+              width: 72mm;
+              margin: 0 auto;
+              padding: 6mm 4mm 20mm 4mm;
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 11px;
+              line-height: 1.4;
+              color: #000;
+              background-color: #fff;
+              -webkit-print-color-adjust: exact;
+              box-sizing: border-box;
+            }
+            .text-center {
+              text-align: center;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .bold {
+              font-weight: bold;
+            }
+            .brand-title {
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0 0 2px 0;
+              letter-spacing: 1px;
+            }
+            .brand-subtitle {
+              font-size: 10px;
+              margin: 0 0 6px 0;
+              text-transform: uppercase;
+            }
+            .divider {
+              border-top: 1px dashed #000;
+              margin: 8px 0;
+            }
+            .details-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 8px 0;
+            }
+            .details-table td {
+              padding: 2px 0;
+              vertical-align: top;
+            }
+            .details-table td.label {
+              width: 40%;
+              color: #333;
+            }
+            .details-table td.value {
+              width: 60%;
+              text-align: right;
+              font-weight: bold;
+            }
+            .items-header {
+              font-weight: bold;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 4px;
+              margin-bottom: 6px;
+            }
+            .item-row {
+              margin-bottom: 4px;
+            }
+            .item-desc {
+              font-weight: bold;
+            }
+            .item-meta {
+              font-size: 9px;
+              color: #555;
+              padding-left: 8px;
+            }
+            .total-section {
+              margin-top: 8px;
+              font-size: 13px;
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
+              padding: 6px 0;
+            }
+            .footer-thanks {
+              margin-top: 15px;
+              font-size: 10px;
+              text-align: center;
+            }
+            .signature-area {
+              margin-top: 30px;
+              text-align: right;
+              font-size: 9px;
+            }
+            @media print {
+              body {
+                width: 72mm;
+                padding: 6mm 4mm 20mm 4mm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center">
+            <div class="brand-title">KVR MOTORS</div>
+            <div class="brand-subtitle">Automobile ERP & Mela Campaign</div>
+            <div style="font-size: 9px;">Authorized Dealer</div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <table class="details-table">
+            <tr>
+              <td class="label">Receipt No:</td>
+              <td class="value">${booking.booking_id}</td>
+            </tr>
+            <tr>
+              <td class="label">Date/Time:</td>
+              <td class="value">${formattedDate}</td>
+            </tr>
+            <tr>
+              <td class="label">Customer:</td>
+              <td class="value">${booking.customer_name}</td>
+            </tr>
+            <tr>
+              <td class="label">Phone:</td>
+              <td class="value">${booking.customer_phone}</td>
+            </tr>
+            <tr>
+              <td class="label">Sales Exec:</td>
+              <td class="value">${booking.executive_name || "Sales Executive"}</td>
+            </tr>
+          </table>
+          
+          <div class="divider"></div>
+          
+          <div class="items-header">
+            <span>ITEM DESCRIPTION</span>
+          </div>
+          <div class="item-row">
+            <div class="item-desc">${booking.vehicle_model_name || booking.model_name || ""}</div>
+            <div class="item-meta">Color: ${booking.color || booking.vehicle_color || "N/A"}</div>
+            <div class="item-meta">Battery: ${booking.battery_type || booking.battery_name || "N/A"}</div>
+            <div class="text-right bold" style="margin-top: 2px;">1 x ₹ ${priceStr}</div>
+          </div>
+          
+          <div class="total-section">
+            <div style="display: flex; justify-content: space-between;">
+              <span class="bold">GRAND TOTAL:</span>
+              <span class="bold">₹ ${priceStr}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
+              <span>PAID BY:</span>
+              <span class="bold">${paymentLbl}</span>
+            </div>
+          </div>
+          
+          <div class="footer-thanks">
+            <div class="bold">THANK YOU FOR YOUR BUSINESS!</div>
+            <div>Please retain this receipt for warranty.</div>
+            <div style="font-size: 8px; margin-top: 4px; color: #444;">System Generated Receipt</div>
+          </div>
+          
+          <div class="signature-area">
+            <br/><br/>
+            <span>-----------------------</span><br/>
+            <span>Authorized Signatory</span>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await Print.printAsync({ html: printHtml });
+    } catch (err: any) {
+      Alert.alert("Print Error", err.message || "Failed to trigger thermal printer.");
+    }
   };
 
   const handleOpenEditCustomer = (booking: MelaBooking) => {
@@ -1249,13 +1459,13 @@ export default function OwnerMelaCampaign() {
                           onPress={() => {
                             Alert.alert(
                               'Print Receipt',
-                              `Printer: Epson TM-M30II Thermal\nReceipt for Booking: ${completedOrderDetails.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
+                              `Printer: Epson TM-M30III Thermal\nReceipt for Booking: ${completedOrderDetails.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
                               [
                                 { text: 'Cancel', style: 'cancel' },
                                 { 
                                   text: 'Print', 
-                                  onPress: () => {
-                                    Alert.alert('Printing Command Sent', 'Receipt sent to Epson TM-M30II Thermal Printer.');
+                                  onPress: async () => {
+                                    await printThermalReceipt(completedOrderDetails);
                                   }
                                 }
                               ]
@@ -1365,13 +1575,13 @@ export default function OwnerMelaCampaign() {
                         const handlePrintReceiptLocal = () => {
                           Alert.alert(
                             'Print Receipt',
-                            `Printer: Epson TM-M30II Thermal\nReceipt for Booking: ${b.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
+                            `Printer: Epson TM-M30III Thermal\nReceipt for Booking: ${b.booking_id}\n\nDo you want to send this receipt to the thermal printer?`,
                             [
                               { text: 'Cancel', style: 'cancel' },
                               { 
                                 text: 'Print', 
-                                onPress: () => {
-                                  Alert.alert('Printing Command Sent', 'Receipt sent to Epson TM-M30II Thermal Printer.');
+                                onPress: async () => {
+                                  await printThermalReceipt(b);
                                 }
                               }
                             ]
