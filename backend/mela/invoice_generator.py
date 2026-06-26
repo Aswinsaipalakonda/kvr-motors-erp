@@ -269,10 +269,10 @@ def generate_invoice_pdf(booking):
                 <td class="logo-section">
                     <table style="width: 100%; border: none; border-collapse: collapse;">
                         <tr>
-                            <td style="width: 15%; border: none; padding: 0; vertical-align: middle;">
-                                <img src="{logo_base64}" style="width: 45px; height: 45px;" />
+                            <td style="width: 80px; border: none; padding: 0; vertical-align: middle;">
+                                <img src="{logo_base64}" style="width: 70px; height: 50px;" />
                             </td>
-                            <td style="width: 85%; border: none; padding: 0 0 0 8px; vertical-align: top;">
+                            <td style="border: none; padding: 0 0 0 8px; vertical-align: top;">
                                 <div class="logo-title">KVR MOTORS</div>
                                 <div class="logo-subtitle">
                                     GROUND FLOOR, 54-1-13, ISUKATHOTA, MADDILAPALEM, KRANTHINAGAR, VISHAKAPATNAM, ANDHRAPRADESH,<br/>
@@ -438,10 +438,8 @@ def generate_invoice_pdf(booking):
                     Please Refer to Terms and Conditions in Page 2
                 </td>
                 <td class="text-center" style="vertical-align: top;">
-                    <span class="bold">For : KVR MOTORS</span>
-                    <br/><br/>
-                    <img src="{signature_base64}" style="width: 80px; height: 32px; display: block; margin: 0 auto;" />
-                    <br/>
+                    <span class="bold">For : KVR MOTORS</span><br/>
+                    <img src="{signature_base64}" style="width: 80px; height: 40px; display: block; margin: 0 auto;" />
                     <span class="bold">Proprietor</span>
                 </td>
             </tr>
