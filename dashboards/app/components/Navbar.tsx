@@ -144,19 +144,10 @@ export default function Navbar({
   ];
 
   const branches = useMemo(() => {
-    const defaultBranches = [
-      "All Branches",
-      "KVR Motors - Visakhapatnam Showroom",
-      "Future Ride - Visakhapatnam Showroom",
-      "KVR Motors - Srikakulam Showroom",
-      "KVR Motors - Kakinada Showroom",
-      "Pendurthi Godown (Inventory)",
-      "Pineapple Colony Godown (Inventory)",
-    ];
     if (branchesList && branchesList.length > 0) {
       return ["All Branches", ...branchesList.map((b) => b.name)];
     }
-    return defaultBranches;
+    return ["All Branches"];
   }, [branchesList]);
 
   const modules = ROLE_MODULES[role];
