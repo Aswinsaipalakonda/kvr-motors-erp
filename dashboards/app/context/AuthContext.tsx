@@ -73,7 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<UserProfile> => {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      let apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+      if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_API_BASE_URL) {
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          apiBaseUrl = `${window.location.origin}/api/v1`;
+        }
+      }
       const apiOrigin = apiBaseUrl.replace(/\/api\/v1\/?$/, "");
       const authUrl = `${apiOrigin}/api/auth/login/`;
 
