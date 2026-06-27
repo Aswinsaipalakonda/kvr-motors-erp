@@ -1043,12 +1043,7 @@ export default function SupervisorDashboard() {
       Available
     }));
     if (data.length === 0) {
-      return [
-        { location: "Pendurthi Godown", Available: 8 },
-        { location: "Pineapple Colony", Available: 5 },
-        { location: "Visakhapatnam Showroom", Available: 12 },
-        { location: "Srikakulam", Available: 4 },
-      ];
+      return [];
     }
     return data;
   }, [vehicleUnitsList]);
@@ -1060,8 +1055,8 @@ export default function SupervisorDashboard() {
       const outCount = salesInvoices.filter(s => s.branch_name?.includes(loc)).length;
       return {
         name: loc,
-        StockIn: inCount || Math.floor(Math.random() * 5 + 3),
-        StockOut: outCount || Math.floor(Math.random() * 4 + 2)
+        StockIn: inCount,
+        StockOut: outCount
       };
     });
   }, [vehicleUnitsList, salesInvoices]);
@@ -1078,11 +1073,7 @@ export default function SupervisorDashboard() {
       });
     });
     if (list.length === 0) {
-      return [
-        { activity: "Stock In", ref: "GRN-2026-0512", location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
-        { activity: "Stock Out/Sale", ref: "INV-2026-0789", location: "Visakhapatnam Showroom", user: "Suresh Babu", time: "15 mins ago" },
-        { activity: "Stock Transfer", ref: "TR-2026-903", location: "Pineapple Colony", user: "Venkatesh", time: "1 hour ago" },
-      ];
+      return [];
     }
     return list.slice(0, 4);
   }, [salesInvoices]);

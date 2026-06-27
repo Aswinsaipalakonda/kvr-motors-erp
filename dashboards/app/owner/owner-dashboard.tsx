@@ -232,15 +232,8 @@ export default function OwnerDashboard() {
   const [newBatteryQty, setNewBatteryQty] = useState("");
 
   // Mela Stock Adjustments & Groups
-  const [melaStockLogs, setMelaStockLogs] = useState<any[]>([
-    { id: 1, date: getDynamicDate(20, 0, "short"), model_name: "E-Luna Moped", color: "Red", battery_type: "graphene", type: "in", quantity: 15, notes: "Campaign Intake" },
-    { id: 2, date: getDynamicDate(22, 0, "short"), model_name: "Dynamo Pro", color: "Blue", battery_type: "Li-30", type: "out", quantity: 2, notes: "PDI Transit Damage" }
-  ]);
-  const [melaGroups, setMelaGroups] = useState([
-    { id: "group-1", name: "Team Visakhapatnam Retailers", lead: "Anil Kumar", members: "Anil Kumar, Suresh Babu, Rajesh Gowd", bookings: 14, target: 20, revenue: 1340000 },
-    { id: "group-2", name: "Team Srikakulam Direct Sales", lead: "Suresh Babu", members: "Suresh Babu, Kiran Kumar, Lakshmi", bookings: 8, target: 15, revenue: 780000 },
-    { id: "group-3", name: "Team Kakinada Roadshow", lead: "Somu Naidu", members: "Somu Naidu, Ravi Varma, Prasad", bookings: 5, target: 10, revenue: 490000 }
-  ]);
+  const [melaStockLogs, setMelaStockLogs] = useState<any[]>([]);
+  const [melaGroups, setMelaGroups] = useState<any[]>([]);
   const [melaAdjItem, setMelaAdjItem] = useState("");
   const [melaAdjType, setMelaAdjType] = useState("in");
   const [melaAdjQty, setMelaAdjQty] = useState("");
@@ -2244,23 +2237,8 @@ export default function OwnerDashboard() {
 
     currentPeriodStart.setDate(now.getDate() - daysCount);
 
-    // If there are no sales invoices in the database, return mockup day-wise unit counts
     if (filteredSalesInvoices.length === 0) {
-      const mockPoints = [];
-      const pointCount = salesTimeFilter === "week" ? 7 : salesTimeFilter === "six_months" ? 12 : 15;
-      const step = Math.ceil(daysCount / pointCount);
-      for (let i = pointCount - 1; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i * step);
-        const name = d.toLocaleDateString("en-IN", salesTimeFilter === "six_months" ? { month: "short" } : { day: "numeric", month: "short" });
-        const seed = (i + 3) * 7;
-        mockPoints.push({
-          name,
-          ThisPeriod: (seed % 5) + 1,
-          PrevPeriod: ((seed + 2) % 4) + 1
-        });
-      }
-      return mockPoints;
+      return [];
     }
 
     const dataPoints = [];
@@ -2302,14 +2280,8 @@ export default function OwnerDashboard() {
     const reserved = filteredVehicleUnits.filter(u => u.stock_status === "reserved").length;
     const sold = filteredVehicleUnits.filter(u => u.stock_status === "sold").length;
     
-    // If all stats are zero, fallback to visual mock parameters
     if (available + booked + reserved + sold === 0) {
-      return [
-        { name: "Available", value: 186, color: "#2563eb" },
-        { name: "Booked", value: 45, color: "#10b981" },
-        { name: "In Transit", value: 32, color: "#f59e0b" },
-        { name: "Sold", value: 49, color: "#64748b" },
-      ];
+      return [];
     }
     return [
       { name: "Available", value: available, color: "#2563eb" },
@@ -2354,12 +2326,7 @@ export default function OwnerDashboard() {
       });
     });
     if (list.length === 0) {
-      return [
-        { id: 1, action: "Vehicle Stock In", ref: getDynamicCode("GRN", 12), location: "Pendurthi Godown", user: "Ramesh", time: "2 mins ago" },
-        { id: 2, action: "Sale Invoice Created", ref: getDynamicCode("INV", 89), location: "Isakapallem Showroom", user: "Suresh", time: "15 mins ago" },
-        { id: 3, action: "Purchase Invoice Created", ref: getDynamicCode("PINV", 21), location: "Pineapple Colony Godown", user: "Ramesh", time: "1 hour ago" },
-        { id: 4, action: "Lead Converted to Sale", ref: getDynamicCode("LD", 56), location: "Kakinada Showroom", user: "Suresh", time: "2 hours ago" },
-      ];
+      return [];
     }
     return list.slice(0, 4);
   }, [filteredSalesInvoices, purchaseOrders]);
@@ -2374,12 +2341,7 @@ export default function OwnerDashboard() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
     if (sorted.length === 0) {
-      return [
-        { name: "Kinetic Green E-Luna", count: 72 },
-        { name: "Dynamo Pro", count: 61 },
-        { name: "Frankly 79", count: 48 },
-        { name: "Watts 100", count: 38 }
-      ];
+      return [];
     }
     return sorted.slice(0, 5);
   }, [filteredSalesInvoices]);
@@ -2911,26 +2873,34 @@ export default function OwnerDashboard() {
                     title="Active Campaign Groups / Teams"
                     headers={["Group / Team Name", "Team Leader", "Members", "Bookings Progress", "Revenue Generated"]}
                   >
-                    {melaGroups.map((grp) => {
-                      const pct = Math.min(100, Math.round((grp.bookings / grp.target) * 100));
-                      return (
-                        <tr key={grp.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
-                          <td className="py-3.5 px-5 font-bold text-slate-800">{grp.name}</td>
-                          <td className="py-3.5 px-5 font-semibold text-slate-700">{grp.lead}</td>
-                          <td className="py-3.5 px-5 text-slate-500 max-w-[200px] truncate" title={grp.members}>{grp.members}</td>
-                          <td className="py-3.5 px-5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-700">{grp.bookings} / {grp.target}</span>
-                              <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                    {melaGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400 font-semibold text-xs">
+                          No campaign groups registered yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      melaGroups.map((grp) => {
+                        const pct = Math.min(100, Math.round((grp.bookings / grp.target) * 100));
+                        return (
+                          <tr key={grp.id} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                            <td className="py-3.5 px-5 font-bold text-slate-800">{grp.name}</td>
+                            <td className="py-3.5 px-5 font-semibold text-slate-700">{grp.lead}</td>
+                            <td className="py-3.5 px-5 text-slate-500 max-w-[200px] truncate" title={grp.members}>{grp.members}</td>
+                            <td className="py-3.5 px-5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-700">{grp.bookings} / {grp.target}</span>
+                                <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-[10px] text-emerald-600 font-bold">({pct}%)</span>
                               </div>
-                              <span className="text-[10px] text-emerald-600 font-bold">({pct}%)</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-5 font-bold font-mono text-slate-800">₹ {grp.revenue.toLocaleString("en-IN")}</td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="py-3.5 px-5 font-bold font-mono text-slate-800">₹ {grp.revenue.toLocaleString("en-IN")}</td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </Table>
                 </div>
 
@@ -4887,10 +4857,10 @@ export default function OwnerDashboard() {
               {/* Summary metric strip */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { label: "Units In (MTD)", value: "24", icon: ArrowDownLeft, tint: "emerald" },
-                  { label: "Units Out (MTD)", value: "18", icon: ArrowUpRight, tint: "blue" },
-                  { label: "In Transit", value: "6", icon: Truck, tint: "amber" },
-                  { label: "Pending Approval", value: "1", icon: AlertTriangle, tint: "rose" },
+                  { label: "Total Units Registered", value: vehiclesLoading ? "..." : String(filteredVehicleUnits.length), icon: ArrowDownLeft, tint: "emerald" },
+                  { label: "Units Sold (MTD)", value: salesInvoicesLoading ? "..." : String(filteredSalesInvoices.length), icon: ArrowUpRight, tint: "blue" },
+                  { label: "Units Reserved / Transit", value: vehiclesLoading ? "..." : String(filteredVehicleUnits.filter(u => u.stock_status === "reserved" || u.stock_status === "in_transit").length), icon: Truck, tint: "amber" },
+                  { label: "Pending POs", value: purchaseOrdersLoading ? "..." : String(purchaseOrders.filter(po => po.status === "pending").length), icon: AlertTriangle, tint: "rose" },
                 ].map((s, i) => {
                   const SIcon = s.icon;
                   const tintMap: Record<string, string> = {
@@ -4922,27 +4892,9 @@ export default function OwnerDashboard() {
                     <h3 className="text-sm font-bold text-slate-800">Stock Intake Log (Stock-In)</h3>
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {[
-                      { date: getDynamicDate(12, 0, "long"), model: "E-Luna Moped", vin: "KVRVIN2026X101", loc: "Pendurthi Godown", code: getDynamicCode("GRN", 12), carrier: "KVR Logistics", pdi: "Ramesh (Passed)", status: "Received" },
-                      { date: getDynamicDate(10, 0, "long"), model: "Dynamo Pro", vin: "KVRVIN2026X102", loc: "Isakapallem Showroom", code: getDynamicCode("GRN", 8), carrier: "SafeExpress", pdi: "Suresh (Passed)", status: "Received" },
-                    ].map((r, i) => (
-                      <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-800 truncate">{r.model}</div>
-                            <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.vin}</div>
-                          </div>
-                          <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{r.status}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
-                          <div><span className="text-slate-400 font-semibold">Location: </span><span className="font-bold text-slate-600">{r.loc}</span></div>
-                          <div><span className="text-slate-400 font-semibold">GRN: </span><span className="font-bold text-slate-600">{r.code}</span></div>
-                          <div><span className="text-slate-400 font-semibold">Carrier: </span><span className="font-bold text-slate-650">{r.carrier}</span></div>
-                          <div><span className="text-slate-400 font-semibold">PDI: </span><span className="font-bold text-slate-650">{r.pdi}</span></div>
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
-                      </div>
-                    ))}
+                    <div className="p-6 text-center text-xs text-slate-400 font-semibold">
+                      No stock intake logs recorded.
+                    </div>
                   </div>
                 </div>
 
@@ -4953,26 +4905,9 @@ export default function OwnerDashboard() {
                     <h3 className="text-sm font-bold text-slate-800">Stock Outflow Log (Stock-Out)</h3>
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {[
-                      { date: getDynamicDate(13, 0, "long"), model: "Dynamo Pro", vin: "KVRVIN2026X102", dest: "Visakhapatnam City Outlet", ref: getDynamicCode("INV", 89), driver: "Somu Naidu", status: "Sold Dispatch", tint: "indigo" },
-                      { date: getDynamicDate(11, 0, "long"), model: "Watts 100", vin: "KVRVIN2026X115", dest: "Kakinada Showroom", ref: getDynamicCode("TRN", 44), driver: "Appalaraju", status: "Internal Transfer", tint: "amber" },
-                    ].map((r, i) => (
-                      <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-800 truncate">{r.model}</div>
-                            <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.vin}</div>
-                          </div>
-                          <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold ${r.tint === "indigo" ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>{r.status}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-[11px]">
-                          <div><span className="text-slate-400 font-semibold">Destination: </span><span className="font-bold text-slate-600">{r.dest}</span></div>
-                          <div><span className="text-slate-400 font-semibold">Ref: </span><span className="font-bold text-slate-600">{r.ref}</span></div>
-                          <div><span className="text-slate-400 font-semibold">Driver: </span><span className="font-bold text-slate-650">{r.driver}</span></div>
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-2">{r.date}</div>
-                      </div>
-                    ))}
+                    <div className="p-6 text-center text-xs text-slate-400 font-semibold">
+                      No stock outflow logs recorded.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4983,30 +4918,8 @@ export default function OwnerDashboard() {
                   <span className="h-7 w-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><Truck className="h-4 w-4" /></span>
                   <h3 className="text-sm font-bold text-slate-800">Inter-Location / Inter-Branch Stock Transfers</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                  {[
-                    { ref: getDynamicCode("TRN", 44), from: "Pendurthi Godown", to: "KVR Showroom - Visakhapatnam", qty: "Kinetic E-Luna (10 Units)", dispatch: getDynamicDate(14, 0, "long"), transit: "4 hours", arrival: `${getDynamicDate(14, 0, "short")}, 4:00 PM`, approval: "Approved (Suresh Babu)", status: "Completed", done: true },
-                    { ref: getDynamicCode("TRN", 49), from: "Pineapple Colony Godown", to: "KVR Showroom - Srikakulam", qty: "Dynamo Pro (5 Units)", dispatch: getDynamicDate(18, 0, "long"), transit: "1 day", arrival: `${getDynamicDate(18, 0, "short")}, 6:00 PM`, approval: "Pending Review", status: "In Transit", done: false },
-                  ].map((t, i) => (
-                    <div key={i} className="rounded-xl border border-slate-105 bg-slate-50/40 p-4">
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="font-mono font-bold text-slate-705 text-xs">{t.ref}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${t.done ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>{t.status}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 mb-3">
-                        <span className="truncate">{t.from}</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-[#04a700] shrink-0" />
-                        <span className="truncate">{t.to}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
-                        <div className="col-span-2"><span className="text-slate-400 font-semibold">Model: </span><span className="font-bold text-slate-600">{t.qty}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Dispatch: </span><span className="font-bold text-slate-650">{t.dispatch}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Transit: </span><span className="font-bold text-slate-655">{t.transit}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Arrival: </span><span className="font-bold text-slate-655">{t.arrival}</span></div>
-                        <div><span className="text-slate-400 font-semibold">Approval: </span><span className="font-bold text-slate-655">{t.approval}</span></div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="p-6 text-center text-xs text-slate-400 font-semibold">
+                  No inter-branch transfers recorded.
                 </div>
               </div>
 

@@ -278,7 +278,7 @@ class MelaReportsView(APIView):
             completed_at__date=today
         ).count()
 
-        executives = User.objects.filter(role__in=['sales_executive', 'sales', 'owner', 'admin', 'supervisor'])
+        executives = User.objects.filter(role__in=['sales_executive', 'sales'])
         exec_performance = []
         for exe in executives:
             bookings_count = MelaBooking.objects.filter(sales_executive=exe).count()
