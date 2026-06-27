@@ -382,7 +382,7 @@ export default function OwnerDashboard({
         Math.round(mtdRevenue * 0.25),
         Math.round(mtdRevenue * 0.3)
       ]
-    : [20, 35, 28, 48, 40, 58, 68];
+    : [0, 0, 0, 0, 0, 0, 0];
 
   // Map backend vehicle models & units to evCollections
   const evCollections = vehicleModels.map((model: any) => {
