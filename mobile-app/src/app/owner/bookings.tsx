@@ -348,7 +348,7 @@ export default function OwnerBookings({
     return matchesFilter && matchesSearch;
   });
 
-  const contentPaddingBottom = insets.bottom + 36;
+  const contentPaddingBottom = insets.bottom + 120;
 
   return (
     <FadeScaleTransition>

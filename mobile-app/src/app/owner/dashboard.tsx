@@ -581,9 +581,9 @@ export default function OwnerDashboard({
                       <Wallet size={16} color="#ea580c" />
                     </View>
                     <ThemedText style={[styles.metricVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444' }]}>
-                      ₹{Math.abs(netProfit) >= 100000 
-                        ? `${(netProfit / 100000).toFixed(1)}L` 
-                        : netProfit.toLocaleString('en-IN')}
+                      {netProfit < 0 ? '-' : ''}₹{Math.abs(netProfit) >= 100000 
+                        ? `${(Math.abs(netProfit) / 100000).toFixed(1)}L` 
+                        : Math.abs(netProfit).toLocaleString('en-IN')}
                     </ThemedText>
                     <ThemedText style={styles.metricLbl}>Net Capital</ThemedText>
                   </View>
