@@ -74,11 +74,7 @@ export default function OwnerDashboard({
   const [leads, setLeads] = useState<any[]>(globalDashboardCache?.leads || []);
   const [batteries, setBatteries] = useState<any[]>(globalDashboardCache?.batteries || []);
   const [activityLogs, setActivityLogs] = useState<any[]>(globalDashboardCache?.activityLogs || []);
-  const [pendingPOs, setPendingPOs] = useState<any[]>([
-    { id: 1, invoice: 'PO-2026-8910', showroom: 'Visakhapatnam - KVR Showroom', details: '10x Kinetic Green Zoom', value: '₹ 11,20,000', approved: false },
-    { id: 2, invoice: 'PO-2026-9233', showroom: 'Visakhapatnam - Future Ride', details: '5x Dynamo EV Pro', value: '₹ 6,45,000', approved: false },
-    { id: 3, invoice: 'PO-2026-9411', showroom: 'Srikakulam - KVR Showroom', details: '4x Watts Engineering 100', value: '₹ 4,80,000', approved: false },
-  ]);
+  const [pendingPOs, setPendingPOs] = useState<any[]>([]);
 
   // Brand Showroom Categories from PRD.md
   const brands: BrandCategory[] = [
@@ -135,37 +131,7 @@ export default function OwnerDashboard({
         api.get('/bookings/').catch(() => ({ data: [] })),
         api.get('/leads/').catch(() => ({ data: [] })),
         api.get('/batteries/').catch(() => ({ data: [] })),
-        api.get('/activity-logs/').catch(() => {
-          console.warn('Backend Activity Logs API unavailable for dashboard. Using mock logs.');
-          return {
-            data: [
-              {
-                id: 1,
-                user_detail: { full_name: 'Sai Krishna' },
-                action: 'CREATE',
-                model_name: 'booking',
-                object_repr: 'kinetic Zoom',
-                timestamp: new Date(Date.now() - 600000).toISOString()
-              },
-              {
-                id: 2,
-                user_detail: { full_name: 'Suresh' },
-                action: 'UPDATE',
-                model_name: 'battery',
-                object_repr: 'B-10923 override',
-                timestamp: new Date(Date.now() - 2520000).toISOString()
-              },
-              {
-                id: 3,
-                user_detail: { full_name: 'Warehouse' },
-                action: 'CREATE',
-                model_name: 'transfer',
-                object_repr: '8 Dynamo units',
-                timestamp: new Date(Date.now() - 7200000).toISOString()
-              }
-            ]
-          };
-        }),
+        api.get('/activity-logs/').catch(() => ({ data: [] })),
         api.get('/sales-invoices/').catch(() => ({ data: [] })),
       ]);
 
@@ -232,34 +198,34 @@ export default function OwnerDashboard({
 
   // Calculate binned sales data points based on salesTimeFilter
   const chartData = React.useMemo(() => {
-    // If no sales invoices are present in database, return seed mockup day-wise unit counts for parity
+    // If no sales invoices are present in database, return zeroed counts
     if (salesInvoices.length === 0) {
       if (salesTimeFilter === 'week') {
         return [
-          { label: 'Mon', value: 2 },
-          { label: 'Tue', value: 4 },
-          { label: 'Wed', value: 3 },
-          { label: 'Thu', value: 5 },
-          { label: 'Fri', value: 4 },
-          { label: 'Sat', value: 6 },
-          { label: 'Sun', value: 2 },
+          { label: 'Mon', value: 0 },
+          { label: 'Tue', value: 0 },
+          { label: 'Wed', value: 0 },
+          { label: 'Thu', value: 0 },
+          { label: 'Fri', value: 0 },
+          { label: 'Sat', value: 0 },
+          { label: 'Sun', value: 0 },
         ];
       } else if (salesTimeFilter === 'month') {
         return [
-          { label: 'W1', value: 12 },
-          { label: 'W2', value: 15 },
-          { label: 'W3', value: 18 },
-          { label: 'W4', value: 14 },
-          { label: 'W5', value: 16 },
+          { label: 'W1', value: 0 },
+          { label: 'W2', value: 0 },
+          { label: 'W3', value: 0 },
+          { label: 'W4', value: 0 },
+          { label: 'W5', value: 0 },
         ];
       } else {
         return [
-          { label: 'Jan', value: 45 },
-          { label: 'Feb', value: 52 },
-          { label: 'Mar', value: 61 },
-          { label: 'Apr', value: 58 },
-          { label: 'May', value: 65 },
-          { label: 'Jun', value: 72 },
+          { label: 'Jan', value: 0 },
+          { label: 'Feb', value: 0 },
+          { label: 'Mar', value: 0 },
+          { label: 'Apr', value: 0 },
+          { label: 'May', value: 0 },
+          { label: 'Jun', value: 0 },
         ];
       }
     }

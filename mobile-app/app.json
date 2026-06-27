@@ -8,12 +8,7 @@
     "scheme": "kvrmotors",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png",
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app requires camera permission to capture your photo for daily attendance verification and to scan VIN codes in the godown.",
-        "NSLocationWhenInUseUsageDescription": "This app requires location permission to capture your current workspace location for daily attendance verification."
-      },
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.kvrmotors.erp",
@@ -23,12 +18,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
-      ],
-      "googleServicesFile": "./google-services.json"
+      "permissions": []
     },
     "web": {
       "output": "static",
@@ -46,21 +36,17 @@
           }
         }
       ],
+      "@react-native-community/datetimepicker",
       [
-        "expo-camera",
+        "expo-build-properties",
         {
-          "cameraPermission": "This app requires camera permission to capture your photo for daily attendance verification and to scan VIN codes in the godown."
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
         }
-      ],
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "This app requires location permission to capture your current workspace location for daily attendance verification."
-        }
-      ],
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
-      "@react-native-community/datetimepicker"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
