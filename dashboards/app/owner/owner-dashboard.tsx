@@ -4633,6 +4633,7 @@ export default function OwnerDashboard() {
               <Table 
                 title="Branch Locations Registry" 
                 headers={["Showroom Name", "Location City", "Manager Assigned", "Status", "Actions"]}
+                searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 actions={
                   <div className="flex gap-2">
@@ -5897,6 +5898,7 @@ export default function OwnerDashboard() {
               <Table
                 title="Activity Logs & System Audits"
                 headers={["Timestamp", "User Initiator", "Action", "Model / Object Type", "Target Record", "IP Address", "Actions"]}
+                searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 actions={
                   <button
