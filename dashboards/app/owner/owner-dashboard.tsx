@@ -4631,7 +4631,7 @@ export default function OwnerDashboard() {
             <div className="space-y-6">
               <Table 
                 title="Branch Locations Registry" 
-                headers={["Showroom Name", "Location City", "Manager Assigned", "Total Stock", "Sales Volume", "Monthly Target", "Target Achieved", "Status", "Actions"]}
+                headers={["Showroom Name", "Location City", "Manager Assigned", "Status", "Actions"]}
                 setSearchQuery={setSearchQuery}
                 actions={
                   <div className="flex gap-2">
@@ -4646,7 +4646,7 @@ export default function OwnerDashboard() {
               >
                 {branchesLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={5} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
                         <span className="text-xs font-semibold text-slate-400">Loading branch outlets...</span>
@@ -4655,7 +4655,7 @@ export default function OwnerDashboard() {
                   </tr>
                 ) : branchesList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={5} className="py-12 text-center">
                       <EmptyState 
                         title="No Showrooms Found" 
                         description="Register a new showroom or branch outlet using the Add Branch button above." 
@@ -4664,23 +4664,11 @@ export default function OwnerDashboard() {
                   </tr>
                 ) : (
                   branchesList.map((branch, idx) => {
-                    const targetPct = branch.target_achieved_pct !== undefined && branch.target_achieved_pct !== null ? `${branch.target_achieved_pct}%` : "0%";
                     return (
                       <tr key={branch.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
                         <td className="py-3.5 px-5 text-slate-600">{branch.address || "—"}</td>
                         <td className="py-3.5 px-5 text-slate-600">{branch.manager_name || "—"}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.total_stock !== undefined && branch.total_stock !== null ? `${branch.total_stock} Vehicles` : "0 Vehicles"}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-700">{branch.sales_volume !== undefined && branch.sales_volume !== null ? `₹ ${parseFloat(branch.sales_volume).toLocaleString('en-IN')}` : "₹ 0"}</td>
-                        <td className="py-3.5 px-5 font-semibold text-slate-500">{branch.monthly_target !== undefined && branch.monthly_target !== null ? `₹ ${parseFloat(branch.monthly_target).toLocaleString('en-IN')}` : "₹ 0"}</td>
-                        <td className="py-3.5 px-5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-emerald-700 text-[11px]">{targetPct}</span>
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
-                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: targetPct }} />
-                            </div>
-                          </div>
-                        </td>
                         <td className="py-3.5 px-5">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
                             branch.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"

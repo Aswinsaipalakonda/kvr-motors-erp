@@ -209,10 +209,6 @@ export default function OwnerBranches({
     else if (form.showroom.trim().length < 3) next.showroom = 'Enter at least 3 characters';
     if (!form.location.trim()) next.location = 'Location is required';
 
-    const target = parseFloat(form.targetUnits);
-    if (!form.targetUnits.trim()) next.targetUnits = 'Target units required';
-    else if (isNaN(target) || target <= 0) next.targetUnits = 'Enter a valid target greater than 0';
-
     const cleanPhone = form.managerPhone.trim().replace(/\D/g, '');
     if (!form.managerPhone.trim()) {
       next.managerPhone = 'Phone number is required';
@@ -243,7 +239,6 @@ export default function OwnerBranches({
                   ...o, 
                   showroom: form.showroom.trim(), 
                   location: form.location.trim(), 
-                  targetUnits: parseFloat(form.targetUnits), 
                   manager: form.manager.trim(), 
                   phone: form.managerPhone.trim() 
                 }
@@ -264,7 +259,7 @@ export default function OwnerBranches({
           location: form.location.trim(),
           revenue: 2500000, // Calculated dynamically from ledger in list view
           unitsSold: 0,
-          targetUnits: parseFloat(form.targetUnits),
+          targetUnits: 50,
           manager: form.manager.trim(),
           phone: form.managerPhone.trim(),
           color: '#04a700',
@@ -582,34 +577,20 @@ export default function OwnerBranches({
                   {errors.location && <ThemedText style={styles.errorText}>{errors.location}</ThemedText>}
                 </View>
 
-                <View style={styles.fieldRow}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <ThemedText style={styles.fieldLabel}>Target Pace (units)</ThemedText>
+                <View style={styles.field}>
+                  <ThemedText style={styles.fieldLabel}>Manager Phone</ThemedText>
+                  <View style={[styles.priceInputWrap, errors.managerPhone && styles.inputError, { borderRadius: 9999 }]}>
+                    <Phone size={14} color="#64748b" style={{ marginLeft: 6 }} />
                     <TextInput
-                      style={[styles.input, errors.targetUnits && styles.inputError, { borderRadius: 9999 }]}
-                      placeholder="50"
+                      style={styles.priceInput}
+                      placeholder="e.g. 9876543210"
                       placeholderTextColor="#94a3b8"
-                      keyboardType="numeric"
-                      value={form.targetUnits}
-                      onChangeText={(t) => updateField('targetUnits', t.replace(/[^0-9]/g, ''))}
+                      keyboardType="phone-pad"
+                      value={form.managerPhone}
+                      onChangeText={(t) => updateField('managerPhone', t.replace(/[^0-9+]/g, ''))}
                     />
-                    {errors.targetUnits && <ThemedText style={styles.errorText}>{errors.targetUnits}</ThemedText>}
                   </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <ThemedText style={styles.fieldLabel}>Manager Phone</ThemedText>
-                    <View style={[styles.priceInputWrap, errors.managerPhone && styles.inputError, { borderRadius: 9999 }]}>
-                      <Phone size={14} color="#64748b" style={{ marginLeft: 6 }} />
-                      <TextInput
-                        style={styles.priceInput}
-                        placeholder="e.g. 9876543210"
-                        placeholderTextColor="#94a3b8"
-                        keyboardType="phone-pad"
-                        value={form.managerPhone}
-                        onChangeText={(t) => updateField('managerPhone', t.replace(/[^0-9+]/g, ''))}
-                      />
-                    </View>
-                    {errors.managerPhone && <ThemedText style={styles.errorText}>{errors.managerPhone}</ThemedText>}
-                  </View>
+                  {errors.managerPhone && <ThemedText style={styles.errorText}>{errors.managerPhone}</ThemedText>}
                 </View>
 
                 <View style={styles.field}>
