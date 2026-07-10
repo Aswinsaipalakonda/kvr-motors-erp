@@ -6186,6 +6186,7 @@ export default function OwnerDashboard() {
               required 
             />
             {branchErrors.manager_name && <p className="text-red-500 text-[10px] font-bold mt-1">{branchErrors.manager_name}</p>}
+          </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Operational Status</label>
             <select
