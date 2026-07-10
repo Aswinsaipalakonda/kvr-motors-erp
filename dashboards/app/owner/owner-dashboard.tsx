@@ -4663,8 +4663,31 @@ export default function OwnerDashboard() {
                       />
                     </td>
                   </tr>
-                ) : (
-                  branchesList.map((branch, idx) => {
+                ) : (() => {
+                  const filteredBranches = branchesList.filter((branch) => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      branch.name.toLowerCase().includes(q) ||
+                      (branch.address || "").toLowerCase().includes(q) ||
+                      (branch.manager_name || "").toLowerCase().includes(q)
+                    );
+                  });
+
+                  if (filteredBranches.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center">
+                          <EmptyState 
+                            title="No Matching Showrooms" 
+                            description="Try adjusting your search query to find the desired branch." 
+                          />
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filteredBranches.map((branch, idx) => {
                     return (
                       <tr key={branch.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-bold text-slate-800">{branch.name}</td>
@@ -4704,8 +4727,8 @@ export default function OwnerDashboard() {
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  });
+                })()}
               </Table>
             </div>
           )}
