@@ -78,7 +78,8 @@ import {
   ListOrdered,
   Eye,
   FileText,
-  PenLine
+  PenLine,
+  Trash2
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -4677,9 +4678,29 @@ export default function OwnerDashboard() {
                           </span>
                         </td>
                         <td className="py-3.5 px-5">
-                          <button onClick={() => openEditBranch(branch)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer">Edit</button>
-                          <button onClick={() => handleToggleBranch(branch)} className="text-xs text-slate-450 hover:text-slate-600 font-bold cursor-pointer mr-3">Toggle Status</button>
-                          <button onClick={() => handleDeleteBranch(branch.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => openEditBranch(branch)} 
+                              title="Edit Showroom"
+                              className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center"
+                            >
+                              <PenLine className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => handleToggleBranch(branch)} 
+                              title="Toggle Active Status"
+                              className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-800 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteBranch(branch.id)} 
+                              title="Delete Showroom"
+                              className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-800 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
