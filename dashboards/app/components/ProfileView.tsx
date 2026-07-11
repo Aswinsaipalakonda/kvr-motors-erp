@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getCurrentUser, updateCurrentUser, changePassword, UserProfile } from "../services/users";
-import { Camera, Mail, Phone, Shield, MapPin, Loader2, Check, X, Lock, Building2, User } from "lucide-react";
+import { Camera, Mail, Phone, Shield, MapPin, Loader2, Check, X, Lock, Building2, User, Eye, EyeOff } from "lucide-react";
 
 export default function ProfileView() {
   const { user, updateUser } = useAuth();
@@ -25,6 +25,8 @@ export default function ProfileView() {
   // Password state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
@@ -374,27 +376,50 @@ export default function ProfileView() {
           {/* New Password */}
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">New Password</span>
-            <input
-              type="password"
-              className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-              value={newPassword}
-              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
-              placeholder="Enter new password"
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                className="w-full pl-3 pr-10 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
+                value={newPassword}
+                onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                placeholder="Enter new password"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {/* Confirm Password */}
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Confirm Password</span>
-            <input
-              type="password"
-              className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
-              placeholder="Confirm new password"
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                className="w-full pl-3 pr-10 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 rounded-xl bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-[#054E35]/20 focus:border-[#054E35] transition-all"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+                placeholder="Confirm new password"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {newPassword && confirmPassword && (
+              <span className={`text-[10px] font-bold block mt-1 ${newPassword === confirmPassword ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {newPassword === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+              </span>
+            )}
           </div>
         </div>
 

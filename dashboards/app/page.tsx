@@ -266,6 +266,7 @@ export default function Home() {
                     src={slide.image}
                     alt={slide.headline}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover object-center lg:object-right-top"
                     priority
                   />
@@ -470,6 +471,7 @@ export default function Home() {
                   <Image 
                     src="/app-images/1.png" 
                     fill 
+                    sizes="256px"
                     className="object-cover" 
                     alt="KVR Mobile App Showroom Screen" 
                   />
@@ -495,6 +497,7 @@ export default function Home() {
                   <Image 
                     src="/app-images/3.png" 
                     fill 
+                    sizes="256px"
                     className="object-cover" 
                     alt="KVR Mobile App Attendance Screen" 
                   />

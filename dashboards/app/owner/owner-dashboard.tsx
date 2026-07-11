@@ -1376,6 +1376,21 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleResetUserPassword = async (usr: any) => {
+    const newPass = window.prompt(`Enter new password for ${usr.full_name || usr.username}:`, "password123");
+    if (newPass === null) return;
+    if (!newPass.trim()) {
+      showToast("Password cannot be empty.", "error");
+      return;
+    }
+    try {
+      await updateUser(usr.id, { password: newPass.trim() });
+      showToast(`Password for ${usr.full_name || usr.username} has been reset successfully.`);
+    } catch (err: any) {
+      showToast("Failed to reset password.", "error");
+    }
+  };
+
   const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUser.username.trim() || !newUser.fullName.trim() || !newUser.email.trim()) {
@@ -5638,6 +5653,7 @@ export default function OwnerDashboard() {
                         </td>
                         <td className="py-3.5 px-5 whitespace-nowrap">
                           <button onClick={() => openEditUser(usr)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleResetUserPassword(usr)} className="text-xs text-amber-600 hover:text-amber-800 font-bold mr-3 cursor-pointer">Reset Password</button>
                           <button onClick={() => handleDeleteUser(usr.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
                         </td>
                       </tr>
