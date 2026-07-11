@@ -411,7 +411,7 @@ export default function TelecallerDashboard() {
                     ) : (
                       <>
                         <div className="h-[140px] w-full relative">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height={140}>
                             <PieChart>
                               <Pie
                                 data={pieChartData}

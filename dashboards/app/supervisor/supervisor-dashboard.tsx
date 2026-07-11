@@ -1185,7 +1185,7 @@ export default function SupervisorDashboard() {
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution in Visakhapatnam cluster</p>
                   </div>
                   <div className="h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={stockByLocationData} barSize={26}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="location" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
@@ -1281,7 +1281,7 @@ export default function SupervisorDashboard() {
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5">Intake inflow vs sales outflow per warehouse</p>
                   </div>
                   <div className="h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={stockMovementData} barGap={4}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9 }} />
