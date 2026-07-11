@@ -132,7 +132,7 @@ export default function OwnerUsers({
         email: editEmail.trim(),
         phone_number: editPhone.trim(),
         role: backendRole,
-        branch: editBranch,
+        branch: (backendRole === 'owner' || backendRole === 'admin') ? null : editBranch,
         is_active: editIsActive,
       };
       
@@ -222,7 +222,7 @@ export default function OwnerUsers({
           userType: u.role === 'owner' || u.role === 'admin' ? 'Admin' : 'Staff',
           branch: u.branch || u.showroom || 'KVR Motors - Visakhapatnam',
           email: u.email || '—',
-          phone: u.phone || u.contact || '—',
+          phone: u.phone_number || '—',
           status: u.is_active ? 'Active' : 'Inactive',
         };
       });
@@ -323,7 +323,7 @@ export default function OwnerUsers({
         full_name: fullName.trim(),
         phone_number: phone.trim(),
         role: backendRole,
-        branch,
+        branch: (backendRole === 'owner' || backendRole === 'admin') ? null : branch,
         password: 'password123',
       });
       Alert.alert('Personnel Added', `${fullName.trim()} has been registered with a temporary password.`);
@@ -615,43 +615,45 @@ export default function OwnerUsers({
                 </View>
 
                 {/* Branch dropdown */}
-                <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
-                  <Pressable
-                    onPress={() => {
-                      setIsBranchDropdownOpen((v) => !v);
-                      setIsRoleDropdownOpen(false);
-                    }}
-                    style={styles.dropdownTrigger}
-                  >
-                    <View style={styles.dropdownValueRow}>
-                      <MapPin size={14} color="#64748b" />
-                      <ThemedText style={styles.dropdownValue}>{branch}</ThemedText>
-                    </View>
-                    <ChevronDown
-                      size={15}
-                      color="#64748b"
-                      style={isBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
-                    />
-                  </Pressable>
-                  {isBranchDropdownOpen && (
-                    <View style={styles.dropdownContainer}>
-                      {branchesList.map((b, i) => (
-                        <Pressable
-                          key={b}
-                          onPress={() => {
-                            setBranch(b);
-                            setIsBranchDropdownOpen(false);
-                          }}
-                          style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
-                        >
-                          <MapPin size={13} color="#94a3b8" />
-                          <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                {role !== 'Owner' && role !== 'Admin' && (
+                  <View style={styles.field}>
+                    <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
+                    <Pressable
+                      onPress={() => {
+                        setIsBranchDropdownOpen((v) => !v);
+                        setIsRoleDropdownOpen(false);
+                      }}
+                      style={styles.dropdownTrigger}
+                    >
+                      <View style={styles.dropdownValueRow}>
+                        <MapPin size={14} color="#64748b" />
+                        <ThemedText style={styles.dropdownValue}>{branch}</ThemedText>
+                      </View>
+                      <ChevronDown
+                        size={15}
+                        color="#64748b"
+                        style={isBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                      />
+                    </Pressable>
+                    {isBranchDropdownOpen && (
+                      <View style={styles.dropdownContainer}>
+                        {branchesList.map((b, i) => (
+                          <Pressable
+                            key={b}
+                            onPress={() => {
+                              setBranch(b);
+                              setIsBranchDropdownOpen(false);
+                            }}
+                            style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
+                          >
+                            <MapPin size={13} color="#94a3b8" />
+                            <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 <Pressable
                   onPress={handleAddUserSubmit}
@@ -867,43 +869,45 @@ export default function OwnerUsers({
                 </View>
 
                 {/* Branch dropdown */}
-                <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
-                  <Pressable
-                    onPress={() => {
-                      setIsEditBranchDropdownOpen((v) => !v);
-                      setIsEditRoleDropdownOpen(false);
-                    }}
-                    style={styles.dropdownTrigger}
-                  >
-                    <View style={styles.dropdownValueRow}>
-                      <MapPin size={14} color="#64748b" />
-                      <ThemedText style={styles.dropdownValue}>{editBranch}</ThemedText>
-                    </View>
-                    <ChevronDown
-                      size={15}
-                      color="#64748b"
-                      style={isEditBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
-                    />
-                  </Pressable>
-                  {isEditBranchDropdownOpen && (
-                    <View style={styles.dropdownContainer}>
-                      {branchesList.map((b, i) => (
-                        <Pressable
-                          key={b}
-                          onPress={() => {
-                            setEditBranch(b);
-                            setIsEditBranchDropdownOpen(false);
-                          }}
-                          style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
-                        >
-                          <MapPin size={13} color="#94a3b8" />
-                          <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                {editRole !== 'Owner' && editRole !== 'Admin' && (
+                  <View style={styles.field}>
+                    <ThemedText style={styles.fieldLabel}>Assigned Branch</ThemedText>
+                    <Pressable
+                      onPress={() => {
+                        setIsEditBranchDropdownOpen((v) => !v);
+                        setIsEditRoleDropdownOpen(false);
+                      }}
+                      style={styles.dropdownTrigger}
+                    >
+                      <View style={styles.dropdownValueRow}>
+                        <MapPin size={14} color="#64748b" />
+                        <ThemedText style={styles.dropdownValue}>{editBranch}</ThemedText>
+                      </View>
+                      <ChevronDown
+                        size={15}
+                        color="#64748b"
+                        style={isEditBranchDropdownOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+                      />
+                    </Pressable>
+                    {isEditBranchDropdownOpen && (
+                      <View style={styles.dropdownContainer}>
+                        {branchesList.map((b, i) => (
+                          <Pressable
+                            key={b}
+                            onPress={() => {
+                              setEditBranch(b);
+                              setIsEditBranchDropdownOpen(false);
+                            }}
+                            style={[styles.dropdownItem, i === branchesList.length - 1 && { borderBottomWidth: 0 }]}
+                          >
+                            <MapPin size={13} color="#94a3b8" />
+                            <ThemedText style={styles.dropdownItemText}>{b}</ThemedText>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Status Toggle */}
                 <View style={[styles.field, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }]}>

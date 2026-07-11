@@ -1254,9 +1254,8 @@ export default function OwnerDashboard() {
     email: "",
     phoneNumber: "",
     password: "",
-    role: "sales",
-    branch: "",
-    showroom: ""
+    role: "sales_executive",
+    branch: ""
   });
   const [usersList, setUsersList] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -1273,9 +1272,8 @@ export default function OwnerDashboard() {
     fullName: "",
     email: "",
     phoneNumber: "",
-    role: "sales",
+    role: "sales_executive",
     branch: "",
-    showroom: "",
     isActive: true,
     password: ""
   });
@@ -1397,16 +1395,18 @@ export default function OwnerDashboard() {
       }
     }
     try {
-      await createUser({
+      const payload: any = {
         username: newUser.username.trim(),
         full_name: newUser.fullName.trim(),
         email: newUser.email.trim(),
         phone_number: newUser.phoneNumber.trim() || null,
         password: "password123",
         role: newUser.role,
-        branch: newUser.branch ? newUser.branch.trim() : null,
-        showroom: newUser.showroom ? newUser.showroom.trim() : null,
-      });
+      };
+      if (newUser.role !== "owner" && newUser.role !== "admin") {
+        payload.branch = newUser.branch ? newUser.branch.trim() : null;
+      }
+      await createUser(payload);
       showToast("User account created successfully.");
       setNewUser({
         username: "",
@@ -1415,8 +1415,7 @@ export default function OwnerDashboard() {
         phoneNumber: "",
         password: "",
         role: "sales_executive",
-        branch: "",
-        showroom: ""
+        branch: ""
       });
       setIsAddUserOpen(false);
       loadUsers();
@@ -1431,9 +1430,8 @@ export default function OwnerDashboard() {
       fullName: usr.full_name || "",
       email: usr.email || "",
       phoneNumber: usr.phone_number || "",
-      role: usr.role || "sales",
+      role: usr.role || "sales_executive",
       branch: usr.branch ? String(usr.branch) : "",
-      showroom: usr.showroom ? String(usr.showroom) : "",
       isActive: usr.is_active !== false,
       password: "",
     });
@@ -1461,10 +1459,13 @@ export default function OwnerDashboard() {
         email: editUserForm.email.trim(),
         phone_number: editUserForm.phoneNumber.trim() || null,
         role: editUserForm.role,
-        branch: editUserForm.branch ? editUserForm.branch.trim() : null,
-        showroom: editUserForm.showroom ? editUserForm.showroom.trim() : null,
         is_active: editUserForm.isActive,
       };
+      if (editUserForm.role !== "owner" && editUserForm.role !== "admin") {
+        payload.branch = editUserForm.branch ? editUserForm.branch.trim() : null;
+      } else {
+        payload.branch = null;
+      }
       if (editUserForm.password.trim()) {
         payload.password = editUserForm.password;
       }
@@ -6290,50 +6291,38 @@ export default function OwnerDashboard() {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
-            <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              required
-            >
-              <option value="owner">Owner</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="sales_executive">Sales Executive</option>
-              <option value="telecaller">Telecaller</option>
-              <option value="staff">Staff</option>
-            </select>
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Assignment</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
               <select
-                value={newUser.branch}
-                onChange={(e) => setNewUser({ ...newUser, branch: e.target.value })}
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
                 required
               >
-                <option value="">Select branch...</option>
-                {branchesList.map((branch) => (
-                  <option key={branch.id} value={branch.name}>{branch.name}</option>
-                ))}
+                <option value="owner">Owner</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="sales_executive">Sales Executive</option>
+                <option value="telecaller">Telecaller</option>
+                <option value="staff">Staff</option>
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Assignment</label>
-              <select
-                value={newUser.showroom}
-                onChange={(e) => setNewUser({ ...newUser, showroom: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-                required
-              >
-                <option value="">Select showroom...</option>
-                {showroomsList.map((showroom) => (
-                  <option key={showroom.id} value={showroom.name}>{showroom.name}</option>
-                ))}
-              </select>
-            </div>
+            {newUser.role !== "owner" && newUser.role !== "admin" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Assignment</label>
+                <select
+                  value={newUser.branch}
+                  onChange={(e) => setNewUser({ ...newUser, branch: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                  required
+                >
+                  <option value="">Select branch...</option>
+                  {branchesList.map((branch) => (
+                    <option key={branch.id} value={branch.name}>{branch.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             Create User Account
@@ -6394,6 +6383,7 @@ export default function OwnerDashboard() {
                 <option value="supervisor">Supervisor</option>
                 <option value="sales_executive">Sales Executive</option>
                 <option value="telecaller">Telecaller</option>
+                <option value="staff">Staff</option>
               </select>
             </div>
             <div className="space-y-1.5">
@@ -6410,44 +6400,32 @@ export default function OwnerDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {editUserForm.role !== "owner" && editUserForm.role !== "admin" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Assignment</label>
+                <select
+                  value={editUserForm.branch}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, branch: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                  required
+                >
+                  <option value="">Select branch...</option>
+                  {branchesList.map((branch) => (
+                    <option key={branch.id} value={branch.name}>{branch.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Assignment</label>
-              <select
-                value={editUserForm.branch}
-                onChange={(e) => setEditUserForm({ ...editUserForm, branch: e.target.value })}
+              <label className="text-[10px] font-bold text-slate-400 uppercase">New Password (leave blank to keep current)</label>
+              <input
+                type="password"
+                value={editUserForm.password}
+                onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                placeholder="••••••••"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-                required
-              >
-                <option value="">Select branch...</option>
-                {branchesList.map((branch) => (
-                  <option key={branch.id} value={branch.name}>{branch.name}</option>
-                ))}
-              </select>
+              />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom Assignment</label>
-              <select
-                value={editUserForm.showroom}
-                onChange={(e) => setEditUserForm({ ...editUserForm, showroom: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-                required
-              >
-                <option value="">Select showroom...</option>
-                {showroomsList.map((showroom) => (
-                  <option key={showroom.id} value={showroom.name}>{showroom.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">New Password (leave blank to keep current)</label>
-            <input
-              type="password"
-              value={editUserForm.password}
-              onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
-              placeholder="••••••••"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-            />
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             Save User Changes
