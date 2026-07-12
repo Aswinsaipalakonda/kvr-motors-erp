@@ -1672,8 +1672,8 @@ export default function OwnerDashboard() {
     // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
     const branchId = parseInt(f.branch);
     const branchObj = branchesList.find((b) => b.id === branchId);
-    const showroomId = branchObj?.showrooms?.[0]?.id || 1;
-    const locationId = branchObj?.inventory_locations?.[0]?.id || 1;
+    const showroomId = branchObj?.showrooms?.[0]?.id || 3; // Default to Main Showroom ID 3 (KVR MOTORS)
+    const locationId = branchObj?.inventory_locations?.[0]?.id || 3; // Default to Main Location ID 3 (KVR MOTORS)
 
     const payload = {
       model: parseInt(f.model),
