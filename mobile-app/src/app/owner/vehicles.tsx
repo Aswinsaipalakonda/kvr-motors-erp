@@ -86,6 +86,7 @@ export default function OwnerVehicles() {
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
   const [isBrandSubmitting, setIsBrandSubmitting] = useState(false);
+  const [editingBrandId, setEditingBrandId] = useState<number | null>(null);
 
   // Model Modal Form States
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
@@ -255,9 +256,15 @@ export default function OwnerVehicles() {
     }
     setIsBrandSubmitting(true);
     try {
-      await api.post('/vehicle-brands/', { name: newBrandName.trim(), is_active: true });
-      Alert.alert('Success', 'Brand registered successfully.');
+      if (editingBrandId) {
+        await api.patch(`/vehicle-brands/${editingBrandId}/`, { name: newBrandName.trim() });
+        Alert.alert('Success', 'Brand updated successfully.');
+      } else {
+        await api.post('/vehicle-brands/', { name: newBrandName.trim(), is_active: true });
+        Alert.alert('Success', 'Brand registered successfully.');
+      }
       setNewBrandName('');
+      setEditingBrandId(null);
       setIsBrandModalOpen(false);
       // reload brands
       const brandsRes = await api.get('/vehicle-brands/');
@@ -265,7 +272,7 @@ export default function OwnerVehicles() {
     } catch (err: any) {
       console.error(err);
       const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-      Alert.alert('Error', `Failed to register brand: ${errMsg}`);
+      Alert.alert('Error', `Failed to save brand: ${errMsg}`);
     } finally {
       setIsBrandSubmitting(false);
     }
@@ -947,17 +954,17 @@ export default function OwnerVehicles() {
         {/* BRAND MANAGEMENT MODAL */}
         <Modal visible={isBrandModalOpen} transparent animationType="slide">
           <View style={styles.pickerModalRoot}>
-            <Pressable style={styles.modalBackdrop} onPress={() => setIsBrandModalOpen(false)} />
+            <Pressable style={styles.modalBackdrop} onPress={() => { setIsBrandModalOpen(false); setEditingBrandId(null); setNewBrandName(''); }} />
             <View style={[styles.pickerModalSheet, { maxHeight: '80%', padding: 20 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <ThemedText style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a' }}>Register Brand</ThemedText>
-                <Pressable onPress={() => setIsBrandModalOpen(false)}>
+                <ThemedText style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a' }}>{editingBrandId ? 'Edit Brand' : 'Register Brand'}</ThemedText>
+                <Pressable onPress={() => { setIsBrandModalOpen(false); setEditingBrandId(null); setNewBrandName(''); }}>
                   <X size={18} color="#64748b" />
                 </Pressable>
               </View>
 
               <View style={styles.field}>
-                <ThemedText style={styles.fieldLabel}>BRAND NAME *</ThemedText>
+                <ThemedText style={styles.fieldLabel}>{editingBrandId ? 'UPDATE BRAND NAME *' : 'BRAND NAME *'}</ThemedText>
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. Kinetic Green, TVS, Dynamo"
@@ -967,14 +974,24 @@ export default function OwnerVehicles() {
                 />
               </View>
 
-              <Pressable onPress={handleBrandSubmit} disabled={isBrandSubmitting} style={styles.submitBtn}>
-                {isBrandSubmitting ? <ActivityIndicator size="small" color="#ffffff" /> : (
-                  <>
-                    <CheckCircle size={16} color="#ffffff" />
-                    <ThemedText style={styles.submitBtnText}>Add Brand Manufacturer</ThemedText>
-                  </>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <Pressable onPress={handleBrandSubmit} disabled={isBrandSubmitting} style={[styles.submitBtn, { flex: 1, marginTop: 0 }]}>
+                  {isBrandSubmitting ? <ActivityIndicator size="small" color="#ffffff" /> : (
+                    <>
+                      <CheckCircle size={16} color="#ffffff" />
+                      <ThemedText style={styles.submitBtnText}>{editingBrandId ? 'Update Brand' : 'Add Brand'}</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+                {editingBrandId && (
+                  <Pressable 
+                    onPress={() => { setEditingBrandId(null); setNewBrandName(''); }} 
+                    style={[styles.submitBtn, { backgroundColor: '#f1f5f9', borderWidth: 1.5, borderColor: '#e2e8f0', marginTop: 0, boxShadow: 'none' }]}
+                  >
+                    <ThemedText style={[styles.submitBtnText, { color: '#64748b' }]}>Cancel</ThemedText>
+                  </Pressable>
                 )}
-              </Pressable>
+              </View>
 
               <View style={{ borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 14, paddingTop: 10 }}>
                 <ThemedText style={[styles.fieldLabel, { marginBottom: 6 }]}>REGISTERED BRANDS</ThemedText>
@@ -982,10 +999,15 @@ export default function OwnerVehicles() {
                   data={brands}
                   keyExtractor={(item) => String(item.id)}
                   renderItem={({ item }) => (
-                    <View style={[styles.pickerItem, { borderBottomWidth: 0, paddingVertical: 8 }]}>
+                    <View style={[styles.pickerItem, { borderBottomWidth: 0, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
                       <ThemedText style={styles.pickerItemText}>{item.name}</ThemedText>
-                      <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                        <ThemedText style={{ fontSize: 9, fontWeight: 'bold', color: '#04a700' }}>ACTIVE</ThemedText>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Pressable onPress={() => { setEditingBrandId(item.id); setNewBrandName(item.name); }}>
+                          <ThemedText style={{ fontSize: 11, fontWeight: 'bold', color: '#2563eb' }}>Edit</ThemedText>
+                        </Pressable>
+                        <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                          <ThemedText style={{ fontSize: 9, fontWeight: 'bold', color: '#04a700' }}>ACTIVE</ThemedText>
+                        </View>
                       </View>
                     </View>
                   )}
