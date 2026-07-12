@@ -320,6 +320,8 @@ export default function OwnerVehicles() {
     setUnitChassis('');
     setUnitColor('Red');
     setUnitStatus('available');
+    setUnitPurchaseInvoice('');
+    setUnitPaymentStatus('success');
     setIsUnitModalOpen(true);
   };
 
@@ -342,12 +344,18 @@ export default function OwnerVehicles() {
     setUnitChassis(u.chassis_number || '');
     setUnitColor(u.color || '');
     setUnitStatus(u.stock_status);
+    setUnitPurchaseInvoice(u.purchase_invoice_number || '');
+    setUnitPaymentStatus(u.payment_status || 'success');
     setIsUnitModalOpen(true);
   };
 
+  // Mobile state variables for new stock fields
+  const [unitPurchaseInvoice, setUnitPurchaseInvoice] = useState('');
+  const [unitPaymentStatus, setUnitPaymentStatus] = useState('success');
+
   const handleUnitSubmit = async () => {
-    if (!unitModel || !unitBranch || !unitShowroom || !unitLocation) {
-      Alert.alert('Required Fields', 'Please select Model, Branch, Showroom, and Stock Location.');
+    if (!unitModel || !unitBranch) {
+      Alert.alert('Required Fields', 'Please select Model and Branch.');
       return;
     }
 
@@ -356,18 +364,24 @@ export default function OwnerVehicles() {
       return;
     }
 
+    // Auto-resolve primary showroom and inventory location for the branch since form selectors are removed
+    const showroomId = unitBranch.showrooms?.[0]?.id || 1;
+    const locationId = unitBranch.inventory_locations?.[0]?.id || 1;
+
     setIsSubmitting(true);
     const payload = {
       model: unitModel.id,
       branch: unitBranch.id,
-      showroom: unitShowroom.id,
-      location: unitLocation.id,
+      showroom: showroomId,
+      location: locationId,
       vin_number: unitVin.trim() || null,
       motor_number: unitMotor.trim() || null,
       chassis_number: unitChassis.trim() || null,
       color: unitColor.trim() || null,
       stock_status: unitStatus,
-      purchase_date: new Date().toISOString().split('T')[0]
+      purchase_date: new Date().toISOString().split('T')[0],
+      purchase_invoice_number: unitPurchaseInvoice.trim() || null,
+      payment_status: unitPaymentStatus || 'success',
     };
 
     try {
@@ -831,22 +845,31 @@ export default function OwnerVehicles() {
                   </Pressable>
                 </View>
 
-                {/* Showroom dropdown */}
+                {/* Purchase Invoice */}
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>SHOWROOM OUTLET *</ThemedText>
-                  <Pressable onPress={() => setIsShowroomPickerOpen(true)} style={styles.pickerSelector} disabled={!unitBranch}>
-                    <ThemedText style={styles.pickerSelectorText}>{unitShowroom ? unitShowroom.name : 'Select showroom...'}</ThemedText>
-                    <ChevronDown size={16} color="#94a3b8" />
-                  </Pressable>
+                  <ThemedText style={styles.fieldLabel}>PURCHASE INVOICE NUMBER</ThemedText>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. PINV-2026-901"
+                    placeholderTextColor="#94a3b8"
+                    value={unitPurchaseInvoice}
+                    onChangeText={setUnitPurchaseInvoice}
+                  />
                 </View>
 
-                {/* Location dropdown */}
+                {/* Payment Status */}
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>INVENTORY YARD LOCATION *</ThemedText>
-                  <Pressable onPress={() => setIsLocationPickerOpen(true)} style={styles.pickerSelector} disabled={!unitBranch}>
-                    <ThemedText style={styles.pickerSelectorText}>{unitLocation ? unitLocation.name : 'Select yard location...'}</ThemedText>
-                    <ChevronDown size={16} color="#94a3b8" />
-                  </Pressable>
+                  <ThemedText style={styles.fieldLabel}>PAYMENT STATUS</ThemedText>
+                  <View style={styles.chipWrap}>
+                    {['success', 'pending', 'failed'].map((st) => {
+                      const active = unitPaymentStatus === st;
+                      return (
+                        <Pressable key={st} onPress={() => setUnitPaymentStatus(st)} style={[styles.optionChip, active && styles.optionChipActive]}>
+                          <ThemedText style={[styles.optionChipText, active && styles.optionChipTextActive]}>{st.toUpperCase()}</ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
 
                 {/* VIN Number */}

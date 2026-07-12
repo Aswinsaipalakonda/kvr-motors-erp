@@ -202,6 +202,9 @@ export default function OwnerDashboard() {
   const [melaCheckoutLoading, setMelaCheckoutLoading] = useState(false);
   const [checkoutPaymentType, setCheckoutPaymentType] = useState<string>("cash");
   const [checkoutPaymentProof, setCheckoutPaymentProof] = useState<File | null>(null);
+  const [splitAmounts, setSplitAmounts] = useState<{ cash: string; card: string; upi: string; bajaj_finance: string }>({
+    cash: "", card: "", upi: "", bajaj_finance: ""
+  });
   const [completedOrderDetails, setCompletedOrderDetails] = useState<any>(null);
   const [isAddMelaInventoryOpen, setIsAddMelaInventoryOpen] = useState(false);
   const [editingMelaInventoryId, setEditingMelaInventoryId] = useState<number | null>(null);
@@ -269,6 +272,7 @@ export default function OwnerDashboard() {
     model: "", branch: "", showroom: "", location: "",
     vin_number: "", motor_number: "", chassis_number: "", color: "",
     purchase_date: "", stock_status: "available", assigned_battery: "",
+    purchase_invoice_number: "", payment_status: "success",
   };
   const [stockUnitForm, setStockUnitForm] = useState({ ...emptyStockUnit });
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
@@ -1182,15 +1186,36 @@ export default function OwnerDashboard() {
   };
 
   const handleMelaCheckoutComplete = async (bookingId: number) => {
-    if (checkoutPaymentType !== "cash" && !checkoutPaymentProof) {
+    if (checkoutPaymentType !== "cash" && checkoutPaymentType !== "split" && !checkoutPaymentProof) {
       showToast("Payment proof screenshot is required for non-cash payments.", "error");
       return;
+    }
+
+    if (checkoutPaymentType === "split") {
+      const c = parseFloat(splitAmounts.cash || "0");
+      const cr = parseFloat(splitAmounts.card || "0");
+      const u = parseFloat(splitAmounts.upi || "0");
+      const b = parseFloat(splitAmounts.bajaj_finance || "0");
+      const total = c + cr + u + b;
+      const target = parseFloat(melaFoundBooking.price);
+      if (Math.abs(total - target) > 0.01) {
+        showToast(`Split total (₹${total}) must exactly match the vehicle price (₹${target}).`, "error");
+        return;
+      }
     }
 
     try {
       setMelaCheckoutLoading(true);
       const formData = new FormData();
       formData.append("payment_type", checkoutPaymentType);
+      if (checkoutPaymentType === "split") {
+        formData.append("payment_details", JSON.stringify({
+          cash: parseFloat(splitAmounts.cash || "0"),
+          card: parseFloat(splitAmounts.card || "0"),
+          upi: parseFloat(splitAmounts.upi || "0"),
+          bajaj_finance: parseFloat(splitAmounts.bajaj_finance || "0")
+        }));
+      }
       if (checkoutPaymentProof) {
         formData.append("payment_proof", checkoutPaymentProof);
       }
@@ -1201,6 +1226,7 @@ export default function OwnerDashboard() {
       setMelaSearchQuery("");
       setCheckoutPaymentType("cash");
       setCheckoutPaymentProof(null);
+      setSplitAmounts({ cash: "", card: "", upi: "", bajaj_finance: "" });
       loadMelaData();
       loadLedger();
     } catch (err: any) {
@@ -1558,6 +1584,8 @@ export default function OwnerDashboard() {
       purchase_date: unit.purchase_date || "",
       stock_status: unit.stock_status || "available",
       assigned_battery: unit.assigned_battery || "",
+      purchase_invoice_number: unit.purchase_invoice_number || "",
+      payment_status: unit.payment_status || "success",
     });
     setIsAddStockOpen(true);
   };
@@ -1574,12 +1602,14 @@ export default function OwnerDashboard() {
       showroom: String(unit.showroom ?? prev.showroom ?? ""),
       location: String(unit.location ?? prev.location ?? ""),
       vin_number: unit.vin_number || prev.vin_number,
-      motor_number: unit.motor_number || "",
-      chassis_number: unit.chassis_number || "",
+      motor_number: unit.motor_number || prev.motor_number || "",
+      chassis_number: unit.chassis_number || prev.chassis_number || "",
       color: unit.color || "",
       purchase_date: unit.purchase_date || "",
       stock_status: unit.stock_status || "available",
       assigned_battery: unit.assigned_battery || "",
+      purchase_invoice_number: unit.purchase_invoice_number || "",
+      payment_status: unit.payment_status || "success",
     }));
     setVinLookupState("found");
   };
@@ -1625,8 +1655,8 @@ export default function OwnerDashboard() {
   const handleStockUnitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const f = stockUnitForm;
-    if (!f.model || !f.branch || !f.showroom || !f.location) {
-      showToast("Select model, branch, showroom and location.", "error");
+    if (!f.model || !f.branch) {
+      showToast("Select vehicle model and branch outlet.", "error");
       return;
     }
     const vin = f.vin_number.trim();
@@ -1636,11 +1666,18 @@ export default function OwnerDashboard() {
       showToast("Enter at least one identifier — VIN, Motor, or Chassis number.", "error");
       return;
     }
+
+    // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
+    const branchId = parseInt(f.branch);
+    const branchObj = branchesList.find((b) => b.id === branchId);
+    const showroomId = branchObj?.showrooms?.[0]?.id || 1;
+    const locationId = branchObj?.inventory_locations?.[0]?.id || 1;
+
     const payload = {
       model: parseInt(f.model),
-      branch: parseInt(f.branch),
-      showroom: parseInt(f.showroom),
-      location: parseInt(f.location),
+      branch: branchId,
+      showroom: showroomId,
+      location: locationId,
       // Send null (not empty string) for blanks so the DB partial-unique
       // constraints treat missing identifiers as absent rather than duplicates.
       vin_number: vin || null,
@@ -1650,6 +1687,8 @@ export default function OwnerDashboard() {
       purchase_date: f.purchase_date || undefined,
       stock_status: f.stock_status,
       assigned_battery: f.assigned_battery.trim() || undefined,
+      purchase_invoice_number: f.purchase_invoice_number.trim() || null,
+      payment_status: f.payment_status || "success",
     };
     try {
       if (editingUnitId) {
@@ -3792,10 +3831,67 @@ export default function OwnerDashboard() {
                                   <option value="upi">UPI / Online Transfer</option>
                                   <option value="card">Debit / Credit Card</option>
                                   <option value="bajaj_finance">Bajaj Finance</option>
+                                  <option value="split">Split Payment (Multiple Modes)</option>
                                 </select>
                               </div>
 
-                              {checkoutPaymentType !== "cash" && (
+                              {checkoutPaymentType === "split" && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                                  <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block">Split Details (Target: ₹{parseFloat(melaFoundBooking.price).toLocaleString("en-IN")})</span>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-450 uppercase">Cash Amount</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={splitAmounts.cash}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
+                                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-450 uppercase">Card Amount</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={splitAmounts.card}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
+                                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-450 uppercase">UPI Amount</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={splitAmounts.upi}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
+                                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-450 uppercase">Bajaj Finance</label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={splitAmounts.bajaj_finance}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, bajaj_finance: e.target.value })}
+                                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="text-[10px] font-extrabold text-slate-500 pt-1 text-right">
+                                    Total Entered: ₹{
+                                      ((parseFloat(splitAmounts.cash || "0")) +
+                                      (parseFloat(splitAmounts.card || "0")) +
+                                      (parseFloat(splitAmounts.upi || "0")) +
+                                      (parseFloat(splitAmounts.bajaj_finance || "0"))).toLocaleString("en-IN")
+                                    }
+                                  </div>
+                                </div>
+                              )}
+
+                              {checkoutPaymentType !== "cash" && checkoutPaymentType !== "split" && (
                                 <div className="space-y-2">
                                   <label className="block text-[10px] font-bold text-slate-450 uppercase">Upload Payment Screenshot / Proof</label>
                                   <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 hover:bg-slate-100 transition-colors flex flex-col items-center justify-center cursor-pointer">
@@ -4811,90 +4907,116 @@ export default function OwnerDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {vehicleModelsList.map((model, idx) => (
-                    <div key={model.id || idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-emerald-500/30 transition-all duration-300 overflow-hidden flex flex-col justify-between group">
-                      {/* Premium Header */}
-                      <div className="bg-[#0b1329] border-b border-slate-800 text-white px-5 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Car className="h-4 w-4 text-emerald-400 shrink-0" />
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-                            {model.brand_name || "Kinetic"}
+                  {vehicleModelsList.map((model, idx) => {
+                    const isKinetic = (model.brand_name || "").toLowerCase().includes("kinetic");
+                    const isDynamo = (model.brand_name || "").toLowerCase().includes("dynamo");
+                    const headerGradient = isKinetic 
+                      ? "from-emerald-900 to-[#0b1329]" 
+                      : isDynamo 
+                        ? "from-blue-950 to-[#0b1329]" 
+                        : "from-indigo-950 to-[#0b1329]";
+                    const accentText = isKinetic 
+                      ? "text-emerald-500" 
+                      : isDynamo 
+                        ? "text-blue-500" 
+                        : "text-indigo-500";
+                    const priceBadgeBg = isKinetic 
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-100" 
+                      : isDynamo 
+                        ? "bg-blue-50 text-blue-800 border-blue-100" 
+                        : "bg-indigo-50 text-indigo-800 border-indigo-100";
+
+                    return (
+                      <div key={model.id || idx} className="bg-white border border-slate-100 rounded-3xl shadow-md hover:shadow-xl hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col justify-between group">
+                        {/* Premium Header with Brand Specific Gradients */}
+                        <div className={`bg-gradient-to-r ${headerGradient} border-b border-slate-800 text-white px-6 py-4 flex items-center justify-between`}>
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-white/10">
+                              <Car className="h-4 w-4 text-white shrink-0" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white px-2.5 py-1 rounded-md">
+                              {model.brand_name || "Kinetic"}
+                            </span>
+                          </div>
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide border ${
+                            model.status === "active" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-slate-700/50 text-slate-300 border-slate-600/30"
+                          }`}>
+                            {model.status === "active" ? "Active" : "Inactive"}
                           </span>
                         </div>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                          model.status === "active" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-300"
-                        }`}>
-                          {model.status === "active" ? "Active" : "Inactive"}
-                        </span>
-                      </div>
 
-                      {/* Card Content with Bento Grid */}
-                      <div className="p-5 space-y-4 text-left">
-                        <div>
-                          <h4 className="text-base font-extrabold text-slate-800 tracking-tight leading-none group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
-                          <div className="flex items-baseline gap-1 mt-2.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">Base Price</span>
-                            <span className="text-lg font-black text-slate-900 font-mono">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</span>
+                        {/* Card Content with Bento Grid */}
+                        <div className="p-6 space-y-4 text-left">
+                          <div>
+                            <h4 className="text-lg font-black text-slate-850 tracking-tight leading-tight group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
+                            <div className="flex items-center justify-between mt-3.5">
+                              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Base Showroom Price</span>
+                              <span className={`px-3 py-1 rounded-xl text-sm font-black font-mono border ${priceBadgeBg}`}>
+                                ₹ {parseFloat(model.base_price).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Bento Grid */}
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            {/* Battery compatibility */}
+                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                <Battery className="h-3.5 w-3.5 text-slate-400" />
+                                <span>Battery Spec</span>
+                              </div>
+                              <span className="text-[11px] font-extrabold text-slate-700 truncate mt-1.5">{model.battery_compatibility || "1.2 kWh"}</span>
+                            </div>
+
+                            {/* Color variants */}
+                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                <span>Color Options</span>
+                              </div>
+                              <span className="text-[11px] font-extrabold text-slate-700 truncate mt-1.5" title={Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}>
+                                {Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}
+                              </span>
+                            </div>
+
+                            {/* Range */}
+                            <div className="bg-[#04a700]/5 border border-[#04a700]/10 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#04a700] uppercase tracking-wider">
+                                <Zap className="h-3.5 w-3.5 text-[#04a700]" />
+                                <span>Est. Range</span>
+                              </div>
+                              <span className="text-xs font-black text-slate-805 mt-1.5">140 km</span>
+                            </div>
+
+                            {/* Warranty */}
+                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                <span>🛡️</span>
+                                <span>Warranty</span>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-slate-700 mt-1.5">3 Yrs / 40K km</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Bento Grid */}
-                        <div className="grid grid-cols-2 gap-2.5">
-                          {/* Battery compatibility */}
-                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                              <Battery className="h-3.5 w-3.5 text-slate-400" />
-                              <span>Battery Spec</span>
-                            </div>
-                            <span className="text-[11px] font-black text-slate-700 truncate mt-1">{model.battery_compatibility || "1.2 kWh"}</span>
-                          </div>
-
-                          {/* Color variants */}
-                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                              <span>Color Options</span>
-                            </div>
-                            <span className="text-[11px] font-black text-slate-700 truncate mt-1">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}</span>
-                          </div>
-
-                          {/* Range */}
-                          <div className="bg-emerald-50/20 border border-emerald-100/60 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-700 uppercase tracking-wide">
-                              <Zap className="h-3.5 w-3.5 text-emerald-500" />
-                              <span>Est. Range</span>
-                            </div>
-                            <span className="text-xs font-black text-emerald-800 mt-1">140 km</span>
-                          </div>
-
-                          {/* Warranty */}
-                          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex flex-col justify-between min-h-[58px]">
-                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                              <span className="text-[10px] text-slate-400 font-bold">🛡️</span>
-                              <span>Warranty</span>
-                            </div>
-                            <span className="text-[10px] font-extrabold text-slate-700 mt-1">3 Yrs / 40K km</span>
-                          </div>
+                        {/* Footer Actions */}
+                        <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-3.5 flex justify-end gap-4">
+                          <button
+                            onClick={() => openEditModel(model)}
+                            className="text-[11px] font-black text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            Edit Details
+                          </button>
+                          <button
+                            onClick={() => handleDeleteModel(model.id)}
+                            className="text-[11px] font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            Delete Catalog
+                          </button>
                         </div>
                       </div>
-
-                      {/* Footer Actions */}
-                      <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-3 flex justify-end gap-3">
-                        <button
-                          onClick={() => openEditModel(model)}
-                          className="text-[11px] font-extrabold text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          Edit Details
-                        </button>
-                        <button
-                          onClick={() => handleDeleteModel(model.id)}
-                          className="text-[11px] font-extrabold text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          Delete Catalog
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -6730,33 +6852,25 @@ export default function OwnerDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom</label>
-              <select
-                value={stockUnitForm.showroom}
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, showroom: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] disabled:opacity-50"
-                required
-                disabled={!stockUnitForm.branch}
-              >
-                <option value="">-- Select --</option>
-                {branchShowrooms.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Invoice Number</label>
+              <input 
+                type="text" 
+                placeholder="e.g. PINV-2026-901" 
+                value={stockUnitForm.purchase_invoice_number} 
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_invoice_number: e.target.value })} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Location Area</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Status</label>
               <select
-                value={stockUnitForm.location}
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, location: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] disabled:opacity-50"
-                required
-                disabled={!stockUnitForm.branch}
+                value={stockUnitForm.payment_status}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, payment_status: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               >
-                <option value="">-- Select --</option>
-                {branchLocations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
+                <option value="success">Success</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
               </select>
             </div>
           </div>

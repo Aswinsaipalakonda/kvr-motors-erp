@@ -52,6 +52,12 @@ class VehicleUnit(models.Model):
     chassis_number = models.CharField(max_length=50, null=True, blank=True)
     color = models.CharField(max_length=50, blank=True, null=True)
     purchase_date = models.DateField(blank=True, null=True)
+    purchase_invoice_number = models.CharField(max_length=100, blank=True, null=True)
+    payment_status = models.CharField(
+        max_length=20, 
+        choices=(('pending', 'Pending'), ('success', 'Success'), ('failed', 'Failed')), 
+        default='success'
+    )
     
     stock_status = models.CharField(max_length=20, choices=STOCK_STATUS_CHOICES, default='available')
     booking_status = models.BooleanField(default=False)

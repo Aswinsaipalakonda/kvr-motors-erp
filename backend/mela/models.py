@@ -109,6 +109,7 @@ class MelaBooking(models.Model):
     motor_no = models.CharField(max_length=100, default="", blank=True)
     battery_no = models.CharField(max_length=100, default="", blank=True)
     charger_no = models.CharField(max_length=100, default="", blank=True)
+    payment_details = models.JSONField(blank=True, null=True, default=dict)
 
     def save(self, *args, **kwargs):
         if not self.booking_id:

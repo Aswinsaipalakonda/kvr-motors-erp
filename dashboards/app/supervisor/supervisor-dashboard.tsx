@@ -14,7 +14,7 @@ import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import { useAuth } from "../context/AuthContext";
 
-import { getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer, createStockTransfer } from "../services/branches";
+import { getBranches, getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer, createStockTransfer } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit } from "../services/vehicles";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getUsers } from "../services/users";
@@ -138,6 +138,7 @@ export default function SupervisorDashboard() {
 
   const [locationsList, setLocationsList] = useState<any[]>([]);
   const [showroomsList, setShowroomsList] = useState<any[]>([]);
+  const [branchesList, setBranchesList] = useState<any[]>([]);
   const [attendanceList, setAttendanceList] = useState<AttendanceRecord[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [attendanceFilterStatus, setAttendanceFilterStatus] = useState("All Statuses");
@@ -181,6 +182,7 @@ export default function SupervisorDashboard() {
     model: "", branch: "", showroom: "", location: "",
     vin_number: "", motor_number: "", chassis_number: "", color: "",
     purchase_date: "", stock_status: "available", assigned_battery: "",
+    purchase_invoice_number: "", payment_status: "success",
   };
   const [stockUnitForm, setStockUnitForm] = useState({ ...emptyStockUnit });
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
@@ -371,6 +373,7 @@ export default function SupervisorDashboard() {
     loadAttendance();
     getInventoryLocations().then(setLocationsList).catch(() => {});
     getShowrooms().then(setShowroomsList).catch(() => {});
+    getBranches().then(setBranchesList).catch(() => {});
 
     const interval = setInterval(() => {
       loadOverrides(true);
@@ -500,6 +503,8 @@ export default function SupervisorDashboard() {
       purchase_date: unit.purchase_date || "",
       stock_status: unit.stock_status || "available",
       assigned_battery: unit.assigned_battery || "",
+      purchase_invoice_number: unit.purchase_invoice_number || "",
+      payment_status: unit.payment_status || "success",
     });
     setIsAddStockOpen(true);
   };
@@ -513,12 +518,14 @@ export default function SupervisorDashboard() {
       showroom: String(unit.showroom ?? prev.showroom ?? ""),
       location: String(unit.location ?? prev.location ?? ""),
       vin_number: unit.vin_number || prev.vin_number,
-      motor_number: unit.motor_number || "",
-      chassis_number: unit.chassis_number || "",
+      motor_number: unit.motor_number || prev.motor_number || "",
+      chassis_number: unit.chassis_number || prev.chassis_number || "",
       color: unit.color || "",
       purchase_date: unit.purchase_date || "",
       stock_status: unit.stock_status || "available",
       assigned_battery: unit.assigned_battery || "",
+      purchase_invoice_number: unit.purchase_invoice_number || "",
+      payment_status: unit.payment_status || "success",
     }));
     setVinLookupState("found");
   };
@@ -559,8 +566,8 @@ export default function SupervisorDashboard() {
   const handleStockUnitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const f = stockUnitForm;
-    if (!f.model || !f.branch || !f.showroom || !f.location) {
-      showToast("Select model, branch, showroom and location.", "error");
+    if (!f.model || !f.branch) {
+      showToast("Select vehicle model and branch outlet.", "error");
       return;
     }
     const vin = f.vin_number.trim();
@@ -570,11 +577,18 @@ export default function SupervisorDashboard() {
       showToast("Enter at least one identifier.", "error");
       return;
     }
+
+    // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
+    const branchId = parseInt(f.branch);
+    const branchObj = branchesList.find((b) => b.id === branchId);
+    const showroomId = branchObj?.showrooms?.[0]?.id || 1;
+    const locationId = branchObj?.inventory_locations?.[0]?.id || 1;
+
     const payload = {
       model: parseInt(f.model),
-      branch: parseInt(f.branch),
-      showroom: parseInt(f.showroom),
-      location: parseInt(f.location),
+      branch: branchId,
+      showroom: showroomId,
+      location: locationId,
       vin_number: vin || null,
       motor_number: motor || null,
       chassis_number: chassis || null,
@@ -582,6 +596,8 @@ export default function SupervisorDashboard() {
       purchase_date: f.purchase_date || undefined,
       stock_status: f.stock_status,
       assigned_battery: f.assigned_battery.trim() || undefined,
+      purchase_invoice_number: f.purchase_invoice_number.trim() || null,
+      payment_status: f.payment_status || "success",
     };
     try {
       if (editingUnitId) {
@@ -2219,7 +2235,6 @@ export default function SupervisorDashboard() {
         </div>
       </Modal>
 
-      {/* 2. Add Stock Unit */}
       <Modal isOpen={isAddStockOpen} onClose={() => setIsAddStockOpen(false)} title={editingUnitId ? "Edit Physical Stock Unit details" : "Register Intake Stock Unit (VIN)"}>
         <form onSubmit={handleStockUnitSubmit} className="space-y-4 text-left">
           <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block border-b border-slate-100 pb-1">Showroom & Warehouse Outlet</span>
@@ -2244,17 +2259,25 @@ export default function SupervisorDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Showroom</label>
-              <select value={stockUnitForm.showroom} onChange={(e) => setStockUnitForm({ ...stockUnitForm, showroom: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
-                <option value="">Choose Showroom...</option>
-                {branchShowrooms.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Invoice Number</label>
+              <input 
+                type="text" 
+                placeholder="e.g. PINV-2026-901" 
+                value={stockUnitForm.purchase_invoice_number} 
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_invoice_number: e.target.value })} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Godown Location</label>
-              <select value={stockUnitForm.location} onChange={(e) => setStockUnitForm({ ...stockUnitForm, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
-                <option value="">Choose Godown...</option>
-                {branchLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Status</label>
+              <select
+                value={stockUnitForm.payment_status}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, payment_status: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+              >
+                <option value="success">Success</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
               </select>
             </div>
           </div>

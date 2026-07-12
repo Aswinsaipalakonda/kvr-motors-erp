@@ -201,24 +201,37 @@ class MelaBookingViewSet(viewsets.ModelViewSet):
             )
 
         payment_type = request.data.get('payment_type', 'cash').lower()
-        if payment_type not in ['cash', 'upi', 'card', 'bajaj_finance']:
+        if payment_type not in ['cash', 'upi', 'card', 'bajaj_finance', 'split']:
             return Response(
-                {"error": "Invalid payment type. Choose Cash, UPI, Card, or Bajaj Finance."},
+                {"error": "Invalid payment type. Choose Cash, UPI, Card, Bajaj Finance, or Split."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         payment_proof = request.FILES.get('payment_proof')
-        if payment_type != 'cash' and not payment_proof:
+        if payment_type != 'cash' and payment_type != 'split' and not payment_proof:
             return Response(
                 {"error": f"Payment proof screenshot is required for {payment_type.upper()} payments."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Parse and validate split details if payment type is split
+        payment_details = {}
+        if payment_type == 'split':
+            import json
+            details_str = request.data.get('payment_details')
+            if details_str:
+                try:
+                    payment_details = json.loads(details_str)
+                except Exception:
+                    return Response({"error": "Invalid JSON format for payment details split."}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             booking.status = 'completed'
             booking.cash_collected = booking.price
             booking.completed_at = timezone.now()
             booking.payment_type = payment_type
+            if payment_details:
+                booking.payment_details = payment_details
             if payment_proof:
                 booking.payment_proof = payment_proof
             booking.save()
