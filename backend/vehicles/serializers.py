@@ -27,19 +27,4 @@ class VehicleUnitSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        # Require at least one physical identifier (VIN / motor / chassis).
-        # Merge incoming values with existing ones on update (PATCH).
-        def resolve(field):
-            if field in attrs:
-                val = attrs.get(field)
-            elif self.instance is not None:
-                val = getattr(self.instance, field)
-            else:
-                val = None
-            return (val or "").strip() if isinstance(val, str) else val
-
-        if not (resolve('vin_number') or resolve('motor_number') or resolve('chassis_number')):
-            raise serializers.ValidationError(
-                "Provide at least one identifier: VIN number, motor number, or chassis number."
-            )
         return attrs

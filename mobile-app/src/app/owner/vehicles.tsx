@@ -359,11 +359,6 @@ export default function OwnerVehicles() {
       return;
     }
 
-    if (!unitVin.trim() && !unitMotor.trim() && !unitChassis.trim()) {
-      Alert.alert('Validation Error', 'Provide at least one identifier: VIN number, motor number, or chassis number.');
-      return;
-    }
-
     // Auto-resolve primary showroom and inventory location for the branch since form selectors are removed
     const showroomId = unitBranch.showrooms?.[0]?.id || 1;
     const locationId = unitBranch.inventory_locations?.[0]?.id || 1;
@@ -874,7 +869,7 @@ export default function OwnerVehicles() {
 
                 {/* VIN Number */}
                 <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>VIN / FRAME NUMBER (At least one identifier required)</ThemedText>
+                  <ThemedText style={styles.fieldLabel}>VIN / FRAME NUMBER</ThemedText>
                   <TextInput
                     style={styles.textInput}
                     placeholder="Enter 17-digit VIN"

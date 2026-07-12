@@ -80,11 +80,7 @@ class VehicleUnit(models.Model):
         ]
 
     def clean(self):
-        # At least one physical identifier must be supplied to register a unit.
-        if not (self.vin_number or self.motor_number or self.chassis_number):
-            raise ValidationError(
-                "Provide at least one identifier: VIN number, motor number, or chassis number."
-            )
+        pass
 
     def save(self, *args, **kwargs):
         # Normalise empty strings to NULL so the partial-unique constraints don't

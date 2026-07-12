@@ -163,6 +163,7 @@ export default function OwnerDashboard() {
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
   const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [activeFilterTab, setActiveFilterTab] = useState<string>("All");
 
   // Real database leads states
   const [leadsList, setLeadsList] = useState<any[]>([]);
@@ -1662,10 +1663,6 @@ export default function OwnerDashboard() {
     const vin = f.vin_number.trim();
     const motor = f.motor_number.trim();
     const chassis = f.chassis_number.trim();
-    if (!vin && !motor && !chassis) {
-      showToast("Enter at least one identifier — VIN, Motor, or Chassis number.", "error");
-      return;
-    }
 
     // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
     const branchId = parseInt(f.branch);
@@ -4875,7 +4872,7 @@ export default function OwnerDashboard() {
           {activeTab === "vehicles" && (
             <div className="space-y-6 text-left">
               {/* Header block with modern feel */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 flex-wrap gap-4">
                 <div>
                   <h3 className="text-base font-black text-slate-805 tracking-tight">Vehicle Master Models Catalog</h3>
                   <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Configure models, battery specifications, colors, and base retail pricing.</p>
@@ -4896,129 +4893,140 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
+              {/* Dynamic Search & Brand Filter Bar */}
+              <div className="flex flex-col md:flex-row gap-3 pt-2">
+                <input 
+                  type="text" 
+                  placeholder="Search catalog models..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                />
+                <select
+                  value={activeFilterTab}
+                  onChange={(e) => setActiveFilterTab(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] min-w-[160px] cursor-pointer"
+                >
+                  <option value="All">All Brands</option>
+                  {vehicleBrandsList.map((brand) => (
+                    <option key={brand.id} value={brand.name}>{brand.name}</option>
+                  ))}
+                </select>
+              </div>
+
               {vehiclesLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-205 border-t-[#04a700]" />
                   <span className="text-xs font-semibold text-slate-405">Loading model catalog...</span>
                 </div>
-              ) : vehicleModelsList.length === 0 ? (
-                <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm">
-                  <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {vehicleModelsList.map((model, idx) => {
-                    const isKinetic = (model.brand_name || "").toLowerCase().includes("kinetic");
-                    const isDynamo = (model.brand_name || "").toLowerCase().includes("dynamo");
-                    const headerGradient = isKinetic 
-                      ? "from-emerald-900 to-[#0b1329]" 
-                      : isDynamo 
-                        ? "from-blue-950 to-[#0b1329]" 
-                        : "from-indigo-950 to-[#0b1329]";
-                    const accentText = isKinetic 
-                      ? "text-emerald-500" 
-                      : isDynamo 
-                        ? "text-blue-500" 
-                        : "text-indigo-500";
-                    const priceBadgeBg = isKinetic 
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-100" 
-                      : isDynamo 
-                        ? "bg-blue-50 text-blue-800 border-blue-100" 
-                        : "bg-indigo-50 text-indigo-800 border-indigo-100";
+              ) : (() => {
+                const filteredModels = vehicleModelsList.filter((model) => {
+                  const matchesSearch = !searchQuery.trim() || 
+                    model.model_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (model.brand_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+                  
+                  const matchesBrand = activeFilterTab === "All" || model.brand_name === activeFilterTab;
+                  return matchesSearch && matchesBrand;
+                });
 
-                    return (
-                      <div key={model.id || idx} className="bg-white border border-slate-100 rounded-3xl shadow-md hover:shadow-xl hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col justify-between group">
-                        {/* Premium Header with Brand Specific Gradients */}
-                        <div className={`bg-gradient-to-r ${headerGradient} border-b border-slate-800 text-white px-6 py-4 flex items-center justify-between`}>
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-white/10">
-                              <Car className="h-4 w-4 text-white shrink-0" />
+                if (filteredModels.length === 0) {
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-sm">
+                      <EmptyState title="No Matching Models" description="Try adjusting your filter or search query." />
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredModels.map((model, idx) => {
+                      const isKinetic = (model.brand_name || "").toLowerCase().includes("kinetic");
+                      const isDynamo = (model.brand_name || "").toLowerCase().includes("dynamo");
+                      const headerGradient = isKinetic 
+                        ? "from-emerald-900 to-[#0b1329]" 
+                        : isDynamo 
+                          ? "from-blue-950 to-[#0b1329]" 
+                          : "from-indigo-950 to-[#0b1329]";
+                      const priceBadgeBg = isKinetic 
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-100" 
+                        : isDynamo 
+                          ? "bg-blue-50 text-blue-800 border-blue-100" 
+                          : "bg-indigo-50 text-indigo-800 border-indigo-100";
+
+                      return (
+                        <div key={model.id || idx} className="bg-white border border-slate-100 rounded-3xl shadow-md hover:shadow-xl hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col justify-between group">
+                          {/* Premium Header with Brand Specific Gradients */}
+                          <div className={`bg-gradient-to-r ${headerGradient} border-b border-slate-800 text-white px-6 py-4 flex items-center justify-between`}>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-lg bg-white/10">
+                                <Car className="h-4 w-4 text-white shrink-0" />
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white px-2.5 py-1 rounded-md">
+                                {model.brand_name || "Kinetic"}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white px-2.5 py-1 rounded-md">
-                              {model.brand_name || "Kinetic"}
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide border ${
+                              model.status === "active" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-slate-700/50 text-slate-300 border-slate-600/30"
+                            }`}>
+                              {model.status === "active" ? "Active" : "Inactive"}
                             </span>
                           </div>
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide border ${
-                            model.status === "active" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-slate-700/50 text-slate-300 border-slate-600/30"
-                          }`}>
-                            {model.status === "active" ? "Active" : "Inactive"}
-                          </span>
-                        </div>
 
-                        {/* Card Content with Bento Grid */}
-                        <div className="p-6 space-y-4 text-left">
-                          <div>
-                            <h4 className="text-lg font-black text-slate-850 tracking-tight leading-tight group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
-                            <div className="flex items-center justify-between mt-3.5">
-                              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Base Showroom Price</span>
-                              <span className={`px-3 py-1 rounded-xl text-sm font-black font-mono border ${priceBadgeBg}`}>
-                                ₹ {parseFloat(model.base_price).toLocaleString('en-IN')}
-                              </span>
+                          {/* Card Content containing ONLY actual fields */}
+                          <div className="p-6 space-y-4 text-left flex-1 flex flex-col justify-between">
+                            <div>
+                              <h4 className="text-lg font-black text-slate-850 tracking-tight leading-tight group-hover:text-[#04a700] transition-colors">{model.model_name}</h4>
+                              <div className="flex items-center justify-between mt-3.5">
+                                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Base Showroom Price</span>
+                                <span className={`px-3 py-1 rounded-xl text-sm font-black font-mono border ${priceBadgeBg}`}>
+                                  ₹ {parseFloat(model.base_price).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Info Rows */}
+                            <div className="space-y-2.5 pt-3 border-t border-slate-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <Battery className="h-3.5 w-3.5 text-slate-400" />
+                                  <span>Battery Spec</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{model.battery_compatibility || "—"}</span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-450" />
+                                  <span>Color Options</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700 truncate max-w-[180px]" title={Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "—"}>
+                                  {Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "—"}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Bento Grid */}
-                          <div className="grid grid-cols-2 gap-3 pt-2">
-                            {/* Battery compatibility */}
-                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                <Battery className="h-3.5 w-3.5 text-slate-400" />
-                                <span>Battery Spec</span>
-                              </div>
-                              <span className="text-[11px] font-extrabold text-slate-700 truncate mt-1.5">{model.battery_compatibility || "1.2 kWh"}</span>
-                            </div>
-
-                            {/* Color variants */}
-                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                <span>Color Options</span>
-                              </div>
-                              <span className="text-[11px] font-extrabold text-slate-700 truncate mt-1.5" title={Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}>
-                                {Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Red, Blue, Green"}
-                              </span>
-                            </div>
-
-                            {/* Range */}
-                            <div className="bg-[#04a700]/5 border border-[#04a700]/10 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#04a700] uppercase tracking-wider">
-                                <Zap className="h-3.5 w-3.5 text-[#04a700]" />
-                                <span>Est. Range</span>
-                              </div>
-                              <span className="text-xs font-black text-slate-805 mt-1.5">140 km</span>
-                            </div>
-
-                            {/* Warranty */}
-                            <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between min-h-[64px]">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                <span>🛡️</span>
-                                <span>Warranty</span>
-                              </div>
-                              <span className="text-[10px] font-extrabold text-slate-700 mt-1.5">3 Yrs / 40K km</span>
-                            </div>
+                          {/* Footer Actions */}
+                          <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-3.5 flex justify-end gap-4">
+                            <button
+                              onClick={() => openEditModel(model)}
+                              className="text-[11px] font-black text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              Edit Details
+                            </button>
+                            <button
+                              onClick={() => handleDeleteModel(model.id)}
+                              className="text-[11px] font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              Delete Catalog
+                            </button>
                           </div>
                         </div>
-
-                        {/* Footer Actions */}
-                        <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-3.5 flex justify-end gap-4">
-                          <button
-                            onClick={() => openEditModel(model)}
-                            className="text-[11px] font-black text-[#04a700] hover:text-[#038a00] flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            Edit Details
-                          </button>
-                          <button
-                            onClick={() => handleDeleteModel(model.id)}
-                            className="text-[11px] font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            Delete Catalog
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
           {/* TAB 4: STOCK (IN & OUT) */}
@@ -6755,44 +6763,13 @@ export default function OwnerDashboard() {
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">VIN Number</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="e.g. KVRVIN2026X990"
-                value={stockUnitForm.vin_number}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setStockUnitForm((prev) => {
-                    const updates: any = { ...prev, vin_number: val };
-                    if (!prev.motor_number || prev.motor_number === prev.vin_number) {
-                      updates.motor_number = val;
-                    }
-                    if (!prev.chassis_number || prev.chassis_number === prev.vin_number) {
-                      updates.chassis_number = val;
-                    }
-                    return updates;
-                  });
-                  if (vinLookupState !== "idle") setVinLookupState("idle");
-                }}
-                onBlur={(e) => handleIdentifierLookup("vin_number", e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 pr-9 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
-              />
-              {vinLookupState === "searching" && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-slate-200 border-t-[#04a700] animate-spin" />
-              )}
-              {vinLookupState === "found" && (
-                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#04a700]" />
-              )}
-            </div>
-            {vinLookupState === "found" && (
-              <p className="text-[10px] font-bold text-[#04a700]">Existing unit found — details auto-filled. Saving will update this record.</p>
-            )}
-            {vinLookupState === "notfound" && stockUnitForm.vin_number.trim().length >= 3 && (
-              <p className="text-[10px] font-semibold text-slate-400">New identifier — fill the details below.</p>
-            )}
-          </div>
-          <div className="rounded-lg bg-[#04a700]/5 border border-[#04a700]/15 px-3 py-2">
-            <p className="text-[10px] font-bold text-[#04a700]">Enter at least one identifier (VIN, Motor, or Chassis). Type any one — if the vehicle already exists, the rest auto-fill.</p>
+            <input
+              type="text"
+              placeholder="e.g. KVRVIN2026X990"
+              value={stockUnitForm.vin_number}
+              onChange={(e) => setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -6801,12 +6778,7 @@ export default function OwnerDashboard() {
                 type="text"
                 placeholder="e.g. MTR-90888"
                 value={stockUnitForm.motor_number}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, motor_number: val });
-                  if (vinLookupState !== "idle") setVinLookupState("idle");
-                }}
-                onBlur={(e) => handleIdentifierLookup("motor_number", e.target.value)}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
               />
             </div>
@@ -6816,12 +6788,7 @@ export default function OwnerDashboard() {
                 type="text"
                 placeholder="e.g. CHS-88988"
                 value={stockUnitForm.chassis_number}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setStockUnitForm({ ...stockUnitForm, chassis_number: val });
-                  if (vinLookupState !== "idle") setVinLookupState("idle");
-                }}
-                onBlur={(e) => handleIdentifierLookup("chassis_number", e.target.value)}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
               />
             </div>
@@ -6845,7 +6812,7 @@ export default function OwnerDashboard() {
               required
             >
               <option value="">-- Select Branch --</option>
-              {branchesList.map((b) => (
+              {branchesList.filter((b) => b.is_active !== false).map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>

@@ -123,6 +123,7 @@ export default function SupervisorDashboard() {
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
   const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [activeFilterTab, setActiveFilterTab] = useState<string>("All");
 
   const [leadsList, setLeadsList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
@@ -573,10 +574,6 @@ export default function SupervisorDashboard() {
     const vin = f.vin_number.trim();
     const motor = f.motor_number.trim();
     const chassis = f.chassis_number.trim();
-    if (!vin && !motor && !chassis) {
-      showToast("Enter at least one identifier.", "error");
-      return;
-    }
 
     // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
     const branchId = parseInt(f.branch);
@@ -1438,11 +1435,13 @@ export default function SupervisorDashboard() {
                 </div>
 
                 {/* Vehicle Master Models catalog */}
-                <Table 
-                  title="Vehicle Master Models Catalog" 
-                  headers={["Model Name", "Brand", "Category", "Base Price", "Color Variants", "Battery Spec", "Warranty Period", "Status", "Actions"]}
-                  actions={
-                    <div className="flex gap-2">
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-md space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                      <h4 className="text-base font-black text-slate-805">Vehicle Master Models Catalog</h4>
+                      <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Configure models, battery specifications, colors, and base retail pricing.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button 
                         onClick={() => setIsManageBrandsOpen(true)}
                         className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-4 rounded-full cursor-pointer transition-all border border-slate-250"
@@ -1456,47 +1455,88 @@ export default function SupervisorDashboard() {
                         <Plus className="h-4 w-4" /> Add Model
                       </button>
                     </div>
-                  }
-                >
-                  {vehiclesLoading ? (
-                    <tr>
-                      <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                          <span>Loading models...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : vehicleModelsList.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-8 text-center">
-                        <EmptyState title="No Models Registered" description="Click Add Model to populate the catalog." />
-                      </td>
-                    </tr>
-                  ) : (
-                    vehicleModelsList.map((model, idx) => (
-                      <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
-                        <td className="py-3.5 px-5 text-slate-605 font-semibold">{model.brand_name || "Kinetic"}</td>
-                        <td className="py-3.5 px-5 text-slate-500 font-semibold">Electric</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
-                        <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "Green"}</td>
-                        <td className="py-3.5 px-5 text-slate-550 font-semibold">{model.battery_compatibility || "1.2 kWh"}</td>
-                        <td className="py-3.5 px-5 text-slate-400 font-semibold">3 Yrs / 40K km</td>
-                        <td className="py-3.5 px-5">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                            model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                          }`}>
-                            {model.status === "active" ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-5">
-                          <button onClick={() => openEditModel(model)} className="text-xs text-indigo-650 hover:text-indigo-805 font-bold cursor-pointer">Edit</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </Table>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <input 
+                      type="text" 
+                      placeholder="Search catalog models..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                    />
+                    <select
+                      value={activeFilterTab}
+                      onChange={(e) => setActiveFilterTab(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700] min-w-[160px] cursor-pointer"
+                    >
+                      <option value="All">All Brands</option>
+                      {vehicleBrandsList.map((brand) => (
+                        <option key={brand.id} value={brand.name}>{brand.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <Table 
+                    title=""
+                    headers={["Model Name", "Brand", "Base Price", "Color Variants", "Battery Spec", "Status", "Actions"]}
+                    actions={null}
+                  >
+                    {(() => {
+                      const filteredModels = vehicleModelsList.filter((model) => {
+                        const matchesSearch = !searchQuery.trim() || 
+                          model.model_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (model.brand_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+                        
+                        const matchesBrand = activeFilterTab === "All" || model.brand_name === activeFilterTab;
+                        return matchesSearch && matchesBrand;
+                      });
+
+                      if (vehiclesLoading) {
+                        return (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                                <span>Loading models...</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (filteredModels.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center">
+                              <EmptyState title="No Matching Models" description="Try adjusting your filter or search query." />
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return filteredModels.map((model, idx) => (
+                        <tr key={model.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3.5 px-5 font-bold text-slate-800">{model.model_name}</td>
+                          <td className="py-3.5 px-5 text-slate-605 font-semibold">{model.brand_name || "Kinetic"}</td>
+                          <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(model.base_price).toLocaleString('en-IN')}</td>
+                          <td className="py-3.5 px-5 text-slate-500 font-medium">{Array.isArray(model.color_variants) ? model.color_variants.join(", ") : model.color_variants || "—"}</td>
+                          <td className="py-3.5 px-5 text-slate-550 font-semibold">{model.battery_compatibility || "—"}</td>
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              model.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                            }`}>
+                              {model.status === "active" ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <button onClick={() => openEditModel(model)} className="text-xs text-indigo-650 hover:text-indigo-805 font-bold cursor-pointer">Edit</button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </Table>
+                </div>
 
                 {/* Physical Stock Units Registry (CRUD) */}
                 <Table 
@@ -2250,10 +2290,9 @@ export default function SupervisorDashboard() {
               <label className="text-[10px] font-bold text-slate-400 uppercase">Outlet Branch</label>
               <select value={stockUnitForm.branch} onChange={(e) => setStockUnitForm({ ...stockUnitForm, branch: e.target.value, showroom: "", location: "" })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
                 <option value="">Choose Branch...</option>
-                {showroomsList.map(s => s.branch_name).filter((v, i, a) => a.indexOf(v) === i).map((bName, idx) => {
-                  const bObj = showroomsList.find(s => s.branch_name === bName);
-                  return <option key={idx} value={bObj?.branch}>{bName}</option>;
-                })}
+                {branchesList.filter((b) => b.is_active !== false).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -2285,33 +2324,16 @@ export default function SupervisorDashboard() {
           <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block border-b border-slate-100 pb-1 mt-6">Indent Codes</span>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number)</label>
-            <div className="relative">
-              <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => {
-                const val = e.target.value;
-                setStockUnitForm((prev) => {
-                  const updates: any = { ...prev, vin_number: val };
-                  if (!prev.motor_number || prev.motor_number === prev.vin_number) {
-                    updates.motor_number = val;
-                  }
-                  if (!prev.chassis_number || prev.chassis_number === prev.vin_number) {
-                    updates.chassis_number = val;
-                  }
-                  return updates;
-                });
-                handleIdentifierLookup("vin_number", val);
-              }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
-              {vinLookupState === "searching" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-slate-400 animate-pulse">Syncing...</span>}
-              {vinLookupState === "found" && <span className="absolute right-3 top-2.5 text-[9px] font-bold text-[#04a700]">Synced</span>}
-            </div>
+            <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Code</label>
-              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, motor_number: val }); handleIdentifierLookup("motor_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Code</label>
-              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => { const val = e.target.value; setStockUnitForm({ ...stockUnitForm, chassis_number: val }); handleIdentifierLookup("chassis_number", val); }} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
+              <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
           </div>
 
