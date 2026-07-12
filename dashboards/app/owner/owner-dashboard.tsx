@@ -6771,7 +6771,7 @@ export default function OwnerDashboard() {
       <Modal isOpen={isAddStockOpen} onClose={() => { setIsAddStockOpen(false); resetStockUnitForm(); }} title={editingUnitId ? "Edit Stock Unit (VIN Registry)" : "Log Physical Stock Unit Entry"}>
         <form onSubmit={handleStockUnitSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model <span className="text-red-500">*</span></label>
             <select
               value={stockUnitForm.model}
               onChange={(e) => setStockUnitForm({ ...stockUnitForm, model: e.target.value })}
@@ -6785,7 +6785,7 @@ export default function OwnerDashboard() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN Number</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN Number (optional)</label>
             <input
               type="text"
               placeholder="e.g. KVRVIN2026X990"
@@ -6796,7 +6796,7 @@ export default function OwnerDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Number</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Number (optional)</label>
               <input
                 type="text"
                 placeholder="e.g. MTR-90888"
@@ -6806,7 +6806,7 @@ export default function OwnerDashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Number</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Number (optional)</label>
               <input
                 type="text"
                 placeholder="e.g. CHS-88988"
@@ -6827,7 +6827,7 @@ export default function OwnerDashboard() {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Outlet</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Outlet <span className="text-red-500">*</span></label>
             <select
               value={stockUnitForm.branch}
               onChange={(e) => setStockUnitForm({ ...stockUnitForm, branch: e.target.value, showroom: "", location: "" })}

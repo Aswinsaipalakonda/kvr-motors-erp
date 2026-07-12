@@ -2304,14 +2304,14 @@ export default function SupervisorDashboard() {
           <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block border-b border-slate-100 pb-1">Showroom & Warehouse Outlet</span>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Model <span className="text-red-500">*</span></label>
               <select value={stockUnitForm.model} onChange={(e) => setStockUnitForm({ ...stockUnitForm, model: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
                 <option value="">Choose Model...</option>
                 {vehicleModelsList.map(m => <option key={m.id} value={m.id}>{m.model_name}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Outlet Branch</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Outlet Branch <span className="text-red-500">*</span></label>
               <select value={stockUnitForm.branch} onChange={(e) => setStockUnitForm({ ...stockUnitForm, branch: e.target.value, showroom: "", location: "" })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
                 <option value="">Choose Branch...</option>
                 {branchesList.filter((b) => b.is_active !== false).map((b) => (
@@ -2324,16 +2324,16 @@ export default function SupervisorDashboard() {
 
           <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block border-b border-slate-100 pb-1 mt-6">Indent Codes</span>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number)</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">VIN (Vehicle Identification Number) (optional)</label>
             <input type="text" placeholder="e.g. KVRVIN2026X..." value={stockUnitForm.vin_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, vin_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Code</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Motor Code (optional)</label>
               <input type="text" placeholder="e.g. MTR-90802" value={stockUnitForm.motor_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, motor_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Code</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Chassis Code (optional)</label>
               <input type="text" placeholder="e.g. CHS-88902" value={stockUnitForm.chassis_number} onChange={(e) => setStockUnitForm({ ...stockUnitForm, chassis_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" />
             </div>
           </div>
