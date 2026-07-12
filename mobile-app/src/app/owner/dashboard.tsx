@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import FadeScaleTransition from '@/components/FadeScaleTransition';
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Search, SlidersHorizontal, Zap, Gauge, Battery, 
   Sparkles, Award, TrendingUp, Warehouse, UserCheck, CalendarDays, Check, X,
@@ -50,6 +51,7 @@ export default function OwnerDashboard({
   onOpenBranchSelector?: () => void;
   isActive?: boolean;
 }) {
+  const { user } = useAuth();
   const scrollRef = React.useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -467,8 +469,13 @@ export default function OwnerDashboard({
           <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: '#0a0e1a' }} />
           <View style={styles.heroCanvas}>
             <View style={styles.titleWrapper}>
-              <ThemedText style={styles.mainTitle}>Manage Your</ThemedText>
-              <ThemedText style={styles.accentTitle}>Motors Enterprise.</ThemedText>
+              <ThemedText style={styles.mainTitle}>Hello, {user?.full_name || 'User'} 👋</ThemedText>
+              <ThemedText style={styles.accentTitle}>
+                {user?.role === 'telecaller' ? 'Telecaller Workspace' :
+                 user?.role === 'supervisor' ? 'Supervisor Control' :
+                 user?.role === 'sales' || user?.role === 'sales_executive' ? 'Sales Desk' :
+                 'Motors Enterprise.'}
+              </ThemedText>
             </View>
 
             <View style={styles.searchBarRow}>
@@ -575,61 +582,76 @@ export default function OwnerDashboard({
                     <ThemedText style={styles.metricLbl}>Conversion Rate</ThemedText>
                   </View>
 
-                  {/* Card 4: Net Capital */}
-                  <View style={styles.metricCard}>
-                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
-                      <Wallet size={16} color="#ea580c" />
+                  {/* Card 4: Net Capital (Owner/Admin) or Leads Count (Others) */}
+                  {(user?.role === 'owner' || user?.role === 'admin') ? (
+                    <View style={styles.metricCard}>
+                      <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
+                        <Wallet size={16} color="#ea580c" />
+                      </View>
+                      <ThemedText style={[styles.metricVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444' }]}>
+                        {netProfit < 0 ? '-' : ''}₹{Math.abs(netProfit) >= 100000 
+                          ? `${(Math.abs(netProfit) / 100000).toFixed(1)}L` 
+                          : Math.abs(netProfit).toLocaleString('en-IN')}
+                      </ThemedText>
+                      <ThemedText style={styles.metricLbl}>Net Capital</ThemedText>
                     </View>
-                    <ThemedText style={[styles.metricVal, { color: netProfit >= 0 ? '#04a700' : '#ef4444' }]}>
-                      {netProfit < 0 ? '-' : ''}₹{Math.abs(netProfit) >= 100000 
-                        ? `${(Math.abs(netProfit) / 100000).toFixed(1)}L` 
-                        : Math.abs(netProfit).toLocaleString('en-IN')}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLbl}>Net Capital</ThemedText>
-                  </View>
+                  ) : (
+                    <View style={styles.metricCard}>
+                      <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
+                        <UserCheck size={16} color="#ea580c" />
+                      </View>
+                      <ThemedText style={styles.metricVal}>{leads.length}</ThemedText>
+                      <ThemedText style={styles.metricLbl}>Total Leads</ThemedText>
+                    </View>
+                  )}
                 </View>
               </View>
 
-              {/* Capital Audit Vault Card */}
-              <View style={styles.bentoSection}>
-                <ThemedText style={styles.bentoTitle}>Financial Vault</ThemedText>
-                <View style={styles.auditCard}>
-                  <View style={styles.auditHeader}>
-                    <Wallet size={16} color="#04a700" />
-                    <ThemedText style={styles.auditCardTitle}>Ledger Summary</ThemedText>
-                  </View>
-                  <View style={styles.auditGrid}>
-                    <View style={styles.auditItem}>
-                      <View style={styles.auditRow}>
-                        <ArrowDownLeft size={13} color="#04a700" />
-                        <ThemedText style={styles.auditItemVal}>₹ {totalInflow.toLocaleString('en-IN')}</ThemedText>
-                      </View>
-                      <ThemedText style={styles.auditItemLabel}>Inflow Total</ThemedText>
+              {/* Capital Audit Vault Card - Only for Owner and Admin */}
+              {(user?.role === 'owner' || user?.role === 'admin') && (
+                <View style={styles.bentoSection}>
+                  <ThemedText style={styles.bentoTitle}>Financial Vault</ThemedText>
+                  <View style={styles.auditCard}>
+                    <View style={styles.auditHeader}>
+                      <Wallet size={16} color="#04a700" />
+                      <ThemedText style={styles.auditCardTitle}>Ledger Summary</ThemedText>
                     </View>
-                    <View style={styles.auditItem}>
-                      <View style={styles.auditRow}>
-                        <ArrowUpRight size={13} color="#ea580c" />
-                        <ThemedText style={styles.auditItemVal}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
+                    <View style={styles.auditGrid}>
+                      <View style={styles.auditItem}>
+                        <View style={styles.auditRow}>
+                          <ArrowDownLeft size={13} color="#04a700" />
+                          <ThemedText style={styles.auditItemVal}>₹ {totalInflow.toLocaleString('en-IN')}</ThemedText>
+                        </View>
+                        <ThemedText style={styles.auditItemLabel}>Inflow Total</ThemedText>
                       </View>
-                      <ThemedText style={styles.auditItemLabel}>Outflow Total</ThemedText>
+                      <View style={styles.auditItem}>
+                        <View style={styles.auditRow}>
+                          <ArrowUpRight size={13} color="#ea580c" />
+                          <ThemedText style={styles.auditItemVal}>₹ {totalOutflow.toLocaleString('en-IN')}</ThemedText>
+                        </View>
+                        <ThemedText style={styles.auditItemLabel}>Outflow Total</ThemedText>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
+              )}
 
               {/* Primary Actions Grid */}
               <View style={styles.toolsSection}>
                 <ThemedText style={styles.toolsTitle}>Enterprise Operations</ThemedText>
                 <View style={styles.toolsGrid}>
-                  <Pressable onPress={() => router.push('/owner/purchases' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
-                      <ShoppingBag size={18} color="#2563eb" />
-                    </View>
-                    <View style={styles.toolTextWrapper}>
-                      <ThemedText style={styles.toolName}>Purchases</ThemedText>
-                      <ThemedText style={styles.toolDesc}>Manage POs & Approvals</ThemedText>
-                    </View>
-                  </Pressable>
+                  {(user?.role === 'owner' || user?.role === 'admin') && (
+                    <Pressable onPress={() => router.push('/owner/purchases' as any)} style={styles.toolCard}>
+                      <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
+                        <ShoppingBag size={18} color="#2563eb" />
+                      </View>
+                      <View style={styles.toolTextWrapper}>
+                        <ThemedText style={styles.toolName}>Purchases</ThemedText>
+                        <ThemedText style={styles.toolDesc}>Manage POs & Approvals</ThemedText>
+                      </View>
+                    </Pressable>
+                  )}
+                  
                   <Pressable onPress={() => router.push('/owner/bookings' as any)} style={styles.toolCard}>
                     <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(4, 167, 0, 0.08)' }]}>
                       <CalendarDays size={18} color="#04a700" />
@@ -639,24 +661,30 @@ export default function OwnerDashboard({
                       <ThemedText style={styles.toolDesc}>Advance Deposit Registry</ThemedText>
                     </View>
                   </Pressable>
-                  <Pressable onPress={() => router.push('/owner/sales' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
-                      <Layers size={18} color="#ea580c" />
-                    </View>
-                    <View style={styles.toolTextWrapper}>
-                      <ThemedText style={styles.toolName}>Sales Invoices</ThemedText>
-                      <ThemedText style={styles.toolDesc}>Customer Invoicing</ThemedText>
-                    </View>
-                  </Pressable>
-                  <Pressable onPress={() => router.push('/owner/users' as any)} style={styles.toolCard}>
-                    <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
-                      <UserCheck size={18} color="#8b5cf6" />
-                    </View>
-                    <View style={styles.toolTextWrapper}>
-                      <ThemedText style={styles.toolName}>Staff Registry</ThemedText>
-                      <ThemedText style={styles.toolDesc}>User Roles Directory</ThemedText>
-                    </View>
-                  </Pressable>
+                  
+                  {['owner', 'admin', 'supervisor', 'sales', 'sales_executive'].includes(user?.role || '') && (
+                    <Pressable onPress={() => router.push('/owner/sales' as any)} style={styles.toolCard}>
+                      <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(234, 88, 12, 0.08)' }]}>
+                        <Layers size={18} color="#ea580c" />
+                      </View>
+                      <View style={styles.toolTextWrapper}>
+                        <ThemedText style={styles.toolName}>Sales Invoices</ThemedText>
+                        <ThemedText style={styles.toolDesc}>Customer Invoicing</ThemedText>
+                      </View>
+                    </Pressable>
+                  )}
+                  
+                  {(user?.role === 'owner' || user?.role === 'admin') && (
+                    <Pressable onPress={() => router.push('/owner/users' as any)} style={styles.toolCard}>
+                      <View style={[styles.toolIconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
+                        <UserCheck size={18} color="#8b5cf6" />
+                      </View>
+                      <View style={styles.toolTextWrapper}>
+                        <ThemedText style={styles.toolName}>Staff Registry</ThemedText>
+                        <ThemedText style={styles.toolDesc}>User Roles Directory</ThemedText>
+                      </View>
+                    </Pressable>
+                  )}
                 </View>
               </View>
             </>
