@@ -610,8 +610,9 @@ export default function SupervisorDashboard() {
       resetStockUnitForm();
       setIsAddStockOpen(false);
       loadVehicles();
-    } catch {
-      showToast("Failed to save stock unit.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message || "Failed to save.";
+      showToast(`Failed to save: ${errMsg}`, "error");
     }
   };
 

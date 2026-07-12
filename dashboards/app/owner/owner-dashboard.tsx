@@ -1701,8 +1701,9 @@ export default function OwnerDashboard() {
       resetStockUnitForm();
       setIsAddStockOpen(false);
       loadVehicles();
-    } catch {
-      showToast("Failed to save. An identifier may already be in use.", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message || "Failed to save.";
+      showToast(`Failed to save: ${errMsg}`, "error");
     }
   };
   const handleDeleteStockUnit = async (unit: any) => {
