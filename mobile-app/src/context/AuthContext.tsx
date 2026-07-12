@@ -68,6 +68,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
           
+          // Asynchronously fetch fresh user profile from backend to sync updates (e.g. branch, role, name, phone)
+          api.get('/auth/me/')
+            .then(async (res) => {
+              if (res.data) {
+                setUser(res.data);
+                await SecureStore.setItemAsync('user_profile', JSON.stringify(res.data)).catch(() => {});
+              }
+            })
+            .catch((err) => {
+              console.warn("Failed to sync fresh user profile on startup:", err);
+            });
+
           // Register token asynchronously
           setTimeout(registerPushNotificationsLater, 500);
         } else if (storedToken || storedUser) {

@@ -51,7 +51,7 @@ export default function OwnerDashboard({
   onOpenBranchSelector?: () => void;
   isActive?: boolean;
 }) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const scrollRef = React.useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -126,6 +126,18 @@ export default function OwnerDashboard({
   const loadData = async (isSilent = false) => {
     try {
       if (!isSilent) setIsLoading(true);
+      
+      // Asynchronously sync current user details (e.g. branch updates)
+      api.get('/auth/me/')
+        .then((res) => {
+          if (res.data) {
+            updateUser(res.data);
+          }
+        })
+        .catch((err) => {
+          console.warn("Failed to refresh user details on dashboard reload:", err);
+        });
+
       const [ledgerRes, unitsRes, modelsRes, bookingsRes, leadsRes, batteriesRes, activityRes, salesRes] = await Promise.all([
         api.get('/ledger-entries/').catch(() => ({ data: [] })),
         api.get('/vehicle-units/').catch(() => ({ data: [] })),
