@@ -90,6 +90,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
 
   resolvePromise = (async () => {
     try {
+      candidates.push('http://192.168.1.103:8000');
       const wonUrl = await safePromiseAny(candidates.map((url) => pingUrl(url)));
       resolvedBaseUrl = wonUrl;
       baseHostUrl = wonUrl;
@@ -97,7 +98,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
       api.defaults.baseURL = `${wonUrl}/api/v1`;
       return wonUrl;
     } catch {
-      resolvedBaseUrl = candidates[0] || 'http://127.0.0.1:8000';
+      resolvedBaseUrl = 'http://192.168.1.103:8000';
       baseHostUrl = resolvedBaseUrl;
       authApi.defaults.baseURL = `${resolvedBaseUrl}/api/auth`;
       api.defaults.baseURL = `${resolvedBaseUrl}/api/v1`;
