@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import api from "../services/api";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -443,6 +444,25 @@ export default function SupervisorDashboard() {
       loadVehicles();
     } catch (err) {
       showToast("Failed to save model.", "error");
+    }
+  };
+
+  const [newBrandName, setNewBrandName] = useState("");
+  const [isManageBrandsOpen, setIsManageBrandsOpen] = useState(false);
+
+  const handleAddBrandSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBrandName.trim()) return;
+    try {
+      await api.post("/vehicle-brands/", { name: newBrandName.trim(), is_active: true });
+      showToast("Brand registered successfully.");
+      setNewBrandName("");
+      // Refresh brands
+      const brands = await getVehicleBrands();
+      setVehicleBrandsList(brands);
+    } catch (err) {
+      console.error("Failed to save brand:", err);
+      showToast("Failed to save brand. Ensure name is unique.", "error");
     }
   };
 
@@ -1399,12 +1419,20 @@ export default function SupervisorDashboard() {
                   title="Vehicle Master Models Catalog" 
                   headers={["Model Name", "Brand", "Category", "Base Price", "Color Variants", "Battery Spec", "Warranty Period", "Status", "Actions"]}
                   actions={
-                    <button 
-                      onClick={() => { setEditingModelId(null); setNewModelBrand(""); setNewModelName(""); setNewModelPrice(""); setNewModelBattery(""); setNewModelColors(""); setNewModelStatus("active"); setIsAddVehicleOpen(true); }}
-                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
-                    >
-                      <Plus className="h-4 w-4" /> Add Model
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setIsManageBrandsOpen(true)}
+                        className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-4 rounded-full cursor-pointer transition-all border border-slate-250"
+                      >
+                        Manage Brands
+                      </button>
+                      <button 
+                        onClick={() => { setEditingModelId(null); setNewModelBrand(""); setNewModelName(""); setNewModelPrice(""); setNewModelBattery(""); setNewModelColors(""); setNewModelStatus("active"); setIsAddVehicleOpen(true); }}
+                        className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                      >
+                        <Plus className="h-4 w-4" /> Add Model
+                      </button>
+                    </div>
                   }
                 >
                   {vehiclesLoading ? (
@@ -2131,6 +2159,44 @@ export default function SupervisorDashboard() {
             Save Model
           </button>
         </form>
+      </Modal>
+
+      {/* Brand Management Modal */}
+      <Modal isOpen={isManageBrandsOpen} onClose={() => setIsManageBrandsOpen(false)} title="Register Brand Manufacturer">
+        <div className="space-y-4 text-left">
+          <form onSubmit={handleAddBrandSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Brand Name</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="e.g. Kinetic Green, TVS, Dynamo" 
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+                  required 
+                />
+                <button type="submit" className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs px-4 rounded-lg cursor-pointer">
+                  Add Brand
+                </button>
+              </div>
+            </div>
+          </form>
+          <div className="border-t border-slate-100 pt-3">
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">Registered Brands</label>
+            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+              {vehicleBrandsList.map((brand) => (
+                <div key={brand.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+                  <span>{brand.name}</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded border border-emerald-500/10">Active</span>
+                </div>
+              ))}
+              {vehicleBrandsList.length === 0 && (
+                <p className="text-[11px] font-semibold text-slate-400">No brands registered yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {/* 2. Add Stock Unit */}

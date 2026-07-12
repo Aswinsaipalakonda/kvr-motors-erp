@@ -83,6 +83,9 @@ export default function OwnerVehicles() {
   const [isBranchPickerOpen, setIsBranchPickerOpen] = useState(false);
   const [isShowroomPickerOpen, setIsShowroomPickerOpen] = useState(false);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+  const [isBrandSubmitting, setIsBrandSubmitting] = useState(false);
 
   // Model Modal Form States
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
@@ -243,6 +246,28 @@ export default function OwnerVehicles() {
       Alert.alert('Error', `Failed to save model: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  const handleBrandSubmit = async () => {
+    if (!newBrandName.trim()) {
+      Alert.alert('Required Field', 'Please enter a brand name.');
+      return;
+    }
+    setIsBrandSubmitting(true);
+    try {
+      await api.post('/vehicle-brands/', { name: newBrandName.trim(), is_active: true });
+      Alert.alert('Success', 'Brand registered successfully.');
+      setNewBrandName('');
+      setIsBrandModalOpen(false);
+      // reload brands
+      const brandsRes = await api.get('/vehicle-brands/');
+      setBrands(brandsRes.data || []);
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      Alert.alert('Error', `Failed to register brand: ${errMsg}`);
+    } finally {
+      setIsBrandSubmitting(false);
     }
   };
 
@@ -489,6 +514,14 @@ export default function OwnerVehicles() {
               </Pressable>
             )}
           </View>
+          {activeTab === 'catalog' && (
+            <Pressable
+              onPress={() => setIsBrandModalOpen(true)}
+              style={({ pressed }) => [styles.addBtn, { backgroundColor: '#f1f5f9', borderWidth: 1.5, borderColor: '#e2e8f0', marginRight: 6 }, pressed && { opacity: 0.85 }]}
+            >
+              <ThemedText style={{ fontSize: 11, fontWeight: 'bold', color: '#64748b', paddingHorizontal: 6 }}>BRANDS</ThemedText>
+            </Pressable>
+          )}
           <Pressable
             onPress={activeTab === 'catalog' ? openModelAdd : openUnitAdd}
             style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
@@ -907,6 +940,58 @@ export default function OwnerVehicles() {
                   </Pressable>
                 )}
               />
+            </View>
+          </View>
+        </Modal>
+
+        {/* BRAND MANAGEMENT MODAL */}
+        <Modal visible={isBrandModalOpen} transparent animationType="slide">
+          <View style={styles.pickerModalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setIsBrandModalOpen(false)} />
+            <View style={[styles.pickerModalSheet, { maxHeight: '80%', padding: 20 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <ThemedText style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a' }}>Register Brand</ThemedText>
+                <Pressable onPress={() => setIsBrandModalOpen(false)}>
+                  <X size={18} color="#64748b" />
+                </Pressable>
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.fieldLabel}>BRAND NAME *</ThemedText>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Kinetic Green, TVS, Dynamo"
+                  placeholderTextColor="#94a3b8"
+                  value={newBrandName}
+                  onChangeText={setNewBrandName}
+                />
+              </View>
+
+              <Pressable onPress={handleBrandSubmit} disabled={isBrandSubmitting} style={styles.submitBtn}>
+                {isBrandSubmitting ? <ActivityIndicator size="small" color="#ffffff" /> : (
+                  <>
+                    <CheckCircle size={16} color="#ffffff" />
+                    <ThemedText style={styles.submitBtnText}>Add Brand Manufacturer</ThemedText>
+                  </>
+                )}
+              </Pressable>
+
+              <View style={{ borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 14, paddingTop: 10 }}>
+                <ThemedText style={[styles.fieldLabel, { marginBottom: 6 }]}>REGISTERED BRANDS</ThemedText>
+                <FlatList
+                  data={brands}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={({ item }) => (
+                    <View style={[styles.pickerItem, { borderBottomWidth: 0, paddingVertical: 8 }]}>
+                      <ThemedText style={styles.pickerItemText}>{item.name}</ThemedText>
+                      <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <ThemedText style={{ fontSize: 9, fontWeight: 'bold', color: '#04a700' }}>ACTIVE</ThemedText>
+                      </View>
+                    </View>
+                  )}
+                  style={{ maxHeight: 150 }}
+                />
+              </View>
             </View>
           </View>
         </Modal>

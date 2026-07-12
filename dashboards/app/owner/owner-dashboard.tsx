@@ -417,6 +417,25 @@ export default function OwnerDashboard() {
     }
   };
 
+  const [newBrandName, setNewBrandName] = useState("");
+  const [isManageBrandsOpen, setIsManageBrandsOpen] = useState(false);
+
+  const handleAddBrandSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBrandName.trim()) return;
+    try {
+      await api.post("/vehicle-brands/", { name: newBrandName.trim(), is_active: true });
+      showToast("Brand registered successfully.");
+      setNewBrandName("");
+      // Refresh brands
+      const brands = await getVehicleBrands();
+      setVehicleBrandsList(brands);
+    } catch (err) {
+      console.error("Failed to save brand:", err);
+      showToast("Failed to save brand. Ensure name is unique.", "error");
+    }
+  };
+
   const loadLeads = async () => {
     try {
       setLeadsLoading(true);
@@ -4758,12 +4777,20 @@ export default function OwnerDashboard() {
                   <h3 className="text-base font-black text-slate-805 tracking-tight">Vehicle Master Models Catalog</h3>
                   <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Configure models, battery specifications, colors, and base retail pricing.</p>
                 </div>
-                <button 
-                  onClick={() => setIsAddVehicleOpen(true)}
-                  className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-5 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 transition-all"
-                >
-                  <Plus className="h-4 w-4" /> Add Model
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsManageBrandsOpen(true)}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2.5 px-5 rounded-full cursor-pointer transition-all border border-slate-205"
+                  >
+                    Manage Brands
+                  </button>
+                  <button 
+                    onClick={() => setIsAddVehicleOpen(true)}
+                    className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-5 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 transition-all"
+                  >
+                    <Plus className="h-4 w-4" /> Add Model
+                  </button>
+                </div>
               </div>
 
               {vehiclesLoading ? (
@@ -6459,7 +6486,7 @@ export default function OwnerDashboard() {
                 placeholder="e.g. Dynamo Pro" 
                 value={newModelName}
                 onChange={(e) => setNewModelName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
                 required 
               />
             </div>
@@ -6468,7 +6495,7 @@ export default function OwnerDashboard() {
               <select 
                 value={newModelBrand}
                 onChange={(e) => setNewModelBrand(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2.5 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
                 required
               >
                 <option value="">-- Select Brand --</option>
@@ -6489,7 +6516,7 @@ export default function OwnerDashboard() {
                 placeholder="e.g. 98500" 
                 value={newModelPrice}
                 onChange={(e) => setNewModelPrice(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
                 required 
               />
             </div>
@@ -6500,7 +6527,7 @@ export default function OwnerDashboard() {
                 placeholder="e.g. 2.0 kWh Swappable" 
                 value={newModelBattery}
                 onChange={(e) => setNewModelBattery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
                 required 
               />
             </div>
@@ -6512,7 +6539,7 @@ export default function OwnerDashboard() {
               placeholder="e.g. Red, Blue, Matte Black" 
               value={newModelColors}
               onChange={(e) => setNewModelColors(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
               required 
             />
           </div>
@@ -6521,7 +6548,7 @@ export default function OwnerDashboard() {
             <select
               value={newModelStatus}
               onChange={(e) => setNewModelStatus(e.target.value as "active" | "inactive")}
-              className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2.5 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -6531,6 +6558,44 @@ export default function OwnerDashboard() {
             {editingModelId ? "Save Changes" : "Add Model"}
           </button>
         </form>
+      </Modal>
+
+      {/* Brand Management Modal */}
+      <Modal isOpen={isManageBrandsOpen} onClose={() => setIsManageBrandsOpen(false)} title="Register Brand Manufacturer">
+        <div className="space-y-4 text-left">
+          <form onSubmit={handleAddBrandSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Brand Name</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="e.g. Kinetic Green, TVS, Dynamo" 
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
+                  required 
+                />
+                <button type="submit" className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs px-4 rounded-lg cursor-pointer">
+                  Add Brand
+                </button>
+              </div>
+            </div>
+          </form>
+          <div className="border-t border-slate-100 pt-3">
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">Registered Brands</label>
+            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+              {vehicleBrandsList.map((brand) => (
+                <div key={brand.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+                  <span>{brand.name}</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded border border-emerald-500/10">Active</span>
+                </div>
+              ))}
+              {vehicleBrandsList.length === 0 && (
+                <p className="text-[11px] font-semibold text-slate-400">No brands registered yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </Modal>
       {/* 3. Add / Edit Stock Unit */}
       <Modal isOpen={isAddStockOpen} onClose={() => { setIsAddStockOpen(false); resetStockUnitForm(); }} title={editingUnitId ? "Edit Stock Unit (VIN Registry)" : "Log Physical Stock Unit Entry"}>
