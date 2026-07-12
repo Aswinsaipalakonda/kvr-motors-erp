@@ -116,16 +116,34 @@ export default function OwnerLayout() {
   const drawerWidth = screenWidth * 0.78;
   const headerHeight = insets.top + 54;
 
+  const visibleTabs = React.useMemo(() => {
+    if (!user) return [];
+    const role = user.role;
+    if (role === 'owner' || role === 'admin') {
+      return TABS_CONFIG;
+    } else if (role === 'supervisor') {
+      // Home, Inventory, Sales, Bookings
+      return TABS_CONFIG.filter(t => t.key !== 'users');
+    } else {
+      // sales, telecaller, etc: Home, Bookings
+      return TABS_CONFIG.filter(t => t.key === 'dashboard' || t.key === 'bookings');
+    }
+  }, [user]);
+
   // Sync pathname with active tab
   useEffect(() => {
     const segments = pathname.split('/').filter(Boolean);
     const lastSegment = segments[segments.length - 1];
-    if (lastSegment === 'owner') {
-      setActiveTab('dashboard');
-    } else if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
-      setActiveTab(lastSegment as ScreenTab);
+    let newTab: ScreenTab = 'dashboard';
+    if (lastSegment && TAB_KEYS.includes(lastSegment as any)) {
+      newTab = lastSegment as ScreenTab;
     }
-  }, [pathname]);
+    // Fallback if the tab is not allowed for the current role
+    if (visibleTabs.length > 0 && !visibleTabs.some(t => t.key === newTab)) {
+      newTab = visibleTabs[0].key;
+    }
+    setActiveTab(newTab);
+  }, [pathname, visibleTabs]);
 
   const isSubRoute = pathname !== '/owner' && pathname !== '/owner/' && !TAB_KEYS.some(tab => pathname === `/owner/${tab}` || pathname === `/owner/${tab}/`);
 
@@ -176,12 +194,12 @@ export default function OwnerLayout() {
     );
   };
 
-  // Tab indicator sliding animation - stretched across 5 tabs
-  const tabWidth = screenWidth / 5;
+  // Tab indicator sliding animation - dynamically stretched based on the number of tabs
+  const tabWidth = screenWidth / (visibleTabs.length || 1);
   const activeIndexShared = useSharedValue(0);
 
   useEffect(() => {
-    const newIdx = TAB_KEYS.indexOf(activeTab);
+    const newIdx = visibleTabs.findIndex(t => t.key === activeTab);
     if (newIdx !== -1) {
       activeIndexShared.value = withSpring(newIdx, {
         damping: 18,
@@ -189,12 +207,14 @@ export default function OwnerLayout() {
         mass: 0.8,
       });
     }
-  }, [activeTab]);
+  }, [activeTab, visibleTabs]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => {
+    const width = 48; // indicator width
     return {
+      width: width,
       transform: [
-        { translateX: activeIndexShared.value * tabWidth + (tabWidth - 48) / 2 }
+        { translateX: activeIndexShared.value * tabWidth + (tabWidth - width) / 2 }
       ],
     };
   });
@@ -359,6 +379,27 @@ export default function OwnerLayout() {
     },
   ];
 
+  const filteredDrawerMenuItems = React.useMemo(() => {
+    if (!user) return [];
+    const role = user.role;
+    if (role === 'owner' || role === 'admin') {
+      return drawerMenuItems;
+    } else if (role === 'supervisor') {
+      return drawerMenuItems.filter(item => 
+        ['Mela Campaign', 'Vehicle Catalog', 'Battery Stock', 'Showroom Bookings', 'Sales Overview', 'Verify Attendance'].includes(item.title)
+      );
+    } else if (role === 'sales' || role === 'sales_executive') {
+      return drawerMenuItems.filter(item => 
+        ['Mela Campaign', 'Showroom Bookings'].includes(item.title)
+      );
+    } else {
+      // telecaller etc
+      return drawerMenuItems.filter(item => 
+        ['Showroom Bookings'].includes(item.title)
+      );
+    }
+  }, [user]);
+
   return (
     <DrawerContext.Provider value={{ openDrawer, closeDrawer, isDrawerOpen: isDrawerOpenState }}>
       <ThemedView style={styles.container}>
@@ -405,7 +446,7 @@ export default function OwnerLayout() {
                 contentContainerStyle={styles.sheetScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {drawerMenuItems.map((item, idx) => {
+                {filteredDrawerMenuItems.map((item, idx) => {
                   const IconComp = item.icon;
                   // Soft pastel colors based on menu item color tint
                   const pastelBg = item.color === '#ea580c' ? '#fff7ed' : 
@@ -551,7 +592,7 @@ export default function OwnerLayout() {
                 <View style={styles.activeTopLine} />
               </Animated.View>
               
-              {TABS_CONFIG.map((tab) => (
+              {visibleTabs.map((tab) => (
                 <AnimatedTabButton 
                   key={tab.key}
                   label={tab.label}
