@@ -1561,7 +1561,7 @@ export default function SupervisorDashboard() {
                 {/* Physical Stock Units Registry (CRUD) */}
                 <Table 
                   title={`Physical Inventory Stock Units (${myShowroomName} Showroom)`} 
-                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Showroom", "Battery", "PDI Status", "Status", "Actions"]}
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Showroom", "Battery", "Days in Stock", "Status", "Actions"]}
                   actions={
                     <button 
                       onClick={openAddStockUnit}
@@ -1595,11 +1595,15 @@ export default function SupervisorDashboard() {
                         <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.showroom_name || "Visakhapatnam"}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
-                        <td className="py-3.5 px-5">
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Passed
-                          </span>
+                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-650">
+                          {(() => {
+                            if (!unit.purchase_date) return "—";
+                            const pDate = new Date(unit.purchase_date);
+                            const diffTime = Math.abs(new Date().getTime() - pDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return `${diffDays} days`;
+                          })()}
                         </td>
                         <td className="py-3.5 px-5">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${

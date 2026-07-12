@@ -5124,7 +5124,7 @@ export default function OwnerDashboard() {
               {/* Physical Inventory Stock Units (VIN Registry - Moved from Vehicles tab to Stock Management tab to keep operations grouped logically and fully functional) */}
               <Table 
                 title="Physical Inventory Stock Units (VIN Registry)" 
-                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "PDI Status", "Age in Stock", "Status", "Actions"]}
+                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Days in Stock", "Status", "Actions"]}
                 actions={
                   <button 
                     onClick={openAddStockUnit}
@@ -5162,13 +5162,16 @@ export default function OwnerDashboard() {
                       <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
                       <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
                       <td className="py-3.5 px-5 text-slate-450 font-medium">{unit.location_name || "Warehouse"}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "N/A"}</td>
-                      <td className="py-3.5 px-5">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Passed
-                        </span>
+                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-650">
+                        {(() => {
+                          if (!unit.purchase_date) return "—";
+                          const pDate = new Date(unit.purchase_date);
+                          const diffTime = Math.abs(new Date().getTime() - pDate.getTime());
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          return `${diffDays} days`;
+                        })()}
                       </td>
-                      <td className="py-3.5 px-5 font-bold text-slate-650">5 days</td>
                       <td className="py-3.5 px-5">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
                           unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
