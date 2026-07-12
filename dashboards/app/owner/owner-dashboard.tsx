@@ -143,6 +143,9 @@ export default function OwnerDashboard() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    setSearchQuery("");
+  }, [activeTab]);
   
   // Real database branches states
   const [branchesList, setBranchesList] = useState<any[]>([]);

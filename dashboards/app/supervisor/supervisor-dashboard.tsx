@@ -96,6 +96,9 @@ export default function SupervisorDashboard() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    setSearchQuery("");
+  }, [activeTab]);
 
   // Toast feedback
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
