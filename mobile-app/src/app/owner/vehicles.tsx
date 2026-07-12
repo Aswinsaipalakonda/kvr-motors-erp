@@ -839,33 +839,7 @@ export default function OwnerVehicles() {
                     <ChevronDown size={16} color="#94a3b8" />
                   </Pressable>
                 </View>
-
-                {/* Purchase Invoice */}
-                <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>PURCHASE INVOICE NUMBER</ThemedText>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="e.g. PINV-2026-901"
-                    placeholderTextColor="#94a3b8"
-                    value={unitPurchaseInvoice}
-                    onChangeText={setUnitPurchaseInvoice}
-                  />
-                </View>
-
-                {/* Payment Status */}
-                <View style={styles.field}>
-                  <ThemedText style={styles.fieldLabel}>PAYMENT STATUS</ThemedText>
-                  <View style={styles.chipWrap}>
-                    {['success', 'pending', 'failed'].map((st) => {
-                      const active = unitPaymentStatus === st;
-                      return (
-                        <Pressable key={st} onPress={() => setUnitPaymentStatus(st)} style={[styles.optionChip, active && styles.optionChipActive]}>
-                          <ThemedText style={[styles.optionChipText, active && styles.optionChipTextActive]}>{st.toUpperCase()}</ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+                {/* Removed Purchase Invoice and Payment Status from Stock In per user requirements */}
 
                 {/* VIN Number */}
                 <View style={styles.field}>

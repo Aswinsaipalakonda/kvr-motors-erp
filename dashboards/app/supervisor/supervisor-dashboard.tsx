@@ -187,6 +187,7 @@ export default function SupervisorDashboard() {
     vin_number: "", motor_number: "", chassis_number: "", color: "",
     purchase_date: "", stock_status: "available", assigned_battery: "",
     purchase_invoice_number: "", payment_status: "success",
+    quantity: "1",
   };
   const [stockUnitForm, setStockUnitForm] = useState({ ...emptyStockUnit });
   const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
@@ -509,6 +510,7 @@ export default function SupervisorDashboard() {
       assigned_battery: unit.assigned_battery || "",
       purchase_invoice_number: unit.purchase_invoice_number || "",
       payment_status: unit.payment_status || "success",
+      quantity: "1",
     });
     setIsAddStockOpen(true);
   };
@@ -599,13 +601,27 @@ export default function SupervisorDashboard() {
       purchase_invoice_number: f.purchase_invoice_number.trim() || null,
       payment_status: f.payment_status || "success",
     };
+    const qtyVal = parseInt(f.quantity) || 1;
     try {
       if (editingUnitId) {
         await updateVehicleUnit(editingUnitId, payload);
         showToast("Stock unit updated.");
       } else {
-        await createVehicleUnit(payload);
-        showToast("Stock unit logged.");
+        const promises = [];
+        for (let i = 0; i < qtyVal; i++) {
+          // If bulk adding, we only set unique codes for the first item;
+          // subsequent units are created blank (optional identifiers) to avoid duplicate key errors.
+          const singlePayload = {
+            ...payload,
+            vin_number: i === 0 ? payload.vin_number : null,
+            motor_number: i === 0 ? payload.motor_number : null,
+            chassis_number: i === 0 ? payload.chassis_number : null,
+            assigned_battery: i === 0 ? payload.assigned_battery : undefined,
+          };
+          promises.push(createVehicleUnit(singlePayload));
+        }
+        await Promise.all(promises);
+        showToast(qtyVal > 1 ? `Bulk logged ${qtyVal} vehicles successfully.` : "Stock unit logged.");
       }
       resetStockUnitForm();
       setIsAddStockOpen(false);
@@ -2300,30 +2316,7 @@ export default function SupervisorDashboard() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Invoice Number</label>
-              <input 
-                type="text" 
-                placeholder="e.g. PINV-2026-901" 
-                value={stockUnitForm.purchase_invoice_number} 
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_invoice_number: e.target.value })} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Status</label>
-              <select
-                value={stockUnitForm.payment_status}
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, payment_status: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              >
-                <option value="success">Success</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
-              </select>
-            </div>
-          </div>
+          {/* Removed Purchase Invoice and Payment Status from Stock In per user requirements */}
 
           <span className="text-[10px] font-bold text-[#04a700] uppercase tracking-wider block border-b border-slate-100 pb-1 mt-6">Indent Codes</span>
           <div className="space-y-1.5">
@@ -2360,16 +2353,20 @@ export default function SupervisorDashboard() {
                 {batteriesStock.filter(b => b.rawStatus === "available" || b.serial === stockUnitForm.assigned_battery).map(b => <option key={b.id} value={b.serial}>{b.serial}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Status</label>
-              <select value={stockUnitForm.stock_status} onChange={(e) => setStockUnitForm({ ...stockUnitForm, stock_status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none">
-                <option value="available">Available</option>
-                <option value="booked">Booked</option>
-                <option value="reserved">Reserved</option>
-                <option value="sold">Sold</option>
-              </select>
-            </div>
           </div>
+          {!editingUnitId && (
+            <div className="space-y-1.5 mt-4">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Bulk Insertion Quantity (Add multiple at once)</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={stockUnitForm.quantity}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, quantity: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none"
+              />
+            </div>
+          )}
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
             Save Stock Unit
           </button>
