@@ -11,6 +11,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import Toast from "../components/Toast";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getVehicleModels } from "../services/vehicles";
 import { useAuth } from "../context/AuthContext";
@@ -628,16 +629,7 @@ export default function TelecallerDashboard() {
       <BottomNav role="telecaller" activeTab={activeTab} />
 
       {/* Floating toast alerts */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-          <div className={`flex items-center gap-2 rounded-2xl px-5 py-3 shadow-xl text-white ${
-            toast.type === "success" ? "bg-[#04a700]" : "bg-rose-600"
-          }`}>
-            {toast.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-            <span className="text-xs font-bold">{toast.msg}</span>
-          </div>
-        </div>
-      )}
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Modals */}
       {/* 1. Register / Edit Lead */}

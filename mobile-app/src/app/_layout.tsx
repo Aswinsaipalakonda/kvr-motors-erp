@@ -5,11 +5,21 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 export const ROLE_ROUTE_MAP: Record<string, string> = {
   owner: '/owner/dashboard',
   admin: '/owner/dashboard',
+  supervisor: '/owner/dashboard',
+  sales: '/owner/dashboard',
+  sales_executive: '/owner/dashboard',
+  telecaller: '/owner/dashboard',
+  staff: '/owner/dashboard',
 };
 
 const ROLE_GROUP_MAP: Record<string, string> = {
   owner: 'owner',
   admin: 'owner',
+  supervisor: 'owner',
+  sales: 'owner',
+  sales_executive: 'owner',
+  telecaller: 'owner',
+  staff: 'owner',
 };
 
 function RootLayoutNav() {

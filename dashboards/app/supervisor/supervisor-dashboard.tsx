@@ -12,6 +12,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
 
 import { getBranches, getInventoryLocations, getShowrooms, getStockTransfers, updateStockTransfer, createStockTransfer } from "../services/branches";
@@ -601,27 +602,13 @@ export default function SupervisorDashboard() {
       purchase_invoice_number: f.purchase_invoice_number.trim() || null,
       payment_status: f.payment_status || "success",
     };
-    const qtyVal = parseInt(f.quantity) || 1;
     try {
       if (editingUnitId) {
         await updateVehicleUnit(editingUnitId, payload);
-        showToast("Stock unit updated.");
+        showToast("Stock unit updated successfully! ✓");
       } else {
-        const promises = [];
-        for (let i = 0; i < qtyVal; i++) {
-          // If bulk adding, we only set unique codes for the first item;
-          // subsequent units are created blank (optional identifiers) to avoid duplicate key errors.
-          const singlePayload = {
-            ...payload,
-            vin_number: i === 0 ? payload.vin_number : null,
-            motor_number: i === 0 ? payload.motor_number : null,
-            chassis_number: i === 0 ? payload.chassis_number : null,
-            assigned_battery: i === 0 ? payload.assigned_battery : undefined,
-          };
-          promises.push(createVehicleUnit(singlePayload));
-        }
-        await Promise.all(promises);
-        showToast(qtyVal > 1 ? `Bulk logged ${qtyVal} vehicles successfully.` : "Stock unit logged.");
+        await createVehicleUnit(payload);
+        showToast("New stock unit added successfully! ✓");
       }
       resetStockUnitForm();
       setIsAddStockOpen(false);
@@ -2593,6 +2580,7 @@ export default function SupervisorDashboard() {
         </form>
       </Modal>
 
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

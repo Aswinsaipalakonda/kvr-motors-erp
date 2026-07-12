@@ -11,6 +11,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import Toast from "../components/Toast";
 import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
 import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
@@ -333,7 +334,7 @@ export default function OwnerDashboard() {
     
     // Clear errors
     const errors: Record<string, string> = {};
-    
+     
     // 1. Showroom Name Constraint
     if (!branchName.trim()) {
       errors.name = "Showroom name is required.";
@@ -1692,27 +1693,13 @@ export default function OwnerDashboard() {
       purchase_invoice_number: f.purchase_invoice_number.trim() || null,
       payment_status: f.payment_status || "success",
     };
-    const qtyVal = parseInt(f.quantity) || 1;
     try {
       if (editingUnitId) {
         await updateVehicleUnit(editingUnitId, payload);
-        showToast("Stock unit updated.");
+        showToast("Stock unit updated successfully! ✓");
       } else {
-        const promises = [];
-        for (let i = 0; i < qtyVal; i++) {
-          // If bulk adding, we only set unique codes for the first item;
-          // subsequent units are created blank (optional identifiers) to avoid duplicate key errors.
-          const singlePayload = {
-            ...payload,
-            vin_number: i === 0 ? payload.vin_number : null,
-            motor_number: i === 0 ? payload.motor_number : null,
-            chassis_number: i === 0 ? payload.chassis_number : null,
-            assigned_battery: i === 0 ? payload.assigned_battery : undefined,
-          };
-          promises.push(createVehicleUnit(singlePayload));
-        }
-        await Promise.all(promises);
-        showToast(qtyVal > 1 ? `Bulk logged ${qtyVal} vehicles successfully.` : "Stock unit logged.");
+        await createVehicleUnit(payload);
+        showToast("New stock unit added successfully! ✓");
       }
       resetStockUnitForm();
       setIsAddStockOpen(false);
@@ -6862,19 +6849,7 @@ export default function OwnerDashboard() {
               <input type="text" placeholder="e.g. BAT-2026-0091" value={stockUnitForm.assigned_battery} onChange={(e) => setStockUnitForm({ ...stockUnitForm, assigned_battery: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
             </div>
           </div>
-          {!editingUnitId && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Bulk Insertion Quantity (Add multiple at once)</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={stockUnitForm.quantity}
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, quantity: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              />
-            </div>
-          )}
+
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             {editingUnitId ? "Save Changes" : "Log Stock Unit"}
           </button>
@@ -7313,6 +7288,7 @@ export default function OwnerDashboard() {
           </div>
         )}
       </Modal>
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

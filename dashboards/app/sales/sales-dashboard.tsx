@@ -12,6 +12,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
+import Toast from "../components/Toast";
 
 import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
@@ -1754,6 +1755,7 @@ export default function SalesDashboard() {
         </form>
       </Modal>
 
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
