@@ -50,17 +50,18 @@ let resolvePromise: Promise<string> | null = null;
 export const getBaseHostUrl = async (): Promise<string> => {
   if (resolvedBaseUrl) return resolvedBaseUrl;
 
-  // Check if explicit env variable is set
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl) {
-    resolvedBaseUrl = envUrl;
-    baseHostUrl = envUrl;
-    authApi.defaults.baseURL = `${envUrl}/api/auth`;
-    api.defaults.baseURL = `${envUrl}/api/v1`;
-    return resolvedBaseUrl;
-  }
-
+  // In dev mode, skip env URL and use local network discovery
+  // so mobile app connects to the same local backend as the dashboard
   if (!__DEV__) {
+    // In production, use env URL or hardcoded production URL
+    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (envUrl) {
+      resolvedBaseUrl = envUrl;
+      baseHostUrl = envUrl;
+      authApi.defaults.baseURL = `${envUrl}/api/auth`;
+      api.defaults.baseURL = `${envUrl}/api/v1`;
+      return resolvedBaseUrl;
+    }
     resolvedBaseUrl = 'https://kvr.thehps.in';
     return resolvedBaseUrl;
   }
