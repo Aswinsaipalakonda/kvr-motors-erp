@@ -113,8 +113,8 @@ export default function OwnerLayout() {
 
   // Restrict branch selector to assigned branch for staff/telecallers/sales/supervisors
   useEffect(() => {
-    if (user && user.role !== 'owner' && user.role !== 'admin' && user.branch_name) {
-      setBranch(user.branch_name);
+    if (user && user.role !== 'owner' && user.role !== 'admin' && user.branch) {
+      setBranch(user.branch);
     }
   }, [user]);
   
