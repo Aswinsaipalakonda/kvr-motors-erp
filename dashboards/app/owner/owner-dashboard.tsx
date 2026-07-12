@@ -6640,7 +6640,7 @@ export default function OwnerDashboard() {
         <form onSubmit={handleAddModelSubmit} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Model Name</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Model Name <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
                 placeholder="e.g. Dynamo Pro" 
@@ -6651,7 +6651,7 @@ export default function OwnerDashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Brand</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Brand <span className="text-red-500">*</span></label>
               <select 
                 value={newModelBrand}
                 onChange={(e) => setNewModelBrand(e.target.value)}
@@ -6667,7 +6667,7 @@ export default function OwnerDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price (INR)</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price (INR) <span className="text-red-500">*</span></label>
               <input 
                 type="number" 
                 placeholder="e.g. 98500" 
@@ -6678,14 +6678,13 @@ export default function OwnerDashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Compatibility</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Compatibility (optional)</label>
               <input 
                 type="text" 
                 placeholder="e.g. 2.0 kWh Swappable" 
                 value={newModelBattery}
                 onChange={(e) => setNewModelBattery(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
-                required 
               />
             </div>
           </div>
