@@ -110,6 +110,13 @@ export default function OwnerLayout() {
 
   const [isDrawerOpenState, setIsDrawerOpenState] = useState(false);
   const [isBranchModalVisible, setIsBranchModalVisible] = useState(false);
+
+  // Restrict branch selector to assigned branch for staff/telecallers/sales/supervisors
+  useEffect(() => {
+    if (user && user.role !== 'owner' && user.role !== 'admin' && user.branch_name) {
+      setBranch(user.branch_name);
+    }
+  }, [user]);
   
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -526,13 +533,19 @@ export default function OwnerLayout() {
                 
                 <Pressable 
                   style={styles.locationSelector}
-                  onPress={() => setIsBranchModalVisible(true)}
+                  onPress={() => {
+                    if (user?.role === 'owner' || user?.role === 'admin') {
+                      setIsBranchModalVisible(true);
+                    }
+                  }}
                 >
                   <MapPin size={15} color="#04a700" />
                   <ThemedText style={styles.locationText} numberOfLines={1}>
-                    {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '')}
+                    {branch.replace(' - KVR Showroom', '').replace(' - Future Ride', '').replace('KVR Motors - ', '')}
                   </ThemedText>
-                  <ChevronDown size={13} color="#94a3b8" />
+                  {(user?.role === 'owner' || user?.role === 'admin') && (
+                    <ChevronDown size={13} color="#94a3b8" />
+                  )}
                 </Pressable>
 
                 <Pressable 

@@ -84,6 +84,8 @@ export default function LoginScreen() {
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
                         autoCorrect={false}
+                        autoComplete="password"
+                        textContentType={showPassword ? "none" : "password"}
                       />
                       <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                         {showPassword ? (
