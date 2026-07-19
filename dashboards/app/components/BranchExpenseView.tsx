@@ -117,8 +117,13 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
       })
     : supervisors;
 
+  const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
+
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingDeposit) return;
+
     if (!depositForm.branch) {
       setToast({ msg: "Please select a target branch.", type: "error" });
       return;
@@ -128,6 +133,7 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
       return;
     }
     try {
+      setIsSubmittingDeposit(true);
       await createBranchCashDeposit({
         branch: Number(depositForm.branch),
         supervisor: depositForm.supervisor ? Number(depositForm.supervisor) : undefined,
@@ -147,12 +153,17 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
         else errMsg = Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ");
       }
       setToast({ msg: errMsg, type: "error" });
+    } finally {
+      setIsSubmittingDeposit(false);
     }
   };
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingExpense) return;
+
     try {
+      setIsSubmittingExpense(true);
       const defaultBranchId = myBranch ? myBranch.id : branches[0]?.id;
       const targetBranchId = expenseForm.branch ? Number(expenseForm.branch) : defaultBranchId;
       if (!targetBranchId) {
@@ -179,6 +190,8 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
         else errMsg = Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ");
       }
       setToast({ msg: errMsg, type: "error" });
+    } finally {
+      setIsSubmittingExpense(false);
     }
   };
 
@@ -392,8 +405,12 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
             />
           </div>
 
-          <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
-            Transfer Cash Deposit
+          <button
+            type="submit"
+            disabled={isSubmittingDeposit}
+            className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4"
+          >
+            {isSubmittingDeposit ? "Transferring Cash..." : "Transfer Cash Deposit"}
           </button>
         </form>
       </Modal>
@@ -467,8 +484,12 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
             />
           </div>
 
-          <button type="submit" className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
-            Save Branch Expense
+          <button
+            type="submit"
+            disabled={isSubmittingExpense}
+            className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4"
+          >
+            {isSubmittingExpense ? "Saving Expense..." : "Save Branch Expense"}
           </button>
         </form>
       </Modal>
