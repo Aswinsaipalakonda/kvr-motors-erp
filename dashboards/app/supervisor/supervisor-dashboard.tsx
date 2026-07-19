@@ -58,7 +58,9 @@ import {
   Boxes,
   Phone,
   RefreshCw,
-  MapPin
+  MapPin,
+  MessageSquare,
+  Share2
 } from "lucide-react";
 
 import { 
@@ -909,6 +911,230 @@ export default function SupervisorDashboard() {
     }
   };
 
+  const formatWhatsAppPhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 10) {
+      return `91${digits}`;
+    }
+    return digits;
+  };
+
+  const handlePrintSalesInvoice = (inv: any) => {
+    const printWindow = window.open("", "_blank", "width=600,height=800");
+    if (!printWindow) {
+      showToast("Popup blocker prevented opening the print invoice.", "error");
+      return;
+    }
+
+    const formattedDate = inv.sale_date
+      ? new Date(inv.sale_date).toLocaleString("en-IN", {
+          dateStyle: "medium",
+        })
+      : new Date().toLocaleString("en-IN", {
+          dateStyle: "medium",
+        });
+
+    const priceStr = parseFloat(inv.sale_price || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - \${inv.invoice_number || ('INV-' + inv.id)}</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          body {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 6mm 4mm 20mm 4mm;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #000;
+            background-color: #fff;
+            -webkit-print-color-adjust: exact;
+            box-sizing: border-box;
+          }
+          .text-center {
+            text-align: center;
+          }
+          .text-right {
+            text-align: right;
+          }
+          .bold {
+            font-weight: bold;
+          }
+          .brand-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 2px 0;
+            letter-spacing: 1px;
+          }
+          .brand-subtitle {
+            font-size: 10px;
+            margin: 0 0 6px 0;
+            text-transform: uppercase;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+          }
+          .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+          }
+          .details-table td {
+            padding: 2px 0;
+            vertical-align: top;
+          }
+          .details-table td.label {
+            width: 40%;
+            color: #333;
+          }
+          .details-table td.value {
+            width: 60%;
+            text-align: right;
+            font-weight: bold;
+          }
+          .items-header {
+            font-weight: bold;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+          }
+          .item-row {
+            margin-bottom: 4px;
+          }
+          .item-desc {
+            font-weight: bold;
+          }
+          .item-meta {
+            font-size: 9px;
+            color: #555;
+            padding-left: 8px;
+          }
+          .total-section {
+            margin-top: 8px;
+            font-size: 13px;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 6px 0;
+          }
+          .footer-thanks {
+            margin-top: 15px;
+            font-size: 10px;
+            text-align: center;
+          }
+          .signature-area {
+            margin-top: 30px;
+            text-align: right;
+            font-size: 9px;
+          }
+          @media print {
+            body {
+              width: 72mm;
+              padding: 6mm 4mm 20mm 4mm;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="text-center">
+          <div class="brand-title">KVR MOTORS</div>
+          <div class="brand-subtitle">Automobile ERP System</div>
+          <div style="font-size: 9px;">Authorized Dealer</div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <table class="details-table">
+          <tr>
+            <td class="label">Invoice No:</td>
+            <td class="value">\${inv.invoice_number || ('INV-' + inv.id)}</td>
+          </tr>
+          <tr>
+            <td class="label">Date:</td>
+            <td class="value">\${formattedDate}</td>
+          </tr>
+          <tr>
+            <td class="label">Customer:</td>
+            <td class="value">\${inv.customer_name}</td>
+          </tr>
+          <tr>
+            <td class="label">Phone:</td>
+            <td class="value">\${inv.customer_contact}</td>
+          </tr>
+          <tr>
+            <td class="label">Sales Exec:</td>
+            <td class="value">\${inv.executive_name || "Sales Executive"}</td>
+          </tr>
+        </table>
+        
+        <div class="divider"></div>
+        
+        <div class="items-header">
+          <span>ITEM DESCRIPTION</span>
+        </div>
+        <div class="item-row">
+          <div class="item-desc">\${inv.model_name || ""}</div>
+          <div class="item-meta">Color: \${inv.vehicle_color || "N/A"}</div>
+          <div class="item-meta">Battery: \${inv.battery_type || inv.battery_serial || "N/A"}</div>
+          <div class="item-meta">VIN: \${inv.vin_number || "N/A"}</div>
+          <div class="text-right bold" style="margin-top: 2px;">1 x ₹ \${priceStr}</div>
+        </div>
+        
+        <div class="total-section">
+          <div style="display: flex; justify-content: space-between;">
+            <span class="bold">GRAND TOTAL:</span>
+            <span class="bold">₹ \${priceStr}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
+            <span>PAID BY:</span>
+            <span class="bold">\${(inv.payment_mode || "CASH").toUpperCase()}</span>
+          </div>
+          \${inv.insurance_partner ? \`
+          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+            <span>INSURANCE:</span>
+            <span class="bold">\${inv.insurance_partner}</span>
+          </div>\` : ''}
+        </div>
+        
+        <div class="footer-thanks">
+          <div class="bold">THANK YOU FOR YOUR BUSINESS!</div>
+          <div>Please retain this invoice for registration and warranty.</div>
+          <div style="font-size: 8px; margin-top: 4px; color: #444;">System Generated Invoice</div>
+        </div>
+        
+        <div class="signature-area">
+          <br/><br/>
+          <span>-----------------------</span><br/>
+          <span>Authorized Signatory</span>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  };
+
   // CSV Report
   const [reportModule, setReportModule] = useState("Sales Ledger Summary");
   const downloadReport = () => {
@@ -1725,7 +1951,42 @@ export default function SupervisorDashboard() {
                         {inv.delivery_status === "ready" && (
                           <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer mr-3">Mark Delivered</button>
                         )}
-                        <button className="text-xs text-slate-400 font-bold hover:text-slate-650 cursor-pointer">Print</button>
+                        {inv.delivery_status === "delivered" ? (
+                          <div className="flex items-center gap-2 inline-flex">
+                            <button
+                              onClick={() => handlePrintSalesInvoice(inv)}
+                              className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            >
+                              <Printer className="h-3 w-3" /> Print Invoice
+                            </button>
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(inv.customer_contact)}&text=${encodeURIComponent(
+                                `*KVR MOTORS - SALES INVOICE RECEIPT*\n` +
+                                `=============================\n` +
+                                `*Invoice Ref:* ${inv.invoice_number || ('INV-' + inv.id)}\n` +
+                                `*Customer:* ${inv.customer_name}\n` +
+                                `*Phone:* ${inv.customer_contact}\n` +
+                                `-----------------------------\n` +
+                                `*Vehicle:* ${inv.model_name || ""}\n` +
+                                `*Color:* ${inv.vehicle_color || "N/A"}\n` +
+                                `*Battery:* ${inv.battery_type || inv.battery_serial || "N/A"}\n` +
+                                `-----------------------------\n` +
+                                `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
+                                `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
+                                `*Status:* Delivered\n` +
+                                `=============================\n` +
+                                `Thank you for purchasing with KVR Motors!`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-emerald-650 hover:text-emerald-800 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            >
+                              <MessageSquare className="h-3 w-3" /> WhatsApp
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-semibold italic">Awaiting Delivery</span>
+                        )}
                       </td>
                     </tr>
                   ))
