@@ -65,7 +65,6 @@ const ROLE_MODULES: Record<NavbarProps["role"], SearchModule[]> = {
     { label: "Follow-ups", route: "/sales/followups" },
     { label: "Customers", route: "/sales/customers" },
     { label: "Bookings", route: "/sales/bookings" },
-    { label: "Sales Checkout", route: "/sales/sales_checkout" },
     { label: "Reports", route: "/sales/reports" },
   ],
   telecaller: [

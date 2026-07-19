@@ -138,6 +138,7 @@ export default function SalesDashboard() {
   // Advance Booking form bindings
   const [newBooking, setNewBooking] = useState({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
+  const [selectedBookingInvoicePreview, setSelectedBookingInvoicePreview] = useState<any | null>(null);
 
   // Sales Checkout form bindings
   const [checkoutCustomerName, setCheckoutCustomerName] = useState("");
@@ -735,6 +736,208 @@ export default function SalesDashboard() {
           <div class="bold">THANK YOU FOR YOUR BUSINESS!</div>
           <div>Please retain this invoice for registration and warranty.</div>
           <div style="font-size: 8px; margin-top: 4px; color: #444;">System Generated Invoice</div>
+        </div>
+        
+        <div class="signature-area">
+          <br/><br/>
+          <span>-----------------------</span><br/>
+          <span>Authorized Signatory</span>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  };
+
+  const handlePrintBookingInvoice = (bk: any) => {
+    const printWindow = window.open("", "_blank", "width=600,height=800");
+    if (!printWindow) {
+      showToast("Popup blocker prevented opening the print receipt.", "error");
+      return;
+    }
+
+    const formattedDate = bk.booking_date
+      ? new Date(bk.booking_date).toLocaleDateString("en-IN")
+      : new Date().toLocaleDateString("en-IN");
+
+    const formattedExpiryDate = bk.expiry_date
+      ? new Date(bk.expiry_date).toLocaleDateString("en-IN")
+      : "—";
+
+    const advanceStr = parseFloat(bk.advance_amount || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Booking Receipt - \${bk.booking_id}</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          body {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 6mm 4mm 20mm 4mm;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #000;
+            background-color: #fff;
+            -webkit-print-color-adjust: exact;
+            box-sizing: border-box;
+          }
+          .text-center {
+            text-align: center;
+          }
+          .text-right {
+            text-align: right;
+          }
+          .bold {
+            font-weight: bold;
+          }
+          .brand-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 2px 0;
+            letter-spacing: 1px;
+          }
+          .brand-subtitle {
+            font-size: 10px;
+            margin: 0 0 6px 0;
+            text-transform: uppercase;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+          }
+          .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+          }
+          .details-table td {
+            padding: 2px 0;
+            vertical-align: top;
+          }
+          .details-table td.label {
+            width: 40%;
+            color: #333;
+          }
+          .details-table td.value {
+            width: 60%;
+            text-align: right;
+            font-weight: bold;
+          }
+          .total-section {
+            margin-top: 8px;
+            font-size: 13px;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 6px 0;
+          }
+          .footer-thanks {
+            margin-top: 15px;
+            font-size: 10px;
+            text-align: center;
+          }
+          .signature-area {
+            margin-top: 30px;
+            text-align: right;
+            font-size: 9px;
+          }
+          @media print {
+            body {
+              width: 72mm;
+              padding: 6mm 4mm 20mm 4mm;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="text-center">
+          <div class="brand-title">KVR MOTORS</div>
+          <div class="brand-subtitle">Automobile ERP System</div>
+          <div style="font-size: 9px;">Authorized Dealer</div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <table class="details-table">
+          <tr>
+            <td class="label">Booking ID:</td>
+            <td class="value">\${bk.booking_id}</td>
+          </tr>
+          <tr>
+            <td class="label">Date:</td>
+            <td class="value">\${formattedDate}</td>
+          </tr>
+          <tr>
+            <td class="label">Expiry Threshold:</td>
+            <td class="value">\${formattedExpiryDate}</td>
+          </tr>
+          <tr>
+            <td class="label">Customer:</td>
+            <td class="value">\${bk.customer_name}</td>
+          </tr>
+          <tr>
+            <td class="label">Phone:</td>
+            <td class="value">\${bk.contact_number}</td>
+          </tr>
+          <tr>
+            <td class="label">Sales Exec:</td>
+            <td class="value">\${bk.executive_name || "Sales Executive"}</td>
+          </tr>
+        </table>
+        
+        <div class="divider"></div>
+        
+        <table class="details-table">
+          <tr>
+            <td class="label">Model:</td>
+            <td class="value">\${bk.vehicle_model_name || ""}</td>
+          </tr>
+          <tr>
+            <td class="label">VIN Unit:</td>
+            <td class="value">\${bk.vin_number || "Awaiting Allocation"}</td>
+          </tr>
+        </table>
+        
+        <div class="total-section">
+          <div style="display: flex; justify-content: space-between;">
+            <span class="bold">ADVANCE PAID:</span>
+            <span class="bold">₹ \${advanceStr}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
+            <span>PAYMENT MODE:</span>
+            <span class="bold">\${(bk.payment_mode || "CASH").toUpperCase()}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+            <span>STATUS:</span>
+            <span class="bold">\${(bk.status || "CONFIRMED").toUpperCase()}</span>
+          </div>
+        </div>
+        
+        <div class="footer-thanks">
+          <div class="bold">THANK YOU FOR YOUR BOOKING!</div>
+          <div>Please retain this receipt for vehicle delivery allocation.</div>
+          <div style="font-size: 8px; margin-top: 4px; color: #444;">System Generated Booking Receipt</div>
         </div>
         
         <div class="signature-area">
@@ -1556,14 +1759,10 @@ export default function SalesDashboard() {
                       <td className="py-3 px-4 whitespace-nowrap space-x-2">
                         {(bk.status === "confirmed" || bk.status === "pending") && (
                           <button
-                            onClick={() => {
-                              setCheckoutCustomerName(bk.customer_name || "");
-                              setCheckoutContactNumber(bk.contact_number || "");
-                              navigateTo("sales_checkout");
-                            }}
+                            onClick={() => setSelectedBookingInvoicePreview(bk)}
                             className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
                           >
-                            <FileCheck className="h-3 w-3" /> Generate Invoice
+                            <FileCheck className="h-3 w-3" /> Invoice
                           </button>
                         )}
                         {bk.status === "pending" && (
@@ -1577,6 +1776,98 @@ export default function SalesDashboard() {
                   ))
                 )}
               </Table>
+
+              {/* Booking Invoice Preview Modal */}
+              {selectedBookingInvoicePreview && (
+                <Modal 
+                  isOpen={!!selectedBookingInvoicePreview} 
+                  onClose={() => setSelectedBookingInvoicePreview(null)} 
+                  title="Booking Invoice Receipt Preview"
+                >
+                  <div className="p-5 space-y-4 text-xs font-semibold text-slate-650 max-w-md mx-auto">
+                    <div className="text-center pb-2">
+                      <div className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-emerald-100 text-emerald-600 mb-2">
+                        <CheckCircle2 className="h-5 w-5" />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-800">KVR Motors ERP System</h4>
+                      <p className="text-[11px] text-slate-400 font-medium">Booking details and advance payment receipt.</p>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2 text-xs font-semibold text-slate-650 text-left">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Booking ID:</span>
+                        <span className="text-emerald-700 font-black font-mono tracking-wider">{selectedBookingInvoicePreview.booking_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Customer Name:</span>
+                        <span className="text-slate-800 font-extrabold">{selectedBookingInvoicePreview.customer_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Contact Number:</span>
+                        <span className="text-slate-800 font-mono">{selectedBookingInvoicePreview.contact_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">EV Model Interested:</span>
+                        <span className="text-slate-800 font-bold">{selectedBookingInvoicePreview.vehicle_model_name || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Booking Date:</span>
+                        <span className="text-slate-800 font-medium">{selectedBookingInvoicePreview.booking_date ? new Date(selectedBookingInvoicePreview.booking_date).toLocaleDateString("en-IN") : "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Expiry Threshold:</span>
+                        <span className="text-slate-800 font-medium">{selectedBookingInvoicePreview.expiry_date ? new Date(selectedBookingInvoicePreview.expiry_date).toLocaleDateString("en-IN") : "—"}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-dashed border-slate-200 pt-2">
+                        <span className="text-slate-400">Advance Paid:</span>
+                        <span className="text-emerald-700 font-black text-sm font-mono">₹ {parseFloat(selectedBookingInvoicePreview.advance_amount || 0).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Payment Mode:</span>
+                        <span className="text-slate-805 font-bold uppercase">{selectedBookingInvoicePreview.payment_mode || "CASH"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Status:</span>
+                        <span className="text-indigo-650 font-black uppercase text-[10px]">{selectedBookingInvoicePreview.status}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePrintBookingInvoice(selectedBookingInvoicePreview)}
+                        className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                      >
+                        <Printer className="h-4 w-4" />
+                        Print / Download
+                      </button>
+
+                      <a
+                        href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(selectedBookingInvoicePreview.contact_number)}&text=${encodeURIComponent(
+                          `*KVR MOTORS - BOOKING RECEIPT*\n` +
+                          `=============================\n` +
+                          `*Booking ID:* ${selectedBookingInvoicePreview.booking_id}\n` +
+                          `*Customer:* ${selectedBookingInvoicePreview.customer_name}\n` +
+                          `*Phone:* ${selectedBookingInvoicePreview.contact_number}\n` +
+                          `-----------------------------\n` +
+                          `*Model:* ${selectedBookingInvoicePreview.vehicle_model_name || ""}\n` +
+                          `*Advance Paid:* ₹${parseFloat(selectedBookingInvoicePreview.advance_amount || 0).toLocaleString("en-IN")}\n` +
+                          `*Payment Mode:* ${(selectedBookingInvoicePreview.payment_mode || "CASH").toUpperCase()}\n` +
+                          `*Status:* ${(selectedBookingInvoicePreview.status || "CONFIRMED").toUpperCase()}\n` +
+                          `=============================\n` +
+                          `Thank you for booking with KVR Motors!`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share on WhatsApp
+                      </a>
+                    </div>
+                  </div>
+                </Modal>
+              )}
             </div>
           )}
 

@@ -103,7 +103,6 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "leads", label: "Leads / Enquiries", icon: Compass },
         { id: "customers", label: "Customers", icon: UsersRound },
         { id: "bookings", label: "Bookings", icon: CalendarDays },
-        { id: "sales_checkout", label: "Sales Checkout", icon: CreditCard },
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
         { id: "profile", label: "My Profile", icon: User },
