@@ -39,6 +39,7 @@ class BranchCashDepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = BranchCashDeposit
         fields = '__all__'
+        read_only_fields = ('deposited_by', 'deposit_id')
 
 class BranchExpenseSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source='branch.name', read_only=True)
@@ -48,6 +49,7 @@ class BranchExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = BranchExpense
         fields = '__all__'
+        read_only_fields = ('submitted_by', 'expense_id')
 
 class IssueReportSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source='branch.name', read_only=True)
@@ -59,3 +61,4 @@ class IssueReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = IssueReport
         fields = '__all__'
+        read_only_fields = ('reported_by', 'resolved_by', 'issue_id')

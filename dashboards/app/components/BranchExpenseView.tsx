@@ -102,30 +102,65 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
   const totalExpenses = filteredExpenses.reduce((acc, item) => acc + Number(item.amount || 0), 0);
   const netBalance = totalDeposited - totalExpenses;
 
+  // Filter supervisors based on selected deposit branch
+  const selectedDepositBranch = branches.find(b => b.id === Number(depositForm.branch));
+  const filteredSupervisors = depositForm.branch
+    ? supervisors.filter(s => {
+        if (!selectedDepositBranch) return true;
+        const bName = selectedDepositBranch.name.toLowerCase();
+        const sBranch = (s.branch || "").toLowerCase();
+        const sShowroom = (s.showroom || "").toLowerCase();
+        return (
+          (sBranch && (sBranch.includes(bName) || bName.includes(sBranch))) ||
+          (sShowroom && (sShowroom.includes(bName) || bName.includes(sShowroom)))
+        );
+      })
+    : supervisors;
+
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!depositForm.branch) {
+      setToast({ msg: "Please select a target branch.", type: "error" });
+      return;
+    }
+    if (!depositForm.amount || Number(depositForm.amount) <= 0) {
+      setToast({ msg: "Please enter a valid deposit amount.", type: "error" });
+      return;
+    }
     try {
       await createBranchCashDeposit({
         branch: Number(depositForm.branch),
         supervisor: depositForm.supervisor ? Number(depositForm.supervisor) : undefined,
         amount: Number(depositForm.amount),
-        notes: depositForm.notes,
+        notes: depositForm.notes || "",
       });
       setToast({ msg: "Cash deposited to branch supervisor successfully!", type: "success" });
       setIsDepositModalOpen(false);
       setDepositForm({ branch: "", supervisor: "", amount: "", notes: "" });
       loadData();
-    } catch (err) {
-      setToast({ msg: "Failed to deposit cash. Check inputs.", type: "error" });
+    } catch (err: any) {
+      console.error("Deposit error:", err.response?.data || err);
+      let errMsg = "Failed to deposit cash. Check inputs.";
+      if (err.response?.data) {
+        if (typeof err.response.data === "string") errMsg = err.response.data;
+        else if (err.response.data.detail) errMsg = err.response.data.detail;
+        else errMsg = Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ");
+      }
+      setToast({ msg: errMsg, type: "error" });
     }
   };
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const branchId = depositForm.branch ? Number(depositForm.branch) : (myBranch ? myBranch.id : branches[0]?.id);
+      const defaultBranchId = myBranch ? myBranch.id : branches[0]?.id;
+      const targetBranchId = expenseForm.branch ? Number(expenseForm.branch) : defaultBranchId;
+      if (!targetBranchId) {
+        setToast({ msg: "Select a branch for the expense.", type: "error" });
+        return;
+      }
       await createBranchExpense({
-        branch: Number(expenseForm.branch || branchId),
+        branch: targetBranchId,
         category: expenseForm.category,
         amount: Number(expenseForm.amount),
         description: expenseForm.description,
@@ -135,8 +170,15 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
       setIsExpenseModalOpen(false);
       setExpenseForm({ branch: "", category: "electricity", amount: "", description: "", receipt_number: "" });
       loadData();
-    } catch (err) {
-      setToast({ msg: "Failed to record expense.", type: "error" });
+    } catch (err: any) {
+      console.error("Expense error:", err.response?.data || err);
+      let errMsg = "Failed to record expense.";
+      if (err.response?.data) {
+        if (typeof err.response.data === "string") errMsg = err.response.data;
+        else if (err.response.data.detail) errMsg = err.response.data.detail;
+        else errMsg = Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ");
+      }
+      setToast({ msg: errMsg, type: "error" });
     }
   };
 
@@ -286,7 +328,22 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
             <label className="text-[10px] font-bold text-slate-400 uppercase">Target Branch <span className="text-rose-500">*</span></label>
             <select
               value={depositForm.branch}
-              onChange={(e) => setDepositForm({ ...depositForm, branch: e.target.value })}
+              onChange={(e) => {
+                const newBranchId = e.target.value;
+                const targetB = branches.find(b => b.id === Number(newBranchId));
+                let matchingSup = "";
+                if (targetB) {
+                  const bName = targetB.name.toLowerCase();
+                  const match = supervisors.find(s => {
+                    const sBranch = (s.branch || "").toLowerCase();
+                    const sShowroom = (s.showroom || "").toLowerCase();
+                    return (sBranch && (sBranch.includes(bName) || bName.includes(sBranch))) ||
+                           (sShowroom && (sShowroom.includes(bName) || bName.includes(sShowroom)));
+                  });
+                  if (match) matchingSup = String(match.id);
+                }
+                setDepositForm({ ...depositForm, branch: newBranchId, supervisor: matchingSup });
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
               required
             >
@@ -298,14 +355,16 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Recipient Supervisor</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">
+              Recipient Supervisor {depositForm.branch && filteredSupervisors.length === 0 ? "(No Supervisor Found for Branch)" : ""}
+            </label>
             <select
               value={depositForm.supervisor}
               onChange={(e) => setDepositForm({ ...depositForm, supervisor: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
             >
               <option value="">Select Supervisor...</option>
-              {supervisors.map((s) => (
+              {filteredSupervisors.map((s) => (
                 <option key={s.id} value={s.id}>{s.full_name} ({s.showroom || s.branch || "Supervisor"})</option>
               ))}
             </select>
