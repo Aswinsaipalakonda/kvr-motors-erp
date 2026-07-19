@@ -21,10 +21,15 @@ class LeadViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         branch = None
         if user.is_authenticated:
             assigned_exec = serializer.validated_data.get('assigned_executive')
+            # Auto-assign to logged-in user if no executive is explicitly set
+            if not assigned_exec:
+                assigned_exec = user
             if assigned_exec and hasattr(assigned_exec, 'branch') and assigned_exec.branch:
                 branch = assigned_exec.branch
             elif hasattr(user, 'branch') and user.branch:
                 branch = user.branch
-        serializer.save(branch=branch)
+            serializer.save(assigned_executive=assigned_exec, branch=branch)
+        else:
+            serializer.save(branch=branch)
         self.clear_cache()
 

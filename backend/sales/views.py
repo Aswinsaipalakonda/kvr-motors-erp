@@ -15,3 +15,12 @@ class SalesInvoiceViewSet(CacheResponseMixin, viewsets.ModelViewSet):
                 queryset = queryset.filter(branch__name=user.branch)
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        extra = {}
+        if user.is_authenticated:
+            if not serializer.validated_data.get('sales_executive'):
+                extra['sales_executive'] = user
+        serializer.save(**extra)
+        self.clear_cache()
+

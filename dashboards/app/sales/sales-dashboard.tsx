@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { usePathname } from "next/navigation";
 import DashboardSidebar from "../components/DashboardSidebar";
 import Navbar from "../components/Navbar";
@@ -62,6 +63,7 @@ import {
 } from "recharts";
 
 export default function SalesDashboard() {
+  const { user } = useAuth();
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
   const initialTab = lastSegment === "sales" ? "dashboard" : lastSegment;
@@ -242,6 +244,11 @@ export default function SalesDashboard() {
       showToast("Please fill all required booking fields.", "error");
       return;
     }
+    const cleanMelaPhone = melaBookingPhone.trim().replace(/\D/g, "");
+    if (cleanMelaPhone.length !== 10) {
+      showToast("Contact phone must contain exactly 10 digits.", "error");
+      return;
+    }
     const payload = {
       customer_name: melaBookingName.trim(),
       customer_phone: melaBookingPhone.trim(),
@@ -383,7 +390,7 @@ export default function SalesDashboard() {
       
       const newOverride = await createFifoOverride({
         battery: targetBattery.id,
-        sales_executive: "Anil Kumar",
+        sales_executive: user?.full_name || user?.username || "Sales Executive",
         invoice_reference: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`
       });
       setActiveOverrideRequest(newOverride);
@@ -431,7 +438,7 @@ export default function SalesDashboard() {
       status: newLead.status,
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
-      assigned_executive: 3 // Assinged to Anil Kumar (Sales Exec)
+      assigned_executive: user?.id || undefined // Dynamically assign to the logged-in sales exec
     };
     try {
       if (editingLeadId) {
@@ -528,6 +535,8 @@ export default function SalesDashboard() {
   const handleSalesCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!autoFillResult?.id) { showToast("Fetch vehicle details first.", "error"); return; }
+    const cleanCheckoutPhone = checkoutContactNumber.trim().replace(/\D/g, "");
+    if (cleanCheckoutPhone.length !== 10) { showToast("Contact number must contain exactly 10 digits.", "error"); return; }
     const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
     try {
       await createSalesInvoice({
@@ -1222,7 +1231,7 @@ export default function SalesDashboard() {
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
                                 <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-                                  <span className="text-[9px] text-slate-400 font-bold">Anil Kumar</span>
+                                  <span className="text-[9px] text-slate-400 font-bold">{lead.executive_name || user?.full_name || "Me"}</span>
                                   <span className="text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </div>
                               </div>
