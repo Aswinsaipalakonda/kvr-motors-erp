@@ -1037,8 +1037,8 @@ export default function SalesDashboard() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Add Lead", icon: Plus, onClick: openAddLead },
-                  { label: "Record Booking", icon: CalendarDays, onClick: () => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); setIsCreateBookingOpen(true); } },
-                  { label: "Sales Checkout", icon: CreditCard, onClick: () => navigateTo("sales_bookings") },
+                  { label: "Record Booking", icon: CalendarDays, onClick: () => navigateTo("bookings") },
+                  { label: "Sales Checkout", icon: CreditCard, onClick: () => navigateTo("sales_checkout") },
                   { label: "My Follow-ups", icon: Phone, onClick: () => navigateTo("followups") },
                 ].map((qa, i) => {
                   const QAIcon = qa.icon;
@@ -1061,8 +1061,8 @@ export default function SalesDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <DashboardCard title="My Active Leads" value={leadsLoading ? "..." : `${liveLeadsList.length} Leads`} trend="Pipeline" trendType="success" description="Assigned leads status" icon={Compass} color="blue" onClick={() => navigateTo("leads")} />
                 <DashboardCard title="Follow-ups Due" value={leadsLoading ? "..." : `${liveLeadsList.filter(l => l.status === "follow_up").length} Tasks`} trend="Pending Calls" trendType="neutral" description="Awaiting customer callback" icon={CalendarDays} color="amber" onClick={() => navigateTo("followups")} />
-                <DashboardCard title="Personal Bookings" value={bookingsLoading ? "..." : `${liveBookingsList.filter(b => b.status === "confirmed").length} Reserved`} trend="Active lock" trendType="success" description="Stock locked allocations" icon={CreditCard} color="emerald" onClick={() => navigateTo("sales_bookings")} />
-                <DashboardCard title="My Units Sold" value={salesLoading ? "..." : `${liveSalesList.length} Units`} trend="MTD Billing" trendType="success" description="Total vehicles invoiced" icon={FileCheck} color="indigo" onClick={() => navigateTo("sales_bookings")} />
+                <DashboardCard title="Personal Bookings" value={bookingsLoading ? "..." : `${liveBookingsList.filter(b => b.status === "confirmed").length} Reserved`} trend="Active lock" trendType="success" description="Stock locked allocations" icon={CreditCard} color="emerald" onClick={() => navigateTo("bookings")} />
+                <DashboardCard title="My Units Sold" value={salesLoading ? "..." : `${liveSalesList.length} Units`} trend="MTD Billing" trendType="success" description="Total vehicles invoiced" icon={FileCheck} color="indigo" onClick={() => navigateTo("sales_checkout")} />
               </div>
 
               {/* Charts agenda Section */}
@@ -1277,8 +1277,84 @@ export default function SalesDashboard() {
             </div>
           )}
 
-          {/* TAB 4: SALES & BOOKINGS (WITH AUTO-FILL VIN & FIFO ALERT) */}
-          {activeTab === "sales_bookings" && (
+          {/* TAB 4A: BOOKINGS */}
+          {activeTab === "bookings" && (
+            <div className="space-y-6">
+              {/* Bookings table */}
+              <Table 
+                title="My Active Booking Commitments" 
+                headers={["Booking ID", "Customer Details", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
+                actions={
+                  <button 
+                    onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); setIsCreateBookingOpen(true); }}
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                  >
+                    <Plus className="h-4 w-4" /> Record Booking
+                  </button>
+                }
+              >
+                {bookingsLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                        <span>Loading bookings...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : liveBookingsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center">
+                      <EmptyState title="No Bookings Recorded" description="Advance deposits will display here." />
+                    </td>
+                  </tr>
+                ) : (
+                  liveBookingsList.map((bk) => (
+                    <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
+                      <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
+                      <td className="py-3 px-4 font-bold text-slate-805">{bk.customer_name}</td>
+                      <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
+                      <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
+                      <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {bk.status === "pending" ? "Pending Approval" : bk.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap space-x-2">
+                        {(bk.status === "confirmed" || bk.status === "pending") && (
+                          <button
+                            onClick={() => {
+                              setCheckoutCustomerName(bk.customer_name || "");
+                              setCheckoutContactNumber(bk.contact_number || "");
+                              navigateTo("sales_checkout");
+                            }}
+                            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
+                          >
+                            <FileCheck className="h-3 w-3" /> Generate Invoice
+                          </button>
+                        )}
+                        {bk.status === "pending" && (
+                          <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
+                        )}
+                        {bk.status === "cancelled" && (
+                          <span className="text-[10px] text-slate-450 font-bold">No actions</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </Table>
+            </div>
+          )}
+
+          {/* TAB 4B: SALES CHECKOUT (WITH AUTO-FILL VIN & FIFO ALERT) */}
+          {activeTab === "sales_checkout" && (
             <div className="space-y-6">
               
               {/* Sales Checkout & Auto-fill blocks */}
@@ -1476,65 +1552,8 @@ export default function SalesDashboard() {
                 </div>
               </div>
 
-              {/* Transactions Ledger (Bookings & Sales Tables) */}
+              {/* Sales Billing Ledger */}
               <div className="grid grid-cols-1 gap-6">
-                {/* Bookings table */}
-                <Table 
-                  title="My Active Booking Commitments" 
-                  headers={["Booking ID", "Customer Details", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
-                  actions={
-                    <button 
-                      onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); setIsCreateBookingOpen(true); }}
-                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
-                    >
-                      <Plus className="h-4 w-4" /> Record Booking
-                    </button>
-                  }
-                >
-                  {bookingsLoading ? (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                          <span>Loading bookings...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : liveBookingsList.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center">
-                        <EmptyState title="No Bookings Recorded" description="Advance deposits will display here." />
-                      </td>
-                    </tr>
-                  ) : (
-                    liveBookingsList.map((bk) => (
-                      <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
-                        <td className="py-3 px-4 font-bold text-slate-805">{bk.customer_name}</td>
-                        <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
-                        <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
-                        <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
-                        <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                            bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                            "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}>
-                            {bk.status === "pending" ? "Pending Approval" : bk.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          {bk.status === "pending" ? (
-                            <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
-                          ) : (
-                            <span className="text-[10px] text-slate-450 font-bold">No actions</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </Table>
 
                 {/* Sales Ledger table */}
                 <Table title="My Completed Sales Billing Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Sale Price", "Payment Mode", "Insurance Partner", "Delivery Status"]}>
