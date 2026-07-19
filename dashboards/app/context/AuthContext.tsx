@@ -116,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sales_executive: "/sales",
         sales: "/sales",
         telecaller: "/telecaller",
+        staff: "/staff",
       };
 
       const redirectPath = roleRedirectMap[userProfile.role as keyof typeof roleRedirectMap] || "/";

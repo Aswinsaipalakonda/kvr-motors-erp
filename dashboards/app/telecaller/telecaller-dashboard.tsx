@@ -10,6 +10,7 @@ import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
+import AttendanceView from "../components/AttendanceView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { getLeads, createLead, updateLead } from "../services/leads";
@@ -617,6 +618,9 @@ export default function TelecallerDashboard() {
               </div>
 
             </div>
+          )}
+          {activeTab === "attendance" && (
+            <AttendanceView role="telecaller" />
           )}
           {activeTab === "profile" && (
             <ProfileView />

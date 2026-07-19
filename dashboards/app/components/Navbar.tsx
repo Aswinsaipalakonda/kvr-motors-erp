@@ -19,7 +19,7 @@ import {
 
 interface NavbarProps {
   title: string;
-  role: "owner" | "supervisor" | "sales" | "telecaller";
+  role: "owner" | "supervisor" | "sales" | "telecaller" | "staff";
   activeBranch?: string;
   onBranchChange?: (branch: string) => void;
   activeRange?: string;
@@ -71,6 +71,14 @@ const ROLE_MODULES: Record<NavbarProps["role"], SearchModule[]> = {
     { label: "Dashboard", route: "/telecaller" },
     { label: "Leads", route: "/telecaller/leads" },
   ],
+  staff: [
+    { label: "Dashboard", route: "/staff" },
+    { label: "Inventory & Shipments", route: "/staff/inventory" },
+    { label: "Battery Registry", route: "/staff/batteries" },
+    { label: "PDI & Handovers", route: "/staff/pdi" },
+    { label: "Daily Check-in", route: "/staff/attendance" },
+    { label: "My Profile", route: "/staff/profile" },
+  ],
 };
 
 const getDefaultRangeString = () => {
@@ -99,7 +107,7 @@ export default function Navbar({
   onBranchChange, 
   activeRange: activeRangeProp,
   onRangeChange,
-  branchesList 
+  branchesList = []
 }: NavbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -110,7 +118,7 @@ export default function Navbar({
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  const [localActiveBranch, setLocalActiveBranch] = useState("All Branches");
+  const [localActiveBranch, setLocalActiveBranch] = useState(user?.branch || "All Branches");
   const activeBranch = activeBranchProp !== undefined ? activeBranchProp : localActiveBranch;
   const handleBranchSelect = (branch: string) => {
     if (onBranchChange) {

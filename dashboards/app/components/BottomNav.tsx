@@ -12,11 +12,13 @@ import {
   CalendarDays,
   UsersRound,
   UserCheck2,
+  Battery,
+  FileText,
   LucideIcon,
 } from "lucide-react";
 
 interface BottomNavProps {
-  role: "owner" | "supervisor" | "sales" | "telecaller";
+  role: "owner" | "supervisor" | "sales" | "telecaller" | "staff";
   activeTab?: string;
 }
 
@@ -38,19 +40,27 @@ const navConfig: Record<BottomNavProps["role"], NavItem[]> = {
   supervisor: [
     { id: "dashboard", label: "Home", icon: LayoutDashboard },
     { id: "stock", label: "Stock", icon: Boxes },
-    { id: "vehicles", label: "Vehicles", icon: Car },
     { id: "leads", label: "Leads", icon: Compass },
+    { id: "attendance", label: "Attendance", icon: UsersRound },
     { id: "bookings", label: "Bookings", icon: CalendarDays },
   ],
   sales: [
     { id: "dashboard", label: "Home", icon: LayoutDashboard },
     { id: "leads", label: "Leads", icon: Compass },
     { id: "bookings", label: "Bookings", icon: CalendarDays },
-    { id: "followups", label: "Follow-ups", icon: UserCheck2 },
+    { id: "attendance", label: "Check-in", icon: UsersRound },
   ],
   telecaller: [
     { id: "dashboard", label: "Home", icon: LayoutDashboard },
     { id: "leads", label: "Leads", icon: Compass },
+    { id: "attendance", label: "Check-in", icon: UsersRound },
+  ],
+  staff: [
+    { id: "dashboard", label: "Home", icon: LayoutDashboard },
+    { id: "inventory", label: "Inventory", icon: Boxes },
+    { id: "batteries", label: "Batteries", icon: Battery },
+    { id: "pdi", label: "PDI", icon: FileText },
+    { id: "attendance", label: "Check-in", icon: UsersRound },
   ],
 };
 

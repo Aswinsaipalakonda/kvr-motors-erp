@@ -6,6 +6,6 @@
  * and nested scroll areas (Kanban columns, tables).
  * Disabling this allows the browser's native, highly-optimized scrolling to handle the view.
  */
-export default function DashboardSmoothScroll() {
-  return null;
+export default function DashboardSmoothScroll({ children }: { children?: React.ReactNode }) {
+  return <>{children}</>;
 }

@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 
 interface SidebarProps {
-  role: "owner" | "supervisor" | "sales" | "telecaller";
+  role: "owner" | "supervisor" | "sales" | "telecaller" | "staff";
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
 }
@@ -101,10 +101,11 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "mela_booking_form", label: "Mela Booking", icon: Sparkles },
         { id: "leads", label: "Leads / Enquiries", icon: Compass },
-        { id: "customers", label: "Customers", icon: UsersRound },
+        { id: "customers", label: "Customers", icon: Users },
         { id: "bookings", label: "Bookings", icon: CalendarDays },
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
+        { id: "attendance", label: "Daily Check-in", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },
@@ -117,6 +118,22 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
       items: [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "leads", label: "Leads", icon: Compass },
+        { id: "attendance", label: "Daily Check-in", icon: UsersRound },
+        { id: "profile", label: "My Profile", icon: User },
+      ]
+    },
+    staff: {
+      profile: {
+        name: "Gopal Rao",
+        roleName: "Operations Staff",
+        initials: "GR"
+      },
+      items: [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "inventory", label: "Inventory & Shipments", icon: Boxes },
+        { id: "batteries", label: "Battery Registry", icon: Battery },
+        { id: "pdi", label: "PDI & Handovers", icon: FileText },
+        { id: "attendance", label: "Daily Check-in", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },
       ]
     }
@@ -205,7 +222,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 KVR Motors
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
-                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
+                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : role === "staff" ? "Staff Terminal" : "Sales Terminal"}
               </span>
             </div>
           </div>

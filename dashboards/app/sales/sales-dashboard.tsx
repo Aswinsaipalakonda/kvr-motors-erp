@@ -12,6 +12,7 @@ import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
+import AttendanceView from "../components/AttendanceView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 
@@ -2356,6 +2357,9 @@ export default function SalesDashboard() {
 
               </div>
             </div>
+          )}
+          {activeTab === "attendance" && (
+            <AttendanceView role="sales" />
           )}
           {activeTab === "profile" && (
             <ProfileView />

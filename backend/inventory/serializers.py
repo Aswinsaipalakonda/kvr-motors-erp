@@ -52,8 +52,8 @@ class StockTransferSerializer(serializers.ModelSerializer):
             new_status = data.get('status', old_status)
             
             if old_status != new_status and user:
-                # 1. To approve/reject/dispatch: User must be owner/admin or supervisor of the source showroom/branch
-                if new_status in ['approved', 'rejected', 'in_transit']:
+                # 1. To approve/reject: User must be owner/admin or supervisor of the source showroom/branch
+                if new_status in ['approved', 'rejected']:
                     is_authorized = (
                         user.role in ['owner', 'admin'] or user.is_staff or
                         (user.role == 'supervisor' and (
@@ -66,18 +66,32 @@ class StockTransferSerializer(serializers.ModelSerializer):
                             "status": "You are not authorized to approve/reject transfer requests originating from another branch/showroom."
                         })
                 
-                # 2. To mark as received: User must be owner/admin or supervisor of the target showroom/branch
+                # 2. To dispatch (in_transit): User must be owner/admin, supervisor, or staff of the source showroom/branch
+                elif new_status == 'in_transit':
+                    is_authorized = (
+                        user.role in ['owner', 'admin'] or user.is_staff or
+                        (user.role in ['supervisor', 'staff'] and (
+                            (self.instance.from_location.showroom and user.showroom == self.instance.from_location.showroom.name) or
+                            (user.branch == self.instance.from_location.branch.name)
+                        ))
+                    )
+                    if not is_authorized:
+                        raise serializers.ValidationError({
+                            "status": "You are not authorized to dispatch transfer requests originating from another branch/showroom."
+                        })
+                
+                # 3. To mark as received: User must be owner/admin, supervisor, or staff of the target showroom/branch
                 elif new_status == 'received':
                     is_authorized = (
                         user.role in ['owner', 'admin'] or user.is_staff or
-                        (user.role == 'supervisor' and (
+                        (user.role in ['supervisor', 'staff'] and (
                             (self.instance.to_location.showroom and user.showroom == self.instance.to_location.showroom.name) or
                             (user.branch == self.instance.to_location.branch.name)
                         ))
                     )
                     if not is_authorized:
                         raise serializers.ValidationError({
-                            "status": "You are not authorized to mark this transfer as received (only target branch supervisors can receive it)."
+                            "status": "You are not authorized to mark this transfer as received (only target branch supervisors or staff can receive it)."
                         })
         return data
 

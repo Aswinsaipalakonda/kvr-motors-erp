@@ -21,6 +21,11 @@ export interface ActivityLog {
 }
 
 export async function getActivityLogs(): Promise<ActivityLog[]> {
-  const response = await api.get("/activity-logs/");
-  return response.data;
+  try {
+    const response = await api.get("/activity-logs/");
+    return response.data || [];
+  } catch (error) {
+    console.warn("Could not fetch activity logs:", error);
+    return [];
+  }
 }
