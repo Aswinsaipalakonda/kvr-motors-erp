@@ -3,6 +3,10 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        'no_active_account': 'Invalid credentials. Please check your username and password.'
+    }
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)

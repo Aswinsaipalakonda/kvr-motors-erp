@@ -5,6 +5,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_BASE_URL=https://kvr.thehps.in/api/v1
 ENV NEXT_PUBLIC_API_URL=https://kvr.thehps.in/api/v1
 ENV NEXT_PUBLIC_AUTH_URL=https://kvr.thehps.in/api/auth/login/
 RUN npm run build

@@ -102,8 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<UserProfile> => {
     try {
-      let apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
-      if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_API_BASE_URL) {
+      let apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      if (typeof window !== "undefined") {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           apiBaseUrl = `${window.location.origin}/api/v1`;
         }
@@ -155,9 +155,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error("Authentication request failed:", error);
       if (error.response && error.response.data) {
-        // DRF simple_jwt standard errors
-        const detail = error.response.data.detail || "Invalid credentials. Please verify your entries.";
+        let detail = error.response.data.detail || error.response.data.non_field_errors?.[0];
+        if (!detail || typeof detail !== "string") {
+          detail = "Invalid credentials. Please check your username and password.";
+        }
+        if (detail.toLowerCase().includes("no active account") || detail.toLowerCase().includes("invalid credentials")) {
+          detail = "Invalid credentials. Please check your username and password.";
+        }
         throw new Error(detail);
+      }
+      if (error.message === "Network Error" || !error.response) {
+        throw new Error("Network error connecting to authentication server. Please check your internet connection.");
       }
       throw new Error(error.message || "Failed to connect to authentication server.");
     }
