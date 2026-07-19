@@ -35,6 +35,7 @@ class BranchCashDepositSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source='branch.name', read_only=True)
     deposited_by_name = serializers.CharField(source='deposited_by.full_name', read_only=True)
     supervisor_name = serializers.CharField(source='supervisor.full_name', read_only=True)
+    deposit_date = serializers.DateField(required=False)
 
     class Meta:
         model = BranchCashDeposit
@@ -45,6 +46,7 @@ class BranchExpenseSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source='branch.name', read_only=True)
     submitted_by_name = serializers.CharField(source='submitted_by.full_name', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    expense_date = serializers.DateField(required=False)
 
     class Meta:
         model = BranchExpense

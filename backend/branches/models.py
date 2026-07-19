@@ -61,13 +61,15 @@ class BranchCashDeposit(models.Model):
     )
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     notes = models.TextField(blank=True, null=True)
-    deposit_date = models.DateField(default=timezone.now)
+    deposit_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        import datetime, random
         if not self.deposit_id:
-            import datetime, random
             self.deposit_id = f"DEP-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        if isinstance(self.deposit_date, datetime.datetime):
+            self.deposit_date = self.deposit_date.date()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -95,13 +97,15 @@ class BranchExpense(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, null=True)
     receipt_number = models.CharField(max_length=100, blank=True, null=True)
-    expense_date = models.DateField(default=timezone.now)
+    expense_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        import datetime, random
         if not self.expense_id:
-            import datetime, random
             self.expense_id = f"EXP-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        if isinstance(self.expense_date, datetime.datetime):
+            self.expense_date = self.expense_date.date()
         super().save(*args, **kwargs)
 
     def __str__(self):
