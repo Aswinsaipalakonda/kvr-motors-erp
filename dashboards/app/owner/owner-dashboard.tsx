@@ -10,6 +10,9 @@ import Table from "../components/Table";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
+import BranchExpenseView from "../components/BranchExpenseView";
+import IssueReportView from "../components/IssueReportView";
+import OwnerReportsView from "../components/OwnerReportsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch, getStockTransfers } from "../services/branches";
@@ -6914,6 +6917,15 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             </div>
+          )}
+          {activeTab === "expenses" && (
+            <BranchExpenseView role="owner" />
+          )}
+          {activeTab === "issues" && (
+            <IssueReportView role="owner" />
+          )}
+          {activeTab === "reports" && (
+            <OwnerReportsView />
           )}
           {activeTab === "profile" && (
             <ProfileView />

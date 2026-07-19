@@ -11,6 +11,20 @@ export const getBatteries = async () => {
   return response.data;
 };
 
+export interface Battery {
+  id: number;
+  serial_number: string;
+  battery_code?: string;
+  capacity: string;
+  purchase_date: string;
+  location: number;
+  location_name?: string;
+  branch_name?: string;
+  supplier: string;
+  warranty_years?: number;
+  status?: string;
+}
+
 export interface BatteryInput {
   serial_number: string;
   battery_code?: string;

@@ -14,6 +14,28 @@ export interface VehicleModelInput {
   status?: "active" | "inactive";
 }
 
+export interface VehicleUnit {
+  id: number;
+  model: number;
+  model_name?: string;
+  brand_name?: string;
+  branch: number;
+  branch_name?: string;
+  showroom?: number;
+  showroom_name?: string;
+  location?: number;
+  location_name?: string;
+  vin_number?: string | null;
+  motor_number?: string | null;
+  chassis_number?: string | null;
+  color?: string | null;
+  purchase_date?: string;
+  status?: string;
+  stock_status?: string;
+  booking_status?: boolean;
+  assigned_battery?: string;
+}
+
 export interface VehicleUnitInput {
   model: number; // Model ID
   branch: number; // Branch ID

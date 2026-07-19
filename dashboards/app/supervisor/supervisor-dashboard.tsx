@@ -12,6 +12,8 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import AttendanceView from "../components/AttendanceView";
+import BranchExpenseView from "../components/BranchExpenseView";
+import IssueReportView from "../components/IssueReportView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -2724,6 +2726,12 @@ export default function SupervisorDashboard() {
 
           {activeTab === "attendance" && (
             <AttendanceView role="supervisor" />
+          )}
+          {activeTab === "expenses" && (
+            <BranchExpenseView role="supervisor" />
+          )}
+          {activeTab === "issues" && (
+            <IssueReportView role="supervisor" />
           )}
           {activeTab === "profile" && (
             <ProfileView />

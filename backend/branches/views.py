@@ -1,8 +1,15 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
-from django.db.models import ProtectedError
-from .models import Branch, Showroom, InventoryLocation
-from .serializers import BranchSerializer, ShowroomSerializer, InventoryLocationSerializer
+from django.db.models import ProtectedError, Q
+from .models import Branch, Showroom, InventoryLocation, BranchCashDeposit, BranchExpense, IssueReport
+from .serializers import (
+    BranchSerializer,
+    ShowroomSerializer,
+    InventoryLocationSerializer,
+    BranchCashDepositSerializer,
+    BranchExpenseSerializer,
+    IssueReportSerializer
+)
 from config.cache import CacheResponseMixin
 
 class BranchViewSet(CacheResponseMixin, viewsets.ModelViewSet):
@@ -12,7 +19,6 @@ class BranchViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         
-        # 1. Fast pre-checks to avoid database locking during collection
         if hasattr(instance, 'sales_invoices') and instance.sales_invoices.exists():
             return Response(
                 {"detail": "Cannot delete branch because it is referenced by active Sales Invoices."},
@@ -44,8 +50,6 @@ class ShowroomViewSet(CacheResponseMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        
-        # Pre-checks
         if hasattr(instance, 'vehicle_units') and instance.vehicle_units.exists():
             return Response(
                 {"detail": "Cannot delete showroom because it has active vehicle units in stock."},
@@ -67,8 +71,6 @@ class InventoryLocationViewSet(CacheResponseMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        
-        # Pre-checks
         if hasattr(instance, 'vehicle_units') and instance.vehicle_units.exists():
             return Response(
                 {"detail": "Cannot delete inventory location because it has active vehicle units in stock."},
@@ -93,3 +95,63 @@ class InventoryLocationViewSet(CacheResponseMixin, viewsets.ModelViewSet):
                 {"detail": "Cannot delete inventory location because it is referenced by other protected records."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class BranchCashDepositViewSet(CacheResponseMixin, viewsets.ModelViewSet):
+    queryset = BranchCashDeposit.objects.all()
+    serializer_class = BranchCashDepositSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return BranchCashDeposit.objects.none()
+        if user.role in ('owner', 'admin') or user.is_staff or user.is_superuser:
+            return BranchCashDeposit.objects.all()
+        if getattr(user, 'branch', None):
+            return BranchCashDeposit.objects.filter(branch__name=user.branch)
+        return BranchCashDeposit.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(deposited_by=user)
+        self.clear_cache()
+
+class BranchExpenseViewSet(CacheResponseMixin, viewsets.ModelViewSet):
+    queryset = BranchExpense.objects.all()
+    serializer_class = BranchExpenseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return BranchExpense.objects.none()
+        if user.role in ('owner', 'admin') or user.is_staff or user.is_superuser:
+            return BranchExpense.objects.all()
+        if getattr(user, 'branch', None):
+            return BranchExpense.objects.filter(branch__name=user.branch)
+        return BranchExpense.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(submitted_by=user)
+        self.clear_cache()
+
+class IssueReportViewSet(CacheResponseMixin, viewsets.ModelViewSet):
+    queryset = IssueReport.objects.all()
+    serializer_class = IssueReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return IssueReport.objects.none()
+        if user.role in ('owner', 'admin') or user.is_staff or user.is_superuser:
+            return IssueReport.objects.all()
+        if getattr(user, 'branch', None):
+            return IssueReport.objects.filter(Q(branch__name=user.branch) | Q(reported_by=user))
+        return IssueReport.objects.filter(reported_by=user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(reported_by=user)
+        self.clear_cache()

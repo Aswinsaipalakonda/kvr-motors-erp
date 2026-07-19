@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+from django.utils import timezone
 
 class Branch(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -39,3 +41,125 @@ class InventoryLocation(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.branch.name})"
+
+class BranchCashDeposit(models.Model):
+    deposit_id = models.CharField(max_length=50, unique=True, blank=True)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="cash_deposits")
+    deposited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="made_cash_deposits"
+    )
+    supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="received_cash_deposits"
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    notes = models.TextField(blank=True, null=True)
+    deposit_date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.deposit_id:
+            import datetime, random
+            self.deposit_id = f"DEP-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.deposit_id} - ₹{self.amount} ({self.branch.name})"
+
+class BranchExpense(models.Model):
+    CATEGORY_CHOICES = (
+        ('electricity', 'Electricity / Utilities'),
+        ('transport', 'Transport & Freight'),
+        ('maintenance', 'Showroom Maintenance'),
+        ('refreshments', 'Staff Refreshments'),
+        ('misc', 'Miscellaneous Expense'),
+    )
+
+    expense_id = models.CharField(max_length=50, unique=True, blank=True)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="expenses")
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submitted_expenses"
+    )
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='misc')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    receipt_number = models.CharField(max_length=100, blank=True, null=True)
+    expense_date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.expense_id:
+            import datetime, random
+            self.expense_id = f"EXP-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.expense_id} - ₹{self.amount} ({self.category})"
+
+class IssueReport(models.Model):
+    CATEGORY_CHOICES = (
+        ('vehicle_damage', 'Vehicle Transit Damage'),
+        ('battery_malfunction', 'Battery Cell / Charger Defect'),
+        ('equipment_failure', 'Showroom Equipment Failure'),
+        ('logistics_delay', 'Logistics / Stock Delay'),
+        ('other', 'Other Operational Problem'),
+    )
+
+    PRIORITY_CHOICES = (
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    )
+
+    STATUS_CHOICES = (
+        ('reported', 'Reported'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+    )
+
+    issue_id = models.CharField(max_length=50, unique=True, blank=True)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="issue_reports")
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reported_issues"
+    )
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    asset_reference = models.CharField(max_length=100, blank=True, null=True, help_text="VIN or Battery Serial if applicable")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='reported')
+    resolution_notes = models.TextField(blank=True, null=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_issues"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.issue_id:
+            import datetime, random
+            self.issue_id = f"ISS-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.issue_id} - {self.title} [{self.status}]"

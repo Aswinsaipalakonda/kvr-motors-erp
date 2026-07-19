@@ -28,6 +28,8 @@ import {
   UserCheck2,
   ActivitySquare,
   User,
+  Wallet,
+  AlertTriangle,
   Sparkles
 } from "lucide-react";
 
@@ -64,6 +66,8 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "bookings", label: "Advance Bookings", icon: CalendarDays },
         { id: "batteries", label: "Batteries Management", icon: Battery },
         { id: "ledger", label: "Ledger Management", icon: BookOpen },
+        { id: "expenses", label: "Cash & Expenses", icon: Wallet },
+        { id: "issues", label: "Issue Tracker", icon: AlertTriangle },
         { id: "reports", label: "Reports & Analytics", icon: BarChart2 },
         { id: "users", label: "Users & Roles", icon: Users },
         { id: "attendance", label: "Staff Attendance", icon: UsersRound },
@@ -86,6 +90,8 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "leads", label: "Lead Management", icon: Compass },
         { id: "bookings", label: "Advance Bookings", icon: CalendarDays },
         { id: "batteries", label: "Batteries Management", icon: Battery },
+        { id: "expenses", label: "Petty Cash & Expenses", icon: Wallet },
+        { id: "issues", label: "Report Issue", icon: AlertTriangle },
         { id: "reports", label: "Reports", icon: BarChart2 },
         { id: "attendance", label: "Verify Attendance", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },

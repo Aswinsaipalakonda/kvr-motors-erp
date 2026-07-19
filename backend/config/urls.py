@@ -3,7 +3,10 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
-from branches.views import BranchViewSet, ShowroomViewSet, InventoryLocationViewSet
+from branches.views import (
+    BranchViewSet, ShowroomViewSet, InventoryLocationViewSet,
+    BranchCashDepositViewSet, BranchExpenseViewSet, IssueReportViewSet
+)
 from vehicles.views import VehicleBrandViewSet, VehicleModelViewSet, VehicleUnitViewSet
 from battery.views import BatteryViewSet, FifoOverrideViewSet
 from leads.views import LeadViewSet
@@ -27,6 +30,9 @@ router = DefaultRouter()
 router.register(r'branches', BranchViewSet, basename='branch')
 router.register(r'showrooms', ShowroomViewSet, basename='showroom')
 router.register(r'inventory-locations', InventoryLocationViewSet, basename='inventorylocation')
+router.register(r'branch-cash-deposits', BranchCashDepositViewSet, basename='branchcashdeposit')
+router.register(r'branch-expenses', BranchExpenseViewSet, basename='branchexpense')
+router.register(r'issue-reports', IssueReportViewSet, basename='issuereport')
 router.register(r'vehicle-brands', VehicleBrandViewSet, basename='vehiclebrand')
 router.register(r'vehicle-models', VehicleModelViewSet, basename='vehiclemodel')
 router.register(r'vehicle-units', VehicleUnitViewSet, basename='vehicleunit')

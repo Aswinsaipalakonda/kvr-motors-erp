@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Branch, Showroom, InventoryLocation
+from .models import Branch, Showroom, InventoryLocation, BranchCashDeposit, BranchExpense, IssueReport
 
 class ShowroomSerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,3 +31,31 @@ class BranchSerializer(serializers.ModelSerializer):
             return cleaned
         return value
 
+class BranchCashDepositSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    deposited_by_name = serializers.CharField(source='deposited_by.full_name', read_only=True)
+    supervisor_name = serializers.CharField(source='supervisor.full_name', read_only=True)
+
+    class Meta:
+        model = BranchCashDeposit
+        fields = '__all__'
+
+class BranchExpenseSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    submitted_by_name = serializers.CharField(source='submitted_by.full_name', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+
+    class Meta:
+        model = BranchExpense
+        fields = '__all__'
+
+class IssueReportSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    reported_by_name = serializers.CharField(source='reported_by.full_name', read_only=True)
+    resolved_by_name = serializers.CharField(source='resolved_by.full_name', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+
+    class Meta:
+        model = IssueReport
+        fields = '__all__'

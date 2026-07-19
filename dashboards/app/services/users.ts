@@ -18,6 +18,8 @@ export interface UserProfile {
   postal_code?: string | null;
 }
 
+export type User = UserProfile;
+
 export const getUsers = async (): Promise<UserProfile[]> => {
   const response = await api.get("/users/");
   return response.data;

@@ -145,7 +145,12 @@ export default function SalesDashboard() {
   const [checkoutCustomerName, setCheckoutCustomerName] = useState("");
   const [checkoutContactNumber, setCheckoutContactNumber] = useState("");
   const [checkoutPaymentMode, setCheckoutPaymentMode] = useState("SBI Finance");
+  const [checkoutSplitDetails, setCheckoutSplitDetails] = useState({ cash: "", card: "", upi: "", bajaj_finance: "" });
   const [checkoutInsurancePartner, setCheckoutInsurancePartner] = useState("Chola MS - Comprehensive 1+5 Yr");
+
+  // Simplified FIFO Popup State
+  const [fifoModalOpen, setFifoModalOpen] = useState(false);
+  const [fifoModalData, setFifoModalData] = useState<{ recommended: any; selected: any } | null>(null);
 
   // Mela Campaign States
   const [melaInventoryList, setMelaInventoryList] = useState<any[]>([]);
@@ -299,34 +304,6 @@ export default function SalesDashboard() {
     loadMelaData();
   }, []);
 
-  // Polling for FIFO Override approvals
-  useEffect(() => {
-    if (!overrideRequested || !activeOverrideRequest) return;
-    
-    const interval = setInterval(async () => {
-      try {
-        const overrides = await getFifoOverrides();
-        const activeReq = overrides.find((o: any) => o.id === activeOverrideRequest.id);
-        if (activeReq && activeReq.status === "approved") {
-          setFifoWarning(false);
-          setOverrideRequested(false);
-          setActiveOverrideRequest(null);
-          showToast("Battery Override APPROVED by Supervisor! Form unlocked.");
-          clearInterval(interval);
-        } else if (activeReq && activeReq.status === "rejected") {
-          setActiveOverrideRequest(null);
-          setOverrideRequested(false);
-          showToast("Battery Override REJECTED. Select the recommended battery pack.", "error");
-          clearInterval(interval);
-        }
-      } catch (e) {
-        console.error("Failed to poll override request status:", e);
-      }
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [overrideRequested, activeOverrideRequest]);
-
   // VIN Search Auto-fill
   const handleVinSearch = async () => {
     setVinSearchError("");
@@ -360,49 +337,6 @@ export default function SalesDashboard() {
       showToast("No vehicle unit found.", "error");
     } finally {
       setVinSearchLoading(false);
-    }
-  };
-
-  // Battery validation check
-  const handleBatterySelect = async (serial: string) => {
-    setSelectedBattery(serial);
-    if (!serial) {
-      setFifoWarning(false);
-      setOverrideRequested(false);
-      return;
-    }
-    
-    try {
-      const checkRes = await checkFifo(serial);
-      if (checkRes.is_oldest === false && checkRes.warning) {
-        setFifoWarning(true);
-        setOldestBatteryInStock(checkRes.oldest_serial_number || "BATT-00874");
-      } else {
-        setFifoWarning(false);
-        setOverrideRequested(false);
-      }
-    } catch (e) {
-      console.error("Failed to validate FIFO status:", e);
-      setFifoWarning(false);
-    }
-  };
-
-  const handleRequestOverride = async () => {
-    if (!selectedBattery) return;
-    try {
-      const targetBattery = batteriesList.find(b => b.serial_number === selectedBattery);
-      if (!targetBattery) return;
-      
-      const newOverride = await createFifoOverride({
-        battery: targetBattery.id,
-        sales_executive: user?.full_name || user?.username || "Sales Executive",
-        invoice_reference: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`
-      });
-      setActiveOverrideRequest(newOverride);
-      setOverrideRequested(true);
-      showToast("Override request sent to Supervisor.");
-    } catch (e) {
-      showToast("Failed to request override.", "error");
     }
   };
 
@@ -1088,6 +1022,25 @@ export default function SalesDashboard() {
     printWindow.document.close();
   };
 
+  const handleBatterySelect = (serial: string) => {
+    if (!serial) {
+      setSelectedBattery("");
+      return;
+    }
+    const available = batteriesList
+      .filter(b => b.status === "available" || b.status === "Available")
+      .sort((a, b) => new Date(a.purchase_date || 0).getTime() - new Date(b.purchase_date || 0).getTime());
+    
+    const recommended = available[0];
+    const chosen = batteriesList.find(b => b.serial_number === serial);
+
+    if (recommended && recommended.serial_number !== serial) {
+      setFifoModalData({ recommended, selected: chosen || { serial_number: serial } });
+      setFifoModalOpen(true);
+    }
+    setSelectedBattery(serial);
+  };
+
   // Sales Checkout submission
   const handleSalesCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1103,6 +1056,7 @@ export default function SalesDashboard() {
         assigned_battery: batteryObj?.id || null,
         sale_price: autoFillResult.price ? parseFloat(autoFillResult.price.replace(/[₹,\s]/g, '')) : 0,
         payment_mode: checkoutPaymentMode,
+        payment_split_details: checkoutPaymentMode === "split" ? checkoutSplitDetails : null,
         insurance_partner: checkoutInsurancePartner,
         delivery_status: "processing",
         branch: autoFillResult.branchId || 1
@@ -2044,12 +1998,13 @@ export default function SalesDashboard() {
                     {/* Financier & Insurance Options */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Financier Partner</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Mode / Financier</label>
                         <select value={checkoutPaymentMode} onChange={(e) => setCheckoutPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
-                          <option>SBI Finance</option>
-                          <option>HDFC Bank Loan</option>
-                          <option>L&T Finance</option>
-                          <option>Self-Finance (Cash/Cheque)</option>
+                          <option value="SBI Finance">SBI Finance</option>
+                          <option value="HDFC Bank Loan">HDFC Bank Loan</option>
+                          <option value="L&T Finance">L&T Finance</option>
+                          <option value="Self-Finance (Cash/Cheque)">Self-Finance (Cash/Cheque)</option>
+                          <option value="split">Split Payment (Multi-Mode: Cash, Card, UPI, Bajaj)</option>
                         </select>
                       </div>
                       <div className="space-y-1.5">
@@ -2061,6 +2016,37 @@ export default function SalesDashboard() {
                         </select>
                       </div>
                     </div>
+
+                    {/* Split Payment Breakdown Inputs */}
+                    {checkoutPaymentMode === "split" && (
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Split Payment Breakdown</span>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Liquid Cash (₹)</label>
+                            <input type="number" placeholder="0" value={checkoutSplitDetails.cash} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, cash: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Card Payment (₹)</label>
+                            <input type="number" placeholder="0" value={checkoutSplitDetails.card} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, card: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">UPI Payment (₹)</label>
+                            <input type="number" placeholder="0" value={checkoutSplitDetails.upi} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, upi: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Bajaj Finance / EMI (₹)</label>
+                            <input type="number" placeholder="0" value={checkoutSplitDetails.bajaj_finance} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, bajaj_finance: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-xs font-extrabold pt-2 border-t border-slate-200">
+                          <span className="text-slate-500">Total Split Amount:</span>
+                          <span className="text-[#04a700]">
+                            ₹{(Number(checkoutSplitDetails.cash || 0) + Number(checkoutSplitDetails.card || 0) + Number(checkoutSplitDetails.upi || 0) + Number(checkoutSplitDetails.bajaj_finance || 0)).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Vehicle details populated by Auto-fill */}
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
@@ -2103,51 +2089,17 @@ export default function SalesDashboard() {
                         required
                       >
                         <option value="">-- Choose Battery pack --</option>
-                        {batteriesList.filter(b => b.status === "available").map((b) => (
+                        {batteriesList.filter(b => b.status === "available" || b.status === "Available").map((b) => (
                           <option key={b.id} value={b.serial_number}>
-                            {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date}) {b.serial_number === "BATT-00874" ? "[Oldest Stock]" : ""}
+                            {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date || "Earliest"})
                           </option>
                         ))}
                       </select>
-
-                      {/* FIFO Warning Indicator */}
-                      {fifoWarning && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                          <div className="flex gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-                            <div>
-                              <h4 className="text-xs font-bold text-amber-800">Stock Sequence Warning Triggered</h4>
-                              <p className="text-[11px] text-amber-600 font-semibold mt-1">
-                                Selected battery pack ({selectedBattery}) is newer than the oldest available battery in stock ({oldestBatteryInStock}). 
-                                Delivery requires an overriding approval code from a Branch Supervisor.
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 pt-2 border-t border-amber-100">
-                            {overrideRequested ? (
-                              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                                Bypass Request Transmitted to Supervisor Panel...
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={handleRequestOverride}
-                                className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3.5 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm"
-                              >
-                                Request Supervisor Battery Bypass
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <button 
                       type="submit" 
-                      disabled={fifoWarning && !overrideRequested}
-                      className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
+                      className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
                     >
                       Confirm Sale & Dispatch
                     </button>
@@ -2470,6 +2422,47 @@ export default function SalesDashboard() {
             Save Booking
           </button>
         </form>
+      </Modal>
+
+      {/* 3. FIFO Recommendation Pop-up Modal */}
+      <Modal isOpen={fifoModalOpen} onClose={() => setFifoModalOpen(false)} title="FIFO Battery Stock Recommendation">
+        {fifoModalData && (
+          <div className="space-y-4 text-left">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Earlier Purchased Battery Stock Available</span>
+              </div>
+              <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                Battery pack <strong className="font-mono text-slate-900">{fifoModalData.recommended.serial_number}</strong> (Purchased: {fifoModalData.recommended.purchase_date || "Earlier"}) is available and recommended under First-In-First-Out stock rules.
+              </p>
+              <p className="text-xs text-slate-600 font-medium">
+                You selected: <strong className="font-mono text-slate-900">{fifoModalData.selected?.serial_number}</strong>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBattery(fifoModalData.recommended.serial_number);
+                  setFifoModalOpen(false);
+                  showToast(`Auto-selected recommended FIFO battery (${fifoModalData.recommended.serial_number})`);
+                }}
+                className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
+              >
+                Use Recommended FIFO Battery
+              </button>
+              <button
+                type="button"
+                onClick={() => setFifoModalOpen(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-full transition-colors cursor-pointer"
+              >
+                Proceed with Selected Battery
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

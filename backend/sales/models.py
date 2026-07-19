@@ -17,7 +17,8 @@ class SalesInvoice(models.Model):
     vehicle_unit = models.ForeignKey(VehicleUnit, on_delete=models.PROTECT, related_name="sales_invoices")
     assigned_battery = models.ForeignKey(Battery, on_delete=models.PROTECT, null=True, blank=True, related_name="sales_invoices")
     sale_price = models.DecimalField(max_digits=12, decimal_places=2)
-    payment_mode = models.CharField(max_length=50)  # SBI Finance, HDFC Loan, UPI, Cash, etc.
+    payment_mode = models.CharField(max_length=50)  # SBI Finance, HDFC Loan, UPI, Cash, Split, etc.
+    payment_split_details = models.JSONField(blank=True, null=True, help_text="Split payment breakdown: cash, card, upi, bajaj_finance")
     insurance_partner = models.CharField(max_length=100, blank=True, null=True)
     sale_date = models.DateField(auto_now_add=True)
     delivery_status = models.CharField(max_length=20, choices=DELIVERY_CHOICES, default='processing')

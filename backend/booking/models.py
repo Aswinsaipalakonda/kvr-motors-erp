@@ -17,6 +17,7 @@ class AdvanceBooking(models.Model):
     vehicle_model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE)
     color = models.CharField(max_length=50, blank=True, null=True)
     payment_mode = models.CharField(max_length=50, blank=True, null=True)
+    payment_split_details = models.JSONField(blank=True, null=True, help_text="Split payment breakdown: cash, card, upi, bajaj_finance")
     payment_reference = models.CharField(max_length=100, blank=True, null=True)
     vehicle_unit = models.ForeignKey(
         VehicleUnit, 

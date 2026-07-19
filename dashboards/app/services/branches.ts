@@ -1,5 +1,18 @@
 import api from "./api";
 
+export interface Branch {
+  id: number;
+  name: string;
+  address?: string;
+  phone_number?: string;
+  is_active?: boolean;
+  manager_name?: string;
+  total_stock?: number;
+  sales_volume?: number;
+  monthly_target?: number;
+  target_achieved_pct?: number;
+}
+
 export interface BranchInput {
   name: string;
   address?: string;
