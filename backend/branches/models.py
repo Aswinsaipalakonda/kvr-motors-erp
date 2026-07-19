@@ -64,6 +64,9 @@ class BranchCashDeposit(models.Model):
     deposit_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-created_at', '-id']
+
     def save(self, *args, **kwargs):
         import datetime, random
         if not self.deposit_id:
@@ -77,11 +80,11 @@ class BranchCashDeposit(models.Model):
 
 class BranchExpense(models.Model):
     CATEGORY_CHOICES = (
-        ('electricity', 'Electricity / Utilities'),
-        ('transport', 'Transport & Freight'),
-        ('maintenance', 'Showroom Maintenance'),
-        ('refreshments', 'Staff Refreshments'),
-        ('misc', 'Miscellaneous Expense'),
+        ('electricity', 'Electricity / Power Bill'),
+        ('transport', 'Vehicle Transport & Delivery'),
+        ('maintenance', 'Showroom Repair & Maintenance'),
+        ('refreshments', 'Staff Refreshments & Water'),
+        ('misc', 'Other Daily Expenses'),
     )
 
     expense_id = models.CharField(max_length=50, unique=True, blank=True)
@@ -99,6 +102,9 @@ class BranchExpense(models.Model):
     receipt_number = models.CharField(max_length=100, blank=True, null=True)
     expense_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
 
     def save(self, *args, **kwargs):
         import datetime, random
@@ -158,6 +164,9 @@ class IssueReport(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
 
     def save(self, *args, **kwargs):
         if not self.issue_id:

@@ -89,13 +89,15 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
   // Filter based on user's branch if supervisor
   const myBranch = branches.find(b => b.name === user?.showroom || b.name === user?.branch);
   
-  const filteredDeposits = role === "owner" 
+  const filteredDeposits = (role === "owner" 
     ? deposits 
-    : deposits.filter(d => !myBranch || d.branch === myBranch.id || d.branch_name === user?.showroom || d.branch_name === user?.branch);
+    : deposits.filter(d => !myBranch || d.branch === myBranch.id || d.branch_name === user?.showroom || d.branch_name === user?.branch)
+  ).slice().sort((a, b) => b.id - a.id);
 
-  const filteredExpenses = role === "owner" 
+  const filteredExpenses = (role === "owner" 
     ? expenses 
-    : expenses.filter(e => !myBranch || e.branch === myBranch.id || e.branch_name === user?.showroom || e.branch_name === user?.branch);
+    : expenses.filter(e => !myBranch || e.branch === myBranch.id || e.branch_name === user?.showroom || e.branch_name === user?.branch)
+  ).slice().sort((a, b) => b.id - a.id);
 
   // Aggregations
   const totalDeposited = filteredDeposits.reduce((acc, item) => acc + Number(item.amount || 0), 0);
@@ -444,10 +446,10 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
               required
             >
               <option value="electricity">Electricity / Power Bill</option>
-              <option value="transport">Transport & Vehicle Freight</option>
-              <option value="maintenance">Showroom Maintenance & Repairs</option>
+              <option value="transport">Vehicle Transport & Delivery</option>
+              <option value="maintenance">Showroom Repair & Maintenance</option>
               <option value="refreshments">Staff Refreshments & Water</option>
-              <option value="misc">Miscellaneous Expense</option>
+              <option value="misc">Other Daily Expenses</option>
             </select>
           </div>
 
