@@ -60,11 +60,18 @@ ssh "root@$VPS_IP" "
     tar -xzf dashboards.tar.gz -C dashboards && rm dashboards.tar.gz
     
     echo 'Shutting down current containers...'
-    docker compose down
+    docker compose down --remove-orphans
     
     echo 'Building and launching updated containers...'
     docker compose build --no-cache
     docker compose up -d
+
+    echo 'Waiting for services to initialize...'
+    sleep 5
+
+    echo 'Running database migrations and resetting application data...'
+    docker compose exec -T backend python manage.py migrate --noinput
+    docker compose exec -T backend python reset_vps_data.py
     
     echo 'Pruning unused docker images to free space...'
     docker image prune -f
