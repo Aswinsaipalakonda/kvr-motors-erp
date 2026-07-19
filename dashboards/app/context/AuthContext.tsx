@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import { setCookie, getCookie, eraseCookie } from "../utils/cookies";
 
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Check if session token and user details exist in cookies
@@ -70,6 +71,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [router]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const isOwnerRoute = pathname.startsWith("/owner");
+    const isSupervisorRoute = pathname.startsWith("/supervisor");
+    const isSalesRoute = pathname.startsWith("/sales");
+    const isTelecallerRoute = pathname.startsWith("/telecaller");
+    const isStaffRoute = pathname.startsWith("/staff");
+
+    if (isOwnerRoute || isSupervisorRoute || isSalesRoute || isTelecallerRoute || isStaffRoute) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      const role = user.role;
+      if (isOwnerRoute && role !== "owner" && role !== "admin") {
+        router.push("/login");
+      } else if (isSupervisorRoute && role !== "supervisor") {
+        router.push("/login");
+      } else if (isSalesRoute && role !== "sales_executive" && role !== "sales") {
+        router.push("/login");
+      } else if (isTelecallerRoute && role !== "telecaller") {
+        router.push("/login");
+      } else if (isStaffRoute && role !== "staff") {
+        router.push("/login");
+      }
+    }
+  }, [user, isLoading, pathname, router]);
 
   const login = async (username: string, password: string): Promise<UserProfile> => {
     try {

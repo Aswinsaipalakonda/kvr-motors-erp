@@ -12,35 +12,38 @@ export function middleware(request: NextRequest) {
   const isTelecallerRoute = pathname.startsWith("/telecaller");
   const isStaffRoute = pathname.startsWith("/staff");
 
-  // 1. If visiting a protected dashboard path, verify authentication
+  // 1. If visiting a protected dashboard path, verify authentication and strict role alignment
   if (isOwnerRoute || isSupervisorRoute || isSalesRoute || isTelecallerRoute || isStaffRoute) {
     if (!token || !role) {
-      // Direct unauthorized anonymous session to login screen
       const loginUrl = new URL("/login", request.url);
-      // Pass the original destination path as query context for UX post-auth redirect
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Role-based directory matching
+    // Strict Role-based directory matching - redirect to login if role is unauthorized
     if (isOwnerRoute && role !== "owner" && role !== "admin") {
-      return redirectToRoleDashboard(role, request);
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    if (isSupervisorRoute && role !== "supervisor" && role !== "owner" && role !== "admin") {
-      return redirectToRoleDashboard(role, request);
+    if (isSupervisorRoute && role !== "supervisor") {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    if (isSalesRoute && role !== "sales_executive" && role !== "sales" && role !== "owner" && role !== "admin") {
-      return redirectToRoleDashboard(role, request);
+    if (isSalesRoute && role !== "sales_executive" && role !== "sales") {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    if (isTelecallerRoute && role !== "telecaller" && role !== "owner" && role !== "admin") {
-      return redirectToRoleDashboard(role, request);
+    if (isTelecallerRoute && role !== "telecaller") {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    if (isStaffRoute && role !== "staff" && role !== "owner" && role !== "admin") {
-      return redirectToRoleDashboard(role, request);
+    if (isStaffRoute && role !== "staff") {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
