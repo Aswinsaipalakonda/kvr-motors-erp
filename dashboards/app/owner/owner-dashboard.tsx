@@ -1192,206 +1192,452 @@ export default function OwnerDashboard() {
     printWindow.document.close();
   };
 
-  const handlePrintSalesInvoice = (inv: any) => {
-    const printWindow = window.open("", "_blank", "width=600,height=800");
-    if (!printWindow) {
-      showToast("Popup blocker prevented opening the print invoice.", "error");
-      return;
+  const numberToWordsIndian = (num: number): string => {
+    const a = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+      "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    num = Math.floor(num);
+    if (num === 0) return "Zero";
+
+    const convertLessThanOneHundred = (n: number): string => {
+      if (n < 20) return a[n];
+      return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+    };
+
+    const convertLessThanOneThousand = (n: number): string => {
+      if (n >= 100) {
+        return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + convertLessThanOneHundred(n % 100) : "");
+      }
+      return convertLessThanOneHundred(n);
+    };
+
+    let word = "";
+    let crores = Math.floor(num / 10000000);
+    num %= 10000000;
+    let lakhs = Math.floor(num / 100000);
+    num %= 100000;
+    let thousands = Math.floor(num / 1000);
+    num %= 1000;
+    let remaining = num;
+
+    if (crores > 0) {
+      word += convertLessThanOneThousand(crores) + " Crore ";
+    }
+    if (lakhs > 0) {
+      word += convertLessThanOneThousand(lakhs) + " Lakh ";
+    }
+    if (thousands > 0) {
+      word += convertLessThanOneThousand(thousands) + " Thousand ";
+    }
+    if (remaining > 0) {
+      word += convertLessThanOneThousand(remaining);
     }
 
-    const formattedDate = inv.sale_date
-      ? new Date(inv.sale_date).toLocaleString("en-IN", {
-          dateStyle: "medium",
-        })
-      : new Date().toLocaleString("en-IN", {
-          dateStyle: "medium",
-        });
+    return word.trim() + " Rupees Only";
+  };
 
-    const priceStr = parseFloat(inv.sale_price || 0).toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const generateTaxInvoiceHtml = (details: {
+    invoiceNo: string;
+    date: string;
+    placeOfSupply: string;
+    poDate: string;
+    poNo: string;
+    customerName: string;
+    customerPhone: string;
+    customerAddress: string;
+    vehicleModel: string;
+    color: string;
+    vinNo: string;
+    motorNo: string;
+    batteryNo: string;
+    chargerNo: string;
+    totalPrice: number;
+    paymentMode: string;
+    executiveName: string;
+  }) => {
+    const totalAmount = details.totalPrice;
+    const taxableAmount = totalAmount / 1.05;
+    const totalTax = totalAmount - taxableAmount;
+    const cgstAmount = totalTax / 2;
+    const sgstAmount = totalTax / 2;
 
-    const printHtml = `
+    const formattedTaxable = taxableAmount.toFixed(2);
+    const formattedTax = totalTax.toFixed(2);
+    const formattedCgst = cgstAmount.toFixed(2);
+    const formattedSgst = sgstAmount.toFixed(2);
+    const formattedTotal = totalAmount.toFixed(2);
+
+    const priceWords = numberToWordsIndian(totalAmount);
+
+    return `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Invoice - \${inv.invoice_number || ('INV-' + inv.id)}</title>
+        <title>Tax Invoice - ${details.invoiceNo}</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <style>
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
           body {
-            width: 72mm;
-            margin: 0 auto;
-            padding: 6mm 4mm 20mm 4mm;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-size: 11px;
             line-height: 1.4;
             color: #000;
+            margin: 20px;
             background-color: #fff;
-            -webkit-print-color-adjust: exact;
-            box-sizing: border-box;
           }
-          .text-center {
-            text-align: center;
-          }
-          .text-right {
-            text-align: right;
-          }
-          .bold {
-            font-weight: bold;
-          }
-          .brand-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 0 0 2px 0;
-            letter-spacing: 1px;
-          }
-          .brand-subtitle {
-            font-size: 10px;
-            margin: 0 0 6px 0;
-            text-transform: uppercase;
-          }
-          .divider {
-            border-top: 1px dashed #000;
-            margin: 8px 0;
-          }
-          .details-table {
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .bold { font-weight: bold; }
+          
+          .invoice-header-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 8px 0;
+            border: 1px solid #000;
           }
-          .details-table td {
-            padding: 2px 0;
+          .invoice-header-table td {
+            border: 1px solid #000;
+            padding: 8px;
             vertical-align: top;
           }
-          .details-table td.label {
-            width: 40%;
-            color: #333;
+          .company-details {
+            width: 55%;
           }
-          .details-table td.value {
-            width: 60%;
-            text-align: right;
-            font-weight: bold;
+          .invoice-meta {
+            width: 45%;
+            padding: 0 !important;
           }
-          .items-header {
-            font-weight: bold;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 4px;
-            margin-bottom: 6px;
+          .invoice-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            height: 100%;
           }
-          .item-row {
-            margin-bottom: 4px;
+          .invoice-meta-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 6px 8px;
           }
-          .item-desc {
-            font-weight: bold;
+          .invoice-meta-table tr:last-child td {
+            border-bottom: none;
           }
-          .item-meta {
-            font-size: 9px;
-            color: #555;
-            padding-left: 8px;
+          
+          .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
           }
-          .total-section {
-            margin-top: 8px;
-            font-size: 13px;
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            padding: 6px 0;
+          .logo-text {
+            font-size: 20px;
+            font-weight: 900;
+            color: #04a700;
+            letter-spacing: 1px;
           }
-          .footer-thanks {
-            margin-top: 15px;
+          
+          .bill-to-section {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            border-top: none;
+          }
+          .bill-to-section td {
+            padding: 8px;
+            vertical-align: top;
+          }
+          
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            border-top: none;
+          }
+          .items-table th, .items-table td {
+            border: 1px solid #000;
+            padding: 6px;
             font-size: 10px;
+          }
+          .items-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-transform: uppercase;
+          }
+          
+          .totals-container-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            border-top: none;
+          }
+          .totals-container-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: top;
+          }
+          .description-column {
+            width: 55%;
+          }
+          .amounts-column {
+            width: 45%;
+            padding: 0 !important;
+          }
+          .amounts-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .amounts-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 6px 8px;
+          }
+          .amounts-table tr:last-child td {
+            border-bottom: none;
+          }
+          
+          .tax-breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            border-top: none;
+          }
+          .tax-breakdown-table th, .tax-breakdown-table td {
+            border: 1px solid #000;
+            padding: 6px;
             text-align: center;
+            font-size: 10px;
           }
-          .signature-area {
-            margin-top: 30px;
-            text-align: right;
-            font-size: 9px;
+          .tax-breakdown-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
           }
+          
+          .bank-terms-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            border-top: none;
+          }
+          .bank-terms-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: top;
+            width: 33.33%;
+          }
+          
           @media print {
             body {
-              width: 72mm;
-              padding: 6mm 4mm 20mm 4mm;
+              margin: 10px;
+            }
+            .no-print {
+              display: none;
             }
           }
         </style>
       </head>
       <body>
-        <div class="text-center">
-          <div class="brand-title">KVR MOTORS</div>
-          <div class="brand-subtitle">Automobile ERP System</div>
-          <div style="font-size: 9px;">Authorized Dealer</div>
-        </div>
+        <div style="margin-bottom: 5px; font-weight: bold; font-size: 14px;" class="text-center">Tax Invoice</div>
+        <div style="font-size: 9px; font-weight: bold; margin-bottom: 5px;" class="text-right">ORIGINAL FOR RECIPIENT</div>
         
-        <div class="divider"></div>
-        
-        <table class="details-table">
+        <table class="invoice-header-table">
           <tr>
-            <td class="label">Invoice No:</td>
-            <td class="value">\${inv.invoice_number || ('INV-' + inv.id)}</td>
-          </tr>
-          <tr>
-            <td class="label">Date:</td>
-            <td class="value">\${formattedDate}</td>
-          </tr>
-          <tr>
-            <td class="label">Customer:</td>
-            <td class="value">\${inv.customer_name}</td>
-          </tr>
-          <tr>
-            <td class="label">Phone:</td>
-            <td class="value">\${inv.customer_contact}</td>
-          </tr>
-          <tr>
-            <td class="label">Sales Exec:</td>
-            <td class="value">\${inv.executive_name || "Sales Executive"}</td>
+            <td class="company-details">
+              <div class="logo-container">
+                <div class="logo-text">KVR MOTORS</div>
+              </div>
+              <div style="font-size: 10px; line-height: 1.3;">
+                GROUND FLOOR, 54-1-13, ISUKATHOTA, MADDILAPALEM, KRANTHINAGAR, VISHAKAPATNAM, ANDHRAPRADESH,<br/>
+                Phone no.: 9391099576<br/>
+                Email: kvr.kinetic@gmail.com<br/>
+                GSTIN: 37GEWPK2874E1ZU<br/>
+                State: 37-Andhra Pradesh
+              </div>
+            </td>
+            <td class="invoice-meta">
+              <table class="invoice-meta-table">
+                <tr>
+                  <td class="bold">Invoice No.</td>
+                  <td class="text-right bold">${details.invoiceNo}</td>
+                </tr>
+                <tr>
+                  <td class="bold">Date</td>
+                  <td class="text-right">${details.date}</td>
+                </tr>
+                <tr>
+                  <td>Place of supply</td>
+                  <td class="text-right">${details.placeOfSupply}</td>
+                </tr>
+                <tr>
+                  <td>PO date</td>
+                  <td class="text-right">${details.poDate}</td>
+                </tr>
+                <tr>
+                  <td>PO number</td>
+                  <td class="text-right">${details.poNo}</td>
+                </tr>
+              </table>
+            </td>
           </tr>
         </table>
         
-        <div class="divider"></div>
+        <table class="bill-to-section">
+          <tr>
+            <td>
+              <div class="bold" style="font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Bill To</div>
+              <div class="bold" style="font-size: 12px; color: #000;">${details.customerName}</div>
+              <div style="margin-top: 4px; font-weight: 500;">
+                ${details.customerAddress}<br/>
+                Contact No. : ${details.customerPhone}<br/>
+                State: 37-Andhra Pradesh
+              </div>
+            </td>
+          </tr>
+        </table>
         
-        <div class="items-header">
-          <span>ITEM DESCRIPTION</span>
-        </div>
-        <div class="item-row">
-          <div class="item-desc">\${inv.model_name || ""}</div>
-          <div class="item-meta">Color: \${inv.vehicle_color || "N/A"}</div>
-          <div class="item-meta">Battery: \${inv.battery_type || inv.battery_serial || "N/A"}</div>
-          <div class="item-meta">VIN: \${inv.vin_number || "N/A"}</div>
-          <div class="text-right bold" style="margin-top: 2px;">1 x ₹ \${priceStr}</div>
-        </div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 5%;">#</th>
+              <th style="width: 25%;" class="text-left">Item name</th>
+              <th style="width: 10%;">HSN/ SAC</th>
+              <th style="width: 8%;">Colour</th>
+              <th style="width: 12%;">VIN No</th>
+              <th style="width: 10%;">Motor No</th>
+              <th style="width: 10%;">Battery No</th>
+              <th style="width: 10%;">Charger No</th>
+              <th style="width: 5%;">Qty</th>
+              <th style="width: 5%;">Unit</th>
+              <th style="width: 10%;" class="text-right">Price/ Unit</th>
+              <th style="width: 10%;" class="text-right">GST</th>
+              <th style="width: 10%;" class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td class="text-left bold">${details.vehicleModel}</td>
+              <td>87116020</td>
+              <td>${details.color}</td>
+              <td style="font-size: 9px; font-weight: bold; word-break: break-all;">${details.vinNo}</td>
+              <td style="font-size: 9px; font-weight: bold; word-break: break-all;">${details.motorNo}</td>
+              <td style="font-size: 9px; font-weight: bold; word-break: break-all;">${details.batteryNo}</td>
+              <td style="font-size: 9px; font-weight: bold; word-break: break-all;">${details.chargerNo}</td>
+              <td>1</td>
+              <td>VH</td>
+              <td class="text-right">₹ ${parseFloat(formattedTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td class="text-right">₹ ${parseFloat(formattedTax).toLocaleString("en-IN", { minimumFractionDigits: 2 })} (5%)</td>
+              <td class="text-right bold">₹ ${parseFloat(formattedTotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
         
-        <div class="total-section">
-          <div style="display: flex; justify-content: space-between;">
-            <span class="bold">GRAND TOTAL:</span>
-            <span class="bold">₹ \${priceStr}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
-            <span>PAID BY:</span>
-            <span class="bold">\${(inv.payment_mode || "CASH").toUpperCase()}</span>
-          </div>
-          \${inv.insurance_partner ? \`
-          <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
-            <span>INSURANCE:</span>
-            <span class="bold">\${inv.insurance_partner}</span>
-          </div>\` : ''}
-        </div>
+        <table class="totals-container-table">
+          <tr>
+            <td class="description-column">
+              <div style="margin-bottom: 8px;">
+                <span class="bold">Invoice Amount in Words:</span><br/>
+                <span style="font-style: italic; font-weight: bold; font-size: 11px;">${priceWords}</span>
+              </div>
+              <div style="font-size: 9px; line-height: 1.3; border-top: 1px solid #eee; pt-6;">
+                <span class="bold" style="text-decoration: underline;">Description</span><br/>
+                BATTERY WARRANTY - 3YEARS (or) 30,000KM (Whichever comes first)<br/>
+                MOTOR WARRANTY - 2YEARS<br/>
+                CONTROLLER WARRANTY - 2YEARS<br/>
+                CHARGER WARRANTY - 1YEAR<br/>
+                <span class="bold">NOTE ; NO FREE SERVICES</span>
+              </div>
+              <div style="margin-top: 8px; border-top: 1px solid #eee; pt-4;">
+                <span class="bold">Payment mode:</span><br/>
+                <span>KVR Motors UPI (351828801952 - 590201007448), ${details.paymentMode}</span>
+              </div>
+            </td>
+            <td class="amounts-column">
+              <table class="amounts-table">
+                <tr>
+                  <td class="bold">Amounts</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Sub Total</td>
+                  <td class="text-right bold">₹ ${parseFloat(formattedTotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="bold">Total</td>
+                  <td class="text-right bold">₹ ${parseFloat(formattedTotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td>Received</td>
+                  <td class="text-right bold" style="color: #04a700;">₹ ${parseFloat(formattedTotal).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td>Balance</td>
+                  <td class="text-right bold">₹ 0.00</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
         
-        <div class="footer-thanks">
-          <div class="bold">THANK YOU FOR YOUR BUSINESS!</div>
-          <div>Please retain this invoice for registration and warranty.</div>
-          <div style="font-size: 8px; margin-top: 4px; color: #444;">System Generated Invoice</div>
-        </div>
+        <table class="tax-breakdown-table">
+          <thead>
+            <tr>
+              <th rowspan="2">HSN/ SAC</th>
+              <th rowspan="2">Taxable amount</th>
+              <th colspan="2">CGST</th>
+              <th colspan="2">SGST</th>
+              <th rowspan="2">Total Tax Amount</th>
+            </tr>
+            <tr>
+              <th>Rate</th>
+              <th>Amount</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="bold">87116020</td>
+              <td class="text-right">₹ ${parseFloat(formattedTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td>2.5%</td>
+              <td class="text-right">₹ ${parseFloat(formattedCgst).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td>2.5%</td>
+              <td class="text-right">₹ ${parseFloat(formattedSgst).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td class="text-right bold">₹ ${parseFloat(formattedTax).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            </tr>
+            <tr class="bold" style="background-color: #fafafa;">
+              <td>Total</td>
+              <td class="text-right">₹ ${parseFloat(formattedTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td></td>
+              <td class="text-right">₹ ${parseFloat(formattedCgst).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td></td>
+              <td class="text-right">₹ ${parseFloat(formattedSgst).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td class="text-right">₹ ${parseFloat(formattedTax).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
         
-        <div class="signature-area">
-          <br/><br/>
-          <span>-----------------------</span><br/>
-          <span>Authorized Signatory</span>
-        </div>
+        <table class="bank-terms-table">
+          <tr>
+            <td>
+              <div class="bold" style="text-decoration: underline; margin-bottom: 4px;">Bank Details</div>
+              Name : ICICI BANK LIMITED, SRIKAKULAM<br/>
+              Account No. : 070005500380<br/>
+              IFSC code : ICIC0000700<br/>
+              Account holder's name : KVR MOTORS
+            </td>
+            <td>
+              <div class="bold" style="text-decoration: underline; margin-bottom: 4px;">Terms and conditions</div>
+              Thanks You!<br/>
+              Please Refer to Terms and Conditions in Page 2
+            </td>
+            <td class="text-center" style="position: relative;">
+              <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">For KVR MOTORS</div>
+              <div style="font-style: italic; font-weight: bold; color: #444; margin-bottom: 5px;">K. V. Raghava Reddy</div>
+              <div class="bold" style="border-top: 1px solid #eee; pt-2; font-size: 9px;">Proprietor</div>
+            </td>
+          </tr>
+        </table>
         
         <script>
           window.onload = function() {
@@ -1402,6 +1648,38 @@ export default function OwnerDashboard() {
       </body>
       </html>
     `;
+  };
+
+  const handlePrintSalesInvoice = (inv: any) => {
+    const printWindow = window.open("", "_blank", "width=800,height=900");
+    if (!printWindow) {
+      showToast("Popup blocker prevented opening the print invoice.", "error");
+      return;
+    }
+
+    const formattedDate = inv.sale_date
+      ? new Date(inv.sale_date).toLocaleDateString("en-IN")
+      : new Date().toLocaleDateString("en-IN");
+
+    const printHtml = generateTaxInvoiceHtml({
+      invoiceNo: inv.invoice_number || `INV-${inv.id}`,
+      date: formattedDate,
+      placeOfSupply: "37-Andhra Pradesh",
+      poDate: formattedDate,
+      poNo: inv.invoice_number || "—",
+      customerName: inv.customer_name,
+      customerPhone: inv.customer_contact,
+      customerAddress: "2-181, OLD DAIRY FARM, VISAKHAPATNAM - 530040",
+      vehicleModel: inv.model_name || "DYNAMO X1 (60V 31.2AH)",
+      color: inv.vehicle_color || "BLACK",
+      vinNo: inv.vin_number || "—",
+      motorNo: inv.motor_number || "R6VA014COMT010820",
+      batteryNo: inv.battery_serial || "UESL026F01493",
+      chargerNo: "XEVXNCMDZ06AEC30375",
+      totalPrice: parseFloat(inv.sale_price || 0),
+      paymentMode: inv.payment_mode || "Cash",
+      executiveName: inv.executive_name || "Sales Executive"
+    });
 
     printWindow.document.open();
     printWindow.document.write(printHtml);
