@@ -800,7 +800,10 @@ export default function SalesDashboard() {
                           type="text"
                           placeholder="e.g. 9876543210"
                           value={melaBookingPhone}
-                          onChange={(e) => setMelaBookingPhone(e.target.value)}
+                          onChange={(e) => setMelaBookingPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          maxLength={10}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500"
                           required
                         />
@@ -1304,7 +1307,7 @@ export default function SalesDashboard() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-                        <input type="text" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+                        <input type="tel" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
                       </div>
                     </div>
 

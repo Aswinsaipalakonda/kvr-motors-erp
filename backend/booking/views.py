@@ -15,3 +15,11 @@ class AdvanceBookingViewSet(CacheResponseMixin, viewsets.ModelViewSet):
                 queryset = queryset.filter(assigned_executive__branch=user.branch)
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_authenticated:
+            serializer.save(assigned_executive=user)
+        else:
+            serializer.save()
+        self.clear_cache()
+
