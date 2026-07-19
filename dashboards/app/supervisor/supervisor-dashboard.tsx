@@ -984,6 +984,8 @@ export default function SupervisorDashboard() {
     totalPrice: number;
     paymentMode: string;
     executiveName: string;
+    logoUrl: string;
+    signatureUrl: string;
   }) => {
     const totalAmount = details.totalPrice;
     const taxableAmount = totalAmount / 1.05;
@@ -1171,6 +1173,7 @@ export default function SupervisorDashboard() {
           <tr>
             <td class="company-details">
               <div class="logo-container">
+                <img src="${details.logoUrl}" alt="KVR Logo" style="height: 45px; width: auto; object-fit: contain;" />
                 <div class="logo-text">KVR MOTORS</div>
               </div>
               <div style="font-size: 10px; line-height: 1.3;">
@@ -1358,10 +1361,13 @@ export default function SupervisorDashboard() {
               Thanks You!<br/>
               Please Refer to Terms and Conditions in Page 2
             </td>
-            <td class="text-center" style="position: relative;">
-              <div style="font-size: 10px; font-weight: bold; margin-bottom: 30px;">For KVR MOTORS</div>
+            <td class="text-center" style="position: relative; vertical-align: top;">
+              <div style="font-size: 10px; font-weight: bold; margin-bottom: 5px;">For KVR MOTORS</div>
+              <div style="height: 35px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                <img src="${details.signatureUrl}" alt="Proprietor Signature" style="max-height: 35px; width: auto; object-fit: contain;" />
+              </div>
               <div style="font-style: italic; font-weight: bold; color: #444; margin-bottom: 5px;">K. V. Raghava Reddy</div>
-              <div class="bold" style="border-top: 1px solid #eee; pt-2; font-size: 9px;">Proprietor</div>
+              <div class="bold" style="border-top: 1px solid #000; padding-top: 4px; font-size: 9px;">Proprietor</div>
             </td>
           </tr>
         </table>
@@ -1388,6 +1394,8 @@ export default function SupervisorDashboard() {
       ? new Date(inv.sale_date).toLocaleDateString("en-IN")
       : new Date().toLocaleDateString("en-IN");
 
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+
     const printHtml = generateTaxInvoiceHtml({
       invoiceNo: inv.invoice_number || `INV-${inv.id}`,
       date: formattedDate,
@@ -1405,7 +1413,9 @@ export default function SupervisorDashboard() {
       chargerNo: "XEVXNCMDZ06AEC30375",
       totalPrice: parseFloat(inv.sale_price || 0),
       paymentMode: inv.payment_mode || "Cash",
-      executiveName: inv.executive_name || "Sales Executive"
+      executiveName: inv.executive_name || "Sales Executive",
+      logoUrl: `${origin}/icon.png`,
+      signatureUrl: `${origin}/signature.png`
     });
 
     printWindow.document.open();
