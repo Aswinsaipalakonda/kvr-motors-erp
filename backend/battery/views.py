@@ -6,8 +6,15 @@ from .serializers import BatterySerializer, FifoOverrideSerializer
 from config.cache import CacheResponseMixin
 
 class BatteryViewSet(CacheResponseMixin, viewsets.ModelViewSet):
-    queryset = Battery.objects.all()
     serializer_class = BatterySerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Battery.objects.all()
+        if user.is_authenticated and user.role not in ['admin', 'owner']:
+            if hasattr(user, 'branch') and user.branch:
+                queryset = queryset.filter(location__branch__name=user.branch)
+        return queryset
 
     @action(detail=False, methods=['get'], url_path='check-fifo')
     def check_fifo(self, request):
@@ -55,5 +62,12 @@ class BatteryViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class FifoOverrideViewSet(CacheResponseMixin, viewsets.ModelViewSet):
-    queryset = FifoOverride.objects.all().order_by('-created_at')
     serializer_class = FifoOverrideSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = FifoOverride.objects.all().order_by('-created_at')
+        if user.is_authenticated and user.role not in ['admin', 'owner']:
+            if hasattr(user, 'branch') and user.branch:
+                queryset = queryset.filter(battery__location__branch__name=user.branch)
+        return queryset

@@ -5,13 +5,15 @@
 
 export function setCookie(name: string, value: string, days?: number) {
   if (typeof window === "undefined") return;
+  const isSecureContext = window.location.protocol === "https:";
   let expires = "";
   if (days) {
     const date = new Date();
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = "; expires=" + date.toUTCString();
   }
-  document.cookie = `${name}=${encodeURIComponent(value || "")}${expires}; path=/; SameSite=Lax`;
+  const secureFlag = isSecureContext ? "; Secure" : "";
+  document.cookie = `${name}=${encodeURIComponent(value || "")}${expires}; path=/; SameSite=Lax${secureFlag}`;
 }
 
 export function getCookie(name: string): string | null {
@@ -28,5 +30,7 @@ export function getCookie(name: string): string | null {
 
 export function eraseCookie(name: string) {
   if (typeof window === "undefined") return;
-  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+  const isSecureContext = window.location.protocol === "https:";
+  const secureFlag = isSecureContext ? "; Secure" : "";
+  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secureFlag}`;
 }

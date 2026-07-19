@@ -174,7 +174,7 @@ export default function LoginPage() {
             className="object-cover opacity-45 mix-blend-lighten"
           />
           {/* Subtle gradient overlay to match image 3 layout feel but in brand colors */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-950/80 to-emerald-950/40" />
+          <div className="absolute inset-0 bg-linear-to-tr from-slate-950 via-slate-950/80 to-emerald-950/40" />
         </div>
 
         {/* Top Header - Logo and Brand Name */}

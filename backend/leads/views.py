@@ -9,6 +9,7 @@ class LeadViewSet(CacheResponseMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        print(f"DEBUG: Request to /leads/. User: {user}, Auth: {self.request.auth}, Headers: {self.request.headers.get('Authorization')}")
         queryset = Lead.objects.all().order_by('-created_at')
         if user.is_authenticated and user.role not in ['admin', 'owner']:
             if hasattr(user, 'branch') and user.branch:

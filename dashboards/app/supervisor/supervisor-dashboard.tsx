@@ -888,15 +888,14 @@ export default function SupervisorDashboard() {
     }
   };
 
-  const handleApproveTransfer = async (ref: string) => {
-    const tr = transfers.find(t => t.ref === ref);
-    if (!tr) return;
+  const handleUpdateTransferStatus = async (id: number, status: string) => {
     try {
-      await updateStockTransfer(tr.id, { status: "approved" });
-      showToast("Transfer approved.");
+      await updateStockTransfer(id, { status: status });
+      showToast(`Transfer marked as ${status}.`);
       loadTransfers();
+      loadVehicles();
     } catch {
-      showToast("Failed to approve stock transfer.", "error");
+      showToast(`Failed to update transfer status to ${status}.`, "error");
     }
   };
 
@@ -1399,20 +1398,27 @@ export default function SupervisorDashboard() {
                       {tr.status === "Pending Approval" ? (
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => handleApproveTransfer(tr.ref)}
+                            onClick={() => handleUpdateTransferStatus(tr.id, "approved")}
                             className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3 py-1 rounded-full cursor-pointer"
                           >
                             Approve
                           </button>
                           <button 
-                            onClick={() => handleApproveTransfer(tr.ref)}
+                            onClick={() => handleUpdateTransferStatus(tr.id, "rejected")}
                             className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
                           >
                             Reject
                           </button>
                         </div>
+                      ) : tr.status === "Approved" && (tr.to === user?.showroom || tr.to === user?.branch) ? (
+                        <button 
+                          onClick={() => handleUpdateTransferStatus(tr.id, "received")}
+                          className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3 py-1 rounded-full cursor-pointer"
+                        >
+                          Mark Received
+                        </button>
                       ) : (
-                        <span className="text-[10px] font-bold text-slate-400">Approved</span>
+                        <span className="text-[10px] font-bold text-slate-400">{tr.status}</span>
                       )}
                     </td>
                   </tr>

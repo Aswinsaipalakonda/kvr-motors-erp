@@ -14,8 +14,18 @@ class VehicleModelViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = VehicleModelSerializer
 
 class VehicleUnitViewSet(CacheResponseMixin, viewsets.ModelViewSet):
-    queryset = VehicleUnit.objects.all()
     serializer_class = VehicleUnitSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = VehicleUnit.objects.all()
+        if user.is_authenticated and user.role not in ['admin', 'owner']:
+            if hasattr(user, 'branch') and user.branch:
+                from django.db.models import Q
+                queryset = queryset.filter(
+                    Q(branch__name=user.branch) | Q(stock_status='available')
+                )
+        return queryset
 
     @action(detail=False, methods=['get'], url_path='lookup')
     def lookup_unit(self, request):

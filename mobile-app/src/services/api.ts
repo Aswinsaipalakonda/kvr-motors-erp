@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
-export let baseHostUrl = 'https://kvr.thehps.in';
+export let baseHostUrl = process.env.EXPO_PUBLIC_API_URL || 'https://kvr.thehps.in';
 
 // Helper to race promises safely in React Native
 const safePromiseAny = async <T>(promises: Promise<T>[]): Promise<T> => {
@@ -78,7 +78,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
     }
   }
 
-  // Fallback to platform-specific emulator loopback address
+  // Fallback to platform-specific emulator loopback address without hardcoding a private LAN IP.
   if (Platform.OS === 'android') {
     if (!candidates.includes('http://10.0.2.2:8000')) {
       candidates.push('http://10.0.2.2:8000');
@@ -87,11 +87,13 @@ export const getBaseHostUrl = async (): Promise<string> => {
     if (!candidates.includes('http://127.0.0.1:8000')) {
       candidates.push('http://127.0.0.1:8000');
     }
+    if (!candidates.includes('http://localhost:8000')) {
+      candidates.push('http://localhost:8000');
+    }
   }
 
   resolvePromise = (async () => {
     try {
-      candidates.push('http://192.168.1.103:8000');
       const wonUrl = await safePromiseAny(candidates.map((url) => pingUrl(url)));
       resolvedBaseUrl = wonUrl;
       baseHostUrl = wonUrl;
@@ -99,7 +101,7 @@ export const getBaseHostUrl = async (): Promise<string> => {
       api.defaults.baseURL = `${wonUrl}/api/v1`;
       return wonUrl;
     } catch {
-      resolvedBaseUrl = 'http://192.168.1.103:8000';
+      resolvedBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://kvr.thehps.in';
       baseHostUrl = resolvedBaseUrl;
       authApi.defaults.baseURL = `${resolvedBaseUrl}/api/auth`;
       api.defaults.baseURL = `${resolvedBaseUrl}/api/v1`;

@@ -4,7 +4,14 @@ from .serializers import AdvanceBookingSerializer
 from config.cache import CacheResponseMixin
 
 class AdvanceBookingViewSet(CacheResponseMixin, viewsets.ModelViewSet):
-    queryset = AdvanceBooking.objects.all().order_by('-booking_date')
     serializer_class = AdvanceBookingSerializer
     filterset_fields = ['status', 'assigned_executive', 'pdi_verified']
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = AdvanceBooking.objects.all().order_by('-booking_date')
+        if user.is_authenticated and user.role not in ['admin', 'owner']:
+            if hasattr(user, 'branch') and user.branch:
+                queryset = queryset.filter(assigned_executive__branch=user.branch)
+        return queryset
 

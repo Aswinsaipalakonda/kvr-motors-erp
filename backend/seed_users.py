@@ -21,7 +21,7 @@ def seed_users():
         },
         {
             "username": "supervisor",
-            "password": "super123",
+            "password": "supervisor123",
             "email": "supervisor@kvrmotors.com",
             "full_name": "Suresh Babu",
             "role": "supervisor",
@@ -51,7 +51,7 @@ def seed_users():
         },
         {
             "username": "telecaller",
-            "password": "tele123",
+            "password": "telecaller123",
             "email": "telecaller@kvrmotors.com",
             "full_name": "Lakshmi Narayana",
             "role": "telecaller",

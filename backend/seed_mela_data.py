@@ -16,16 +16,17 @@ def seed_mela_data():
 
     print("=== Seeding Mela Campaign Inventory ===")
     
-    # Retrieve vehicle models
-    luna = VehicleModel.objects.filter(model_name="Kinetic Green E-Luna").first()
-    dynamo = VehicleModel.objects.filter(model_name="Dynamo Pro").first()
-    watts = VehicleModel.objects.filter(model_name="Watts 100").first()
-    lima = VehicleModel.objects.filter(model_name="Lima").first()
-    premium_luna = VehicleModel.objects.filter(model_name="Kinetic Green E-Luna Premium").first()
-    
-    if not luna or not dynamo or not watts or not lima or not premium_luna:
-        print("Required models are missing. Please make sure seed_erp_data.py has run first.")
-        return
+    # Retrieve vehicle models (auto-create any missing ones)
+    from vehicles.models import VehicleBrand
+    brand_kinetic, _ = VehicleBrand.objects.get_or_create(name="Kinetic Green", defaults={"is_active": True})
+    brand_dynamo, _ = VehicleBrand.objects.get_or_create(name="Dynamo", defaults={"is_active": True})
+    brand_watts, _ = VehicleBrand.objects.get_or_create(name="Watts", defaults={"is_active": True})
+
+    luna, _ = VehicleModel.objects.get_or_create(model_name="Kinetic Green E-Luna", defaults={"brand": brand_kinetic, "base_price": 74999.00, "status": "active"})
+    dynamo, _ = VehicleModel.objects.get_or_create(model_name="Dynamo Pro", defaults={"brand": brand_dynamo, "base_price": 98500.00, "status": "active"})
+    watts, _ = VehicleModel.objects.get_or_create(model_name="Watts 100", defaults={"brand": brand_watts, "base_price": 145000.00, "status": "active"})
+    lima, _ = VehicleModel.objects.get_or_create(model_name="Lima", defaults={"brand": brand_dynamo, "base_price": 82000.00, "status": "active"})
+    premium_luna, _ = VehicleModel.objects.get_or_create(model_name="Kinetic Green E-Luna Premium", defaults={"brand": brand_kinetic, "base_price": 85000.00, "status": "active"})
         
     # Register Mela Stocks (Stock Qty: 15 for each spec)
     # 1. Kinetic Green E-Luna - Red, Graphene battery, Qty: 15, Price: 62000

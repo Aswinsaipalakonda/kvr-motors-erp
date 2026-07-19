@@ -30,8 +30,7 @@ class IsOwnerOrAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
             request.user.is_staff or 
-            request.user.role == 'owner' or 
-            request.user.role == 'admin'
+            request.user.role in ['owner', 'admin', 'supervisor']
         )
 
 class UserViewSet(CacheResponseMixin, viewsets.ModelViewSet):
@@ -51,4 +50,28 @@ class UserViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         elif user.role == 'supervisor' and user.branch:
             return User.objects.filter(branch=user.branch).order_by('-id')
         return User.objects.filter(id=user.id)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == 'supervisor':
+            # Force supervisor's branch and prevent escalation to owner/admin
+            role = serializer.validated_data.get('role', 'sales')
+            if role in ['owner', 'admin']:
+                role = 'sales'
+            serializer.save(branch=user.branch, role=role)
+        else:
+            serializer.save()
+        self.clear_cache()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        if user.role == 'supervisor':
+            # Force supervisor's branch and prevent escalation to owner/admin
+            role = serializer.validated_data.get('role', 'sales')
+            if role in ['owner', 'admin']:
+                role = 'sales'
+            serializer.save(branch=user.branch, role=role)
+        else:
+            serializer.save()
+        self.clear_cache()
 

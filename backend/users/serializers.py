@@ -33,7 +33,9 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def create(self, validated_data):
-        password = validated_data.pop('password', 'password123')
+        password = validated_data.pop('password', None)
+        if not password:
+            raise serializers.ValidationError({'password': 'A strong password is required.'})
         user = User(**validated_data)
         user.set_password(password)
         user.save()

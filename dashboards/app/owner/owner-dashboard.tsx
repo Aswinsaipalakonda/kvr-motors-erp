@@ -12,7 +12,7 @@ import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
-import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch } from "../services/branches";
+import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch, getStockTransfers } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
 import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
 import { getBookings, createBooking, updateBooking, deleteBooking } from "../services/bookings";
@@ -1276,6 +1276,32 @@ export default function OwnerDashboard() {
     }
   };
 
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [transfersLoading, setTransfersLoading] = useState(true);
+
+  const loadTransfers = async (isSilent = false) => {
+    try {
+      if (!isSilent) setTransfersLoading(true);
+      const data = await getStockTransfers();
+      const mapped = data.map((t: any) => ({
+        id: t.id,
+        ref: t.transfer_id,
+        from: t.from_location_name || "Pendurthi Godown",
+        to: t.to_location_name || "Visakhapatnam Showroom",
+        model: t.model_name || "Kinetic Green E-Luna",
+        qty: t.vin_number ? `1 Unit (${t.vin_number})` : "1 Unit",
+        requestedBy: t.requester_name || "Anil Kumar",
+        priority: t.transfer_id.endsWith("904") ? "Urgent" : t.transfer_id.endsWith("902") ? "High" : "Medium",
+        status: t.status === "approved" ? "Approved" : t.status === "rejected" ? "Rejected" : t.status === "pending" ? "Pending Approval" : t.status_display || "Pending Approval"
+      }));
+      setTransfers(mapped);
+    } catch (e) {
+      console.error("Failed to load stock transfers:", e);
+    } finally {
+      if (!isSilent) setTransfersLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadBranches();
@@ -1283,6 +1309,7 @@ export default function OwnerDashboard() {
     loadLeads();
     loadBookings();
     loadSales();
+    loadTransfers();
     loadPurchases();
     loadLedger();
     loadBatteries();
@@ -5097,15 +5124,55 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              {/* Inter-branch transfers as responsive cards */}
+              {/* Inter-branch transfers as dynamic table */}
               <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
-                  <span className="h-7 w-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><Truck className="h-4 w-4" /></span>
-                  <h3 className="text-sm font-bold text-slate-800">Inter-Location / Inter-Branch Stock Transfers</h3>
-                </div>
-                <div className="p-6 text-center text-xs text-slate-400 font-semibold">
-                  No inter-branch transfers recorded.
-                </div>
+                <Table title="Inter-Location / Inter-Branch Stock Transfers" headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status"]}>
+                  {transfersLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading stock transfers...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : transfers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-6 text-center text-xs text-slate-400 font-semibold">
+                        No inter-branch transfers recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    transfers.map((tr, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.to}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{tr.model}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{tr.qty}</td>
+                        <td className="py-3.5 px-5 text-slate-650 font-bold">{tr.requestedBy}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            tr.priority === "Urgent" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            tr.priority === "High" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-blue-50 text-blue-700 border border-blue-100"
+                          }`}>
+                            {tr.priority}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            tr.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            tr.status === "Rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {tr.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
               </div>
 
               {/* Physical Inventory Stock Units (VIN Registry - Moved from Vehicles tab to Stock Management tab to keep operations grouped logically and fully functional) */}
