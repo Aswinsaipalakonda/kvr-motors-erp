@@ -16,6 +16,7 @@ export interface UserProfile {
   country?: string | null;
   city?: string | null;
   postal_code?: string | null;
+  avatar_url?: string | null;
 }
 
 export type User = UserProfile;

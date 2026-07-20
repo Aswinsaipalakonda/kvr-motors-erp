@@ -42,11 +42,14 @@ import {
   Tooltip 
 } from "recharts";
 
-export default function TelecallerDashboard() {
+import NotificationsView from "../components/NotificationsView";
+
+export default function TelecallerDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const initialTab = lastSegment === "telecaller" ? "dashboard" : lastSegment;
+  const derivedTab = lastSegment === "telecaller" ? "dashboard" : lastSegment;
+  const initialTab = initialTabProp || derivedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sync state with browser back/forward navigation popstate events
@@ -92,10 +95,10 @@ export default function TelecallerDashboard() {
   const [followupNextDate, setFollowupNextDate] = useState("");
   const [followupStatus, setFollowupStatus] = useState("new_lead");
 
-  // Loaders
-  const loadLeadsData = async () => {
+  // Loaders (isSilent prevents auto-blinking during background refresh)
+  const loadLeadsData = async (isSilent = false) => {
     try {
-      setLeadsLoading(true);
+      if (!isSilent) setLeadsLoading(true);
       const data = await getLeads();
       // Filter leads assigned to the logged-in telecaller
       if (user) {
@@ -107,7 +110,7 @@ export default function TelecallerDashboard() {
     } catch (e) {
       console.error("Failed to load leads:", e);
     } finally {
-      setLeadsLoading(false);
+      if (!isSilent) setLeadsLoading(false);
     }
   };
 
@@ -122,11 +125,11 @@ export default function TelecallerDashboard() {
 
   useEffect(() => {
     setIsMounted(true);
-    loadLeadsData();
+    loadLeadsData(false);
     loadVehicleModelsData();
 
     const interval = setInterval(() => {
-      loadLeadsData();
+      loadLeadsData(true);
     }, 5000);
     return () => clearInterval(interval);
   }, [user]);
@@ -616,6 +619,9 @@ export default function TelecallerDashboard() {
           )}
           {activeTab === "profile" && (
             <ProfileView />
+          )}
+          {activeTab === "notifications" && (
+            <NotificationsView role="telecaller" />
           )}
 
         </DashboardSmoothScroll>

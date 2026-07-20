@@ -196,7 +196,7 @@ export default function Navbar({
 
   const handleNotificationClick = (route: string, id: number) => {
     setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    navigate(route);
+    navigate(`/${role}/notifications`);
   };
 
   const branches = useMemo(() => {
@@ -282,8 +282,9 @@ export default function Navbar({
       {/* Utilities Container */}
       <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 shrink-0">
 
-        {/* Search Bar — working command palette */}
-        <div className="relative hidden xs:block w-36 sm:w-60 md:w-80">
+        {/* Search Bar — shown ONLY for owner and supervisor */}
+        {(role === "owner" || role === "supervisor") && (
+          <div className="relative hidden xs:block w-36 sm:w-60 md:w-80">
           <form onSubmit={handleSearchSubmit}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
@@ -348,6 +349,7 @@ export default function Navbar({
             </div>
           )}
         </div>
+      )}
 
         {/* Date Range Selector — working preset dropdown */}
         <div className="relative hidden lg:block">
@@ -498,6 +500,14 @@ export default function Navbar({
                   </div>
                 )}
               </div>
+              <div className="pt-2.5 mt-2 border-t border-slate-100 text-center">
+                <button
+                  onClick={() => navigate(`/${role}/notifications`)}
+                  className="w-full py-2 text-center text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  Open Notifications Center →
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -514,8 +524,12 @@ export default function Navbar({
             }}
             className="flex items-center gap-2 sm:gap-3 sm:pl-4 sm:border-l border-emerald-250/60 cursor-pointer group select-none"
           >
-            <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center font-bold text-xs text-emerald-800 border border-emerald-100 uppercase shrink-0">
-              {initials || "KV"}
+            <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center font-bold text-xs text-emerald-800 border border-emerald-100 uppercase shrink-0 overflow-hidden">
+              {user?.avatar_url || (typeof window !== "undefined" && localStorage.getItem("user_avatar")) ? (
+                <img src={user?.avatar_url || localStorage.getItem("user_avatar")!} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                initials || "KV"
+              )}
             </div>
             <div className="hidden md:flex flex-col text-left shrink-0">
               <span className="text-xs font-bold leading-none text-slate-800 group-hover:text-slate-900 transition-colors">

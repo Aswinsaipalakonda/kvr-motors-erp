@@ -11,6 +11,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import AttendanceView from "../components/AttendanceView";
+import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -87,13 +88,14 @@ import {
   Square
 } from "lucide-react";
 
-export default function StaffDashboard() {
+export default function StaffDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
   const pathname = usePathname();
 
   // Tab mapping based on URL segment
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const initialTab = lastSegment === "staff" ? "dashboard" : lastSegment;
+  const derivedTab = lastSegment === "staff" ? "dashboard" : lastSegment;
+  const initialTab = initialTabProp || derivedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
@@ -1083,6 +1085,11 @@ export default function StaffDashboard() {
             {/* TAB 6: MY PROFILE */}
             {activeTab === "profile" && (
               <ProfileView />
+            )}
+
+            {/* TAB 7: NOTIFICATIONS */}
+            {activeTab === "notifications" && (
+              <NotificationsView role="staff" />
             )}
         </DashboardSmoothScroll>
       </div>

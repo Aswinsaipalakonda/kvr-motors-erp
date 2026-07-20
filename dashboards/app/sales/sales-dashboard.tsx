@@ -66,11 +66,14 @@ import {
   Tooltip 
 } from "recharts";
 
-export default function SalesDashboard() {
+import NotificationsView from "../components/NotificationsView";
+
+export default function SalesDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const initialTab = lastSegment === "sales" ? "dashboard" : lastSegment;
+  const derivedTab = lastSegment === "sales" ? "dashboard" : lastSegment;
+  const initialTab = initialTabProp || derivedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sync state with browser back/forward navigation popstate events
@@ -2313,6 +2316,9 @@ export default function SalesDashboard() {
           )}
           {activeTab === "profile" && (
             <ProfileView />
+          )}
+          {activeTab === "notifications" && (
+            <NotificationsView role="sales" />
           )}
         </DashboardSmoothScroll>
       </div>

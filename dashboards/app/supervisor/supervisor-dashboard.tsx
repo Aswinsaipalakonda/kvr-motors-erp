@@ -14,6 +14,7 @@ import ProfileView from "../components/ProfileView";
 import AttendanceView from "../components/AttendanceView";
 import BranchExpenseView from "../components/BranchExpenseView";
 import IssueReportView from "../components/IssueReportView";
+import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -82,11 +83,12 @@ import {
   Legend
 } from "recharts";
 
-export default function SupervisorDashboard() {
+export default function SupervisorDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const initialTab = lastSegment === "supervisor" ? "dashboard" : lastSegment;
+  const derivedTab = lastSegment === "supervisor" ? "dashboard" : lastSegment;
+  const initialTab = initialTabProp || derivedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sync state with browser back/forward navigation popstate events
@@ -2733,6 +2735,9 @@ export default function SupervisorDashboard() {
           )}
           {activeTab === "profile" && (
             <ProfileView />
+          )}
+          {activeTab === "notifications" && (
+            <NotificationsView role="supervisor" />
           )}
 
         </DashboardSmoothScroll>

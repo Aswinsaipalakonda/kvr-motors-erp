@@ -186,8 +186,62 @@ export default function ProfileView() {
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
+  // Avatar Image Upload State
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("user_avatar");
+    }
+    return null;
+  });
+
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg("File size exceeds 5MB limit. Please choose a smaller image.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Url = reader.result as string;
+      setAvatarUrl(base64Url);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user_avatar", base64Url);
+      }
+
+      if (profileData) {
+        const updated = { ...profileData, avatar_url: base64Url };
+        setProfileData(updated);
+        updateUser(updated);
+        try {
+          await updateCurrentUser({ avatar_url: base64Url });
+        } catch (err) {
+          console.warn("Backend avatar sync failed, retained in local session cache.");
+        }
+      }
+
+      setSuccessMsg("Profile picture updated successfully!");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-6 text-left max-w-5xl mx-auto p-4 md:p-6">
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
       
       {/* Title */}
       <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
@@ -210,12 +264,21 @@ export default function ProfileView() {
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-150/60 flex items-center space-x-6">
         <div className="relative flex-shrink-0">
           <div className="h-20 w-20 rounded-full bg-amber-500/10 border-2 border-amber-500/30 overflow-hidden flex items-center justify-center text-3xl font-black text-amber-600">
-            {getInitials(profileData.full_name || profileData.username)}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              getInitials(profileData.full_name || profileData.username)
+            )}
           </div>
           {/* Green camera upload icon overlay */}
-          <div className="absolute bottom-0 right-0 h-6 w-6 rounded-full bg-[#054E35] border-2 border-white flex items-center justify-center shadow-md cursor-pointer hover:bg-[#033B27] transition-all">
-            <Camera className="h-3 w-3 text-white" />
-          </div>
+          <button
+            type="button"
+            onClick={handleCameraClick}
+            title="Upload Profile Photo"
+            className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-[#054E35] border-2 border-white flex items-center justify-center shadow-md cursor-pointer hover:bg-[#033B27] hover:scale-105 transition-all"
+          >
+            <Camera className="h-3.5 w-3.5 text-white" />
+          </button>
         </div>
         <div className="text-left min-w-0">
           <h3 className="text-xl font-bold text-[#054E35] truncate">

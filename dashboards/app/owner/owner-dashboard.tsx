@@ -13,6 +13,7 @@ import ProfileView from "../components/ProfileView";
 import BranchExpenseView from "../components/BranchExpenseView";
 import IssueReportView from "../components/IssueReportView";
 import OwnerReportsView from "../components/OwnerReportsView";
+import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch, getStockTransfers } from "../services/branches";
@@ -127,10 +128,11 @@ const getDynamicCode = (prefix: string, day: number) => {
   return `${prefix}-${year}-${month}${dayStr}`;
 };
 
-export default function OwnerDashboard() {
+export default function OwnerDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const pathname = usePathname();
   const lastSegment = pathname.split("/").filter(Boolean).pop() || "dashboard";
-  const initialTab = lastSegment === "owner" ? "dashboard" : lastSegment;
+  const derivedTab = lastSegment === "owner" ? "dashboard" : lastSegment;
+  const initialTab = initialTabProp || derivedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
   const [selectedRange, setSelectedRange] = useState(getDefaultRangeString());
@@ -6927,6 +6929,9 @@ export default function OwnerDashboard() {
           )}
           {activeTab === "profile" && (
             <ProfileView />
+          )}
+          {activeTab === "notifications" && (
+            <NotificationsView role="owner" />
           )}
         </DashboardSmoothScroll>
       </div>
