@@ -287,18 +287,10 @@ export default function TelecallerDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
-      <DashboardSmoothScroll />
-      
-      {/* Sidebar Navigation */}
       <DashboardSidebar role="telecaller" activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Main Container */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
-        {/* Top Navbar */}
         <Navbar role="telecaller" title={activeTab === "dashboard" ? "Telecaller Desk" : "Leads Management"} />
-
-        {/* Dashboard Views */}
-        <main className="flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar space-y-6">
+        <DashboardSmoothScroll className="p-4 pb-28 lg:pb-6 space-y-6">
           
           {activeTab === "dashboard" && (
             <>
@@ -626,7 +618,7 @@ export default function TelecallerDashboard() {
             <ProfileView />
           )}
 
-        </main>
+        </DashboardSmoothScroll>
       </div>
 
       {/* Bottom navbar for mobile layouts */}

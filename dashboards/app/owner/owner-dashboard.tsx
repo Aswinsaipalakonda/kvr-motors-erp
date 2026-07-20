@@ -2969,8 +2969,6 @@ export default function OwnerDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
-      <DashboardSmoothScroll />
-      
       <DashboardSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
       {activeTab.startsWith("mela_") && (
         <MelaSubSidebar role="owner" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -2987,7 +2985,7 @@ export default function OwnerDashboard() {
           onRangeChange={setSelectedRange}
           branchesList={branchesList}
         />
-        <main className={`flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar ${
+        <DashboardSmoothScroll className={`p-4 pb-28 lg:pb-6 ${
           activeTab.startsWith("mela_") 
             ? "pt-0 md:pt-4 flex flex-col space-y-4 bg-[#FAFDFB]" 
             : activeTab === "dashboard" 
@@ -6930,7 +6928,7 @@ export default function OwnerDashboard() {
           {activeTab === "profile" && (
             <ProfileView />
           )}
-        </main>
+        </DashboardSmoothScroll>
       </div>
       {/* Mobile bottom navigation */}
       <BottomNav role="owner" activeTab={activeTab} />

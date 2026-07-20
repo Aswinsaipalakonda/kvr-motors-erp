@@ -643,33 +643,32 @@ export default function StaffDashboard() {
   };
 
   return (
-    <DashboardSmoothScroll>
-      <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
-        {/* Sidebar */}
-        <DashboardSidebar role="staff" activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
+      {/* Sidebar */}
+      <DashboardSidebar role="staff" activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Navbar */}
-          <Navbar
-            role="staff"
-            title={
-              activeTab === "dashboard"
-                ? "Yard & Operations Command"
-                : activeTab === "inventory"
-                ? "Inventory & Shipment Receivals"
-                : activeTab === "batteries"
-                ? "FIFO Battery Registry"
-                : activeTab === "pdi"
-                ? "Pre-Delivery Inspections & Handovers"
-                : activeTab === "attendance"
-                ? "Workplace Attendance Check-in"
-                : "Staff Profile"
-            }
-          />
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Navbar */}
+        <Navbar
+          role="staff"
+          title={
+            activeTab === "dashboard"
+              ? "Yard & Operations Command"
+              : activeTab === "inventory"
+              ? "Inventory & Shipment Receivals"
+              : activeTab === "batteries"
+              ? "FIFO Battery Registry"
+              : activeTab === "pdi"
+              ? "Pre-Delivery Inspections & Handovers"
+              : activeTab === "attendance"
+              ? "Workplace Attendance Check-in"
+              : "Staff Profile"
+          }
+        />
 
-          {/* Dynamic Screen Content */}
-          <main className="flex-1 overflow-y-auto smooth-scroll min-h-0 p-4 lg:p-6 space-y-6 pb-28 lg:pb-6 slim-scrollbar">
+        {/* Dynamic Screen Content with Lenis Smooth Scroll */}
+        <DashboardSmoothScroll className="p-4 lg:p-6 space-y-6 pb-28 lg:pb-6">
             {/* Toast Notification */}
             {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -1085,8 +1084,8 @@ export default function StaffDashboard() {
             {activeTab === "profile" && (
               <ProfileView />
             )}
-          </main>
-        </div>
+        </DashboardSmoothScroll>
+      </div>
 
         {/* Mobile Bottom Navigation */}
         <BottomNav role="staff" activeTab={activeTab} />
@@ -1386,6 +1385,5 @@ export default function StaffDashboard() {
           </Modal>
         )}
       </div>
-    </DashboardSmoothScroll>
   );
 }

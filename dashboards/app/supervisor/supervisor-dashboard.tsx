@@ -1660,8 +1660,6 @@ export default function SupervisorDashboard() {
 
   return (
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
-      <DashboardSmoothScroll />
-      
       {/* Unified Sidebar */}
       <DashboardSidebar role="supervisor" activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -1670,8 +1668,8 @@ export default function SupervisorDashboard() {
         {/* Navbar */}
         <Navbar role="supervisor" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
-        {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar ${activeTab === "dashboard" ? "flex flex-col space-y-4 bg-[#FAFDFB]" : "space-y-6"}`}>
+        {/* Dashboard Views with Lenis Smooth Scroll */}
+        <DashboardSmoothScroll className={`p-4 pb-28 lg:pb-6 ${activeTab === "dashboard" ? "flex flex-col space-y-4 bg-[#FAFDFB]" : "space-y-6"}`}>
           
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
@@ -2737,7 +2735,7 @@ export default function SupervisorDashboard() {
             <ProfileView />
           )}
 
-        </main>
+        </DashboardSmoothScroll>
       </div>
 
       {/* Mobile bottom navigation */}
