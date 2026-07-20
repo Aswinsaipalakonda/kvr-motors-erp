@@ -30,7 +30,8 @@ import {
   User,
   Wallet,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Bell
 } from "lucide-react";
 
 interface SidebarProps {
@@ -73,6 +74,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "attendance", label: "Staff Attendance", icon: UsersRound },
         { id: "activity-logs", label: "Activity Logs", icon: ActivitySquare },
         { id: "settings", label: "Settings", icon: Settings },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },
@@ -94,6 +96,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "issues", label: "Report Issue", icon: AlertTriangle },
         { id: "reports", label: "Reports", icon: BarChart2 },
         { id: "attendance", label: "Verify Attendance", icon: UsersRound },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },
@@ -112,6 +115,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },
@@ -125,6 +129,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "leads", label: "Leads", icon: Compass },
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },
@@ -140,6 +145,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "batteries", label: "Battery Registry", icon: Battery },
         { id: "pdi", label: "PDI & Handovers", icon: FileText },
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "profile", label: "My Profile", icon: User },
       ]
     }
