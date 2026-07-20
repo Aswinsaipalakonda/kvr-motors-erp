@@ -159,11 +159,11 @@ export default function StaffDashboard() {
 
   const [newBatteryForm, setNewBatteryForm] = useState({
     serial_number: "",
-    battery_code: "BAT-LFP-6030",
-    capacity: "60V 30Ah LFP",
+    battery_code: "",
+    capacity: "",
     purchase_date: new Date().toISOString().slice(0, 10),
     location: "",
-    supplier: "Ampere Power Corp",
+    supplier: "",
     warranty_years: 3
   });
 
@@ -319,16 +319,18 @@ export default function StaffDashboard() {
     const defaultBranch = branches.find(b => b.name === userBranchName) || branches[0];
     const defaultShowroom = showrooms.find(s => s.branch === defaultBranch?.id) || showrooms[0];
     const defaultLoc = locations.find(l => l.branch === defaultBranch?.id) || locations[0];
+    const firstModel = vehicleModels[0];
+    const firstColors = firstModel?.color_variants || firstModel?.colors || ["Green", "Red", "Blue", "Black", "White", "Grey"];
 
     setNewUnitForm({
-      model: vehicleModels[0]?.id ? String(vehicleModels[0].id) : "",
+      model: firstModel?.id ? String(firstModel.id) : "",
       branch: defaultBranch?.id ? String(defaultBranch.id) : "",
       showroom: defaultShowroom?.id ? String(defaultShowroom.id) : "",
       location: defaultLoc?.id ? String(defaultLoc.id) : "",
-      vin_number: `KVR-2026-${Math.floor(10000 + Math.random() * 90000)}`,
-      motor_number: `MOT-${Math.floor(100000 + Math.random() * 900000)}`,
-      chassis_number: `CHS-${Math.floor(100000 + Math.random() * 900000)}`,
-      color: "Green",
+      vin_number: "",
+      motor_number: "",
+      chassis_number: "",
+      color: firstColors[0] || "Green",
       stock_status: "available"
     });
     setIsAddUnitOpen(true);
@@ -338,6 +340,10 @@ export default function StaffDashboard() {
     e.preventDefault();
     if (!newUnitForm.model || !newUnitForm.branch || !newUnitForm.location) {
       showToast("Please select vehicle model, branch, and godown location.", "error");
+      return;
+    }
+    if (!newUnitForm.vin_number.trim()) {
+      showToast("Please enter the VIN Code for the shipment unit.", "error");
       return;
     }
     try {
@@ -355,8 +361,8 @@ export default function StaffDashboard() {
       showToast("Shipment unit successfully logged to godown inventory!");
       setIsAddUnitOpen(false);
       loadAllData();
-    } catch {
-      showToast("Failed to register vehicle unit.", "error");
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || "Failed to register vehicle unit.", "error");
     }
   };
 
@@ -366,12 +372,12 @@ export default function StaffDashboard() {
     const defaultLoc = locations.find(l => l.branch === defaultBranch?.id) || locations[0];
 
     setNewBatteryForm({
-      serial_number: `BATT-LFP-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`,
-      battery_code: "BAT-LFP-6030",
-      capacity: "60V 30Ah LFP",
+      serial_number: "",
+      battery_code: "",
+      capacity: "",
       purchase_date: new Date().toISOString().slice(0, 10),
       location: defaultLoc?.id ? String(defaultLoc.id) : "",
-      supplier: "Ampere Power Corp",
+      supplier: "",
       warranty_years: 3
     });
     setIsAddBatteryOpen(true);
@@ -506,13 +512,30 @@ export default function StaffDashboard() {
     }
   };
 
+  // Camera MediaStream Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   // Handlers for Geolocated Camera Attendance Check-in
   const startCamera = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setIsCameraActive(false);
+        showToast("Webcam unavailable on this device.", "error");
+        return;
+      }
       setIsCameraActive(true);
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+      } else {
+        stream.getTracks().forEach((t) => t.stop());
       }
     } catch (err) {
       console.warn("Camera permission or video stream unavailable:", err);
@@ -646,7 +669,7 @@ export default function StaffDashboard() {
           />
 
           {/* Dynamic Screen Content */}
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 pb-20 lg:pb-6 slim-scrollbar">
+          <main className="flex-1 overflow-y-auto smooth-scroll min-h-0 p-4 lg:p-6 space-y-6 pb-28 lg:pb-6 slim-scrollbar">
             {/* Toast Notification */}
             {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -731,10 +754,10 @@ export default function StaffDashboard() {
                   />
                 </div>
 
-                {/* Mid Section: Daily Checklist + Pending Transfers */}
+                {/* Mid Section: Daily Checklist */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Daily Routine Checklist */}
-                  <div className="bg-white border border-emerald-100/60 rounded-2xl p-5 shadow-sm shadow-emerald-950/4 space-y-4">
+                  <div className="lg:col-span-3 bg-white border border-emerald-100/60 rounded-2xl p-5 shadow-sm shadow-emerald-950/4 space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                       <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
                         <CheckSquare className="h-4 w-4 text-[#04a700]" /> Daily Yard Routine Checklist
@@ -743,7 +766,7 @@ export default function StaffDashboard() {
                         {routineTasks.filter(t => t.done).length} / {routineTasks.length} DONE
                       </span>
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       {routineTasks.map((t) => (
                         <div
                           key={t.id}
@@ -767,71 +790,6 @@ export default function StaffDashboard() {
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Stock Transfers Queue Feed */}
-                  <div className="lg:col-span-2 bg-white border border-emerald-100/60 rounded-2xl p-5 shadow-sm shadow-emerald-950/4 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
-                        <Truck className="h-4 w-4 text-[#04a700]" /> Inter-Branch Stock Transfers Queue
-                      </h3>
-                      <button
-                        onClick={() => setActiveTab("inventory")}
-                        className="text-xs text-[#04a700] hover:underline font-bold"
-                      >
-                        View All Transfers →
-                      </button>
-                    </div>
-
-                    {stockTransfers.length === 0 ? (
-                      <EmptyState title="No active stock transfers" description="There are currently no inter-godown transfers pending." />
-                    ) : (
-                      <div className="space-y-3 max-h-72 overflow-y-auto slim-scrollbar pr-1">
-                        {stockTransfers.slice(0, 4).map((tr: any) => (
-                          <div key={tr.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 gap-3 hover:border-emerald-200 transition-all">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-black text-xs text-slate-800">{tr.transfer_id}</span>
-                                <span className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
-                                  tr.status === "received" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
-                                  tr.status === "in_transit" ? "bg-blue-100 text-blue-800 border border-blue-200" :
-                                  tr.status === "approved" ? "bg-purple-100 text-purple-800 border border-purple-200" :
-                                  "bg-amber-100 text-amber-800 border border-amber-200"
-                                }`}>
-                                  {tr.status_display || tr.status}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-600">
-                                Unit: <span className="text-slate-900 font-extrabold">{tr.model_name || "EV Scooter"} ({tr.vin_number || "VIN"})</span>
-                              </p>
-                              <p className="text-[11px] text-slate-500 font-medium">
-                                From: {tr.from_location_name} → To: {tr.to_location_name}
-                              </p>
-                            </div>
-
-                            {/* Quick Action buttons for Staff */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {tr.status === "approved" && (
-                                <button
-                                  onClick={() => handleUpdateTransferStatus(tr.id, "in_transit")}
-                                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-sm"
-                                >
-                                  Dispatch
-                                </button>
-                              )}
-                              {tr.status === "in_transit" && (
-                                <button
-                                  onClick={() => handleUpdateTransferStatus(tr.id, "received")}
-                                  className="px-3.5 py-1.5 rounded-xl bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold transition-colors shadow-sm"
-                                >
-                                  Mark Received
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -904,11 +862,11 @@ export default function StaffDashboard() {
                 <div className="bg-white border border-emerald-100/60 rounded-2xl p-4 shadow-sm space-y-3">
                   <h3 className="font-black text-sm text-slate-800">Yard Vehicle Units Inventory</h3>
                   <Table
-                    headers={["Model", "VIN Number", "Motor #", "Color", "Location (Godown)", "Status", "Actions"]}
+                    headers={["Model", "VIN Number", "Motor #", "Color", "Location (Godown)", "Status"]}
                   >
                     {staffUnits.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                        <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
                           No vehicle units match the active filters.
                         </td>
                       </tr>
@@ -928,14 +886,6 @@ export default function StaffDashboard() {
                             }`}>
                               {u.stock_status || "Available"}
                             </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <button
-                              onClick={() => openTransferModal(u)}
-                              className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-extrabold text-slate-700 border border-slate-200 transition-colors"
-                            >
-                              Transfer Unit
-                            </button>
                           </td>
                         </tr>
                       ))
@@ -1142,80 +1092,100 @@ export default function StaffDashboard() {
         <BottomNav role="staff" activeTab={activeTab} />
 
         {/* MODAL 1: RECEIVE SHIPMENT (ADD VEHICLE UNIT) */}
-        {isAddUnitOpen && (
-          <Modal isOpen={isAddUnitOpen} title="Receive New Shipment Unit" onClose={() => setIsAddUnitOpen(false)}>
-            <form onSubmit={handleAddUnitSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Vehicle Model</label>
-                <select
-                  value={newUnitForm.model}
-                  onChange={(e) => setNewUnitForm({ ...newUnitForm, model: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
-                >
-                  {vehicleModels.map((m: any) => (
-                    <option key={m.id} value={m.id}>{m.model_name} (₹{m.base_price})</option>
-                  ))}
-                </select>
-              </div>
+        {isAddUnitOpen && (() => {
+          const selectedModelObj = vehicleModels.find((m: any) => String(m.id) === String(newUnitForm.model));
+          const availableColors: string[] = selectedModelObj?.color_variants && selectedModelObj.color_variants.length > 0
+            ? selectedModelObj.color_variants
+            : selectedModelObj?.colors && selectedModelObj.colors.length > 0
+            ? selectedModelObj.colors
+            : ["Green", "Red", "Blue", "Black", "White", "Grey"];
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Target Godown Location</label>
-                <select
-                  value={newUnitForm.location}
-                  onChange={(e) => setNewUnitForm({ ...newUnitForm, location: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
-                >
-                  {locations.map((l: any) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+          return (
+            <Modal isOpen={isAddUnitOpen} title="Receive New Shipment Unit" onClose={() => setIsAddUnitOpen(false)}>
+              <form onSubmit={handleAddUnitSubmit} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">VIN Code</label>
-                  <input
-                    type="text"
-                    value={newUnitForm.vin_number}
-                    onChange={(e) => setNewUnitForm({ ...newUnitForm, vin_number: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Color Variant</label>
+                  <label className="block text-slate-700 font-bold mb-1">Vehicle Model</label>
                   <select
-                    value={newUnitForm.color}
-                    onChange={(e) => setNewUnitForm({ ...newUnitForm, color: e.target.value })}
+                    value={newUnitForm.model}
+                    onChange={(e) => {
+                      const mId = e.target.value;
+                      const mObj = vehicleModels.find((m: any) => String(m.id) === String(mId));
+                      const mColors = mObj?.color_variants?.length ? mObj.color_variants : mObj?.colors?.length ? mObj.colors : ["Green", "Red", "Blue", "Black", "White", "Grey"];
+                      setNewUnitForm({
+                        ...newUnitForm,
+                        model: mId,
+                        color: mColors[0] || "Green"
+                      });
+                    }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
                   >
-                    <option value="Green">Green</option>
-                    <option value="Red">Red</option>
-                    <option value="Blue">Blue</option>
-                    <option value="Orange">Orange</option>
+                    {vehicleModels.map((m: any) => (
+                      <option key={m.id} value={m.id}>{m.model_name} (₹{m.base_price})</option>
+                    ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Motor Serial Number</label>
-                  <input
-                    type="text"
-                    value={newUnitForm.motor_number}
-                    onChange={(e) => setNewUnitForm({ ...newUnitForm, motor_number: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
-                  />
+                  <label className="block text-slate-700 font-bold mb-1">Target Godown Location</label>
+                  <select
+                    value={newUnitForm.location}
+                    onChange={(e) => setNewUnitForm({ ...newUnitForm, location: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
+                  >
+                    {locations.map((l: any) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Chassis Number</label>
-                  <input
-                    type="text"
-                    value={newUnitForm.chassis_number}
-                    onChange={(e) => setNewUnitForm({ ...newUnitForm, chassis_number: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">VIN Code *</label>
+                    <input
+                      type="text"
+                      placeholder="Enter VIN (e.g. KVR-2026-75912)"
+                      value={newUnitForm.vin_number}
+                      onChange={(e) => setNewUnitForm({ ...newUnitForm, vin_number: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Color Variant</label>
+                    <select
+                      value={newUnitForm.color}
+                      onChange={(e) => setNewUnitForm({ ...newUnitForm, color: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
+                    >
+                      {availableColors.map((c: string) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Motor Serial Number</label>
+                    <input
+                      type="text"
+                      placeholder="Enter Motor # (e.g. MOT-797087)"
+                      value={newUnitForm.motor_number}
+                      onChange={(e) => setNewUnitForm({ ...newUnitForm, motor_number: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Chassis Number</label>
+                    <input
+                      type="text"
+                      placeholder="Enter Chassis # (e.g. CHS-105800)"
+                      value={newUnitForm.chassis_number}
+                      onChange={(e) => setNewUnitForm({ ...newUnitForm, chassis_number: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
+                    />
+                  </div>
+                </div>
 
               <div className="pt-2 flex justify-end gap-3">
                 <button
@@ -1234,19 +1204,22 @@ export default function StaffDashboard() {
               </div>
             </form>
           </Modal>
-        )}
+          );
+        })()}
 
         {/* MODAL 2: LOG BATTERY UNIT */}
         {isAddBatteryOpen && (
           <Modal isOpen={isAddBatteryOpen} title="Log Battery to Stock Registry" onClose={() => setIsAddBatteryOpen(false)}>
             <form onSubmit={handleAddBatterySubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Battery Serial Number</label>
+                <label className="block text-slate-700 font-bold mb-1">Battery Serial Number *</label>
                 <input
                   type="text"
+                  placeholder="Enter Serial Number (e.g. BATT-LFP-9041)"
                   value={newBatteryForm.serial_number}
                   onChange={(e) => setNewBatteryForm({ ...newBatteryForm, serial_number: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold focus:outline-none focus:border-[#04a700]"
+                  required
                 />
               </div>
 
@@ -1255,6 +1228,7 @@ export default function StaffDashboard() {
                   <label className="block text-slate-700 font-bold mb-1">Battery Code</label>
                   <input
                     type="text"
+                    placeholder="e.g. BAT-LFP-6030"
                     value={newBatteryForm.battery_code}
                     onChange={(e) => setNewBatteryForm({ ...newBatteryForm, battery_code: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
@@ -1264,6 +1238,7 @@ export default function StaffDashboard() {
                   <label className="block text-slate-700 font-bold mb-1">Capacity</label>
                   <input
                     type="text"
+                    placeholder="e.g. 60V 30Ah LFP"
                     value={newBatteryForm.capacity}
                     onChange={(e) => setNewBatteryForm({ ...newBatteryForm, capacity: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
@@ -1297,48 +1272,6 @@ export default function StaffDashboard() {
                   className="px-4 py-2 rounded-xl bg-[#04a700] text-white font-bold hover:bg-[#038a00] shadow-md shadow-[#04a700]/20"
                 >
                   Log Battery
-                </button>
-              </div>
-            </form>
-          </Modal>
-        )}
-
-        {/* MODAL 3: STOCK TRANSFER REQUEST */}
-        {isTransferOpen && selectedUnitForTransfer && (
-          <Modal isOpen={isTransferOpen} title="Request Stock Transfer" onClose={() => setIsTransferOpen(false)}>
-            <form onSubmit={handleTransferSubmit} className="space-y-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <p className="text-slate-900 font-bold">Unit: {selectedUnitForTransfer.model_name || "EV Scooter"}</p>
-                <p className="text-[#04a700] font-mono font-bold">VIN: {selectedUnitForTransfer.vin_number}</p>
-                <p className="text-slate-600 font-medium">Current Godown: {selectedUnitForTransfer.location_name}</p>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Target Destination Godown</label>
-                <select
-                  value={transferForm.to_location}
-                  onChange={(e) => setTransferForm({ ...transferForm, to_location: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
-                >
-                  {locations.filter(l => l.id !== selectedUnitForTransfer.location).map((l: any) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsTransferOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#04a700] text-white font-bold hover:bg-[#038a00] shadow-md shadow-[#04a700]/20"
-                >
-                  Submit Request
                 </button>
               </div>
             </form>

@@ -298,7 +298,7 @@ export default function TelecallerDashboard() {
         <Navbar role="telecaller" title={activeTab === "dashboard" ? "Telecaller Desk" : "Leads Management"} />
 
         {/* Dashboard Views */}
-        <main className="flex-1 p-4 pb-24 lg:pb-4 overflow-y-auto space-y-6">
+        <main className="flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar space-y-6">
           
           {activeTab === "dashboard" && (
             <>

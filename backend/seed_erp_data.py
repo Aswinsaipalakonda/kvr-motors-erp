@@ -44,26 +44,12 @@ def seed_erp_data():
         defaults={"is_active": True}
     )
     
-    showroom_future, _ = Showroom.objects.get_or_create(
+    # 1 Central Godown located at Vizag / Visakhapatnam
+    location_vizag_godown, _ = InventoryLocation.objects.get_or_create(
         branch=branch,
-        name="Future Ride - Visakhapatnam",
-        defaults={"is_active": True}
-    )
-    
-    location_pendurthi, _ = InventoryLocation.objects.get_or_create(
-        branch=branch,
-        name="Pendurthi Godown",
+        name="Vizag Central Godown",
         defaults={
             "showroom": showroom_visakhapatnam,
-            "is_active": True
-        }
-    )
-    
-    location_pineapple, _ = InventoryLocation.objects.get_or_create(
-        branch=branch,
-        name="Pineapple Colony Godown",
-        defaults={
-            "showroom": showroom_future,
             "is_active": True
         }
     )
@@ -95,14 +81,6 @@ def seed_erp_data():
         name="KVR Showroom - Srikakulam",
         defaults={"is_active": True}
     )
-    location_srikakulam, _ = InventoryLocation.objects.get_or_create(
-        branch=branch_srikakulam,
-        name="Srikakulam Godown",
-        defaults={
-            "showroom": showroom_srikakulam,
-            "is_active": True
-        }
-    )
 
     # Add Kakinada branch and showroom
     branch_kakinada, created = Branch.objects.get_or_create(
@@ -131,16 +109,8 @@ def seed_erp_data():
         name="KVR Showroom - Kakinada",
         defaults={"is_active": True}
     )
-    location_kakinada, _ = InventoryLocation.objects.get_or_create(
-        branch=branch_kakinada,
-        name="Kakinada Godown",
-        defaults={
-            "showroom": showroom_kakinada,
-            "is_active": True
-        }
-    )
 
-    # Add Vizag branch and showrooms
+    # Add Vizag branch and showroom
     branch_vizag, created = Branch.objects.get_or_create(
         name="KVR Motors - Vizag",
         defaults={
@@ -167,19 +137,30 @@ def seed_erp_data():
         name="KVR Showroom - Vizag",
         defaults={"is_active": True}
     )
-    showroom_future_vizag, _ = Showroom.objects.get_or_create(
-        branch=branch_vizag,
-        name="Future Ride - Vizag",
-        defaults={"is_active": True}
+
+    # Showroom Inventory Locations (4 Showrooms)
+    location_visakhapatnam, _ = InventoryLocation.objects.get_or_create(
+        branch=branch,
+        name="KVR Showroom - Visakhapatnam",
+        defaults={"showroom": showroom_visakhapatnam, "is_active": True}
+    )
+    location_srikakulam, _ = InventoryLocation.objects.get_or_create(
+        branch=branch_srikakulam,
+        name="KVR Showroom - Srikakulam",
+        defaults={"showroom": showroom_srikakulam, "is_active": True}
+    )
+    location_kakinada, _ = InventoryLocation.objects.get_or_create(
+        branch=branch_kakinada,
+        name="KVR Showroom - Kakinada",
+        defaults={"showroom": showroom_kakinada, "is_active": True}
     )
     location_vizag, _ = InventoryLocation.objects.get_or_create(
         branch=branch_vizag,
-        name="Vizag Center Godown",
-        defaults={
-            "showroom": showroom_vizag,
-            "is_active": True
-        }
+        name="KVR Showroom - Vizag",
+        defaults={"showroom": showroom_vizag, "is_active": True}
     )
+
+    location_pendurthi = location_vizag_godown
 
 
 
@@ -390,8 +371,8 @@ def seed_erp_data():
         transfer_id="TR-2026-902",
         defaults={
             "vehicle_unit": unit_luna,
-            "from_location": location_pendurthi,
-            "to_location": location_pineapple,
+            "from_location": location_vizag_godown,
+            "to_location": location_srikakulam,
             "status": "pending",
             "requested_by": sales_user
         }
@@ -400,8 +381,8 @@ def seed_erp_data():
         transfer_id="TR-2026-903",
         defaults={
             "vehicle_unit": unit_dynamo,
-            "from_location": location_pineapple,
-            "to_location": location_pendurthi,
+            "from_location": location_kakinada,
+            "to_location": location_vizag_godown,
             "status": "approved",
             "requested_by": sales_user,
             "approved_by": supervisor_user
@@ -446,7 +427,7 @@ def seed_erp_data():
                 "capacity": "2.0 kWh",
                 "purchase_date": date(2024, 1, 10),
                 "status": "available",
-                "location": location_pineapple,
+                "location": location_vizag_godown,
                 "supplier": "Future Batteries Ltd",
                 "warranty_years": 3
             }
@@ -490,7 +471,7 @@ def seed_erp_data():
         defaults={
             "model": model_watts,
             "branch": branch_vizag,
-            "showroom": showroom_future_vizag,
+            "showroom": showroom_vizag,
             "location": location_vizag,
             "motor_number": "MTR-70803",
             "chassis_number": "CHS-68903",

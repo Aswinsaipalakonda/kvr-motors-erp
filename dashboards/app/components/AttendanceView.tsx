@@ -92,13 +92,30 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     return logs.filter(l => l.status === "pending" && (l.user !== user?.id && l.user_detail?.id !== user?.id));
   }, [logs, role, user]);
 
+  // Camera MediaStream Cleanup
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   // Camera & Geolocation Handlers
   const startCamera = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setIsCameraActive(false);
+        showToast("Webcam unavailable on this device. Default photo will be used.", "error");
+        return;
+      }
       setIsCameraActive(true);
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+      } else {
+        stream.getTracks().forEach((t) => t.stop());
       }
     } catch (err) {
       console.warn("Camera video stream unavailable:", err);

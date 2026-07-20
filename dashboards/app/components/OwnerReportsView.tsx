@@ -66,7 +66,9 @@ export default function OwnerReportsView() {
     link.setAttribute("download", `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
     setToast({ msg: `Report '${filename}' downloaded successfully!`, type: "success" });
   };
 

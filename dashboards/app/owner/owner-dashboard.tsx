@@ -1794,7 +1794,7 @@ export default function OwnerDashboard() {
       const mapped = data.map((t: any) => ({
         id: t.id,
         ref: t.transfer_id,
-        from: t.from_location_name || "Pendurthi Godown",
+        from: t.from_location_name || "Vizag Central Godown",
         to: t.to_location_name || "Visakhapatnam Showroom",
         model: t.model_name || "Kinetic Green E-Luna",
         qty: t.vin_number ? `1 Unit (${t.vin_number})` : "1 Unit",
@@ -2987,12 +2987,12 @@ export default function OwnerDashboard() {
           onRangeChange={setSelectedRange}
           branchesList={branchesList}
         />
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${
+        <main className={`flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar ${
           activeTab.startsWith("mela_") 
-            ? "pt-0 md:pt-4 overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
+            ? "pt-0 md:pt-4 flex flex-col space-y-4 bg-[#FAFDFB]" 
             : activeTab === "dashboard" 
-              ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" 
-              : "overflow-y-auto space-y-6"
+              ? "flex flex-col space-y-4 bg-[#FAFDFB]" 
+              : "space-y-6"
         }`}>
           {/* Mobile Mela Sub-Navigation Tab Bar */}
           {activeTab.startsWith("mela_") && (

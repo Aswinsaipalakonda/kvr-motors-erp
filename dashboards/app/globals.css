@@ -19,11 +19,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Smooth, GPU-accelerated momentum scrolling for inner scroll regions (mobile) */
+/* Smooth, GPU-accelerated momentum scrolling for inner scroll regions (mobile & desktop) */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
   scroll-behavior: smooth;
+  touch-action: pan-y;
 }
 
 /* Hide scrollbar visually while keeping scroll functionality */

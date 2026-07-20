@@ -333,7 +333,7 @@ export default function SupervisorDashboard() {
       const mapped = data.map((t: any) => ({
         id: t.id,
         ref: t.transfer_id,
-        from: t.from_location_name || "Pendurthi Godown",
+        from: t.from_location_name || "Vizag Central Godown",
         to: t.to_location_name || "Visakhapatnam Showroom",
         model: t.model_name || "Kinetic Green E-Luna",
         qty: t.vin_number ? `1 Unit (${t.vin_number})` : "1 Unit",
@@ -1612,7 +1612,7 @@ export default function SupervisorDashboard() {
   }, [vehicleUnitsList]);
 
   const stockMovementData = React.useMemo(() => {
-    const locations = ["Pendurthi Godown", "Pineapple Colony", "Visakhapatnam Showroom", "Srikakulam"];
+    const locations = ["Vizag Central Godown", "KVR Showroom - Visakhapatnam", "KVR Showroom - Srikakulam", "KVR Showroom - Kakinada", "KVR Showroom - Vizag"];
     return locations.map((loc) => {
       const inCount = vehicleUnitsList.filter(u => u.location_name?.includes(loc)).length;
       const outCount = salesInvoices.filter(s => s.branch_name?.includes(loc)).length;
@@ -1671,7 +1671,7 @@ export default function SupervisorDashboard() {
         <Navbar role="supervisor" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
 
         {/* Dashboard Views */}
-        <main className={`flex-1 p-4 pb-24 lg:pb-4 ${activeTab === "dashboard" ? "overflow-y-auto flex flex-col space-y-4 bg-[#FAFDFB]" : "overflow-y-auto space-y-6"}`}>
+        <main className={`flex-1 p-4 pb-28 lg:pb-6 overflow-y-auto smooth-scroll min-h-0 slim-scrollbar ${activeTab === "dashboard" ? "flex flex-col space-y-4 bg-[#FAFDFB]" : "space-y-6"}`}>
           
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (

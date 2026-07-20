@@ -22,7 +22,8 @@ export default function SmoothScrollProvider({
     const isDashboard = pathname.startsWith("/owner") || 
                         pathname.startsWith("/supervisor") || 
                         pathname.startsWith("/sales") || 
-                        pathname.startsWith("/telecaller");
+                        pathname.startsWith("/telecaller") ||
+                        pathname.startsWith("/staff");
     if (isDashboard) return;
 
     // Respect users who prefer reduced motion.

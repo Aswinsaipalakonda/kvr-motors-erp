@@ -145,11 +145,59 @@ export default function Navbar({
 
   const headerRef = useRef<HTMLElement>(null);
 
-  const notifications = [
-    { id: 1, title: "New Stock Alert", message: "Low stock on Kinetic E-Luna at Visakhapatnam", time: "3m ago", route: `/${role}/stock` },
-    { id: 2, title: "Booking Confirmed", message: "Booking BK-8021 has been approved", time: "12m ago", route: `/${role}/bookings` },
-    { id: 3, title: "Stock Transfer", message: "Stock transfer TR-2026-904 completed", time: "1h ago", route: `/${role}/stock` },
-  ];
+  // Dynamic role-based notifications list
+  const initialNotifications = useMemo(() => {
+    switch (role) {
+      case "owner":
+        return [
+          { id: 1, title: "Branch Stock Alert", message: "Low vehicle stock reported at Visakhapatnam Godown", time: "Just now", route: "/owner/stock", read: false },
+          { id: 2, title: "Advance Booking", message: "New booking BK-8012 awaiting approval", time: "15m ago", route: "/owner/bookings", read: false },
+          { id: 3, title: "Daily Sales Reconciliation", message: "Visakhapatnam branch submitted daily sales ledger", time: "1h ago", route: "/owner/reports", read: false },
+        ];
+      case "supervisor":
+        return [
+          { id: 1, title: "Inter-Branch Transfer", message: "Stock transfer request TR-904 ready for dispatch", time: "5m ago", route: "/supervisor/stock", read: false },
+          { id: 2, title: "PDI Inspection Pending", message: "2 vehicle handovers scheduled for inspection", time: "20m ago", route: "/supervisor/vehicles", read: false },
+          { id: 3, title: "Staff Attendance Logs", message: "Daily check-in logs submitted for verification", time: "1h ago", route: "/supervisor/attendance", read: false },
+        ];
+      case "staff":
+        return [
+          { id: 1, title: "PDI Check Scheduled", message: "Customer A. Srinivas handover checklist pending", time: "10m ago", route: "/staff/pdi", read: false },
+          { id: 2, title: "Battery Registry Sync", message: "Review FIFO battery serial tags for new stock", time: "45m ago", route: "/staff/batteries", read: false },
+        ];
+      case "sales":
+        return [
+          { id: 1, title: "New Lead Assigned", message: "High-intent lead assigned from Telecaller desk", time: "2m ago", route: "/sales/leads", read: false },
+          { id: 2, title: "Test Drive Follow-up", message: "Scheduled follow-up with customer Rajesh Kumar", time: "30m ago", route: "/sales/followups", read: false },
+        ];
+      case "telecaller":
+        return [
+          { id: 1, title: "Campaign Inquiries", message: "12 new website inquiry leads imported", time: "Just now", route: "/telecaller/leads", read: false },
+          { id: 2, title: "Callback Scheduled", message: "Customer requested callback for Kinetic E-Luna", time: "15m ago", route: "/telecaller/leads", read: false },
+        ];
+      default:
+        return [];
+    }
+  }, [role]);
+
+  const [notificationsList, setNotificationsList] = useState(initialNotifications);
+
+  useEffect(() => {
+    setNotificationsList(initialNotifications);
+  }, [initialNotifications]);
+
+  const unreadCount = useMemo(() => {
+    return notificationsList.filter(n => !n.read).length;
+  }, [notificationsList]);
+
+  const markAllAsRead = () => {
+    setNotificationsList(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleNotificationClick = (route: string, id: number) => {
+    setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    navigate(route);
+  };
 
   const branches = useMemo(() => {
     if (branchesList && branchesList.length > 0) {
@@ -199,7 +247,7 @@ export default function Navbar({
   };
 
   const displayName =
-    user?.full_name || (role === "owner" ? "Ravi Varma" : role === "supervisor" ? "Suresh Babu" : role === "telecaller" ? "Lakshmi Narayana" : "Anil Kumar");
+    user?.full_name || user?.username || (role === "owner" ? "Ravi Varma" : role === "supervisor" ? "Suresh Babu" : role === "telecaller" ? "Lakshmi Narayana" : "Anil Kumar");
   const initials = displayName
     .split(" ")
     .map((w) => w[0])
@@ -209,15 +257,13 @@ export default function Navbar({
     .toUpperCase();
   const roleLabel = (user?.role || role).replace(/_/g, " ");
 
-  const goToSettings = () => {
+  const goToProfile = () => {
     closeAll();
-    // Settings page exists for owner; other roles fall back to their dashboard.
-    router.push(role === "owner" ? "/owner/settings" : `/${role}`);
+    router.push(`/${role}/profile`);
   };
 
   const profileActions = [
-    { id: "profile", label: "View Profile", icon: UserCheck, onClick: goToSettings },
-    { id: "settings", label: "Settings", icon: Settings, onClick: goToSettings },
+    { id: "profile", label: "View Profile", icon: UserCheck, onClick: goToProfile },
     { id: "logout", label: "Logout", icon: LogOut, onClick: () => logout() },
   ];
 
@@ -393,39 +439,64 @@ export default function Navbar({
               setShowBranchDropdown(false);
               setShowDateDropdown(false);
               setShowSearchResults(false);
-              if (next) setHasUnread(false);
             }}
-            className="p-2 rounded-full hover:bg-emerald-50/50 text-slate-650 transition-colors border border-emerald-100 bg-white relative"
+            className="p-2 rounded-full hover:bg-emerald-50/50 text-slate-650 transition-colors border border-emerald-100 bg-white relative cursor-pointer"
           >
             <Bell className="h-4 w-4" />
-            {hasUnread && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-white">
+                {unreadCount}
+              </span>
+            )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-emerald-100 bg-white shadow-xl p-3">
-              <div className="flex items-center justify-between px-2 mb-3">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Notifications</span>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-slate-400 hover:text-slate-600 text-sm"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="space-y-2">
-                {notifications.map((note) => (
+            <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-emerald-100 bg-white shadow-xl p-3">
+              <div className="flex items-center justify-between px-2 mb-3 pb-2 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Notifications {unreadCount > 0 && `(${unreadCount})`}
+                </span>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
                   <button
-                    key={note.id}
-                    onClick={() => navigate(note.route)}
-                    className="block w-full text-left rounded-2xl border border-emerald-50 bg-emerald-50/20 p-3 hover:bg-emerald-50/60 transition-colors"
+                    onClick={() => setShowNotifications(false)}
+                    className="text-slate-400 hover:text-slate-600 text-xs font-medium cursor-pointer"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-slate-800">{note.title}</span>
-                      <span className="text-[10px] font-bold text-slate-500">{note.time}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">{note.message}</p>
+                    Close
                   </button>
-                ))}
+                </div>
+              </div>
+              <div className="space-y-2 max-h-80 overflow-y-auto slim-scrollbar">
+                {notificationsList.length > 0 ? (
+                  notificationsList.map((note) => (
+                    <button
+                      key={note.id}
+                      onClick={() => handleNotificationClick(note.route, note.id)}
+                      className={`block w-full text-left rounded-xl border p-3 transition-colors cursor-pointer ${
+                        note.read
+                          ? "border-slate-100 bg-slate-50/50 text-slate-600"
+                          : "border-emerald-100 bg-emerald-50/40 text-slate-800 font-semibold"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-900">{note.title}</span>
+                        <span className="text-[10px] font-medium text-slate-400">{note.time}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1 leading-snug">{note.message}</p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-xs font-semibold text-slate-400">
+                    No new notifications
+                  </div>
+                )}
               </div>
             </div>
           )}
