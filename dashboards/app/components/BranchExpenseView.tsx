@@ -518,10 +518,12 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Deposit Amount (INR) <span className="text-rose-500">*</span></label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="e.g. 25000"
               value={depositForm.amount}
-              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value.replace(/\D/g, '') })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-700 outline-none"
               required
             />
@@ -586,10 +588,12 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Expense Amount (INR) <span className="text-rose-500">*</span></label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="e.g. 4500"
               value={expenseForm.amount}
-              onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+              onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value.replace(/\D/g, '') })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-700 outline-none"
               required
             />
@@ -662,10 +666,12 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Deposit Amount (INR) <span className="text-rose-500">*</span></label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="e.g. 25000"
               value={depositForm.amount}
-              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value.replace(/\D/g, '') })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-700 outline-none"
               required
             />

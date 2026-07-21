@@ -2727,7 +2727,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Base Showroom Price (INR)</label>
-            <input type="number" placeholder="e.g. 98500" value={newModelPrice} onChange={(e) => setNewModelPrice(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="e.g. 98500" value={newModelPrice} onChange={(e) => setNewModelPrice(e.target.value.replace(/\D/g, ''))} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variants (comma-separated)</label>
@@ -2864,11 +2864,13 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
             <div className="space-y-1.5 mt-4">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Bulk Insertion Quantity (Add multiple at once)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min="1"
                 max="100"
                 value={stockUnitForm.quantity}
-                onChange={(e) => setStockUnitForm({ ...stockUnitForm, quantity: e.target.value })}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, quantity: e.target.value.replace(/\D/g, '') })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none"
               />
             </div>
@@ -2968,7 +2970,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Deposit Paid (INR)</label>
-            <input type="number" placeholder="e.g. 5000" value={newBooking.advance_amount} onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="e.g. 5000" value={newBooking.advance_amount} onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value.replace(/\D/g, '') })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry date (Lock Threshold)</label>
@@ -3012,7 +3014,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Warranty Period (Years)</label>
-              <input type="number" placeholder="e.g. 3" value={newBattery.warranty_years} onChange={(e) => setNewBattery({ ...newBattery, warranty_years: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="e.g. 3" value={newBattery.warranty_years} onChange={(e) => setNewBattery({ ...newBattery, warranty_years: e.target.value.replace(/\D/g, '') })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Acquisition Purchase Date</label>

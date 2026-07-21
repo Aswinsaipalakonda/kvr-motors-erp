@@ -2152,19 +2152,19 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Liquid Cash (₹)</label>
-                            <input type="number" placeholder="0" value={checkoutSplitDetails.cash} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, cash: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.cash} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, cash: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Card Payment (₹)</label>
-                            <input type="number" placeholder="0" value={checkoutSplitDetails.card} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, card: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-450 uppercase">Card Amount</label>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.card} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, card: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">UPI Payment (₹)</label>
-                            <input type="number" placeholder="0" value={checkoutSplitDetails.upi} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, upi: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-450 uppercase">UPI Amount</label>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.upi} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, upi: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Bajaj Finance / EMI (₹)</label>
-                            <input type="number" placeholder="0" value={checkoutSplitDetails.bajaj_finance} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, bajaj_finance: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-450 uppercase">Bajaj Finance</label>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.bajaj_finance} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, bajaj_finance: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-xs font-extrabold pt-2 border-t border-slate-200">
@@ -2554,7 +2554,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Deposit Paid (INR)</label>
-            <input type="number" placeholder="e.g. 5000" value={newBooking.advance_amount} onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="e.g. 5000" value={newBooking.advance_amount} onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value.replace(/\D/g, '') })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry date (Lock Threshold)</label>

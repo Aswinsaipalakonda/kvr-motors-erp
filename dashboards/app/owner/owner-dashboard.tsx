@@ -3682,10 +3682,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Target Bookings</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="10"
                         value={newGroupTarget}
-                        onChange={(e) => setNewGroupTarget(e.target.value)}
+                        onChange={(e) => setNewGroupTarget(e.target.value.replace(/\D/g, ''))}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500"
                         required
                       />
@@ -3770,9 +3772,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editVehiclePrice}
-                                  onChange={(e) => setEditVehiclePrice(e.target.value)}
+                                  onChange={(e) => setEditVehiclePrice(e.target.value.replace(/\D/g, ''))}
                                   className="w-20 bg-slate-50 border border-slate-200 rounded p-1 text-xs font-bold outline-none"
                                 />
                               ) : (
@@ -3782,9 +3786,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editVehicleInitialQty}
-                                  onChange={(e) => setEditVehicleInitialQty(e.target.value)}
+                                  onChange={(e) => setEditVehicleInitialQty(e.target.value.replace(/\D/g, ''))}
                                   className="w-16 bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
                                 />
                               ) : (
@@ -3794,9 +3800,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editVehicleRemainingQty}
-                                  onChange={(e) => setEditVehicleRemainingQty(e.target.value)}
+                                  onChange={(e) => setEditVehicleRemainingQty(e.target.value.replace(/\D/g, ''))}
                                   className="w-16 bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
                                 />
                               ) : (
@@ -3905,9 +3913,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editBatteryPrice}
-                                  onChange={(e) => setEditBatteryPrice(e.target.value)}
+                                  onChange={(e) => setEditBatteryPrice(e.target.value.replace(/\D/g, ''))}
                                   className="w-24 bg-slate-50 border border-slate-200 rounded p-1 text-xs font-bold outline-none"
                                 />
                               ) : (
@@ -3917,9 +3927,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editBatteryInitialQty}
-                                  onChange={(e) => setEditBatteryInitialQty(e.target.value)}
+                                  onChange={(e) => setEditBatteryInitialQty(e.target.value.replace(/\D/g, ''))}
                                   className="w-16 bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
                                 />
                               ) : (
@@ -3929,9 +3941,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3 px-5 font-medium">
                               {isEditing ? (
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   value={editBatteryRemainingQty}
-                                  onChange={(e) => setEditBatteryRemainingQty(e.target.value)}
+                                  onChange={(e) => setEditBatteryRemainingQty(e.target.value.replace(/\D/g, ''))}
                                   className="w-16 bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none"
                                 />
                               ) : (
@@ -4081,20 +4095,24 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Mela Price (INR)</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 placeholder="Price"
                                 value={melaInvPrice || ""}
-                                onChange={(e) => setMelaInvPrice(e.target.value)}
+                                onChange={(e) => setMelaInvPrice(e.target.value.replace(/\D/g, ''))}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                               />
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Initial Qty</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 placeholder="Qty"
                                 value={melaInvQty || ""}
-                                onChange={(e) => setMelaInvQty(e.target.value)}
+                                onChange={(e) => setMelaInvQty(e.target.value.replace(/\D/g, ''))}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                               />
                             </div>
@@ -4146,20 +4164,24 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Mela Price (INR)</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 placeholder="Price"
                                 value={newBatteryPrice || ""}
-                                onChange={(e) => setNewBatteryPrice(e.target.value)}
+                                onChange={(e) => setNewBatteryPrice(e.target.value.replace(/\D/g, ''))}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                               />
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Initial Qty</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 placeholder="Qty"
                                 value={newBatteryQty || ""}
-                                onChange={(e) => setNewBatteryQty(e.target.value)}
+                                onChange={(e) => setNewBatteryQty(e.target.value.replace(/\D/g, ''))}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 font-bold"
                               />
                             </div>
@@ -4391,10 +4413,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Adjustment Quantity</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           placeholder="Quantity to change"
                           value={melaAdjQty}
-                          onChange={(e) => setMelaAdjQty(e.target.value)}
+                          onChange={(e) => setMelaAdjQty(e.target.value.replace(/\D/g, ''))}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-bold"
                           required
                         />
@@ -4531,40 +4555,48 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                     <div className="space-y-1">
                                       <label className="text-[9px] font-bold text-slate-450 uppercase">Cash Amount</label>
                                       <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         placeholder="0"
                                         value={splitAmounts.cash}
-                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value.replace(/\D/g, '') })}
                                         className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                                       />
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[9px] font-bold text-slate-450 uppercase">Card Amount</label>
                                       <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         placeholder="0"
                                         value={splitAmounts.card}
-                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value.replace(/\D/g, '') })}
                                         className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                                       />
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[9px] font-bold text-slate-450 uppercase">UPI Amount</label>
                                       <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         placeholder="0"
                                         value={splitAmounts.upi}
-                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value.replace(/\D/g, '') })}
                                         className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                                       />
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[9px] font-bold text-slate-450 uppercase">Bajaj Finance</label>
                                       <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         placeholder="0"
                                         value={splitAmounts.bajaj_finance}
-                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, bajaj_finance: e.target.value })}
+                                        onChange={(e) => setSplitAmounts({ ...splitAmounts, bajaj_finance: e.target.value.replace(/\D/g, '') })}
                                         className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                                       />
                                     </div>
@@ -5791,158 +5823,151 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 })}
               </div>
 
-              {/* Stock In + Out as responsive card lists (no horizontal scroll) */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                {/* Stock In */}
-                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
-                    <span className="h-7 w-7 rounded-lg bg-[#04a700]/10 text-[#04a700] flex items-center justify-center"><ArrowDownLeft className="h-4 w-4" /></span>
-                    <h3 className="text-sm font-bold text-slate-800">Stock Intake Log (Stock-In)</h3>
+              {/* Filter Applied Alert Banner */}
+                {(stockBranchFilter !== "All Branches" || stockSearchQuery.trim() !== "") && (
+                  <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-emerald-900 font-bold shadow-sm animate-fadeIn">
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-[#04a700]" />
+                      Filter Active: Showing <span className="underline decoration-[#04a700] underline-offset-2 font-extrabold">{filteredVehicleUnits.length} stock units</span> matching 
+                      {stockBranchFilter !== "All Branches" && <span className="bg-emerald-100/80 px-2 py-0.5 rounded text-emerald-800 font-extrabold">{stockBranchFilter}</span>}
+                      {stockSearchQuery.trim() !== "" && <span className="bg-emerald-100/80 px-2 py-0.5 rounded text-emerald-800 font-extrabold">"{stockSearchQuery}"</span>}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setStockBranchFilter("All Branches");
+                        setStockSearchQuery("");
+                      }}
+                      className="text-[11px] font-extrabold text-rose-600 hover:text-rose-800 bg-white border border-rose-200 px-3 py-1 rounded-xl cursor-pointer shadow-xs transition-colors"
+                    >
+                      Reset Filter
+                    </button>
                   </div>
-                  <div className="divide-y divide-slate-100">
-                    <div className="p-6 text-center text-xs text-slate-400 font-semibold">
-                      No stock intake logs recorded.
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                {/* Stock Out */}
-                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
-                    <span className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><ArrowUpRight className="h-4 w-4" /></span>
-                    <h3 className="text-sm font-bold text-slate-800">Stock Outflow Log (Stock-Out)</h3>
-                  </div>
-                  <div className="divide-y divide-slate-100">
-                    <div className="p-6 text-center text-xs text-slate-400 font-semibold">
-                      No stock outflow logs recorded.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Inter-branch transfers as dynamic table */}
-              <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
-                <Table title="Inter-Location / Inter-Branch Stock Transfers" headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status"]}>
-                  {transfersLoading ? (
+                {/* 1. Physical Inventory Stock Units (VIN Registry) - At Top */}
+                <Table 
+                  title="Physical Inventory Stock Units (VIN Registry)" 
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Days in Stock", "Status", "Actions"]}
+                  actions={
+                    <button 
+                      onClick={openAddStockUnit}
+                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15"
+                    >
+                      <Plus className="h-4 w-4" /> Add Stock Unit
+                    </button>
+                  }
+                >
+                  {vehiclesLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <td colSpan={11} className="py-8 text-center text-xs text-slate-405 font-semibold">
                         <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                          <span>Loading stock transfers...</span>
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-[#04a700]" />
+                          <span>Loading physical units registry...</span>
                         </div>
                       </td>
                     </tr>
-                  ) : transfers.length === 0 ? (
+                  ) : filteredVehicleUnits.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-6 text-center text-xs text-slate-400 font-semibold">
-                        No inter-branch transfers recorded.
+                      <td colSpan={11} className="py-8 text-center">
+                        <EmptyState 
+                          title="No Stock Units Found" 
+                          description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered matching the selected branch outlet or search criteria."} 
+                        />
                       </td>
                     </tr>
                   ) : (
-                    transfers.map((tr, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.to}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-800">{tr.model}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-700">{tr.qty}</td>
-                        <td className="py-3.5 px-5 text-slate-650 font-bold">{tr.requestedBy}</td>
-                        <td className="py-3.5 px-5">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            tr.priority === "Urgent" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                            tr.priority === "High" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                            "bg-blue-50 text-blue-700 border border-blue-100"
-                          }`}>
-                            {tr.priority}
-                          </span>
+                    filteredVehicleUnits.map((unit, idx) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
+                        <td className="py-3.5 px-5 text-slate-450 font-medium">{unit.location_name || "Warehouse"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-650">
+                          {(() => {
+                            if (!unit.purchase_date) return "—";
+                            const pDate = new Date(unit.purchase_date);
+                            const diffTime = Math.abs(new Date().getTime() - pDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return `${diffDays} days`;
+                          })()}
                         </td>
                         <td className="py-3.5 px-5">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            tr.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                            tr.status === "Rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                            "bg-amber-50 text-amber-700 border border-amber-200"
+                            unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                            unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-slate-100 text-slate-505 border border-slate-205"
                           }`}>
-                            {tr.status}
+                            {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
                           </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
                         </td>
                       </tr>
                     ))
                   )}
                 </Table>
-              </div>
 
-              {/* Physical Inventory Stock Units (VIN Registry - Moved from Vehicles tab to Stock Management tab to keep operations grouped logically and fully functional) */}
-              <Table 
-                title="Physical Inventory Stock Units (VIN Registry)" 
-                headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Days in Stock", "Status", "Actions"]}
-                actions={
-                  <button 
-                    onClick={openAddStockUnit}
-                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15"
-                  >
-                    <Plus className="h-4 w-4" /> Add Stock Unit
-                  </button>
-                }
-              >
-                {vehiclesLoading ? (
-                  <tr>
-                    <td colSpan={12} className="py-8 text-center text-xs text-slate-405 font-semibold">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-[#04a700]" />
-                        <span>Loading physical units registry...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredVehicleUnits.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="py-8 text-center">
-                      <EmptyState 
-                        title="No Stock Units Found" 
-                        description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered for the selected branch outlet."} 
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  filteredVehicleUnits.map((unit, idx) => (
-                    <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
-                      <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
-                      <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
-                      <td className="py-3.5 px-5 text-slate-450 font-medium">{unit.location_name || "Warehouse"}</td>
-                      <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
-                      <td className="py-3.5 px-5 font-bold text-slate-650">
-                        {(() => {
-                          if (!unit.purchase_date) return "—";
-                          const pDate = new Date(unit.purchase_date);
-                          const diffTime = Math.abs(new Date().getTime() - pDate.getTime());
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          return `${diffDays} days`;
-                        })()}
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                          "bg-slate-100 text-slate-505 border border-slate-205"
-                        }`}>
-                          {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 whitespace-nowrap">
-                        <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
-                        <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </Table>
-            </div>
-          );
-        })()}
+                {/* 2. Inter-Location / Inter-Branch Stock Transfers - At Bottom */}
+                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
+                  <Table title="Inter-Location / Inter-Branch Stock Transfers" headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status"]}>
+                    {transfersLoading ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                            <span>Loading stock transfers...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : transfers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-6 text-center text-xs text-slate-400 font-semibold">
+                          No inter-branch transfers recorded.
+                        </td>
+                      </tr>
+                    ) : (
+                      transfers.map((tr, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
+                          <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
+                          <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.to}</td>
+                          <td className="py-3.5 px-5 font-bold text-slate-800">{tr.model}</td>
+                          <td className="py-3.5 px-5 font-bold text-slate-700">{tr.qty}</td>
+                          <td className="py-3.5 px-5 text-slate-650 font-bold">{tr.requestedBy}</td>
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              tr.priority === "Urgent" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                              tr.priority === "High" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                              "bg-blue-50 text-blue-700 border border-blue-100"
+                            }`}>
+                              {tr.priority}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              tr.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              tr.status === "Rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                              "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}>
+                              {tr.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </Table>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* TAB 5: PURCHASE MANAGEMENT */}
           {activeTab === "purchases" && (
             <div className="space-y-6">
@@ -7729,10 +7754,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price (INR) <span className="text-red-500">*</span></label>
               <input 
-                type="number" 
+                type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="e.g. 98500" 
                 value={newModelPrice}
-                onChange={(e) => setNewModelPrice(e.target.value)}
+                onChange={(e) => setNewModelPrice(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" 
                 required 
               />
@@ -7968,10 +7995,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Quantity</label>
               <input 
-                type="number" 
+                type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="e.g. 30" 
                 value={newPOQty}
-                onChange={(e) => setNewPOQty(e.target.value)}
+                onChange={(e) => setNewPOQty(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
                 required 
               />
@@ -7981,10 +8010,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Price (INR)</label>
               <input 
-                type="number" 
+                type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="e.g. 78000" 
                 value={newPOPrice}
-                onChange={(e) => setNewPOPrice(e.target.value)}
+                onChange={(e) => setNewPOPrice(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
                 required 
               />
@@ -8192,10 +8223,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Amount (INR)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="e.g. 10000"
                 value={newBooking.advance_amount}
-                onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value })}
+                onChange={(e) => setNewBooking({ ...newBooking, advance_amount: e.target.value.replace(/\D/g, '') })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
                 required
               />
@@ -8294,10 +8327,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Warranty (Years)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="3"
                 value={newBattery.warranty_years}
-                onChange={(e) => setNewBattery({ ...newBattery, warranty_years: e.target.value })}
+                onChange={(e) => setNewBattery({ ...newBattery, warranty_years: e.target.value.replace(/\D/g, '') })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               />
             </div>
