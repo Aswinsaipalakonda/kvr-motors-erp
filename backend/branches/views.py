@@ -153,10 +153,12 @@ class IssueReportViewSet(viewsets.ModelViewSet):
         return IssueReport.objects.filter(reported_by=user)
 
     def perform_create(self, serializer):
-        user = self.request.user
-        serializer.save(reported_by=user)
-        self.clear_cache()
+        serializer.save(reported_by=self.request.user)
 
     def perform_update(self, serializer):
-        serializer.save()
-        self.clear_cache()
+        user = self.request.user
+        # Auto-set resolved_by when status is being marked resolved
+        if serializer.validated_data.get('status') == 'resolved':
+            serializer.save(resolved_by=user)
+        else:
+            serializer.save()

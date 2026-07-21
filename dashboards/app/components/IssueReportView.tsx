@@ -119,8 +119,15 @@ export default function IssueReportView({ role }: IssueReportViewProps) {
       setSelectedIssue(null);
       setResolutionNotes("");
       loadData();
-    } catch (err) {
-      setToast({ msg: "Failed to update issue status.", type: "error" });
+    } catch (err: any) {
+      console.error("Issue update error:", err?.response?.data || err?.message || err);
+      const detail = err?.response?.data?.detail
+        || err?.response?.data?.status?.[0]
+        || (typeof err?.response?.data === 'string' ? err.response.data : null)
+        || JSON.stringify(err?.response?.data)
+        || err?.message
+        || "Failed to update issue status.";
+      setToast({ msg: `Update failed: ${detail}`, type: "error" });
     }
   };
 
