@@ -24,6 +24,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         
+        # Fire user_logged_in signal to capture activity log
+        try:
+            from django.contrib.auth.signals import user_logged_in
+            user_logged_in.send(sender=self.user.__class__, request=self.context.get('request'), user=self.user)
+        except Exception as e:
+            pass
+
         # Include extra info directly in the JSON response as well
         data['user'] = UserSerializer(self.user).data
         return data

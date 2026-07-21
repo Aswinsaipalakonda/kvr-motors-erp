@@ -5,6 +5,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
+from activity_logs.models import ActivityLog
 from seed_users import seed_users
 from seed_erp_data import seed_erp_data
 from seed_mela_data import seed_mela_data
@@ -14,6 +15,13 @@ def reset_vps_data():
     print("=========================================")
     print("Starting VPS Application Data Reset & Seeding...")
     print("=========================================")
+
+    print("0. Clearing stale activity logs...")
+    try:
+        ActivityLog.objects.all().delete()
+        print("Cleared existing activity logs.")
+    except Exception as e:
+        print(f"Error clearing activity logs: {e}")
 
     print("1. Seeding/synchronizing essential user logins...")
     try:

@@ -3,6 +3,7 @@ from django.conf import settings
 
 class ActivityLog(models.Model):
     ACTION_CHOICES = (
+        ('LOGIN', 'Login'),
         ('CREATE', 'Create'),
         ('UPDATE', 'Update'),
         ('DELETE', 'Delete'),

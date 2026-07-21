@@ -1,4 +1,5 @@
 from django.db.models.signals import pre_save, post_save, post_delete
+from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 from .models import ActivityLog
 from .middleware import _current_user, _current_ip
@@ -7,11 +8,31 @@ from .middleware import _current_user, _current_ip
 EXEMPT_APPS = (
     'admin',
     'contenttypes',
-    'auth',
     'sessions',
     'migrations',
     'activity_logs',
 )
+
+@receiver(user_logged_in)
+def log_user_login(sender, request, user, **kwargs):
+    ip = _current_ip.get()
+    if not ip and request:
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+
+    ActivityLog.objects.create(
+        user=user,
+        action="LOGIN",
+        model_name="user",
+        app_label="users",
+        object_id=str(user.pk),
+        object_repr=f"User {user.username} ({user.full_name or user.role}) logged in successfully",
+        changes={"login_event": {"before": None, "after": f"Logged in at {user.last_login or 'Just now'}"}},
+        ip_address=ip or "127.0.0.1"
+    )
 
 @receiver(pre_save)
 def track_changes_pre_save(sender, instance, **kwargs):
@@ -77,7 +98,7 @@ def log_save(sender, instance, created, **kwargs):
         object_id=str(instance.pk),
         object_repr=str(instance),
         changes=changes,
-        ip_address=ip
+        ip_address=ip or "127.0.0.1"
     )
 
 @receiver(post_delete)
@@ -96,5 +117,5 @@ def log_delete(sender, instance, **kwargs):
         object_id=str(instance.pk),
         object_repr=str(instance),
         changes={},
-        ip_address=ip
+        ip_address=ip or "127.0.0.1"
     )

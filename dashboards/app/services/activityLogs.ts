@@ -10,7 +10,7 @@ export interface ActivityLog {
     full_name: string;
     role: string;
   } | null;
-  action: "CREATE" | "UPDATE" | "DELETE";
+  action: "CREATE" | "UPDATE" | "DELETE" | "LOGIN";
   model_name: string;
   app_label: string;
   object_id: string;

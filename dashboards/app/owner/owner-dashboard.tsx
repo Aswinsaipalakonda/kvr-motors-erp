@@ -3011,6 +3011,29 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     ledgerFilterEndDate,
   ]);
 
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const ledgerPageSize = 10;
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [
+    ledgerSearchQuery,
+    ledgerFilterBranch,
+    ledgerFilterType,
+    ledgerFilterPaymentMode,
+    ledgerFilterStartDate,
+    ledgerFilterEndDate,
+    selectedBranch,
+    selectedRange,
+  ]);
+
+  const totalLedgerPages = Math.max(1, Math.ceil(filteredLedgerEntries.length / ledgerPageSize));
+  const currentLedgerPage = Math.min(ledgerPage, totalLedgerPages);
+  const paginatedLedgerEntries = React.useMemo(() => {
+    const start = (currentLedgerPage - 1) * ledgerPageSize;
+    return filteredLedgerEntries.slice(start, start + ledgerPageSize);
+  }, [filteredLedgerEntries, currentLedgerPage, ledgerPageSize]);
+
 
   const filteredLeadsList = React.useMemo(() => {
     return leadsList.filter((lead) => {
@@ -6676,7 +6699,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     </td>
                   </tr>
                 ) : (
-                  filteredLedgerEntries.map((row, idx) => (
+                  paginatedLedgerEntries.map((row, idx) => (
                     <tr key={row.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{row.transaction_id}</td>
                       <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.ledger_type_display || row.ledger_type}</td>
@@ -6753,6 +6776,36 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   ))
                 )}
               </Table>
+              {filteredLedgerEntries.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+                  <div className="text-xs text-slate-500 font-semibold">
+                    Showing <span className="font-extrabold text-slate-800">{Math.min((currentLedgerPage - 1) * ledgerPageSize + 1, filteredLedgerEntries.length)}</span> to{" "}
+                    <span className="font-extrabold text-slate-800">{Math.min(currentLedgerPage * ledgerPageSize, filteredLedgerEntries.length)}</span> of{" "}
+                    <span className="font-extrabold text-slate-800">{filteredLedgerEntries.length}</span> entries
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentLedgerPage === 1}
+                      onClick={() => setLedgerPage(p => Math.max(p - 1, 1))}
+                      className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-extrabold text-slate-700 px-2">
+                      Page {currentLedgerPage} of {totalLedgerPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentLedgerPage >= totalLedgerPages}
+                      onClick={() => setLedgerPage(p => Math.min(p + 1, totalLedgerPages))}
+                      className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -7294,11 +7347,13 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             <td className="py-3.5 px-5">
                               <span
                                 className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider ${
-                                  log.action === "CREATE"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : log.action === "UPDATE"
+                                  log.action === "LOGIN"
+                                    ? "bg-emerald-50 text-[#04a700] border border-[#04a700]/30"
+                                    : log.action === "CREATE"
                                     ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : log.action === "UPDATE"
+                                    ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
                                 }`}
                               >
                                 {log.action}
