@@ -321,7 +321,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
         <DashboardSmoothScroll className="p-4 pb-28 lg:pb-6 space-y-6">
           
           {activeTab === "dashboard" && (
-            <>
+            <div className="space-y-6">
+
               {/* Premium Welcome Hero Card */}
               <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#04a700]/[0.05] to-transparent" />
@@ -468,8 +469,9 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                 </div>
 
               </div>
-            </>
+            </div>
           )}
+
 
           {activeTab === "leads" && (
             <div className="space-y-6 text-left">

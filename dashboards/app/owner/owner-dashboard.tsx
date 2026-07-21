@@ -5132,7 +5132,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
 
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
-            <>
+            <div className="space-y-6">
+
               {/* Premium Welcome Hero — light, integrated with the dashboard surface */}
               <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
                 {/* soft brand accent wash on the right */}
@@ -5453,8 +5454,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
+
           {/* TAB 2: BRANCH & SHOWROOMS */}
           {activeTab === "branches" && (
             <div className="space-y-6">

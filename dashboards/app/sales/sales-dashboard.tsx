@@ -1639,7 +1639,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
 
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
-            <>
+            <div className="space-y-6">
+
               {/* Quick Actions Bar */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -1750,8 +1751,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
+
 
           {/* TAB 2: LEADS KANBAN PIPELINE */}
           {activeTab === "leads" && (

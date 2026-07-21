@@ -1694,7 +1694,8 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           
           {/* TAB 1: OVERVIEW DASHBOARD */}
           {activeTab === "dashboard" && (
-            <>
+            <div className="space-y-6">
+
               {/* Premium Welcome Hero */}
               <div className="relative isolate overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#04a700]/[0.07] to-transparent" />
@@ -1952,8 +1953,9 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
+
 
           {/* TAB 2: STOCK (IN & OUT) */}
           {activeTab === "stock" && (
