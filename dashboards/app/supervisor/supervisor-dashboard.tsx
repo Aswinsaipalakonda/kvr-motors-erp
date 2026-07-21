@@ -248,7 +248,18 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     try {
       if (!isSilent) setLeadsLoading(true);
       const data = await getLeads();
-      setLeadsList(data);
+      if (user) {
+        const myBranch = (user.branch || user.showroom || "").toLowerCase();
+        const filtered = data.filter((lead: any) => {
+          if (lead.assigned_executive === user.id) return true;
+          if (!myBranch) return true;
+          const leadBranch = (lead.branch_name || lead.showroom_name || "").toLowerCase();
+          return !leadBranch || leadBranch.includes(myBranch) || myBranch.includes(leadBranch);
+        });
+        setLeadsList(filtered);
+      } else {
+        setLeadsList(data);
+      }
     } catch (e) {
       console.error("Failed to load leads:", e);
     } finally {

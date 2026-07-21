@@ -176,7 +176,18 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         getLeads(),
         getVehicleModels()
       ]);
-      setLiveLeadsList(leadsData);
+      if (user) {
+        const myBranch = (user.branch || user.showroom || "").toLowerCase();
+        const filtered = leadsData.filter((lead: any) => {
+          if (lead.assigned_executive === user.id) return true;
+          if (!myBranch) return true;
+          const leadBranch = (lead.branch_name || lead.showroom_name || "").toLowerCase();
+          return !leadBranch || leadBranch.includes(myBranch) || myBranch.includes(leadBranch);
+        });
+        setLiveLeadsList(filtered);
+      } else {
+        setLiveLeadsList(leadsData);
+      }
       setVehicleModelsList(modelsData);
     } catch (e) {
       console.error("Failed to load leads or models:", e);
@@ -1767,9 +1778,27 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                   </a>
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
-                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-                                  <span className="text-[9px] text-slate-400 font-bold">{lead.executive_name || user?.full_name || "Me"}</span>
-                                  <span className="text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center gap-2">
+                                  <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || user?.full_name || "Me"}</span>
+                                  {/* Mobile Stage Selector Dropdown (Shown on mobile touch devices where drag-and-drop is awkward) */}
+                                  <select
+                                    value={lead.status}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      moveLeadToStage(lead.id, e.target.value);
+                                    }}
+                                    className="sm:hidden text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
+                                  >
+                                    <option value="enquiry">Enquiry</option>
+                                    <option value="new_lead">New Lead</option>
+                                    <option value="contacted">Contacted</option>
+                                    <option value="follow_up">Follow Up</option>
+                                    <option value="negotiation">Negotiation</option>
+                                    <option value="won">Won</option>
+                                    <option value="lost">Lost</option>
+                                  </select>
+                                  <span className="hidden sm:inline-block text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </div>
                               </div>
                             ))

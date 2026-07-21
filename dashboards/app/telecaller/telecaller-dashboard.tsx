@@ -100,9 +100,15 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
     try {
       if (!isSilent) setLeadsLoading(true);
       const data = await getLeads();
-      // Filter leads assigned to the logged-in telecaller
+      // Filter leads belonging to logged-in user's branch or assigned to telecaller
       if (user) {
-        const filtered = data.filter((lead: any) => lead.assigned_executive === user.id);
+        const myBranch = (user.branch || user.showroom || "").toLowerCase();
+        const filtered = data.filter((lead: any) => {
+          if (lead.assigned_executive === user.id) return true;
+          if (!myBranch) return true;
+          const leadBranch = (lead.branch_name || lead.showroom_name || "").toLowerCase();
+          return !leadBranch || leadBranch.includes(myBranch) || myBranch.includes(leadBranch);
+        });
         setLiveLeadsList(filtered);
       } else {
         setLiveLeadsList(data);

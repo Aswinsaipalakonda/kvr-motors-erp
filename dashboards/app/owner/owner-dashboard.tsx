@@ -6130,9 +6130,27 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                     <CalendarDays className="h-3 w-3" /> {lead.follow_up_date}
                                   </div>
                                 )}
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                                   <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || "Unassigned"}</span>
-                                  <span className="text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+                                  {/* Mobile Stage Selector Dropdown */}
+                                  <select
+                                    value={lead.status}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      moveLeadToStage(lead.id, e.target.value);
+                                    }}
+                                    className="sm:hidden text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
+                                  >
+                                    <option value="enquiry">Enquiry</option>
+                                    <option value="new_lead">New Lead</option>
+                                    <option value="contacted">Contacted</option>
+                                    <option value="follow_up">Follow Up</option>
+                                    <option value="negotiation">Negotiation</option>
+                                    <option value="won">Won</option>
+                                    <option value="lost">Lost</option>
+                                  </select>
+                                  <span className="hidden sm:inline-block text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </div>
                               </div>
                             ))
