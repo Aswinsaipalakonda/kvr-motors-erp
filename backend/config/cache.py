@@ -91,6 +91,7 @@ class CacheResponseMixin:
     def clear_cache(self):
         """
         Clears all cached responses for this model by finding and deleting keys matching prefix.
+        Uses a broad wildcard to invalidate caches across ALL users (not just current user).
         """
         prefix = self.get_cache_key_prefix()
         try:
@@ -98,12 +99,14 @@ class CacheResponseMixin:
             # We access the raw redis client under the backend connection to delete patterns
             if hasattr(cache, '_cache') and hasattr(cache._cache, 'get_client'):
                 client = cache._cache.get_client(None)
-                # Redis key patterns contain django prefix (e.g. ":1:drf_cache:...")
-                keys = client.keys(f"*{prefix}:*")
+                # Match all keys containing the model prefix regardless of user_id suffix
+                keys = client.keys(f"*{prefix}*")
                 if keys:
                     client.delete(*keys)
+            elif hasattr(cache, 'delete_pattern'):
+                cache.delete_pattern(f"*{prefix}*")
             else:
-                # Fallback if another cache backend is configured
+                # Fallback if another cache backend is configured — try cache.clear() as last resort
                 pass
         except Exception as e:
             # Log error internally and fall through (don't break API mutations if cache clear fails)

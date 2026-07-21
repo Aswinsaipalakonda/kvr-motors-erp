@@ -71,18 +71,21 @@ export default function IssueReportView({ role }: IssueReportViewProps) {
     loadData();
   }, []);
 
-  const myBranch = branches.find(b => b.name === user?.showroom || b.name === user?.branch);
-
-  const filteredIssues = role === "owner" 
-    ? issues 
-    : issues.filter(i => !myBranch || i.branch === myBranch.id || i.branch_name === user?.showroom || i.branch_name === user?.branch);
+  // Backend already scopes issues per role (owner sees all; supervisors see their branch + own reports).
+  // No need for client-side double-filtering which was hiding newly submitted reports.
+  const filteredIssues = issues;
 
   const pendingIssuesCount = filteredIssues.filter(i => i.status !== "resolved").length;
 
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const branchId = issueForm.branch ? Number(issueForm.branch) : (myBranch ? myBranch.id : branches[0]?.id);
+      const userBranch = branches.find(b => b.name === user?.branch || b.name === user?.showroom);
+      const branchId = issueForm.branch ? Number(issueForm.branch) : (userBranch ? userBranch.id : branches[0]?.id);
+      if (!branchId) {
+        setToast({ msg: "Could not determine branch. Please select a branch.", type: "error" });
+        return;
+      }
       await createIssueReport({
         branch: Number(branchId),
         category: issueForm.category,

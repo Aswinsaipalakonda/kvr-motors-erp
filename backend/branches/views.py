@@ -155,3 +155,7 @@ class IssueReportViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         user = self.request.user
         serializer.save(reported_by=user)
         self.clear_cache()
+
+    def perform_update(self, serializer):
+        serializer.save()
+        self.clear_cache()
