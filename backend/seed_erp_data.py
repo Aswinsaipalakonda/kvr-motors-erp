@@ -614,6 +614,53 @@ def seed_erp_data():
 
     # Seed Ledger entries for different branches
     from ledger.models import LedgerEntry
+
+    # Seed Ledger entries for the 4 seeded bookings
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-BK-8012",
+        defaults={
+            "ledger_type": "booking_amount",
+            "branch": branch,
+            "detail": "Automated entry for Advance Booking BK-8012 (Customer: A. Srinivas)",
+            "income": 5000.00,
+            "expense": 0.00,
+            "payment_mode": "Cash"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-BK-8021",
+        defaults={
+            "ledger_type": "booking_amount",
+            "branch": branch,
+            "detail": "Automated entry for Advance Booking BK-8021 (Customer: V. Prasad)",
+            "income": 10000.00,
+            "expense": 0.00,
+            "payment_mode": "UPI"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-BK-8033",
+        defaults={
+            "ledger_type": "booking_amount",
+            "branch": branch_srikakulam,
+            "detail": "Automated entry for Advance Booking BK-8033 (Customer: K. Ramu)",
+            "income": 6000.00,
+            "expense": 0.00,
+            "payment_mode": "Cash"
+        }
+    )
+    LedgerEntry.objects.get_or_create(
+        transaction_id="TXN-BK-8044",
+        defaults={
+            "ledger_type": "booking_amount",
+            "branch": branch_vizag,
+            "detail": "Automated entry for Advance Booking BK-8044 (Customer: P. Kiran)",
+            "income": 15000.00,
+            "expense": 0.00,
+            "payment_mode": "UPI"
+        }
+    )
+
     LedgerEntry.objects.get_or_create(
         transaction_id="TXN-SRI-001",
         defaults={

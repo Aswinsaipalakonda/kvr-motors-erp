@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from vehicles.models import VehicleModel, VehicleUnit
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 class AdvanceBooking(models.Model):
     STATUS_CHOICES = (
@@ -52,3 +54,11 @@ class AdvanceBooking(models.Model):
     def __str__(self):
         return f"{self.booking_id} - {self.customer_name} ({self.get_status_display()})"
 
+@receiver(post_delete, sender=AdvanceBooking)
+def delete_related_ledger_entry(sender, instance, **kwargs):
+    try:
+        from ledger.models import LedgerEntry
+        # Delete booking advance ledger entries and refund entries if they exist
+        LedgerEntry.objects.filter(detail__contains=instance.booking_id).delete()
+    except Exception:
+        pass
