@@ -22,11 +22,26 @@ def seed_mela_data():
     brand_dynamo, _ = VehicleBrand.objects.get_or_create(name="Dynamo", defaults={"is_active": True})
     brand_watts, _ = VehicleBrand.objects.get_or_create(name="Watts", defaults={"is_active": True})
 
-    luna, _ = VehicleModel.objects.get_or_create(model_name="Kinetic Green E-Luna", defaults={"brand": brand_kinetic, "base_price": 74999.00, "status": "active"})
-    dynamo, _ = VehicleModel.objects.get_or_create(model_name="Dynamo Pro", defaults={"brand": brand_dynamo, "base_price": 98500.00, "status": "active"})
-    watts, _ = VehicleModel.objects.get_or_create(model_name="Watts 100", defaults={"brand": brand_watts, "base_price": 145000.00, "status": "active"})
-    lima, _ = VehicleModel.objects.get_or_create(model_name="Lima", defaults={"brand": brand_dynamo, "base_price": 82000.00, "status": "active"})
-    premium_luna, _ = VehicleModel.objects.get_or_create(model_name="Kinetic Green E-Luna Premium", defaults={"brand": brand_kinetic, "base_price": 85000.00, "status": "active"})
+    luna = VehicleModel.objects.filter(model_name="Kinetic Green E-Luna").first()
+    if not luna:
+        luna = VehicleModel.objects.create(model_name="Kinetic Green E-Luna", brand=brand_kinetic, base_price=74999.00, status="active")
+
+    dynamo = VehicleModel.objects.filter(model_name="Dynamo Pro").first()
+    if not dynamo:
+        dynamo = VehicleModel.objects.create(model_name="Dynamo Pro", brand=brand_dynamo, base_price=98500.00, status="active")
+
+    watts = VehicleModel.objects.filter(model_name="Watts 100").first()
+    if not watts:
+        watts = VehicleModel.objects.create(model_name="Watts 100", brand=brand_watts, base_price=145000.00, status="active")
+
+    lima = VehicleModel.objects.filter(model_name="Lima").first()
+    if not lima:
+        lima = VehicleModel.objects.create(model_name="Lima", brand=brand_dynamo, base_price=82000.00, status="active")
+
+    premium_luna = VehicleModel.objects.filter(model_name="Kinetic Green E-Luna Premium").first()
+    if not premium_luna:
+        premium_luna = VehicleModel.objects.create(model_name="Kinetic Green E-Luna Premium", brand=brand_kinetic, base_price=85000.00, status="active")
+
         
     # Register Mela Stocks (Stock Qty: 15 for each spec)
     # 1. Kinetic Green E-Luna - Red, Graphene battery, Qty: 15, Price: 62000
