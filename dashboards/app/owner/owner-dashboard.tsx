@@ -5541,13 +5541,6 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                               <PenLine className="h-3.5 w-3.5" />
                             </button>
                             <button 
-                              onClick={() => handleToggleBranch(branch)} 
-                              title="Toggle Active Status"
-                              className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-800 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center"
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            </button>
-                            <button 
                               onClick={() => handleDeleteBranch(branch.id)} 
                               title="Delete Showroom"
                               className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-800 rounded-lg cursor-pointer transition-all active:scale-95 flex items-center justify-center"
@@ -5556,6 +5549,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             </button>
                           </div>
                         </td>
+
                       </tr>
                     );
                   });
