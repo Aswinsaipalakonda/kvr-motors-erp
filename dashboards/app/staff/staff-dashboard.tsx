@@ -316,8 +316,11 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     return attendanceLogs.find(a => a.date === todayStr);
   }, [attendanceLogs, todayStr]);
 
-  // Handlers for Receive Shipment
+  // Handlers for Receive Shipment & Edit Unit
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
+
   const handleOpenAddUnit = () => {
+    setEditingUnitId(null);
     const defaultBranch = branches.find(b => b.name === userBranchName) || branches[0];
     const defaultShowroom = showrooms.find(s => s.branch === defaultBranch?.id) || showrooms[0];
     const defaultLoc = locations.find(l => l.branch === defaultBranch?.id) || locations[0];
@@ -338,33 +341,61 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     setIsAddUnitOpen(true);
   };
 
+  const handleOpenEditUnit = (unit: any) => {
+    setEditingUnitId(unit.id);
+    setNewUnitForm({
+      model: String(unit.model || ""),
+      branch: String(unit.branch || ""),
+      showroom: String(unit.showroom || ""),
+      location: String(unit.location || ""),
+      vin_number: unit.vin_number || "",
+      motor_number: unit.motor_number || "",
+      chassis_number: unit.chassis_number || "",
+      color: unit.color || "Green",
+      stock_status: unit.stock_status || "available"
+    });
+    setIsAddUnitOpen(true);
+  };
+
   const handleAddUnitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUnitForm.model || !newUnitForm.branch || !newUnitForm.location) {
-      showToast("Please select vehicle model, branch, and godown location.", "error");
-      return;
-    }
+    const defaultBranch = branches.find(b => b.name === userBranchName) || branches[0];
+    const defaultLoc = locations.find(l => l.branch === defaultBranch?.id) || locations[0];
+    const targetModel = newUnitForm.model ? parseInt(newUnitForm.model) : (vehicleModels[0]?.id || 1);
+    const targetBranch = newUnitForm.branch ? parseInt(newUnitForm.branch) : (defaultBranch?.id || 3);
+    const targetLoc = newUnitForm.location ? parseInt(newUnitForm.location) : (defaultLoc?.id || 3);
+
     if (!newUnitForm.vin_number.trim()) {
       showToast("Please enter the VIN Code for the shipment unit.", "error");
       return;
     }
     try {
-      await createVehicleUnit({
-        model: parseInt(newUnitForm.model),
-        branch: parseInt(newUnitForm.branch),
-        showroom: newUnitForm.showroom ? parseInt(newUnitForm.showroom) : parseInt(newUnitForm.location),
-        location: parseInt(newUnitForm.location),
+      const payload = {
+        model: targetModel,
+        branch: targetBranch,
+        showroom: newUnitForm.showroom ? parseInt(newUnitForm.showroom) : targetLoc,
+        location: targetLoc,
         vin_number: newUnitForm.vin_number.trim(),
         motor_number: newUnitForm.motor_number.trim(),
         chassis_number: newUnitForm.chassis_number.trim(),
         color: newUnitForm.color,
         stock_status: newUnitForm.stock_status
-      });
-      showToast("Shipment unit successfully logged to godown inventory!");
+      };
+
+      if (editingUnitId) {
+        await updateVehicleUnit(editingUnitId, payload);
+        showToast("Vehicle unit details updated successfully! ✓");
+      } else {
+        await createVehicleUnit(payload);
+        showToast("Shipment unit successfully logged to godown inventory!");
+      }
       setIsAddUnitOpen(false);
+      setEditingUnitId(null);
       loadAllData();
     } catch (err: any) {
-      showToast(err?.response?.data?.detail || "Failed to register vehicle unit.", "error");
+      console.error("Staff vehicle unit save error:", err);
+      const errMsg = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || "Failed to save vehicle unit.";
+      showToast(`Failed to save vehicle unit: ${errMsg}`, "error");
     }
   };
 
@@ -387,26 +418,32 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
 
   const handleAddBatterySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBatteryForm.serial_number || !newBatteryForm.location) {
-      showToast("Please enter serial number and choose godown location.", "error");
+    if (!newBatteryForm.serial_number.trim()) {
+      showToast("Please enter serial number.", "error");
       return;
     }
     try {
+      const defaultBranch = branches.find(b => b.name === userBranchName) || branches[0];
+      const defaultLoc = locations.find(l => l.branch === defaultBranch?.id) || locations[0];
+      const locId = newBatteryForm.location ? parseInt(newBatteryForm.location) : (defaultLoc?.id || 3);
+
       await createBattery({
         serial_number: newBatteryForm.serial_number.trim(),
-        battery_code: newBatteryForm.battery_code,
-        capacity: newBatteryForm.capacity,
-        purchase_date: newBatteryForm.purchase_date,
-        location: parseInt(newBatteryForm.location),
-        supplier: newBatteryForm.supplier,
-        warranty_years: newBatteryForm.warranty_years,
+        battery_code: newBatteryForm.battery_code.trim() || undefined,
+        capacity: newBatteryForm.capacity.trim() || "60V 30Ah",
+        purchase_date: newBatteryForm.purchase_date || new Date().toISOString().slice(0, 10),
+        location: locId,
+        supplier: newBatteryForm.supplier.trim() || "KVR Motors Supplier",
+        warranty_years: Number(newBatteryForm.warranty_years) || 3,
         status: "available"
       });
       showToast("Battery unit registered into yard stock!");
       setIsAddBatteryOpen(false);
       loadAllData();
-    } catch {
-      showToast("Failed to register battery unit.", "error");
+    } catch (err: any) {
+      console.error("Staff battery save error:", err);
+      const errMsg = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || "Failed to register battery unit.";
+      showToast(`Failed to register battery unit: ${errMsg}`, "error");
     }
   };
 
@@ -898,11 +935,11 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                 <div className="bg-white border border-emerald-100/60 rounded-2xl p-4 shadow-sm space-y-3">
                   <h3 className="font-black text-sm text-slate-800">Yard Vehicle Units Inventory</h3>
                   <Table
-                    headers={["Model", "VIN Number", "Motor #", "Color", "Location (Godown)", "Status"]}
+                    headers={["Model", "VIN Number", "Motor #", "Color", "Location (Godown)", "Status", "Actions"]}
                   >
                     {staffUnits.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
+                        <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
                           No vehicle units match the active filters.
                         </td>
                       </tr>
@@ -922,6 +959,14 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                             }`}>
                               {u.stock_status || "Available"}
                             </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleOpenEditUnit(u)}
+                              className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer"
+                            >
+                              Edit
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -1142,7 +1187,7 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
             : ["Green", "Red", "Blue", "Black", "White", "Grey"];
 
           return (
-            <Modal isOpen={isAddUnitOpen} title="Receive New Shipment Unit" onClose={() => setIsAddUnitOpen(false)}>
+            <Modal isOpen={isAddUnitOpen} title={editingUnitId ? "Edit Shipment Unit Details" : "Receive New Shipment Unit"} onClose={() => setIsAddUnitOpen(false)}>
               <form onSubmit={handleAddUnitSubmit} className="space-y-4 text-xs">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Vehicle Model</label>
@@ -1294,9 +1339,11 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                   onChange={(e) => setNewBatteryForm({ ...newBatteryForm, location: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
                 >
+                  <option value="">Select Location (Default Main Godown)</option>
                   {locations.map((l: any) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
+                  {locations.length === 0 && <option value="3">KVR Motors Main Showroom</option>}
                 </select>
               </div>
 
