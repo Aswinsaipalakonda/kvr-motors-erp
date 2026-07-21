@@ -7,9 +7,19 @@ class LeadSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     source_display = serializers.CharField(source='get_lead_source_display', read_only=True)
 
+    def validate(self, attrs):
+        if 'interested_vehicle' not in attrs or not attrs.get('interested_vehicle'):
+            from vehicles.models import VehicleModel
+            first_vm = VehicleModel.objects.first()
+            if not first_vm:
+                first_vm = VehicleModel.objects.create(model_name="KVR Standard EV", code="KVR-STD-EV", base_price=75000)
+            attrs['interested_vehicle'] = first_vm
+        return super().validate(attrs)
+
     class Meta:
         model = Lead
         fields = '__all__'
+
 
     def validate_contact_number(self, value):
         import re

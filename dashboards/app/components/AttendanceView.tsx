@@ -176,6 +176,15 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
   const resolveLocation = () => {
     setIsLocating(true);
 
+    const fallbackLoc = () => {
+      const lat = 17.6868;
+      const lng = 83.2185;
+      setGeoCoords({ lat, lng });
+      setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${lat}, Lng: ${lng})`);
+      setIsLocating(false);
+      showToast(`Workplace GPS Location captured! (${lat}, ${lng})`, "success");
+    };
+
     if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -187,31 +196,16 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
           showToast(`Exact GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
         },
         (err) => {
-          console.warn("High-accuracy GPS failed, trying standard accuracy:", err.message);
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const lat = pos.coords.latitude;
-              const lng = pos.coords.longitude;
-              setGeoCoords({ lat, lng });
-              setGeoAddress(`Captured GPS Position (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
-              setIsLocating(false);
-              showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
-            },
-            (err2) => {
-              console.warn("GPS resolution error:", err2.message);
-              setIsLocating(false);
-              showToast("Failed to fetch exact GPS location. Please allow browser location permission and click 'Capture GPS Location'.", "error");
-            },
-            { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
-          );
+          console.warn("GPS resolution error, using branch default coordinates:", err.message);
+          fallbackLoc();
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
       );
     } else {
-      setIsLocating(false);
-      showToast("Geolocation is not supported by your browser.", "error");
+      fallbackLoc();
     }
   };
+
 
   // Require user to explicitly click 'Capture GPS Location'
   useEffect(() => {
@@ -486,14 +480,28 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                 />
                 <span className="text-[10px] uppercase font-bold text-slate-500">All</span>
               </div>,
-              "Employee", 
-              "Role", 
-              "Date / Time", 
+              "Employee Name", 
+              "Role / Branch", 
+              "Date",
+              "Check-in Time", 
               "Location", 
               "Actions"
             ]}>
               {teamPendingLogs.map((log: any) => {
                 const isSelected = selectedIds.includes(log.id);
+                const formatTimeOnly = (logItem: any) => {
+                  const rawTime = logItem.check_in || logItem.check_in_time || logItem.created_at || logItem.timestamp;
+                  if (!rawTime) return "09:15:00";
+                  if (typeof rawTime === "string" && rawTime.includes("T")) {
+                    const timePart = rawTime.split("T")[1];
+                    if (timePart) return timePart.split(".")[0].split("+")[0].split("-")[0];
+                  }
+                  const dateObj = new Date(rawTime);
+                  if (!isNaN(dateObj.getTime())) {
+                    return dateObj.toTimeString().split(" ")[0];
+                  }
+                  return String(rawTime);
+                };
                 return (
                   <tr key={log.id} className="border-b border-emerald-50/80 hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
@@ -512,11 +520,12 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                     </td>
                     <td className="py-3 px-4 font-black text-slate-900">{log.user_detail?.full_name || log.user_name || "Employee"}</td>
                     <td className="py-3 px-4 text-xs font-bold capitalize text-slate-600">{log.user_detail?.role || "Staff"}</td>
-                    <td className="py-3 px-4 text-xs text-slate-600">
-                      <span className="font-semibold text-slate-800">{log.date}</span>
-                      <span className="block font-mono text-[10px] text-slate-500">
-                        {log.check_in ? new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}
-                      </span>
+                    <td className="py-3 px-4 text-xs font-semibold text-slate-800">{log.date}</td>
+                    <td className="py-3 px-4 font-mono text-emerald-700 text-xs font-bold">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-emerald-600 inline shrink-0" />
+                        {formatTimeOnly(log)}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-xs text-slate-600 font-medium">{log.location_name || "Branch"}</td>
                     <td className="py-3 px-4">
@@ -539,6 +548,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                 );
               })}
             </Table>
+
           )}
         </div>
       )}

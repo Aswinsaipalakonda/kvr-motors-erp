@@ -6673,29 +6673,25 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     log.status === attendanceFilterStatus;
                   return branchMatch && statusMatch;
                 });
-                const pendingLogs = filteredLogs.filter(log => log.status === 'pending');
-                const allSelected = pendingLogs.length > 0 && pendingLogs.every(log => selectedAttendanceIds.includes(log.id));
+                const filteredLogIds = filteredLogs.map(l => l.id);
+                const allSelected = filteredLogIds.length > 0 && filteredLogIds.every(id => selectedAttendanceIds.includes(id));
                 
-                const toggleSelectAll = () => {
-                  if (allSelected) {
-                    setSelectedAttendanceIds(prev => prev.filter(id => !pendingLogs.map(l => l.id).includes(id)));
+                const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  e.stopPropagation();
+                  if (allSelected || !e.target.checked) {
+                    setSelectedAttendanceIds(prev => prev.filter(id => !filteredLogIds.includes(id)));
                   } else {
-                    setSelectedAttendanceIds(prev => {
-                      const next = [...prev];
-                      pendingLogs.forEach(l => {
-                        if (!next.includes(l.id)) next.push(l.id);
-                      });
-                      return next;
-                    });
+                    setSelectedAttendanceIds(prev => Array.from(new Set([...prev, ...filteredLogIds])));
                   }
                 };
+
 
                 return (
                   <>
                     {selectedAttendanceIds.length > 0 && (
                       <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl mb-4">
                         <span className="text-xs text-emerald-800 font-bold">
-                          Selected {selectedAttendanceIds.length} pending record(s)
+                          Selected {selectedAttendanceIds.length} attendance record(s)
                         </span>
                         <button
                           onClick={() => handleBulkVerifyAttendance("verified", "Bulk approved by Owner")}
@@ -6730,6 +6726,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                         />,
                         "Date", 
+                        "Check-in Time",
                         "Employee Name", 
                         "Role / Branch", 
                         "Check-in Photo", 
@@ -6740,7 +6737,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     >
                       {attendanceLoading ? (
                         <tr>
-                          <td colSpan={8} className="py-12 text-center text-xs text-slate-400 font-semibold">
+                          <td colSpan={9} className="py-12 text-center text-xs text-slate-400 font-semibold">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
                               <span>Loading attendance logs...</span>
@@ -6749,7 +6746,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                         </tr>
                       ) : filteredLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-12 text-center">
+                          <td colSpan={9} className="py-12 text-center">
                             <EmptyState title="No Attendance Logs" description="Check-in entries will display here once employees mark their attendance." />
                           </td>
                         </tr>
@@ -6772,6 +6769,20 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             }
                           };
 
+                          const formatTimeOnly = (logItem: any) => {
+                            const rawTime = logItem.check_in || logItem.check_in_time || logItem.created_at || logItem.timestamp;
+                            if (!rawTime) return "09:15:00";
+                            if (typeof rawTime === "string" && rawTime.includes("T")) {
+                              const timePart = rawTime.split("T")[1];
+                              if (timePart) return timePart.split(".")[0].split("+")[0].split("-")[0];
+                            }
+                            const dateObj = new Date(rawTime);
+                            if (!isNaN(dateObj.getTime())) {
+                              return dateObj.toTimeString().split(" ")[0];
+                            }
+                            return String(rawTime);
+                          };
+
                           return (
                             <tr key={log.id} className={`hover:bg-slate-50 border-b border-slate-100 ${isSelected ? 'bg-emerald-50/20' : ''}`}>
                               <td className="py-3.5 px-5">
@@ -6783,10 +6794,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                 />
                               </td>
                               <td className="py-3.5 px-5 font-bold text-slate-800">
-                                <div>{new Date(log.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                                <div className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1 mt-0.5">
-                                  <Clock className="h-3 w-3 text-emerald-600 inline" />
-                                  {log.check_in || log.check_in_time || (log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "09:15 AM")}
+                                <div>{log.date ? (log.date.includes("-") ? log.date : new Date(log.date).toISOString().slice(0, 10)) : new Date().toISOString().slice(0, 10)}</div>
+                              </td>
+                              <td className="py-3.5 px-5 font-mono text-emerald-700 text-xs font-bold">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-emerald-600 inline shrink-0" />
+                                  {formatTimeOnly(log)}
                                 </div>
                               </td>
                               <td className="py-3.5 px-5">

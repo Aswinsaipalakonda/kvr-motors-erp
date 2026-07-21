@@ -377,38 +377,49 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
 
   const handleAddLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLead.customer_name.trim() || !newLead.contact_number.trim() || !newLead.interested_vehicle) return;
-    const cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
-    if (cleanPhone.length !== 10) {
-      showToast("Contact number must contain exactly 10 digits.", "error");
+    if (!newLead.customer_name.trim()) {
+      showToast("Please enter customer name.", "error");
       return;
     }
-    const payload = {
+    let cleanPhone = newLead.contact_number.trim().replace(/\D/g, "");
+    if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
+    if (cleanPhone.length !== 10) {
+      showToast("Please enter a valid 10-digit mobile contact number.", "error");
+      return;
+    }
+    const vehicleId = newLead.interested_vehicle 
+      ? parseInt(newLead.interested_vehicle) 
+      : (vehicleModelsList[0]?.id || undefined);
+
+    const payload: any = {
       customer_name: newLead.customer_name.trim(),
-      contact_number: newLead.contact_number.trim(),
-      interested_vehicle: parseInt(newLead.interested_vehicle),
-      lead_source: newLead.lead_source,
-      status: newLead.status,
+      contact_number: cleanPhone,
+      interested_vehicle: vehicleId,
+      lead_source: newLead.lead_source || "walk_in",
+      status: newLead.status || "new_lead",
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
-      assigned_executive: user?.id || undefined // Dynamically assign to the logged-in sales exec
+      assigned_executive: user?.id || undefined
     };
     try {
       if (editingLeadId) {
         await updateLead(editingLeadId, payload);
-        showToast("Lead details updated.");
+        showToast("Customer lead details updated. ✓");
       } else {
         await createLead(payload);
-        showToast("Lead registered successfully.");
+        showToast("New customer registered successfully. ✓");
       }
       setNewLead({ ...emptyLead });
       setEditingLeadId(null);
       setIsAddLeadOpen(false);
       loadLeadsData();
-    } catch (err) {
-      showToast("Failed to save lead.", "error");
+    } catch (err: any) {
+      console.error("Save lead error:", err);
+      const msg = err.response?.data ? JSON.stringify(err.response.data) : "Failed to save customer lead.";
+      showToast(`Failed to register customer: ${msg}`, "error");
     }
   };
+
 
   const moveLeadToStage = async (leadId: number, newStatus: string) => {
     const lead = liveLeadsList.find((l) => l.id === leadId);
@@ -1121,17 +1132,66 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   }, [liveLeadsList]);
 
   const customersList = useMemo(() => {
-    return liveSalesList.map((s) => ({
-      name: s.customer_name,
-      contact: s.customer_contact,
-      model: s.model_name || "Kinetic Green E-Luna",
-      invDate: s.sale_date || new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
-      delStatus: s.delivery_status || "Delivered",
-      notes: s.insurance_partner || "Comprehensive package",
-      pdiDoneBy: "Suresh Babu",
-      nextService: "Next Month"
-    }));
-  }, [liveSalesList]);
+    const list: any[] = [];
+    const addedKeys = new Set<string>();
+
+    // 1. Invoiced / Completed Sales
+    liveSalesList.forEach((s) => {
+      const key = (s.customer_contact || s.customer_name || "").trim();
+      if (s.customer_name && !addedKeys.has(key)) {
+        if (key) addedKeys.add(key);
+        list.push({
+          name: s.customer_name,
+          contact: s.customer_contact || "N/A",
+          model: s.model_name || s.vehicle_name || "EV Model",
+          invDate: s.sale_date || "Completed",
+          delStatus: s.delivery_status || "delivered",
+          notes: s.insurance_partner || "Comprehensive package",
+          pdiDoneBy: s.sales_executive_name || "Staff",
+          nextService: "Scheduled"
+        });
+      }
+    });
+
+    // 2. Active Bookings
+    liveBookingsList.forEach((b) => {
+      const key = (b.contact_number || b.customer_name || "").trim();
+      if (b.customer_name && !addedKeys.has(key)) {
+        if (key) addedKeys.add(key);
+        list.push({
+          name: b.customer_name,
+          contact: b.contact_number || "N/A",
+          model: b.model_name || "EV Model",
+          invDate: b.booking_date || "Reserved",
+          delStatus: "booking_reserved",
+          notes: `Advance ₹${Number(b.advance_amount || 0).toLocaleString('en-IN')}`,
+          pdiDoneBy: "Sales Exec",
+          nextService: "Pending Delivery"
+        });
+      }
+    });
+
+    // 3. Customer Lead Enquiries
+    liveLeadsList.forEach((l) => {
+      const key = (l.contact_number || l.customer_name || "").trim();
+      if (l.customer_name && !addedKeys.has(key)) {
+        if (key) addedKeys.add(key);
+        list.push({
+          name: l.customer_name,
+          contact: l.contact_number || "N/A",
+          model: l.interested_vehicle_name || l.model_name || "Enquiry Model",
+          invDate: l.follow_up_date || "New Lead",
+          delStatus: (l.status || "enquiry").replace("_", " "),
+          notes: l.notes || "Lead Customer",
+          pdiDoneBy: l.executive_name || "Sales Exec",
+          nextService: "In Pipeline"
+        });
+      }
+    });
+
+    return list;
+  }, [liveSalesList, liveBookingsList, liveLeadsList]);
+
 
   if (!isMounted) {
     return (
