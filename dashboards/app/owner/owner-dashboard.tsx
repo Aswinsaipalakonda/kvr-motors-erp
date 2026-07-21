@@ -557,14 +557,18 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const loadLedger = async () => {
     try {
       setLedgerEntriesLoading(true);
-      const [data, exp, dep] = await Promise.all([
+      const [data, exp, dep, pos, sales] = await Promise.all([
         getLedgerEntries().catch(() => []),
         getBranchExpenses().catch(() => []),
-        getBranchCashDeposits().catch(() => [])
+        getBranchCashDeposits().catch(() => []),
+        getPurchaseOrders().catch(() => []),
+        getSalesInvoices().catch(() => []),
       ]);
       setLedgerEntries(data);
       setBranchExpenses(exp);
       setCashDeposits(dep);
+      if (pos && pos.length > 0) setPurchaseOrders(pos);
+      if (sales && sales.length > 0) setSalesInvoices(sales);
     } catch (e) {
       console.error("Failed to load ledger from Django REST API:", e);
     } finally {
@@ -2840,7 +2844,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     });
   }, [salesInvoices, selectedBranch, selectedRange, isWithinDateRange]);
 
-  // Combine explicit ledger entries with Advance Booking deposits, Petty Cash expenses, and Cash Deposits
+  // Combine explicit ledger entries with Advance Booking deposits, Petty Cash expenses, Cash Deposits, Purchase Expenses, and Vehicle Sales
   const allCombinedLedgerEntries = React.useMemo(() => {
     const existingTxIds = new Set(ledgerEntries.map((e: any) => e.transaction_id || e.id));
 
@@ -2917,8 +2921,65 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       })
       .filter(Boolean);
 
-    return [...ledgerEntries, ...bookingLedgerEntries, ...expenseLedgerEntries, ...depositLedgerEntries];
-  }, [ledgerEntries, advanceBookings, branchExpenses, cashDeposits]);
+    // 4. Purchase Orders (Purchase Expenses)
+    const poLedgerEntries = purchaseOrders
+      .filter((po: any) => po.status !== "cancelled" && parseFloat(po.total_price || po.amount || 0) > 0)
+      .map((po: any) => {
+        const txId = po.order_number ? `TXN-${po.order_number}` : `TXN-PO-${po.id}`;
+        if (existingTxIds.has(txId) || existingTxIds.has(po.order_number) || existingTxIds.has(po.id)) return null;
+
+        return {
+          id: `po-${po.id}`,
+          transaction_id: txId,
+          entry_date: po.created_at || po.order_date || new Date().toISOString(),
+          created_at: po.created_at || po.order_date || new Date().toISOString(),
+          branch_name: po.branch_name || po.showroom_name || "Main Branch",
+          ledger_type: "purchase_expense",
+          ledger_type_display: "Purchase Order Expense",
+          detail: `Purchase Order - ${po.supplier_name || po.vendor_name || "EV Factory Supplier"} (${po.quantity || 1} Units: ${po.model_name || "EV Stock"})`,
+          income: "0",
+          expense: String(po.total_price || po.amount || "0"),
+          payment_mode: po.payment_mode || "Bank Transfer",
+          approved_by: po.approved_by_name || "Owner",
+          approver_name: po.approved_by_name || "Owner"
+        };
+      })
+      .filter(Boolean);
+
+    // 5. Vehicle Sales Invoices (Vehicle Sales Inflows)
+    const salesLedgerEntries = salesInvoices
+      .map((inv: any) => {
+        const txId = inv.invoice_number ? `TXN-${inv.invoice_number}` : `TXN-INV-${inv.id}`;
+        if (existingTxIds.has(txId) || existingTxIds.has(inv.invoice_number) || existingTxIds.has(inv.id)) return null;
+
+        return {
+          id: `inv-${inv.id}`,
+          transaction_id: txId,
+          entry_date: inv.created_at || inv.sale_date || new Date().toISOString(),
+          created_at: inv.created_at || inv.sale_date || new Date().toISOString(),
+          branch_name: inv.branch_name || inv.showroom_name || "Main Branch",
+          ledger_type: "sale",
+          ledger_type_display: "Vehicle Sales Invoice",
+          detail: `Vehicle Sale - ${inv.customer_name || "Customer"} (${inv.vehicle_model || inv.model_name || "EV Vehicle"})`,
+          income: String(inv.grand_total || inv.final_price || inv.amount || "0"),
+          expense: "0",
+          payment_mode: inv.payment_type || inv.payment_mode || "Cash",
+          payment_split_details: inv.payment_split_details || inv.split_details,
+          approved_by: inv.sales_executive_name || "Sales Executive",
+          approver_name: inv.sales_executive_name || "Sales Executive"
+        };
+      })
+      .filter(Boolean);
+
+    return [
+      ...ledgerEntries,
+      ...bookingLedgerEntries,
+      ...expenseLedgerEntries,
+      ...depositLedgerEntries,
+      ...poLedgerEntries,
+      ...salesLedgerEntries
+    ];
+  }, [ledgerEntries, advanceBookings, branchExpenses, cashDeposits, purchaseOrders, salesInvoices]);
 
   const filteredLedgerEntries = React.useMemo(() => {
     return allCombinedLedgerEntries.filter((entry: any) => {
