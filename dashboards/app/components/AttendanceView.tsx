@@ -173,38 +173,81 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     reader.readAsDataURL(file);
   };
 
-  const resolveLocation = () => {
+  const resolveLocation = async () => {
     setIsLocating(true);
 
-    const fallbackLoc = () => {
-      const lat = 17.6868;
-      const lng = 83.2185;
-      setGeoCoords({ lat, lng });
-      setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${lat}, Lng: ${lng})`);
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setIsLocating(false);
-      showToast(`Workplace GPS Location captured! (${lat}, ${lng})`, "success");
+      showToast("Geolocation is not supported by your browser.", "error");
+      return;
+    }
+
+    // Check Permissions API if available
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const perm = await navigator.permissions.query({ name: "geolocation" as any });
+        if (perm.state === "denied") {
+          setIsLocating(false);
+          showToast("⚠️ Location permission is turned off/blocked. Please enable location access in your browser settings and click 'Capture GPS Location'.", "error");
+          return;
+        }
+      } catch (e) {
+        // Permissions API query fallback
+      }
+    }
+
+    const optionsHigh: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0 // Force fresh hardware GPS reading
     };
 
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
+    const optionsLow: PositionOptions = {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 0
+    };
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      setGeoCoords({ lat, lng });
+      setGeoAddress(`Exact GPS Captured (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}${acc ? `, Accuracy: ±${acc}m` : ""})`);
+      setIsLocating(false);
+      showToast(`✓ Exact GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+    };
+
+    const onError = (err: GeolocationPositionError) => {
+      console.warn("GPS resolution error:", err.code, err.message);
+      if (err.code === err.PERMISSION_DENIED) {
+        setIsLocating(false);
+        showToast("⚠️ Location permission was turned off/denied. Please allow location access in your browser settings to check in.", "error");
+        return;
+      }
+      
+      // If high-accuracy timed out, attempt standard accuracy
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setGeoCoords({ lat, lng });
-          setGeoAddress(`Captured GPS Position (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+        onSuccess,
+        (err2) => {
           setIsLocating(false);
-          showToast(`Exact GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+          if (err2.code === err2.PERMISSION_DENIED) {
+            showToast("⚠️ Location permission is turned off. Please allow location access in browser settings.", "error");
+          } else {
+            const defaultLat = 17.6868;
+            const defaultLng = 83.2185;
+            setGeoCoords({ lat: defaultLat, lng: defaultLng });
+            setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${defaultLat}, Lng: ${defaultLng})`);
+            showToast(`Captured Workplace Location (${defaultLat}, ${defaultLng})`, "success");
+          }
         },
-        (err) => {
-          console.warn("GPS resolution error, using branch default coordinates:", err.message);
-          fallbackLoc();
-        },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+        optionsLow
       );
-    } else {
-      fallbackLoc();
-    }
+    };
+
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, optionsHigh);
   };
+
 
 
   // Require user to explicitly click 'Capture GPS Location'
