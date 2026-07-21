@@ -1665,7 +1665,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               </div>
 
               {/* Grid Metric Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+
                 <DashboardCard title="My Active Leads" value={leadsLoading ? "..." : `${liveLeadsList.length} Leads`} trend="Pipeline" trendType="success" description="Assigned leads status" icon={Compass} color="blue" onClick={() => navigateTo("leads")} />
                 <DashboardCard title="Follow-ups Due" value={leadsLoading ? "..." : `${liveLeadsList.filter(l => l.status === "follow_up").length} Tasks`} trend="Pending Calls" trendType="neutral" description="Awaiting customer callback" icon={CalendarDays} color="amber" onClick={() => navigateTo("followups")} />
                 <DashboardCard title="Personal Bookings" value={bookingsLoading ? "..." : `${liveBookingsList.filter(b => b.status === "confirmed").length} Reserved`} trend="Active lock" trendType="success" description="Stock locked allocations" icon={CreditCard} color="emerald" onClick={() => navigateTo("bookings")} />

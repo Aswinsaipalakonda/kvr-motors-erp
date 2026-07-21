@@ -787,7 +787,8 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                 </div>
 
                 {/* Metric Telemetry Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+
                   <DashboardCard
                     title="Yard Vehicles Available"
                     value={staffUnits.filter(u => u.stock_status === "available").length}

@@ -65,24 +65,24 @@ export default function DashboardCard({
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
-      className={`bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-emerald-950/5 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between relative overflow-hidden group ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#04a700]/40" : ""}`}
+      className={`bg-white border border-emerald-100/60 p-3.5 sm:p-5 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-emerald-950/5 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between relative overflow-hidden group min-w-0 text-left ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#04a700]/40" : ""}`}
     >
       {/* Absolute top brand accent highlight line */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-500/10 via-[#04a700]/70 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{title}</span>
+      <div className="flex items-start justify-between gap-1 mb-2 min-w-0">
+        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate pr-1" title={title}>{title}</span>
         {Icon && (
-          <div className={`h-9 w-9 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100/80 ${scheme.text} group-hover:bg-[#04a700]/10 group-hover:border-[#04a700]/25 transition-all duration-300 group-hover:scale-105`}>
-            <Icon className="h-4.5 w-4.5" />
+          <div className={`h-7 w-7 sm:h-9 sm:w-9 shrink-0 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100/80 ${scheme.text} group-hover:bg-[#04a700]/10 group-hover:border-[#04a700]/25 transition-all duration-300 group-hover:scale-105`}>
+            <Icon className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
           </div>
         )}
       </div>
 
-      <div className="flex items-baseline gap-2 mt-1">
-        <span className="text-2xl font-extrabold text-slate-800 tracking-tight font-sans">{value}</span>
+      <div className="flex flex-wrap items-baseline gap-1.5 mt-0.5 min-w-0">
+        <span className="text-base sm:text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight font-sans truncate" title={String(value)}>{value}</span>
         {trend && (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black ${
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black shrink-0 ${
             trendType === "success" 
               ? "text-emerald-700 bg-emerald-500/10 border border-emerald-500/20" 
               : trendType === "danger" 
@@ -95,11 +95,11 @@ export default function DashboardCard({
       </div>
 
       {description && (
-        <span className="text-[10px] font-bold text-slate-400/80 mt-2.5 block">{description}</span>
+        <span className="text-[9px] sm:text-[10px] font-bold text-slate-400/80 mt-2 block truncate" title={description}>{description}</span>
       )}
 
       {onClick && (
-        <span className="absolute bottom-3 right-4 text-[10px] font-black text-[#04a700] opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300">
+        <span className="hidden sm:inline-block absolute bottom-3 right-4 text-[10px] font-black text-[#04a700] opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300">
           View →
         </span>
       )}

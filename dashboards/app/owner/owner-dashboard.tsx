@@ -5183,7 +5183,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </div>
 
               {/* Quick Actions Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-5">
                 {[
                   { label: "Create PO", icon: ShoppingBag, onClick: () => setIsAddPOOpen(true) },
                   { label: "Add Lead", icon: Compass, onClick: () => setIsAddLeadOpen(true) },
@@ -5196,19 +5196,20 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     <button
                       key={i}
                       onClick={qa.onClick}
-                      className="group flex items-center gap-2.5 bg-white border border-emerald-100/70 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md hover:border-[#04a700]/40 hover:-translate-y-0.5 transition-all cursor-pointer text-left"
+                      className="group flex items-center gap-2.5 bg-white border border-emerald-100/70 rounded-2xl px-3.5 py-3 shadow-sm hover:shadow-md hover:border-[#04a700]/40 hover:-translate-y-0.5 transition-all cursor-pointer text-left min-w-0"
                     >
-                      <span className="h-9 w-9 shrink-0 rounded-full bg-[#04a700]/10 border border-[#04a700]/20 flex items-center justify-center text-[#04a700] group-hover:bg-[#04a700] group-hover:text-white transition-colors">
-                        <QAIcon className="h-4 w-4" />
+                      <span className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-full bg-[#04a700]/10 border border-[#04a700]/20 flex items-center justify-center text-[#04a700] group-hover:bg-[#04a700] group-hover:text-white transition-colors">
+                        <QAIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </span>
-                      <span className="text-xs font-extrabold text-slate-700 truncate">{qa.label}</span>
+                      <span className="text-[11px] sm:text-xs font-extrabold text-slate-700 truncate">{qa.label}</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Grid Metric Cards (clickable) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-5">
+
                 <DashboardCard 
                   title="Total Units Sold" 
                   value={salesInvoicesLoading ? "..." : `${filteredSalesInvoices.length} Units`} 
