@@ -417,7 +417,7 @@ def seed_erp_data():
             "vehicle_model": model_luna,
             "vehicle_unit": unit_luna,
             "advance_amount": 5000.00,
-            "expiry_date": date(2026, 6, 15),
+            "expiry_date": date(2026, 8, 31),
             "status": "pending",
             "assigned_executive": sales_user,
             "pdi_verified": "pending"
@@ -634,18 +634,8 @@ def seed_erp_data():
     # Seed Ledger entries for different branches
     from ledger.models import LedgerEntry
 
-    # Seed Ledger entries for the 4 seeded bookings
-    LedgerEntry.objects.get_or_create(
-        transaction_id="TXN-BK-8012",
-        defaults={
-            "ledger_type": "booking_amount",
-            "branch": branch,
-            "detail": "Automated entry for Advance Booking BK-8012 (Customer: A. Srinivas)",
-            "income": 5000.00,
-            "expense": 0.00,
-            "payment_mode": "Cash"
-        }
-    )
+    # Seed Ledger entries ONLY for confirmed bookings (BK-8021, BK-8033, BK-8044)
+    # NOTE: BK-8012 is 'pending' so no ledger entry is created for it
     LedgerEntry.objects.get_or_create(
         transaction_id="TXN-BK-8021",
         defaults={

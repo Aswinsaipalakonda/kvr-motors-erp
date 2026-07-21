@@ -2524,6 +2524,14 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       loadLedger();
     } catch { showToast("Failed to cancel booking.", "error"); }
   };
+  const handleApproveBooking = async (bookingId: number, action: "confirmed" | "cancelled") => {
+    try {
+      await updateBooking(bookingId, { status: action });
+      showToast(`Booking ${action === "confirmed" ? "approved" : "rejected"}.`);
+      loadBookings();
+      loadLedger();
+    } catch { showToast("Failed to update booking status.", "error"); }
+  };
 
   // --- Log / Edit Battery ---
   const [locationsList, setLocationsList] = useState<any[]>([]);
@@ -6478,9 +6486,31 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        <button onClick={() => openEditBooking(bk)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
-                        <button onClick={() => handleCancelBooking(bk)} className="text-xs text-amber-600 hover:text-amber-800 font-bold mr-3 cursor-pointer">Cancel</button>
-                        <button onClick={() => handleDeleteBooking(bk.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                        {bk.status === "pending" ? (
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleApproveBooking(bk.id, "confirmed")}
+                              className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3 py-1 rounded-full cursor-pointer"
+                            >
+                              Confirm
+                            </button>
+                            <button 
+                              onClick={() => handleApproveBooking(bk.id, "cancelled")}
+                              className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                            <button onClick={() => openEditBooking(bk)} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">Edit</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => openEditBooking(bk)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Edit</button>
+                            {bk.status !== "cancelled" && bk.status !== "expired" && (
+                              <button onClick={() => handleCancelBooking(bk)} className="text-xs text-amber-600 hover:text-amber-800 font-bold cursor-pointer">Cancel</button>
+                            )}
+                            <button onClick={() => handleDeleteBooking(bk.id)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

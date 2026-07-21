@@ -23,3 +23,10 @@ class AdvanceBookingViewSet(CacheResponseMixin, viewsets.ModelViewSet):
             serializer.save()
         self.clear_cache()
 
+    def perform_update(self, serializer):
+        serializer.save()
+        self.clear_cache()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        self.clear_cache()

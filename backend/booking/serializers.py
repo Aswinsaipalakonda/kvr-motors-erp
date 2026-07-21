@@ -42,6 +42,31 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                 })
         return data
 
+    def _get_branch(self, instance):
+        """Helper to resolve the branch for ledger entries."""
+        branch_obj = None
+        if instance.vehicle_unit:
+            branch_obj = instance.vehicle_unit.branch
+        elif instance.assigned_executive and instance.assigned_executive.branch:
+            branch_obj = Branch.objects.filter(name__iexact=instance.assigned_executive.branch).first()
+        if not branch_obj:
+            branch_obj = Branch.objects.first()
+        return branch_obj
+
+    def _create_ledger_entry(self, instance, branch_obj):
+        """Create a ledger entry for a confirmed booking."""
+        LedgerEntry.objects.create(
+            transaction_id=f"TXN-{instance.booking_id}",
+            ledger_type='booking_amount',
+            branch=branch_obj,
+            detail=f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})",
+            income=instance.advance_amount,
+            expense=0.00,
+            payment_mode=instance.payment_mode or 'Cash',
+            payment_split_details=instance.payment_split_details,
+            approved_by=instance.assigned_executive
+        )
+
     def create(self, validated_data):
         instance = super().create(validated_data)
         
@@ -52,28 +77,12 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
             vu.booking_status = True
             vu.save()
             
-        # 2. Identify target branch for ledger logs
-        branch_obj = None
-        if instance.vehicle_unit:
-            branch_obj = instance.vehicle_unit.branch
-        elif instance.assigned_executive and instance.assigned_executive.branch:
-            branch_obj = Branch.objects.filter(name__iexact=instance.assigned_executive.branch).first()
-        if not branch_obj:
-            branch_obj = Branch.objects.first()
-            
-        # 3. Write Ledger Entry
-        if branch_obj:
-            LedgerEntry.objects.create(
-                transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
-                ledger_type='booking_amount',
-                branch=branch_obj,
-                detail=f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})",
-                income=instance.advance_amount,
-                expense=0.00,
-                payment_mode=instance.payment_mode or 'Cash',
-                payment_split_details=instance.payment_split_details,
-                approved_by=instance.assigned_executive
-            )
+        # 2. Only create ledger entry for confirmed bookings
+        if instance.status == 'confirmed':
+            branch_obj = self._get_branch(instance)
+            if branch_obj:
+                self._create_ledger_entry(instance, branch_obj)
+
         return instance
 
     def update(self, instance, validated_data):
@@ -97,7 +106,7 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                 new_unit.booking_status = True
                 new_unit.save()
                 
-        # Case B: Status changed to Cancelled/Expired
+        # Case B: Status changed to Cancelled/Expired — release vehicle and create refund
         if old_status != new_status and new_status in ['cancelled', 'expired']:
             if instance.vehicle_unit:
                 vu = instance.vehicle_unit
@@ -105,34 +114,45 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                 vu.booking_status = False
                 vu.save()
                 
-            # Create refund ledger entry
-            branch_obj = None
-            if instance.vehicle_unit:
-                branch_obj = instance.vehicle_unit.branch
-            elif instance.assigned_executive and instance.assigned_executive.branch:
-                branch_obj = Branch.objects.filter(name__iexact=instance.assigned_executive.branch).first()
-            if not branch_obj:
-                branch_obj = Branch.objects.first()
-                
-            if branch_obj and new_status == 'cancelled':
-                LedgerEntry.objects.create(
-                    transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
-                    ledger_type='refund',
-                    branch=branch_obj,
-                    detail=f"Automated refund entry for Booking Cancellation {instance.booking_id}",
-                    income=0.00,
-                    expense=instance.advance_amount,
-                    payment_mode=instance.payment_mode or 'Cash',
-                    payment_split_details=instance.payment_split_details,
-                    approved_by=instance.assigned_executive
-                )
+            # Delete any existing booking ledger entry
+            LedgerEntry.objects.filter(
+                transaction_id=f"TXN-{instance.booking_id}",
+                ledger_type='booking_amount'
+            ).delete()
 
-        # Synchronize/upsert ledger entries
-        from ledger.models import LedgerEntry
-        if new_status in ['cancelled', 'expired']:
-            LedgerEntry.objects.filter(detail__contains=instance.booking_id, ledger_type='booking_amount').delete()
-        else:
-            ledger_entry = LedgerEntry.objects.filter(detail__contains=instance.booking_id, ledger_type='booking_amount').first()
+            # Create refund ledger entry for cancellations
+            if new_status == 'cancelled':
+                branch_obj = self._get_branch(instance)
+                if branch_obj:
+                    LedgerEntry.objects.create(
+                        transaction_id=f"TXN-{instance.booking_id}-REFUND",
+                        ledger_type='refund',
+                        branch=branch_obj,
+                        detail=f"Automated refund entry for Booking Cancellation {instance.booking_id}",
+                        income=0.00,
+                        expense=instance.advance_amount,
+                        payment_mode=instance.payment_mode or 'Cash',
+                        payment_split_details=instance.payment_split_details,
+                        approved_by=instance.assigned_executive
+                    )
+
+        # Case C: Status changed to Confirmed — create ledger entry
+        elif old_status != new_status and new_status == 'confirmed':
+            branch_obj = self._get_branch(instance)
+            if branch_obj:
+                # Remove any stale entry first, then create fresh
+                LedgerEntry.objects.filter(
+                    transaction_id=f"TXN-{instance.booking_id}",
+                    ledger_type='booking_amount'
+                ).delete()
+                self._create_ledger_entry(instance, branch_obj)
+
+        # Case D: Already confirmed and details changed — update existing ledger
+        elif new_status == 'confirmed':
+            ledger_entry = LedgerEntry.objects.filter(
+                transaction_id=f"TXN-{instance.booking_id}",
+                ledger_type='booking_amount'
+            ).first()
             if ledger_entry:
                 ledger_entry.income = instance.advance_amount
                 ledger_entry.detail = f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})"
@@ -140,24 +160,16 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                 ledger_entry.payment_split_details = instance.payment_split_details
                 ledger_entry.save()
             else:
-                branch_obj = None
-                if instance.vehicle_unit:
-                    branch_obj = instance.vehicle_unit.branch
-                elif instance.assigned_executive and instance.assigned_executive.branch:
-                    branch_obj = Branch.objects.filter(name__iexact=instance.assigned_executive.branch).first()
-                if not branch_obj:
-                    branch_obj = Branch.objects.first()
-                
+                # Ledger entry missing for a confirmed booking — recreate it
+                branch_obj = self._get_branch(instance)
                 if branch_obj:
-                    LedgerEntry.objects.create(
-                        transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
-                        ledger_type='booking_amount',
-                        branch=branch_obj,
-                        detail=f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})",
-                        income=instance.advance_amount,
-                        expense=0.00,
-                        payment_mode=instance.payment_mode or 'Cash',
-                        payment_split_details=instance.payment_split_details,
-                        approved_by=instance.assigned_executive
-                    )
+                    self._create_ledger_entry(instance, branch_obj)
+
+        # Case E: Pending bookings should NOT have ledger entries — clean up stale ones
+        elif new_status == 'pending':
+            LedgerEntry.objects.filter(
+                transaction_id=f"TXN-{instance.booking_id}",
+                ledger_type='booking_amount'
+            ).delete()
+
         return instance
