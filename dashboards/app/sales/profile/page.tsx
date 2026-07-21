@@ -1,5 +1,5 @@
 import SalesDashboard from "../sales-dashboard";
 
 export default function SalesProfilePage() {
-  return <SalesDashboard />;
+  return <SalesDashboard initialTab="profile" />;
 }

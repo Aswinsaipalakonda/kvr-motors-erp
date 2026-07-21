@@ -1096,10 +1096,14 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     return liveLeadsList
       .filter(l => l.status === "follow_up" || l.follow_up_date)
       .map((l) => ({
+        id: l.id,
+        rawLead: l,
         name: l.customer_name,
         date: l.follow_up_date || "Today",
         model: l.model_name || "Kinetic Green E-Luna",
         contact: l.contact_number,
+        status: l.status,
+        status_display: l.status_display || l.status,
         purpose: "Outbound Callback",
         priority: "High"
       }));
@@ -1136,7 +1140,28 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       {/* Main Panel Content */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
         {/* Navbar */}
-        <Navbar role="sales" title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")} />
+        <Navbar 
+          role="sales" 
+          title={
+            activeTab === "dashboard"
+              ? "Sales Terminal"
+              : activeTab === "sales_checkout"
+              ? "Sales Checkout & Billing"
+              : activeTab === "followups"
+              ? "Follow-ups Agenda"
+              : activeTab === "customers"
+              ? "Showroom Customer Profiles"
+              : activeTab === "bookings"
+              ? "Advance Bookings"
+              : activeTab === "notifications"
+              ? "Notifications"
+              : activeTab === "profile"
+              ? "My Sales Profile"
+              : activeTab === "attendance"
+              ? "Daily Check-in"
+              : activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("_", " ")
+          } 
+        />
 
         <DashboardSmoothScroll className={`p-4 pb-28 lg:pb-6 ${
           activeTab.startsWith("mela_") 
@@ -1761,7 +1786,18 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 3: CUSTOMERS */}
           {activeTab === "customers" && (
             <div className="space-y-6 text-left">
-              <Table title="Showroom Customer Profiles Directory" headers={["Customer Name", "Contact Mobile", "Purchased EV Model", "Invoice Date", "PDI Verified By", "Next Service Date", "Delivery Status", "Insurance"]}>
+              <Table 
+                title="Showroom Customer Profiles Directory" 
+                headers={["Customer Name", "Contact Mobile", "Purchased EV Model", "Invoice Date", "PDI Verified By", "Next Service Date", "Delivery Status", "Insurance"]}
+                actions={
+                  <button
+                    onClick={openAddLead}
+                    className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                  >
+                    <Plus className="h-4 w-4" /> Add New Customer / Enquiry
+                  </button>
+                }
+              >
                 {customersList.map((cust, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                     <td className="py-3.5 px-5 font-bold text-slate-800">{cust.name}</td>
@@ -1782,7 +1818,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 ))}
                 {customersList.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center"><EmptyState title="No Customers Found" description="Customers will populate here once sales invoices are checked out." /></td>
+                    <td colSpan={8} className="py-12 text-center"><EmptyState title="No Customers Found" description="Customers will populate here once sales invoices are checked out or lead enquiries are registered." /></td>
                   </tr>
                 )}
               </Table>
@@ -2236,7 +2272,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 5: FOLLOW-UPS SCHEDULE */}
           {activeTab === "followups" && (
             <div className="space-y-6 text-left">
-              <Table title="My Active Follow-up Appointments Agenda" headers={["Customer Name", "Contact Mobile", "Reserved Model", "Scheduled Date", "Latest Progress Status"]}>
+              <Table title="My Active Follow-up Appointments Agenda" headers={["Customer Name", "Contact Mobile", "Reserved Model", "Scheduled Date", "Latest Progress Status", "Actions"]}>
                 {myFollowups.map((f, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                     <td className="py-3.5 px-5 font-bold text-slate-800">{f.name}</td>
@@ -2244,15 +2280,28 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     <td className="py-3.5 px-5 text-slate-700 font-semibold">{f.model}</td>
                     <td className="py-3.5 px-5 text-slate-400 font-semibold">{f.date}</td>
                     <td className="py-3.5 px-5">
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Follow-up Scheduled
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        f.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                        f.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                        f.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                        "bg-blue-50 text-blue-700 border border-blue-200"
+                      }`}>
+                        {f.status_display?.replace("_", " ").toUpperCase() || "FOLLOW-UP SCHEDULED"}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-5 flex items-center gap-2">
+                      <button
+                        onClick={() => openEditLead(f.rawLead)}
+                        className="px-3 py-1 rounded-lg bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                      >
+                        Update Status / Notes
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {myFollowups.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center"><EmptyState title="No Followups" description="No follow-up dates registered." /></td>
+                    <td colSpan={6} className="py-12 text-center"><EmptyState title="No Followups" description="No follow-up dates registered." /></td>
                   </tr>
                 )}
               </Table>
