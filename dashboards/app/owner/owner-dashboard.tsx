@@ -6220,17 +6220,6 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 9: BATTERIES MANAGEMENT */}
           {activeTab === "batteries" && (
             <div className="space-y-6">
-              
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left flex items-start gap-4">
-                <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-bold text-amber-800">Battery Stock Sequence Protocol</h4>
-                  <p className="text-xs text-amber-600 font-semibold mt-1">
-                    System rules dictate that the oldest batteries purchased must be assigned to customer delivery invoices first.
-                    Selecting a battery with a newer purchase date will trigger an override request block requiring Supervisor approval.
-                  </p>
-                </div>
-              </div>
               <Table 
                 title="Battery Storage Units" 
                 headers={["Battery Serial", "Battery Code", "Capacity Rating", "Date Acquired", "Assigned EV", "Location Storage", "Manufacturer Corp", "Warranty Years", "Status", "Actions"]}
