@@ -35,10 +35,16 @@ export interface SalesInvoiceInput {
   branch: number; // Branch ID
 }
 
-export const getSalesInvoices = async () => {
-  const response = await api.get("/sales-invoices/");
-  return response.data;
+export const getSalesInvoices = async (): Promise<SalesInvoice[]> => {
+  try {
+    const response = await api.get("/sales-invoices/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching sales invoices:", error);
+    return [];
+  }
 };
+
 
 export const createSalesInvoice = async (data: SalesInvoiceInput) => {
   const response = await api.post("/sales-invoices/", data);

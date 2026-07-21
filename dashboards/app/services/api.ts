@@ -3,11 +3,15 @@ import { getCookie, eraseCookie } from "../utils/cookies";
 
 let API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
 
-if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_API_BASE_URL) {
-  if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+if (typeof window !== "undefined") {
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") {
+    API_BASE_URL = `http://${host}:8000/api/v1`;
+  } else {
     API_BASE_URL = `${window.location.origin}/api/v1`;
   }
 }
+
 
 const api = axios.create({
   baseURL: API_BASE_URL,

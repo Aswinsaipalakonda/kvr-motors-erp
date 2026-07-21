@@ -25,20 +25,36 @@ export interface BranchInput {
   target_achieved_pct?: number;
 }
 
-export const getBranches = async () => {
-  const response = await api.get("/branches/");
-  return response.data;
+export const getBranches = async (): Promise<Branch[]> => {
+  try {
+    const response = await api.get("/branches/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching branches:", error);
+    return [];
+  }
 };
 
 export const getInventoryLocations = async () => {
-  const response = await api.get("/inventory-locations/");
-  return response.data;
+  try {
+    const response = await api.get("/inventory-locations/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching inventory locations:", error);
+    return [];
+  }
 };
 
 export const getShowrooms = async () => {
-  const response = await api.get("/showrooms/");
-  return response.data;
+  try {
+    const response = await api.get("/showrooms/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching showrooms:", error);
+    return [];
+  }
 };
+
 
 export const createBranch = async (data: BranchInput) => {
   const response = await api.post("/branches/", data);

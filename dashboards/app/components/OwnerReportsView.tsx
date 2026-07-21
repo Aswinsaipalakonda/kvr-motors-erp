@@ -32,21 +32,22 @@ export default function OwnerReportsView() {
     try {
       setLoading(true);
       const [branchData, vehicleData, batteryData, salesData] = await Promise.all([
-        getBranches(),
-        getVehicleUnits(),
-        getBatteries(),
-        getSalesInvoices(),
+        getBranches().catch(() => []),
+        getVehicleUnits().catch(() => []),
+        getBatteries().catch(() => []),
+        getSalesInvoices().catch(() => []),
       ]);
-      setBranches(branchData);
-      setVehicles(vehicleData);
-      setBatteries(batteryData);
-      setSales(salesData);
+      setBranches(Array.isArray(branchData) ? branchData : []);
+      setVehicles(Array.isArray(vehicleData) ? vehicleData : []);
+      setBatteries(Array.isArray(batteryData) ? batteryData : []);
+      setSales(Array.isArray(salesData) ? salesData : []);
     } catch (err) {
       console.error("Failed to load reporting telemetry:", err);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadAllData();

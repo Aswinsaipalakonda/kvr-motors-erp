@@ -52,8 +52,13 @@ export interface VehicleUnitInput {
 }
 
 export const getVehicleBrands = async () => {
-  const response = await api.get("/vehicle-brands/");
-  return response.data;
+  try {
+    const response = await api.get("/vehicle-brands/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching vehicle brands:", error);
+    return [];
+  }
 };
 
 export const createVehicleBrand = async (data: VehicleBrandInput) => {
@@ -72,14 +77,25 @@ export const deleteVehicleBrand = async (id: number) => {
 };
 
 export const getVehicleModels = async () => {
-  const response = await api.get("/vehicle-models/");
-  return response.data;
+  try {
+    const response = await api.get("/vehicle-models/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching vehicle models:", error);
+    return [];
+  }
 };
 
 export const getVehicleUnits = async () => {
-  const response = await api.get("/vehicle-units/");
-  return response.data;
+  try {
+    const response = await api.get("/vehicle-units/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching vehicle units:", error);
+    return [];
+  }
 };
+
 
 export const createVehicleModel = async (data: VehicleModelInput) => {
   const response = await api.post("/vehicle-models/", data);

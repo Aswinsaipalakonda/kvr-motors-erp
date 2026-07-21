@@ -6,10 +6,16 @@ export interface FifoOverrideInput {
   invoice_reference: string;
 }
 
-export const getBatteries = async () => {
-  const response = await api.get("/batteries/");
-  return response.data;
+export const getBatteries = async (): Promise<Battery[]> => {
+  try {
+    const response = await api.get("/batteries/");
+    return response.data.results || response.data || [];
+  } catch (error) {
+    console.error("Error fetching batteries:", error);
+    return [];
+  }
 };
+
 
 export interface Battery {
   id: number;
