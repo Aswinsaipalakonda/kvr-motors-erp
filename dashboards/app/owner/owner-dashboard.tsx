@@ -205,6 +205,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [activityLogsLoading, setActivityLogsLoading] = useState(true);
   const [selectedLogDetail, setSelectedLogDetail] = useState<ActivityLog | null>(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [auditLogsPage, setAuditLogsPage] = useState(1);
+  const [auditLogsPerPage, setAuditLogsPerPage] = useState(10);
 
   // Mela Campaign States
   const [melaInventoryList, setMelaInventoryList] = useState<any[]>([]);
@@ -6351,7 +6353,60 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       <td className="py-3.5 px-5 text-slate-550 font-medium">{row.detail}</td>
                       <td className="py-3.5 px-5 font-bold text-emerald-600">{parseFloat(row.income) > 0 ? "₹ " + parseFloat(row.income).toLocaleString('en-IN') : "—"}</td>
                       <td className="py-3.5 px-5 font-bold text-rose-600">{parseFloat(row.expense) > 0 ? "₹ " + parseFloat(row.expense).toLocaleString('en-IN') : "—"}</td>
-                      <td className="py-3.5 px-5 text-slate-550 font-bold">{formatPaymentMode(row.payment_mode)}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">
+                        {(() => {
+                          const mode = (row.payment_mode || "").toLowerCase().trim();
+                          const split = row.payment_split_details || row.payment_split || row.split_details;
+
+                          if (mode === "split" || (split && typeof split === "object" && Object.keys(split).length > 0)) {
+                            const items: string[] = [];
+                            if (split) {
+                              if (parseFloat(split.cash) > 0) items.push(`Cash: ₹${parseFloat(split.cash).toLocaleString("en-IN")}`);
+                              if (parseFloat(split.upi) > 0) items.push(`UPI: ₹${parseFloat(split.upi).toLocaleString("en-IN")}`);
+                              if (parseFloat(split.bank_transfer) > 0) items.push(`Bank: ₹${parseFloat(split.bank_transfer).toLocaleString("en-IN")}`);
+                              if (parseFloat(split.card) > 0) items.push(`Card: ₹${parseFloat(split.card).toLocaleString("en-IN")}`);
+                              if (parseFloat(split.bajaj_finance || split.bajaj_emi) > 0) items.push(`Bajaj EMI: ₹${parseFloat(split.bajaj_finance || split.bajaj_emi).toLocaleString("en-IN")}`);
+                            }
+
+                            return (
+                              <div className="flex flex-col gap-1 text-left">
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200 w-fit">
+                                  Split Payment
+                                </span>
+                                {items.length > 0 ? (
+                                  <div className="text-[10px] font-extrabold text-slate-600 bg-slate-50 border border-slate-200/80 rounded px-2 py-1 space-y-0.5">
+                                    {items.map((item, idx) => (
+                                      <div key={idx}>{item}</div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-semibold">(Custom Split)</span>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          const modeMap: Record<string, { label: string; cls: string }> = {
+                            cash: { label: "Cash", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                            upi: { label: "UPI / GPay", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+                            bank_transfer: { label: "Bank Transfer", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+                            card: { label: "Credit / Debit Card", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+                            bajaj_finance: { label: "Bajaj Finance EMI", cls: "bg-amber-50 text-amber-800 border-amber-200" },
+                            bajaj_emi: { label: "Bajaj Finance EMI", cls: "bg-amber-50 text-amber-800 border-amber-200" },
+                          };
+
+                          const matched = modeMap[mode] || {
+                            label: row.payment_mode ? row.payment_mode.replace("_", " ").toUpperCase() : "Cash",
+                            cls: "bg-slate-50 text-slate-700 border-slate-200",
+                          };
+
+                          return (
+                            <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${matched.cls}`}>
+                              {matched.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="py-3.5 px-5 text-slate-500 font-bold">{row.approver_name || "System"}</td>
                       <td className="py-3.5 px-5 text-slate-450 font-medium">{row.created_at}</td>
                       <td className="py-3.5 px-5">
@@ -6816,105 +6871,157 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 12.5: ACTIVITY LOGS */}
           {activeTab === "activity-logs" && (
             <div className="space-y-6">
-              <Table
-                title="Activity Logs & System Audits"
-                headers={["Timestamp", "User Initiator", "Action", "Model / Object Type", "Target Record", "IP Address", "Actions"]}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                actions={
-                  <button
-                    onClick={loadActivityLogs}
-                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 font-bold text-xs py-2 px-4 rounded-full cursor-pointer transition-colors"
-                  >
-                    Refresh Audit Trail
-                  </button>
-                }
-              >
-                {activityLogsLoading ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
-                        <span className="text-xs font-semibold text-slate-400">Loading audit trail logs from database...</span>
+              {(() => {
+                const filteredAuditLogs = activityLogsList.filter((log) => {
+                  if (!searchQuery.trim()) return true;
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (log.user_detail?.full_name || "System").toLowerCase().includes(q) ||
+                    log.model_name.toLowerCase().includes(q) ||
+                    log.object_repr.toLowerCase().includes(q) ||
+                    log.action.toLowerCase().includes(q)
+                  );
+                });
+                const totalAuditPages = Math.ceil(filteredAuditLogs.length / auditLogsPerPage) || 1;
+                const currentAuditPage = Math.min(auditLogsPage, totalAuditPages);
+                const paginatedLogs = filteredAuditLogs.slice(
+                  (currentAuditPage - 1) * auditLogsPerPage,
+                  currentAuditPage * auditLogsPerPage
+                );
+
+                return (
+                  <>
+                    <Table
+                      title="Activity Logs & System Audits"
+                      headers={["Timestamp", "User Initiator", "Action", "Model / Object Type", "Target Record", "IP Address", "Actions"]}
+                      searchQuery={searchQuery}
+                      setSearchQuery={setSearchQuery}
+                      actions={
+                        <button
+                          onClick={loadActivityLogs}
+                          className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 font-bold text-xs py-2 px-4 rounded-full cursor-pointer transition-colors"
+                        >
+                          Refresh Audit Trail
+                        </button>
+                      }
+                    >
+                      {activityLogsLoading ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center">
+                            <div className="flex flex-col items-center justify-center gap-3">
+                              <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
+                              <span className="text-xs font-semibold text-slate-400">Loading audit trail logs from database...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : filteredAuditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center">
+                            <EmptyState
+                              title="No Activities Logged"
+                              description="Audit logs will appear here as users perform updates, additions, or deletions across the ERP system."
+                            />
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedLogs.map((log) => (
+                          <tr key={log.id} className="hover:bg-slate-50 border-b border-slate-100">
+                            <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500">
+                              {new Date(log.timestamp).toLocaleString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </td>
+                            <td className="py-3.5 px-5">
+                              <div className="flex flex-col text-left">
+                                <span className="font-bold text-slate-800">
+                                  {log.user_detail?.full_name || "System Automated"}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                  {log.user_detail?.role || "System Action"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-5">
+                              <span
+                                className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider ${
+                                  log.action === "CREATE"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : log.action === "UPDATE"
+                                    ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}
+                              >
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-5 font-bold text-slate-600 uppercase tracking-wide text-[10px]">
+                              {log.model_name}
+                            </td>
+                            <td className="py-3.5 px-5 text-slate-700 font-semibold">{log.object_repr}</td>
+                            <td className="py-3.5 px-5 font-mono text-[11px] text-slate-400">{log.ip_address || "127.0.0.1"}</td>
+                            <td className="py-3.5 px-5">
+                              <button
+                                onClick={() => {
+                                  setSelectedLogDetail(log);
+                                  setIsLogModalOpen(true);
+                                }}
+                                className="text-xs text-[#04a700] hover:text-[#038a00] font-black cursor-pointer"
+                              >
+                                Inspect Diff
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </Table>
+
+                    {/* Audit Trail Pagination Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-xs font-semibold text-slate-600">
+                      <div>
+                        Showing <span className="font-extrabold text-slate-800">{filteredAuditLogs.length === 0 ? 0 : (currentAuditPage - 1) * auditLogsPerPage + 1}</span> to{" "}
+                        <span className="font-extrabold text-slate-800">{Math.min(currentAuditPage * auditLogsPerPage, filteredAuditLogs.length)}</span> of{" "}
+                        <span className="font-extrabold text-slate-800">{filteredAuditLogs.length}</span> audit logs
                       </div>
-                    </td>
-                  </tr>
-                ) : activityLogsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <EmptyState
-                        title="No Activities Logged"
-                        description="Audit logs will appear here as users perform updates, additions, or deletions across the ERP system."
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  activityLogsList
-                    .filter((log) => {
-                      if (!searchQuery.trim()) return true;
-                      const q = searchQuery.toLowerCase();
-                      return (
-                        (log.user_detail?.full_name || "System").toLowerCase().includes(q) ||
-                        log.model_name.toLowerCase().includes(q) ||
-                        log.object_repr.toLowerCase().includes(q) ||
-                        log.action.toLowerCase().includes(q)
-                      );
-                    })
-                    .map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500">
-                          {new Date(log.timestamp).toLocaleString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </td>
-                        <td className="py-3.5 px-5">
-                          <div className="flex flex-col text-left">
-                            <span className="font-bold text-slate-800">
-                              {log.user_detail?.full_name || "System Automated"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                              {log.user_detail?.role || "System Action"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-5">
-                          <span
-                            className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider ${
-                              log.action === "CREATE"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : log.action === "UPDATE"
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
-                            }`}
-                          >
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-5 font-bold text-slate-600 uppercase tracking-wide text-[10px]">
-                          {log.model_name}
-                        </td>
-                        <td className="py-3.5 px-5 text-slate-700 font-semibold">{log.object_repr}</td>
-                        <td className="py-3.5 px-5 font-mono text-[11px] text-slate-400">{log.ip_address || "127.0.0.1"}</td>
-                        <td className="py-3.5 px-5">
-                          <button
-                            onClick={() => {
-                              setSelectedLogDetail(log);
-                              setIsLogModalOpen(true);
-                            }}
-                            className="text-xs text-[#04a700] hover:text-[#038a00] font-black cursor-pointer"
-                          >
-                            Inspect Diff
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                )}
-              </Table>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={auditLogsPerPage}
+                          onChange={(e) => {
+                            setAuditLogsPerPage(Number(e.target.value));
+                            setAuditLogsPage(1);
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 outline-none"
+                        >
+                          <option value={10}>10 per page</option>
+                          <option value={25}>25 per page</option>
+                          <option value={50}>50 per page</option>
+                        </select>
+                        <button
+                          disabled={currentAuditPage <= 1}
+                          onClick={() => setAuditLogsPage((p) => Math.max(1, p - 1))}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                        <span className="font-mono font-bold text-slate-800 px-1">
+                          Page {currentAuditPage} of {totalAuditPages}
+                        </span>
+                        <button
+                          disabled={currentAuditPage >= totalAuditPages}
+                          onClick={() => setAuditLogsPage((p) => Math.min(totalAuditPages, p + 1))}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Inspect Log details Modal */}
               <Modal

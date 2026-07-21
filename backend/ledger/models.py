@@ -20,6 +20,7 @@ class LedgerEntry(models.Model):
     income = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     expense = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     payment_mode = models.CharField(max_length=50)
+    payment_split_details = models.JSONField(blank=True, null=True, help_text="Split payment breakdown e.g. {cash: 5000, upi: 3000, bajaj_emi: 2000}")
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 

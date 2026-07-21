@@ -3,6 +3,12 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { 
+  getStoredNotifications, 
+  markNotificationRead, 
+  markAllNotificationsRead,
+  AppNotification 
+} from "../services/notifications";
 import {
   Search,
   Bell,
@@ -141,61 +147,31 @@ export default function Navbar({
   };
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasUnread, setHasUnread] = useState(true);
-
   const headerRef = useRef<HTMLElement>(null);
-
-  // Dynamic role-based notifications list
-  const initialNotifications = useMemo(() => {
-    switch (role) {
-      case "owner":
-        return [
-          { id: 1, title: "Branch Stock Alert", message: "Low vehicle stock reported at Visakhapatnam Godown", time: "Just now", route: "/owner/stock", read: false },
-          { id: 2, title: "Advance Booking", message: "New booking BK-8012 awaiting approval", time: "15m ago", route: "/owner/bookings", read: false },
-          { id: 3, title: "Daily Sales Reconciliation", message: "Visakhapatnam branch submitted daily sales ledger", time: "1h ago", route: "/owner/reports", read: false },
-        ];
-      case "supervisor":
-        return [
-          { id: 1, title: "Inter-Branch Transfer", message: "Stock transfer request TR-904 ready for dispatch", time: "5m ago", route: "/supervisor/stock", read: false },
-          { id: 2, title: "PDI Inspection Pending", message: "2 vehicle handovers scheduled for inspection", time: "20m ago", route: "/supervisor/vehicles", read: false },
-          { id: 3, title: "Staff Attendance Logs", message: "Daily check-in logs submitted for verification", time: "1h ago", route: "/supervisor/attendance", read: false },
-        ];
-      case "staff":
-        return [
-          { id: 1, title: "PDI Check Scheduled", message: "Customer A. Srinivas handover checklist pending", time: "10m ago", route: "/staff/pdi", read: false },
-          { id: 2, title: "Battery Registry Sync", message: "Review FIFO battery serial tags for new stock", time: "45m ago", route: "/staff/batteries", read: false },
-        ];
-      case "sales":
-        return [
-          { id: 1, title: "New Lead Assigned", message: "High-intent lead assigned from Telecaller desk", time: "2m ago", route: "/sales/leads", read: false },
-          { id: 2, title: "Test Drive Follow-up", message: "Scheduled follow-up with customer Rajesh Kumar", time: "30m ago", route: "/sales/followups", read: false },
-        ];
-      case "telecaller":
-        return [
-          { id: 1, title: "Campaign Inquiries", message: "12 new website inquiry leads imported", time: "Just now", route: "/telecaller/leads", read: false },
-          { id: 2, title: "Callback Scheduled", message: "Customer requested callback for Kinetic E-Luna", time: "15m ago", route: "/telecaller/leads", read: false },
-        ];
-      default:
-        return [];
-    }
-  }, [role]);
-
-  const [notificationsList, setNotificationsList] = useState(initialNotifications);
+  const [notificationsList, setNotificationsList] = useState<AppNotification[]>([]);
 
   useEffect(() => {
-    setNotificationsList(initialNotifications);
-  }, [initialNotifications]);
+    setNotificationsList(getStoredNotifications(role));
+
+    const handleUpdate = () => {
+      setNotificationsList(getStoredNotifications(role));
+    };
+
+    window.addEventListener("notifications:updated", handleUpdate);
+    return () => window.removeEventListener("notifications:updated", handleUpdate);
+  }, [role]);
 
   const unreadCount = useMemo(() => {
     return notificationsList.filter(n => !n.read).length;
   }, [notificationsList]);
 
   const markAllAsRead = () => {
-    setNotificationsList(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = markAllNotificationsRead(role);
+    setNotificationsList(updated);
   };
 
-  const handleNotificationClick = (route: string, id: number) => {
-    setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const handleNotificationClick = (route: string, id: string) => {
+    markNotificationRead(role, id);
     navigate(`/${role}/notifications`);
   };
 

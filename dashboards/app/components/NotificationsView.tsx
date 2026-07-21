@@ -1,8 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bell, CheckCheck, Trash2, Clock, ShieldCheck, Tag, Sparkles, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+import { 
+  getStoredNotifications, 
+  markNotificationRead, 
+  markAllNotificationsRead, 
+  deleteNotification, 
+  clearAllNotifications,
+  AppNotification 
+} from "../services/notifications";
 
 interface NotificationsViewProps {
   role: "owner" | "supervisor" | "sales" | "telecaller" | "staff";
@@ -10,59 +19,37 @@ interface NotificationsViewProps {
 
 export default function NotificationsView({ role }: NotificationsViewProps) {
   const router = useRouter();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  const getInitialList = () => {
-    switch (role) {
-      case "owner":
-        return [
-          { id: 1, category: "Stock", title: "Low Stock Valuation Warning", details: "Visakhapatnam godown total inventory dropped below target 100 units.", time: "10m ago", read: false, priority: "high", actionRoute: "/owner" },
-          { id: 2, category: "Sales", title: "Monthly Sales Target 74% Achieved", details: "KVR Motors group total monthly sales volume reached ₹1.12 Crore.", time: "1h ago", read: false, priority: "normal", actionRoute: "/owner" },
-          { id: 3, category: "Booking", title: "New Advance Booking BK-8012", details: "Customer G. Apparao booked Kinetic Green Zoom (₹85,000).", time: "2h ago", read: true, priority: "normal", actionRoute: "/owner" },
-          { id: 4, category: "Ledger", title: "Daily Expense Audit Submitted", details: "Supervisor Suresh Babu uploaded ₹14,500 showroom maintenance expense.", time: "3h ago", read: true, priority: "normal", actionRoute: "/owner" },
-        ];
-      case "supervisor":
-        return [
-          { id: 1, category: "Transfers", title: "Stock Transfer TR-904 Required", details: "Sales requested 2 units of Kinetic Green E-Luna for Visakhapatnam Showroom.", time: "5m ago", read: false, priority: "high", actionRoute: "/supervisor" },
-          { id: 2, category: "Inspection", title: "PDI Quality Inspection Pending", details: "Staff completed PDI checklist for VIN KVRVIN2026X102; awaiting final sign-off.", time: "25m ago", read: false, priority: "normal", actionRoute: "/supervisor" },
-          { id: 3, category: "Attendance", title: "Team Attendance Summary", details: "5 out of 6 staff members recorded geolocated check-in for today.", time: "2h ago", read: true, priority: "normal", actionRoute: "/supervisor" },
-        ];
-      case "sales":
-        return [
-          { id: 1, category: "Booking", title: "Booking Confirmation BK-8014", details: "Advance payment of ₹15,000 received for Kinetic Green Flex (Blue).", time: "15m ago", read: false, priority: "high", actionRoute: "/sales" },
-          { id: 2, category: "Lead", title: "Hot Lead Follow-up Due", details: "Schedule call with Customer Rajesh Kumar for battery finance options.", time: "40m ago", read: false, priority: "normal", actionRoute: "/sales" },
-          { id: 3, category: "Delivery", title: "Vehicle Handover Completed", details: "Staff marked invoice INV-2026-0801 as Delivered to customer.", time: "3h ago", read: true, priority: "normal", actionRoute: "/sales" },
-        ];
-      case "telecaller":
-        return [
-          { id: 1, category: "Lead", title: "New Walk-in Enquiry Lead", details: "Sita Kumari submitted inquiry for Kinetic Green E-Luna (contact: 9876543210).", time: "10m ago", read: false, priority: "high", actionRoute: "/telecaller" },
-          { id: 2, category: "Followup", title: "Scheduled Follow-up Call", details: "Call due with Customer T. Apparao regarding test ride confirmation.", time: "1h ago", read: false, priority: "normal", actionRoute: "/telecaller" },
-          { id: 3, category: "Pipeline", title: "Pipeline Stage Converted", details: "Lead Rajesh Varma moved to Negotiation stage.", time: "4h ago", read: true, priority: "normal", actionRoute: "/telecaller" },
-        ];
-      case "staff":
-        return [
-          { id: 1, category: "Shipment", title: "New Shipment Unit Received", details: "VIN KVRVIN2026X405 registered into Vizag Central Godown.", time: "12m ago", read: false, priority: "high", actionRoute: "/staff" },
-          { id: 2, category: "Battery", title: "FIFO Battery Storage Updated", details: "3 new 60V 30Ah LFP battery packs logged into inventory.", time: "1h ago", read: false, priority: "normal", actionRoute: "/staff" },
-          { id: 3, category: "PDI", title: "PDI Verification Completed", details: "Vehicle KVRVIN2026X101 passed pre-delivery quality checks.", time: "2h ago", read: true, priority: "normal", actionRoute: "/staff" },
-        ];
-    }
-  };
+  useEffect(() => {
+    setNotifications(getStoredNotifications(role));
 
-  const [notifications, setNotifications] = useState(getInitialList());
+    const handleUpdate = () => {
+      setNotifications(getStoredNotifications(role));
+    };
+
+    window.addEventListener("notifications:updated", handleUpdate);
+    return () => window.removeEventListener("notifications:updated", handleUpdate);
+  }, [role]);
+
   const [filterTab, setFilterTab] = useState<"all" | "unread" | "high">("all");
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = markAllNotificationsRead(role);
+    setNotifications(updated);
   };
 
   const clearAll = () => {
-    setNotifications([]);
+    const updated = clearAllNotifications(role);
+    setNotifications(updated);
   };
 
-  const handleCardClick = (id: number, route: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    router.push(route);
+  const handleCardClick = (id: string, route: string) => {
+    const updated = markNotificationRead(role, id);
+    setNotifications(updated);
+    if (route) router.push(route);
   };
 
   const filtered = notifications.filter(n => {
@@ -149,7 +136,7 @@ export default function NotificationsView({ role }: NotificationsViewProps) {
           filtered.map((item) => (
             <div
               key={item.id}
-              onClick={() => handleCardClick(item.id, item.actionRoute)}
+              onClick={() => handleCardClick(item.id, item.actionRoute || item.route || "")}
               className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-md ${
                 item.read
                   ? "bg-white border-slate-200/70 text-slate-700 hover:border-emerald-300"

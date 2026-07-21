@@ -54,7 +54,7 @@ export default function DashboardSmoothScroll({
       className={`flex-1 overflow-y-auto smooth-scroll slim-scrollbar min-h-0 ${className}`}
       style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
     >
-      <div ref={contentRef} className="min-h-full">
+      <div ref={contentRef} className="min-h-full pb-36 md:pb-12">
         {children}
       </div>
     </div>
