@@ -196,6 +196,17 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [ledgerEntriesLoading, setLedgerEntriesLoading] = useState(true);
 
+  // Ledger Management Filter States
+  const [ledgerSearchQuery, setLedgerSearchQuery] = useState("");
+  const [ledgerFilterBranch, setLedgerFilterBranch] = useState("All Branches");
+  const [ledgerFilterType, setLedgerFilterType] = useState("All Categories");
+  const [ledgerFilterPaymentMode, setLedgerFilterPaymentMode] = useState("All Payment Modes");
+  const [ledgerFilterStartDate, setLedgerFilterStartDate] = useState("");
+  const [ledgerFilterEndDate, setLedgerFilterEndDate] = useState("");
+
+
+
+
   const [batteriesStock, setBatteriesStock] = useState<any[]>([]);
   const [batteriesLoading, setBatteriesLoading] = useState(true);
 
@@ -2818,18 +2829,95 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   }, [salesInvoices, selectedBranch, selectedRange, isWithinDateRange]);
 
   const filteredLedgerEntries = React.useMemo(() => {
-    return ledgerEntries.filter((entry) => {
-      let matchesBranch = true;
+    return ledgerEntries.filter((entry: any) => {
+      // 1. Top Bar Branch Filter
       if (selectedBranch !== "All Branches") {
-        matchesBranch = entry.branch_name && (
+        const matchesTopBranch = entry.branch_name && (
           entry.branch_name.toLowerCase().includes(selectedBranch.toLowerCase()) ||
           selectedBranch.toLowerCase().includes(entry.branch_name.toLowerCase())
         );
+        if (!matchesTopBranch) return false;
       }
-      const matchesDate = isWithinDateRange(entry.created_at, selectedRange);
-      return matchesBranch && matchesDate;
+
+      // 2. Top Bar Range Filter
+      if (!isWithinDateRange(entry.created_at || entry.entry_date, selectedRange)) {
+        return false;
+      }
+
+      // 3. Search Query
+      if (ledgerSearchQuery.trim()) {
+        const q = ledgerSearchQuery.toLowerCase();
+        const matchTx = (entry.transaction_id || "").toLowerCase().includes(q);
+        const matchDetail = (entry.detail || "").toLowerCase().includes(q);
+        const matchBranch = (entry.branch_name || "").toLowerCase().includes(q);
+        const matchApproved = (entry.approver_name || entry.approved_by || entry.user_name || "").toLowerCase().includes(q);
+        const matchType = (entry.ledger_type_display || entry.ledger_type || "").toLowerCase().includes(q);
+        const matchMode = (entry.payment_mode || "").toLowerCase().includes(q);
+        if (!matchTx && !matchDetail && !matchBranch && !matchApproved && !matchType && !matchMode) {
+          return false;
+        }
+      }
+
+      // 4. Ledger Filter Bar Branch Filter
+      if (ledgerFilterBranch !== "All Branches" && entry.branch_name !== ledgerFilterBranch) {
+        return false;
+      }
+
+      // 5. Category Type Filter
+      if (ledgerFilterType !== "All Categories") {
+        const rowType = (entry.ledger_type || "").toLowerCase();
+        if (ledgerFilterType === "income" && parseFloat(entry.income || 0) <= 0) return false;
+        if (ledgerFilterType === "expense" && parseFloat(entry.expense || 0) <= 0) return false;
+        if (ledgerFilterType === "purchase_expense" && rowType !== "purchase_expense") return false;
+        if (ledgerFilterType === "sale" && !rowType.includes("sale")) return false;
+        if (ledgerFilterType === "petty_cash" && !rowType.includes("petty_cash") && !rowType.includes("expense")) return false;
+        if (ledgerFilterType === "deposit" && !rowType.includes("deposit")) return false;
+      }
+
+      // 6. Payment Mode Filter
+      if (ledgerFilterPaymentMode !== "All Payment Modes") {
+        const mode = (entry.payment_mode || "").toLowerCase().trim();
+        if (ledgerFilterPaymentMode === "split") {
+          const split = entry.payment_split_details || entry.payment_split || entry.split_details;
+          if (mode !== "split" && (!split || typeof split !== "object" || Object.keys(split).length === 0)) {
+            return false;
+          }
+        } else if (mode !== ledgerFilterPaymentMode.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 7. From Date Filter
+      if (ledgerFilterStartDate) {
+        const rowDateStr = entry.entry_date || entry.created_at || entry.date;
+        if (rowDateStr && rowDateStr.substring(0, 10) < ledgerFilterStartDate) {
+          return false;
+        }
+      }
+
+      // 8. To Date Filter
+      if (ledgerFilterEndDate) {
+        const rowDateStr = entry.entry_date || entry.created_at || entry.date;
+        if (rowDateStr && rowDateStr.substring(0, 10) > ledgerFilterEndDate) {
+          return false;
+        }
+      }
+
+      return true;
     });
-  }, [ledgerEntries, selectedBranch, selectedRange, isWithinDateRange]);
+  }, [
+    ledgerEntries,
+    selectedBranch,
+    selectedRange,
+    isWithinDateRange,
+    ledgerSearchQuery,
+    ledgerFilterBranch,
+    ledgerFilterType,
+    ledgerFilterPaymentMode,
+    ledgerFilterStartDate,
+    ledgerFilterEndDate,
+  ]);
+
 
   const filteredLeadsList = React.useMemo(() => {
     return leadsList.filter((lead) => {
@@ -6301,37 +6389,158 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 10: LEDGER MANAGEMENT */}
           {activeTab === "ledger" && (
             <div className="space-y-6">
+
+              {/* LEDGER FILTER BAR */}
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-left space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Filter className="h-4 w-4 text-emerald-600 inline shrink-0" />
+                      Ledger Transaction Filters
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                      Filter financial entries by keyword, branch outlet, category type, payment mode, or date range.
+                    </p>
+                  </div>
+                  {(ledgerSearchQuery || ledgerFilterBranch !== "All Branches" || ledgerFilterType !== "All Categories" || ledgerFilterPaymentMode !== "All Payment Modes" || ledgerFilterStartDate || ledgerFilterEndDate) && (
+                    <button
+                      onClick={() => {
+                        setLedgerSearchQuery("");
+                        setLedgerFilterBranch("All Branches");
+                        setLedgerFilterType("All Categories");
+                        setLedgerFilterPaymentMode("All Payment Modes");
+                        setLedgerFilterStartDate("");
+                        setLedgerFilterEndDate("");
+                      }}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 border border-rose-200/80 px-3 py-1.5 rounded-xl self-start sm:self-auto cursor-pointer transition-colors"
+                    >
+                      Reset All Filters
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {/* Search Query */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Search Ledger</label>
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="ID, memo, branch..."
+                        value={ledgerSearchQuery}
+                        onChange={(e) => setLedgerSearchQuery(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Branch Filter */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Branch Outlet</label>
+                    <select
+                      value={ledgerFilterBranch}
+                      onChange={(e) => setLedgerFilterBranch(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white cursor-pointer transition-colors"
+                    >
+                      <option value="All Branches">All Branches</option>
+                      {branchesList.map((b: any) => (
+                        <option key={b.id || b.name} value={b.name}>{b.name}</option>
+                      ))}
+
+                    </select>
+                  </div>
+
+                  {/* Category Type Filter */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Category Type</label>
+                    <select
+                      value={ledgerFilterType}
+                      onChange={(e) => setLedgerFilterType(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white cursor-pointer transition-colors"
+                    >
+                      <option value="All Categories">All Categories</option>
+                      <option value="income">Income (Inflows)</option>
+                      <option value="expense">Expenses (Outflows)</option>
+                      <option value="purchase_expense">Purchase Expenses</option>
+                      <option value="sale">Vehicle Sales</option>
+                      <option value="petty_cash">Petty Cash</option>
+                      <option value="deposit">Cash Deposits</option>
+                    </select>
+                  </div>
+
+                  {/* Payment Mode Filter */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Mode</label>
+                    <select
+                      value={ledgerFilterPaymentMode}
+                      onChange={(e) => setLedgerFilterPaymentMode(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white cursor-pointer transition-colors"
+                    >
+                      <option value="All Payment Modes">All Payment Modes</option>
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI / GPay</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="card">Credit / Debit Card</option>
+                      <option value="bajaj_finance">Bajaj Finance</option>
+                      <option value="split">Split Payment</option>
+                    </select>
+                  </div>
+
+                  {/* Start Date */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">From Date</label>
+                    <input
+                      type="date"
+                      value={ledgerFilterStartDate}
+                      onChange={(e) => setLedgerFilterStartDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white cursor-pointer transition-colors"
+                    />
+                  </div>
+
+                  {/* End Date */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">To Date</label>
+                    <input
+                      type="date"
+                      value={ledgerFilterEndDate}
+                      onChange={(e) => setLedgerFilterEndDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white cursor-pointer transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
               
               {/* Cards row */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Ledger Income</span>
                   <span className="text-xl font-bold text-slate-800">
-                    ₹ {ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0), 0).toLocaleString('en-IN')}
+                    ₹ {filteredLedgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0), 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Purchase Cost</span>
                   <span className="text-xl font-bold text-slate-800">
-                    ₹ {ledgerEntries.filter(row => row.ledger_type === "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                    ₹ {filteredLedgerEntries.filter(row => row.ledger_type === "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Operating Expense</span>
                   <span className="text-xl font-bold text-slate-800">
-                    ₹ {ledgerEntries.filter(row => row.ledger_type !== "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                    ₹ {filteredLedgerEntries.filter(row => row.ledger_type !== "purchase_expense").reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm text-left">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Net Cashflow</span>
                   <span className={`text-xl font-bold ${
-                    ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+                    filteredLedgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
                   }`}>
-                    ₹ {ledgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
+                    ₹ {filteredLedgerEntries.reduce((acc, curr) => acc + parseFloat(curr.income || 0) - parseFloat(curr.expense || 0), 0).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
-              <Table title="General Ledger Entries List" headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Entry Date", "Actions"]}>
+              <Table title={`General Ledger Entries List (${filteredLedgerEntries.length})`} headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Entry Date", "Actions"]}>
                 {ledgerEntriesLoading ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center">
@@ -6341,17 +6550,17 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       </div>
                     </td>
                   </tr>
-                ) : ledgerEntries.length === 0 ? (
+                ) : filteredLedgerEntries.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center">
                       <EmptyState 
                         title="No Transactions Logged" 
-                        description="Financial activities across branches will register on this ledger automatically." 
+                        description="No ledger transactions match the selected filter criteria." 
                       />
                     </td>
                   </tr>
                 ) : (
-                  ledgerEntries.map((row, idx) => (
+                  filteredLedgerEntries.map((row, idx) => (
                     <tr key={row.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{row.transaction_id}</td>
                       <td className="py-3.5 px-5 text-slate-600 font-semibold">{row.ledger_type_display || row.ledger_type}</td>
@@ -6430,6 +6639,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </Table>
             </div>
           )}
+
           {/* TAB 11: REPORTS & ANALYTICS */}
           {activeTab === "reports" && (
             <div className="space-y-6">
