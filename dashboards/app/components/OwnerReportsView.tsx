@@ -53,14 +53,23 @@ export default function OwnerReportsView() {
     loadAllData();
   }, []);
 
-  // Helper to trigger CSV file download
+  // Helper to trigger CSV file download with UTF-8 BOM to prevent Excel character corruption
   const downloadCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
+    const sanitize = (val: any) => {
+      if (val === null || val === undefined) return "";
+      let str = String(val).trim();
+      // Replace any unicode dashes with clean ASCII hyphen
+      str = str.replace(/[\u2010-\u2015\u2013\u2014]/g, "-");
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
     const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(","))
+      headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(","),
+      ...rows.map(row => row.map(sanitize).join(","))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // Add UTF-8 Byte Order Mark (\uFEFF) so Excel opens CSV without corrupting characters
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -84,11 +93,11 @@ export default function OwnerReportsView() {
       v.branch_name || "Branch",
       v.showroom_name || v.location_name || "Godown",
       v.model_name || "EV Model",
-      v.vin_number || "—",
-      v.motor_number || "—",
-      v.chassis_number || "—",
-      v.color || "—",
-      v.purchase_date || "—",
+      v.vin_number || "-",
+      v.motor_number || "-",
+      v.chassis_number || "-",
+      v.color || "-",
+      v.purchase_date || "-",
       v.status || "available"
     ]);
 
@@ -105,12 +114,12 @@ export default function OwnerReportsView() {
     const rows = filtered.map(b => [
       b.branch_name || b.location_name || "Branch",
       b.location_name || "Godown",
-      b.serial_number || "—",
-      b.battery_code || "—",
-      b.capacity || "—",
-      b.supplier || "—",
+      b.serial_number || "-",
+      b.battery_code || "-",
+      b.capacity || "-",
+      b.supplier || "-",
       b.warranty_years || 3,
-      b.purchase_date || "—",
+      b.purchase_date || "-",
       b.status || "available"
     ]);
 
@@ -125,25 +134,25 @@ export default function OwnerReportsView() {
 
     const headers = ["Invoice Number", "Date", "Customer Name", "Contact Mobile", "Branch Name", "Vehicle Model", "VIN Number", "Motor Number", "Assigned Battery Serial", "Sale Price (INR)", "Payment Mode", "Split Breakdown", "Delivery Status"];
     const rows = filtered.map(s => {
-      let splitStr = "—";
+      let splitStr = "-";
       if (s.payment_split_details) {
         try {
           const sp = typeof s.payment_split_details === "string" ? JSON.parse(s.payment_split_details) : s.payment_split_details;
-          splitStr = Object.entries(sp).map(([k, v]) => `${k.toUpperCase()}: ₹${v}`).join(" | ");
+          splitStr = Object.entries(sp).map(([k, v]) => `${k.toUpperCase()}: Rs.${v}`).join(" | ");
         } catch (e) {
           splitStr = String(s.payment_split_details);
         }
       }
       return [
         s.invoice_number || `INV-${s.id}`,
-        s.sale_date || "—",
-        s.customer_name || "—",
-        s.customer_contact || "—",
+        s.sale_date || "-",
+        s.customer_name || "-",
+        s.customer_contact || "-",
         s.branch_name || "Branch",
         s.model_name || "EV Model",
-        s.vin_number || "—",
-        s.motor_number || "—",
-        s.battery_serial || "—",
+        s.vin_number || "-",
+        s.motor_number || "-",
+        s.battery_serial || "-",
         s.sale_price || 0,
         s.payment_mode || "Cash",
         splitStr,

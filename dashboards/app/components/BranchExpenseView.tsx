@@ -37,9 +37,10 @@ import {
 
 interface BranchExpenseViewProps {
   role: "owner" | "supervisor" | "admin";
+  onRefreshLedger?: () => void;
 }
 
-export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
+export default function BranchExpenseView({ role, onRefreshLedger }: BranchExpenseViewProps) {
   const { user } = useAuth();
   const [deposits, setDeposits] = useState<BranchCashDeposit[]>([]);
   const [expenses, setExpenses] = useState<BranchExpense[]>([]);
@@ -84,6 +85,7 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
       setExpenses(expData);
       setBranches(branchData);
       setSupervisors(userData.filter(u => u.role === "supervisor"));
+      if (onRefreshLedger) onRefreshLedger();
     } catch (e) {
       console.error("Failed to load finance data:", e);
     } finally {

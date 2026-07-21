@@ -15,6 +15,7 @@ import IssueReportView from "../components/IssueReportView";
 import OwnerReportsView from "../components/OwnerReportsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
+import SearchableSelect from "../components/SearchableSelect";
 import { getErrorMessage } from "../utils/error";
 import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch, getStockTransfers } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
@@ -23,6 +24,7 @@ import { getBookings, createBooking, updateBooking, deleteBooking } from "../ser
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
 import { getLedgerEntries, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry } from "../services/ledger";
+import { getBranchExpenses, getBranchCashDeposits } from "../services/branchFinance";
 import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
 import { getActivityLogs, ActivityLog } from "../services/activityLogs";
 import { getUsers, createUser, updateUser, deleteUser } from "../services/users";
@@ -203,6 +205,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [ledgerFilterPaymentMode, setLedgerFilterPaymentMode] = useState("All Payment Modes");
   const [ledgerFilterStartDate, setLedgerFilterStartDate] = useState("");
   const [ledgerFilterEndDate, setLedgerFilterEndDate] = useState("");
+
+  const [branchExpenses, setBranchExpenses] = useState<any[]>([]);
+  const [cashDeposits, setCashDeposits] = useState<any[]>([]);
 
 
 
@@ -552,8 +557,14 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const loadLedger = async () => {
     try {
       setLedgerEntriesLoading(true);
-      const data = await getLedgerEntries();
+      const [data, exp, dep] = await Promise.all([
+        getLedgerEntries().catch(() => []),
+        getBranchExpenses().catch(() => []),
+        getBranchCashDeposits().catch(() => [])
+      ]);
       setLedgerEntries(data);
+      setBranchExpenses(exp);
+      setCashDeposits(dep);
     } catch (e) {
       console.error("Failed to load ledger from Django REST API:", e);
     } finally {
@@ -2829,8 +2840,88 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     });
   }, [salesInvoices, selectedBranch, selectedRange, isWithinDateRange]);
 
+  // Combine explicit ledger entries with Advance Booking deposits, Petty Cash expenses, and Cash Deposits
+  const allCombinedLedgerEntries = React.useMemo(() => {
+    const existingTxIds = new Set(ledgerEntries.map((e: any) => e.transaction_id || e.id));
+
+    // 1. Advance Bookings
+    const bookingLedgerEntries = advanceBookings
+      .filter((b: any) => parseFloat(b.advance_amount || 0) > 0)
+      .map((b: any) => {
+        const txId = b.booking_id ? `TXN-${b.booking_id}` : `TXN-BKG-${b.id}`;
+        if (existingTxIds.has(txId) || existingTxIds.has(b.booking_id)) return null;
+
+        return {
+          id: `bkg-${b.id}`,
+          transaction_id: txId,
+          entry_date: b.created_at || new Date().toISOString(),
+          created_at: b.created_at || new Date().toISOString(),
+          branch_name: b.branch_name || b.showroom_name || "Main Branch",
+          ledger_type: "booking_advance",
+          ledger_type_display: "Advance Booking Deposit",
+          detail: `Advance Booking Deposit - ${b.customer_name} (${b.vehicle_model_name || "EV Model"})`,
+          income: String(b.advance_amount || "0"),
+          expense: "0",
+          payment_mode: b.payment_mode || b.payment_type || "Cash",
+          approved_by: "Sales Executive / System",
+          approver_name: "Sales Executive"
+        };
+      })
+      .filter(Boolean);
+
+    // 2. Branch Expenses (Petty Cash)
+    const expenseLedgerEntries = branchExpenses
+      .map((ex: any) => {
+        const txId = ex.expense_id ? `TXN-${ex.expense_id}` : `TXN-EXP-${ex.id}`;
+        if (existingTxIds.has(txId) || existingTxIds.has(ex.expense_id)) return null;
+
+        return {
+          id: `exp-${ex.id}`,
+          transaction_id: txId,
+          entry_date: ex.created_at || ex.date || new Date().toISOString(),
+          created_at: ex.created_at || new Date().toISOString(),
+          branch_name: ex.branch_name || "Main Branch",
+          ledger_type: "petty_cash",
+          ledger_type_display: "Petty Cash Expense",
+          detail: `${ex.category ? String(ex.category).toUpperCase() : "EXPENSE"}: ${ex.description || "Branch Operating Expense"}`,
+          income: "0",
+          expense: String(ex.amount || "0"),
+          payment_mode: "Cash",
+          approved_by: ex.created_by_name || "Owner / Branch Manager",
+          approver_name: ex.created_by_name || "Owner"
+        };
+      })
+      .filter(Boolean);
+
+    // 3. Cash Deposits
+    const depositLedgerEntries = cashDeposits
+      .map((dep: any) => {
+        const txId = dep.deposit_id ? `TXN-${dep.deposit_id}` : `TXN-DEP-${dep.id}`;
+        if (existingTxIds.has(txId) || existingTxIds.has(dep.deposit_id)) return null;
+
+        return {
+          id: `dep-${dep.id}`,
+          transaction_id: txId,
+          entry_date: dep.created_at || dep.date || new Date().toISOString(),
+          created_at: dep.created_at || new Date().toISOString(),
+          branch_name: dep.branch_name || "Main Branch",
+          ledger_type: "deposit",
+          ledger_type_display: "Cash Deposit / Handover",
+          detail: `Cash Deposit - ${dep.supervisor_name || dep.created_by_name || "Branch Handover"} (${dep.notes || "Fund Transfer"})`,
+          income: String(dep.amount || "0"),
+          expense: "0",
+          payment_mode: "Cash",
+          approved_by: "Owner",
+          approver_name: "Owner"
+        };
+      })
+      .filter(Boolean);
+
+    return [...ledgerEntries, ...bookingLedgerEntries, ...expenseLedgerEntries, ...depositLedgerEntries];
+  }, [ledgerEntries, advanceBookings, branchExpenses, cashDeposits]);
+
   const filteredLedgerEntries = React.useMemo(() => {
-    return ledgerEntries.filter((entry: any) => {
+    return allCombinedLedgerEntries.filter((entry: any) => {
       // 1. Top Bar Branch Filter
       if (selectedBranch !== "All Branches") {
         const matchesTopBranch = entry.branch_name && (
@@ -2871,6 +2962,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
         if (ledgerFilterType === "expense" && parseFloat(entry.expense || 0) <= 0) return false;
         if (ledgerFilterType === "purchase_expense" && rowType !== "purchase_expense") return false;
         if (ledgerFilterType === "sale" && !rowType.includes("sale")) return false;
+        if (ledgerFilterType === "booking_advance" && !rowType.includes("booking") && !rowType.includes("advance")) return false;
         if (ledgerFilterType === "petty_cash" && !rowType.includes("petty_cash") && !rowType.includes("expense")) return false;
         if (ledgerFilterType === "deposit" && !rowType.includes("deposit")) return false;
       }
@@ -2907,7 +2999,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       return true;
     });
   }, [
-    ledgerEntries,
+    allCombinedLedgerEntries,
     selectedBranch,
     selectedRange,
     isWithinDateRange,
@@ -6484,9 +6576,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     >
                       <option value="All Categories">All Categories</option>
                       <option value="income">Income (Inflows)</option>
+                      <option value="booking_advance">Advance Bookings</option>
+                      <option value="sale">Vehicle Sales</option>
                       <option value="expense">Expenses (Outflows)</option>
                       <option value="purchase_expense">Purchase Expenses</option>
-                      <option value="sale">Vehicle Sales</option>
                       <option value="petty_cash">Petty Cash</option>
                       <option value="deposit">Cash Deposits</option>
                     </select>
@@ -7400,7 +7493,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           )}
           {activeTab === "expenses" && (
-            <BranchExpenseView role="owner" />
+            <BranchExpenseView role="owner" onRefreshLedger={loadLedger} />
           )}
           {activeTab === "issues" && (
             <IssueReportView role="owner" />
@@ -8078,54 +8171,18 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             />
           </div>
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle Model</label>
-              {leadModelSearch && (
-                <button 
-                  type="button" 
-                  onClick={() => setLeadModelSearch("")}
-                  className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer lowercase"
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <div className="relative">
-                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search EV models by name or brand..."
-                  value={leadModelSearch}
-                  onChange={(e) => setLeadModelSearch(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
-                />
-              </div>
-              <select
-                value={newLead.interested_vehicle}
-                onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-                required
-              >
-                <option value="">
-                  {vehicleModelsList.filter((m) => {
-                    if (!leadModelSearch.trim()) return true;
-                    const q = leadModelSearch.toLowerCase();
-                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
-                  }).length === 0 ? "No matching models found" : "Select a model..."}
-                </option>
-                {vehicleModelsList
-                  .filter((m) => {
-                    if (!leadModelSearch.trim()) return true;
-                    const q = leadModelSearch.toLowerCase();
-                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
-                  })
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
-                  ))
-                }
-              </select>
-            </div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle Model</label>
+            <SearchableSelect
+              options={vehicleModelsList.map((m) => ({
+                value: String(m.id),
+                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
+              }))}
+              value={String(newLead.interested_vehicle || "")}
+              onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
+              placeholder="Select EV Model..."
+              searchPlaceholder="Search EV models by name or brand..."
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
