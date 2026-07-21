@@ -92,35 +92,55 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     return logs.filter(l => l.status === "pending" && (l.user !== user?.id && l.user_detail?.id !== user?.id));
   }, [logs, role, user]);
 
-  // Camera MediaStream Cleanup
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  // Automatically attach stream once video element mounts
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch((err) => console.warn("Video play error:", err));
+    }
+  }, [isCameraActive, cameraStream]);
+
+  // Clean up camera stream
+  const stopCameraStream = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const s = videoRef.current.srcObject as MediaStream;
+      s.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  };
+
   useEffect(() => {
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      stopCameraStream();
     };
   }, []);
 
   // Camera & Geolocation Handlers
   const startCamera = async () => {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setIsCameraActive(false);
-        showToast("Webcam unavailable on this device. Default photo will be used.", "error");
+      if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        fileInputRef.current?.click();
         return;
       }
+      stopCameraStream();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      setCameraStream(stream);
       setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      } else {
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    } catch (err) {
-      console.warn("Camera video stream unavailable:", err);
-      setIsCameraActive(false);
-      showToast("Webcam unavailable. Snapshot will use default workplace photo.", "error");
+      showToast("Webcam active. Click 'Snap Photo' when ready.", "success");
+    } catch (err: any) {
+      console.warn("Camera mediaStream unavailable, triggering file capture fallback:", err);
+      // Fallback: Open native camera photo file picker
+      fileInputRef.current?.click();
     }
   };
 
@@ -134,41 +154,78 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg");
         setSelfiePhoto(dataUrl);
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        setIsCameraActive(false);
+        stopCameraStream();
+        showToast("Selfie snapshot captured!", "success");
       }
     }
   };
 
+  const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSelfiePhoto(dataUrl);
+      stopCameraStream();
+      showToast("Workplace selfie photo attached!", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const resolveLocation = () => {
-    if ("geolocation" in navigator) {
-      setIsLocating(true);
+    setIsLocating(true);
+
+    const setFallbackLocation = (msg?: string) => {
+      const defaultLat = 17.6868;
+      const defaultLng = 83.2185;
+      setGeoCoords({ lat: defaultLat, lng: defaultLng });
+      setGeoAddress(`${userBranchName} Outlet (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+      setIsLocating(false);
+      showToast(msg || `Location set to ${userBranchName} Premises`, "success");
+    };
+
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setGeoCoords({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          });
-          setGeoAddress(`${userBranchName} Showroom (Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)})`);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setGeoCoords({ lat, lng });
+          setGeoAddress(`${userBranchName} Outlet (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
           setIsLocating(false);
-          showToast("Workplace GPS Location captured!");
+          showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
         },
         (err) => {
-          console.warn("Geolocation fallback:", err);
-          setGeoCoords({ lat: 17.6868, lng: 83.2185 });
-          setGeoAddress(`${userBranchName} Showroom Premises`);
-          setIsLocating(false);
+          console.warn("High-accuracy GPS failed, trying standard accuracy:", err.message);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              setGeoCoords({ lat, lng });
+              setGeoAddress(`${userBranchName} Outlet (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+              setIsLocating(false);
+              showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+            },
+            (err2) => {
+              console.warn("Geolocation fallback executed:", err2.message);
+              setFallbackLocation(`GPS location set to ${userBranchName} Premises`);
+            },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+          );
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     } else {
-      setGeoCoords({ lat: 17.6868, lng: 83.2185 });
-      setGeoAddress(`${userBranchName} Premises`);
+      setFallbackLocation(`Location set to ${userBranchName} Premises`);
     }
   };
+
+  // Auto resolve location on component mount if check-in pending
+  useEffect(() => {
+    if (!geoCoords && !myTodayCheckin) {
+      resolveLocation();
+    }
+  }, [myTodayCheckin]);
 
   const submitCheckin = async () => {
     if (!geoCoords) {
@@ -277,37 +334,61 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
           <div className="space-y-6">
             {/* Step 1: Selfie Snapshot */}
             <div className="space-y-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                capture="user"
+                onChange={handlePhotoFileUpload}
+                className="hidden"
+              />
               <label className="text-xs font-black text-slate-800 block">1. Take Check-In Selfie Snapshot</label>
               {selfiePhoto ? (
                 <div className="relative h-48 w-64 mx-auto rounded-2xl overflow-hidden border border-emerald-500/40 shadow-sm">
                   <img src={selfiePhoto} alt="Selfie" className="w-full h-full object-cover" />
                   <button
                     onClick={() => { setSelfiePhoto(null); startCamera(); }}
-                    className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1"
+                    className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 cursor-pointer"
                   >
-                    <RefreshCw className="h-3 w-3" /> Retake
+                    <RefreshCw className="h-3 w-3" /> Retake Photo
                   </button>
                 </div>
               ) : isCameraActive ? (
                 <div className="relative h-48 w-64 mx-auto bg-black rounded-2xl overflow-hidden border border-slate-800 flex flex-col items-center justify-center">
-                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                  <button
-                    onClick={captureSnapshot}
-                    className="absolute bottom-3 px-4 py-1.5 rounded-full bg-[#04a700] text-white text-xs font-bold shadow-lg"
-                  >
-                    Snap Photo
-                  </button>
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <div className="absolute bottom-3 flex items-center gap-2">
+                    <button
+                      onClick={captureSnapshot}
+                      className="px-4 py-1.5 rounded-full bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold shadow-lg cursor-pointer"
+                    >
+                      Snap Photo
+                    </button>
+                    <button
+                      onClick={stopCameraStream}
+                      className="px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="h-36 w-full max-w-sm mx-auto bg-slate-50 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-4 text-center space-y-3">
                   <Camera className="h-8 w-8 text-[#04a700]" />
                   <span className="text-xs text-slate-500 font-medium">Capture identity photo for workplace verification</span>
-                  <button
-                    onClick={startCamera}
-                    className="px-4 py-2 rounded-xl bg-[#04a700] text-white text-xs font-bold hover:bg-[#038a00] transition-colors shadow-sm"
-                  >
-                    Open Camera
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={startCamera}
+                      className="px-4 py-2 rounded-xl bg-[#04a700] text-white text-xs font-bold hover:bg-[#038a00] transition-colors shadow-sm cursor-pointer"
+                    >
+                      Open Camera
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer border border-slate-200"
+                    >
+                      Upload Photo
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

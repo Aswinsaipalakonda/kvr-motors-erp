@@ -514,35 +514,54 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
-  // Camera MediaStream Cleanup on unmount
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  // Automatically attach camera stream once video element mounts
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch((err) => console.warn("Video play error:", err));
+    }
+  }, [isCameraActive, cameraStream]);
+
+  // Clean up camera stream
+  const stopCameraStream = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const s = videoRef.current.srcObject as MediaStream;
+      s.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  };
+
   useEffect(() => {
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      stopCameraStream();
     };
   }, []);
 
   // Handlers for Geolocated Camera Attendance Check-in
   const startCamera = async () => {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setIsCameraActive(false);
-        showToast("Webcam unavailable on this device.", "error");
+      if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        fileInputRef.current?.click();
         return;
       }
+      stopCameraStream();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      setCameraStream(stream);
       setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      } else {
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    } catch (err) {
-      console.warn("Camera permission or video stream unavailable:", err);
-      setIsCameraActive(false);
-      showToast("Webcam unavailable. You can upload a photo file for check-in.", "error");
+      showToast("Webcam active. Click 'Snap Photo' when ready.", "success");
+    } catch (err: any) {
+      console.warn("Camera mediaStream unavailable, triggering file capture fallback:", err);
+      fileInputRef.current?.click();
     }
   };
 
@@ -556,40 +575,56 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg");
         setSelfiePhoto(dataUrl);
-        // Stop stream
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        setIsCameraActive(false);
+        stopCameraStream();
+        showToast("Selfie snapshot captured!", "success");
       }
     }
   };
 
   const resolveBrowserLocation = () => {
-    if ("geolocation" in navigator) {
-      setIsLocating(true);
+    setIsLocating(true);
+
+    const setFallbackLocation = (msg?: string) => {
+      const defaultLat = 17.6868;
+      const defaultLng = 83.2185;
+      setGeoCoords({ lat: defaultLat, lng: defaultLng });
+      setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+      setIsLocating(false);
+      showToast(msg || `Location set to ${userBranchName} Premises`, "success");
+    };
+
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setGeoCoords({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          });
-          setGeoAddress(`${userBranchName} Yard (Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)})`);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setGeoCoords({ lat, lng });
+          setGeoAddress(`${userBranchName} Yard (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
           setIsLocating(false);
-          showToast("GPS Workplace location resolved!");
+          showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
         },
         (err) => {
-          console.warn("Geolocation fallback:", err.message);
-          setGeoCoords({ lat: 17.6868, lng: 83.2185 }); // Vizag coordinates
-          setGeoAddress(`${userBranchName} Showroom Premises`);
-          setIsLocating(false);
+          console.warn("High-accuracy GPS failed, trying standard accuracy:", err.message);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              setGeoCoords({ lat, lng });
+              setGeoAddress(`${userBranchName} Yard (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+              setIsLocating(false);
+              showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+            },
+            (err2) => {
+              console.warn("Geolocation fallback executed:", err2.message);
+              setFallbackLocation(`GPS location set to ${userBranchName} Premises`);
+            },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+          );
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     } else {
-      setGeoCoords({ lat: 17.6868, lng: 83.2185 });
-      setGeoAddress(`${userBranchName} Premises`);
+      setFallbackLocation(`Location set to ${userBranchName} Premises`);
     }
   };
 
