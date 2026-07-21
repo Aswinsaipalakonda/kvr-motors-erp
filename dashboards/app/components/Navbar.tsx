@@ -1,17 +1,8 @@
-"use client";
-
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import { 
-  getStoredNotifications, 
-  markNotificationRead, 
-  markAllNotificationsRead,
-  AppNotification 
-} from "../services/notifications";
 import {
   Search,
-  Bell,
   ChevronDown,
   CalendarDays,
   LogOut,
@@ -22,6 +13,7 @@ import {
   CornerDownLeft,
   Check,
 } from "lucide-react";
+
 
 interface NavbarProps {
   title: string;
@@ -120,7 +112,6 @@ export default function Navbar({
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
@@ -148,32 +139,6 @@ export default function Navbar({
 
   const [searchQuery, setSearchQuery] = useState("");
   const headerRef = useRef<HTMLElement>(null);
-  const [notificationsList, setNotificationsList] = useState<AppNotification[]>([]);
-
-  useEffect(() => {
-    setNotificationsList(getStoredNotifications(role));
-
-    const handleUpdate = () => {
-      setNotificationsList(getStoredNotifications(role));
-    };
-
-    window.addEventListener("notifications:updated", handleUpdate);
-    return () => window.removeEventListener("notifications:updated", handleUpdate);
-  }, [role]);
-
-  const unreadCount = useMemo(() => {
-    return notificationsList.filter(n => !n.read).length;
-  }, [notificationsList]);
-
-  const markAllAsRead = () => {
-    const updated = markAllNotificationsRead(role);
-    setNotificationsList(updated);
-  };
-
-  const handleNotificationClick = (route: string, id: string) => {
-    markNotificationRead(role, id);
-    navigate(`/${role}/notifications`);
-  };
 
   const branches = useMemo(() => {
     if (branchesList && branchesList.length > 0) {
@@ -193,10 +158,10 @@ export default function Navbar({
   const closeAll = () => {
     setShowProfileDropdown(false);
     setShowBranchDropdown(false);
-    setShowNotifications(false);
     setShowDateDropdown(false);
     setShowSearchResults(false);
   };
+
 
   // Close every dropdown when clicking outside the header
   useEffect(() => {
@@ -273,7 +238,6 @@ export default function Navbar({
               onFocus={() => {
                 setShowSearchResults(true);
                 setShowProfileDropdown(false);
-                setShowNotifications(false);
                 setShowBranchDropdown(false);
                 setShowDateDropdown(false);
               }}
@@ -333,7 +297,6 @@ export default function Navbar({
             onClick={() => {
               setShowDateDropdown(!showDateDropdown);
               setShowBranchDropdown(false);
-              setShowNotifications(false);
               setShowProfileDropdown(false);
               setShowSearchResults(false);
             }}
@@ -373,10 +336,10 @@ export default function Navbar({
               onClick={() => {
                 setShowBranchDropdown(!showBranchDropdown);
                 setShowDateDropdown(false);
-                setShowNotifications(false);
                 setShowProfileDropdown(false);
                 setShowSearchResults(false);
               }}
+
               className="flex items-center gap-2 border border-emerald-100 bg-white hover:bg-emerald-50/50 rounded-lg px-3 py-1.5 text-xs text-slate-750 font-semibold cursor-pointer transition-colors"
             >
               <Building className="h-3.5 w-3.5 text-slate-400" />
@@ -407,99 +370,18 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Notifications */}
-        <div className="flex items-center gap-2 relative">
-          <button
-            onClick={() => {
-              const next = !showNotifications;
-              setShowNotifications(next);
-              setShowProfileDropdown(false);
-              setShowBranchDropdown(false);
-              setShowDateDropdown(false);
-              setShowSearchResults(false);
-            }}
-            className="p-2 rounded-full hover:bg-emerald-50/50 text-slate-650 transition-colors border border-emerald-100 bg-white relative cursor-pointer"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-emerald-100 bg-white shadow-xl p-3">
-              <div className="flex items-center justify-between px-2 mb-3 pb-2 border-b border-slate-100">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Notifications {unreadCount > 0 && `(${unreadCount})`}
-                </span>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowNotifications(false)}
-                    className="text-slate-400 hover:text-slate-600 text-xs font-medium cursor-pointer"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2 max-h-80 overflow-y-auto slim-scrollbar">
-                {notificationsList.length > 0 ? (
-                  notificationsList.map((note) => (
-                    <button
-                      key={note.id}
-                      onClick={() => handleNotificationClick(note.route, note.id)}
-                      className={`block w-full text-left rounded-xl border p-3 transition-colors cursor-pointer ${
-                        note.read
-                          ? "border-slate-100 bg-slate-50/50 text-slate-600"
-                          : "border-emerald-100 bg-emerald-50/40 text-slate-800 font-semibold"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-900">{note.title}</span>
-                        <span className="text-[10px] font-medium text-slate-400">{note.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 mt-1 leading-snug">{note.message}</p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="py-6 text-center text-xs font-semibold text-slate-400">
-                    No new notifications
-                  </div>
-                )}
-              </div>
-              <div className="pt-2.5 mt-2 border-t border-slate-100 text-center">
-                <button
-                  onClick={() => navigate(`/${role}/notifications`)}
-                  className="w-full py-2 text-center text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  Open Notifications Center →
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Profile box + dropdown */}
         <div className="relative">
           <button
             onClick={() => {
               setShowProfileDropdown(!showProfileDropdown);
-              setShowNotifications(false);
               setShowBranchDropdown(false);
               setShowDateDropdown(false);
               setShowSearchResults(false);
             }}
             className="flex items-center gap-2 sm:gap-3 sm:pl-4 sm:border-l border-emerald-250/60 cursor-pointer group select-none"
           >
+
             <div className="h-9 w-9 rounded-full bg-white flex items-center justify-center font-bold text-xs text-emerald-800 border border-emerald-100 uppercase shrink-0 overflow-hidden">
               {user?.avatar_url || (typeof window !== "undefined" && localStorage.getItem("user_avatar")) ? (
                 <img src={user?.avatar_url || localStorage.getItem("user_avatar")!} alt="Avatar" className="h-full w-full object-cover" />

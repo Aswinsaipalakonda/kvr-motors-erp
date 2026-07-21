@@ -1,5 +1,6 @@
-import TelecallerDashboard from "../telecaller-dashboard";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <TelecallerDashboard initialTab="notifications" />;
+  redirect("/telecaller");
 }
+

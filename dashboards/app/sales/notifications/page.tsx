@@ -1,5 +1,6 @@
-import SalesDashboard from "../sales-dashboard";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <SalesDashboard initialTab="notifications" />;
+  redirect("/sales");
 }
+

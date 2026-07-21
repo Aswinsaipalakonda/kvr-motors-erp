@@ -42,7 +42,6 @@ import {
   Tooltip 
 } from "recharts";
 
-import NotificationsView from "../components/NotificationsView";
 
 export default function TelecallerDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
@@ -659,9 +658,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
           {activeTab === "profile" && (
             <ProfileView />
           )}
-          {activeTab === "notifications" && (
-            <NotificationsView role="telecaller" />
-          )}
+
 
         </DashboardSmoothScroll>
       </div>

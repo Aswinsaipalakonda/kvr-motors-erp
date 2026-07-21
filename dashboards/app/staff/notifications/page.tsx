@@ -1,5 +1,6 @@
-import StaffDashboard from "../staff-dashboard";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <StaffDashboard initialTab="notifications" />;
+  redirect("/staff");
 }
+

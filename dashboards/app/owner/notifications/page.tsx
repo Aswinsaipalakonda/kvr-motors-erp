@@ -1,5 +1,6 @@
-import OwnerDashboard from "../owner-dashboard";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <OwnerDashboard initialTab="notifications" />;
+  redirect("/owner");
 }
+

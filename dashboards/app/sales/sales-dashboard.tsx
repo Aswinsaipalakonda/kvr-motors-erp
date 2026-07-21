@@ -66,7 +66,6 @@ import {
   Tooltip 
 } from "recharts";
 
-import NotificationsView from "../components/NotificationsView";
 
 export default function SalesDashboard({ initialTab: initialTabProp }: { initialTab?: string } = {}) {
   const { user } = useAuth();
@@ -2455,9 +2454,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           {activeTab === "profile" && (
             <ProfileView />
           )}
-          {activeTab === "notifications" && (
-            <NotificationsView role="sales" />
-          )}
+
         </DashboardSmoothScroll>
       </div>
 

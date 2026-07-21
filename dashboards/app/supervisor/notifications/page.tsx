@@ -1,5 +1,6 @@
-import SupervisorDashboard from "../supervisor-dashboard";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <SupervisorDashboard initialTab="notifications" />;
+  redirect("/supervisor");
 }
+

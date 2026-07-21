@@ -14,7 +14,6 @@ import ProfileView from "../components/ProfileView";
 import AttendanceView from "../components/AttendanceView";
 import BranchExpenseView from "../components/BranchExpenseView";
 import IssueReportView from "../components/IssueReportView";
-import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -2681,9 +2680,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           {activeTab === "profile" && (
             <ProfileView />
           )}
-          {activeTab === "notifications" && (
-            <NotificationsView role="supervisor" />
-          )}
+
 
         </DashboardSmoothScroll>
       </div>

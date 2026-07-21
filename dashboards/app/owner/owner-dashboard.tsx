@@ -13,7 +13,6 @@ import ProfileView from "../components/ProfileView";
 import BranchExpenseView from "../components/BranchExpenseView";
 import IssueReportView from "../components/IssueReportView";
 import OwnerReportsView from "../components/OwnerReportsView";
-import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { getErrorMessage } from "../utils/error";
@@ -7179,9 +7178,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           {activeTab === "profile" && (
             <ProfileView />
           )}
-          {activeTab === "notifications" && (
-            <NotificationsView role="owner" />
-          )}
+
         </DashboardSmoothScroll>
       </div>
       {/* Mobile bottom navigation */}

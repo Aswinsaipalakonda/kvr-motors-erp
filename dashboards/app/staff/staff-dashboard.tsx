@@ -11,7 +11,6 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ProfileView from "../components/ProfileView";
 import AttendanceView from "../components/AttendanceView";
-import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -1167,10 +1166,6 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
               <ProfileView />
             )}
 
-            {/* TAB 7: NOTIFICATIONS */}
-            {activeTab === "notifications" && (
-              <NotificationsView role="staff" />
-            )}
         </DashboardSmoothScroll>
       </div>
 
