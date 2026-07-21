@@ -56,6 +56,21 @@ export const getVehicleBrands = async () => {
   return response.data;
 };
 
+export const createVehicleBrand = async (data: VehicleBrandInput) => {
+  const response = await api.post("/vehicle-brands/", data);
+  return response.data;
+};
+
+export const updateVehicleBrand = async (id: number, data: Partial<VehicleBrandInput>) => {
+  const response = await api.patch(`/vehicle-brands/${id}/`, data);
+  return response.data;
+};
+
+export const deleteVehicleBrand = async (id: number) => {
+  const response = await api.delete(`/vehicle-brands/${id}/`);
+  return response.data;
+};
+
 export const getVehicleModels = async () => {
   const response = await api.get("/vehicle-models/");
   return response.data;

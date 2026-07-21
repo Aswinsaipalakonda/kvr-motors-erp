@@ -35,29 +35,49 @@ export default function ProfileView() {
     try {
       setIsLoading(true);
       setErrorMsg(null);
-      const data = await getCurrentUser();
       
-      const fullName = data.full_name || "";
-      const nameParts = fullName.trim().split(/\s+/);
-      const computedFirstName = data.first_name || nameParts[0] || "";
-      const computedLastName = data.last_name || nameParts.slice(1).join(" ") || "";
+      let data: any = null;
+      try {
+        data = await getCurrentUser();
+      } catch (e) {
+        console.warn("API profile fetch failed, utilizing auth context user fallback:", e);
+        data = user;
+      }
 
-      const finalData = {
-        ...data,
-        first_name: computedFirstName,
-        last_name: computedLastName,
-      };
-      setProfileData(finalData);
-      
-      setPersonalInfoForm({
-        first_name: computedFirstName,
-        last_name: computedLastName,
-        email: data.email || "",
-        phone_number: data.phone_number || "",
-      });
+      if (!data && user) {
+        data = user;
+      }
+
+      if (data) {
+        const fullName = data.full_name || data.username || "Enterprise User";
+        const nameParts = fullName.trim().split(/\s+/);
+        const computedFirstName = data.first_name || nameParts[0] || "";
+        const computedLastName = data.last_name || nameParts.slice(1).join(" ") || "";
+
+        const finalData = {
+          ...data,
+          full_name: fullName,
+          first_name: computedFirstName,
+          last_name: computedLastName,
+        };
+        setProfileData(finalData);
+        
+        setPersonalInfoForm({
+          first_name: computedFirstName,
+          last_name: computedLastName,
+          email: data.email || "",
+          phone_number: data.phone_number || "",
+        });
+      } else {
+        setErrorMsg("No active user session found. Please log in again.");
+      }
     } catch (err: any) {
       console.error("Failed to load profile:", err);
-      setErrorMsg("Failed to retrieve profile data from the database.");
+      if (user) {
+        setProfileData(user);
+      } else {
+        setErrorMsg("Failed to retrieve profile data.");
+      }
     } finally {
       setIsLoading(false);
     }

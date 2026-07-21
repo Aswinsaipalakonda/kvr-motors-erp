@@ -167,16 +167,21 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       return;
     }
 
-    const payload = {
+    const vId = parseInt(String(newLead.interested_vehicle), 10);
+    const payload: any = {
       customer_name: newLead.customer_name.trim(),
-      contact_number: newLead.contact_number.trim(),
-      interested_vehicle: parseInt(newLead.interested_vehicle),
-      lead_source: newLead.lead_source,
-      status: newLead.status,
-      notes: newLead.notes.trim() || undefined,
+      contact_number: cleanPhone,
+      lead_source: newLead.lead_source || "walk_in",
+      status: newLead.status || "new_lead",
+      notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
-      assigned_executive: user ? user.id : null // Auto-assign to self on creation
     };
+    if (!isNaN(vId) && vId > 0) {
+      payload.interested_vehicle = vId;
+    }
+    if (user?.id) {
+      payload.assigned_executive = user.id;
+    }
 
     try {
       if (editingLeadId) {
@@ -190,8 +195,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       setEditingLeadId(null);
       setIsAddLeadOpen(false);
       loadLeadsData();
-    } catch {
-      showToast("Failed to save lead.", "error");
+    } catch (err: any) {
+      console.error("Save lead error:", err);
+      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to save lead.";
+      showToast(msg, "error");
     }
   };
 
@@ -520,11 +527,24 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                                   </div>
                                   <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
                                   
-                                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                                    <span className="text-[9px] font-semibold text-slate-450 italic">
-                                      {lead.follow_up_date ? `Next: ${new Date(lead.follow_up_date).toLocaleDateString()}` : "No schedule"}
-                                    </span>
-                                    <button onClick={() => openEditLead(lead)} className="text-[9px] font-extrabold text-[#04a700] cursor-pointer">Edit</button>
+                                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 flex-wrap">
+                                    <select
+                                      value={lead.status}
+                                      onChange={(e) => moveLeadToStage(lead.id, e.target.value)}
+                                      className="text-[9px] font-extrabold text-slate-700 bg-slate-100/90 border border-slate-200/80 rounded-lg px-1.5 py-0.5 outline-none cursor-pointer hover:border-[#04a700]"
+                                    >
+                                      <option value="enquiry">Enquiry</option>
+                                      <option value="new_lead">New Lead</option>
+                                      <option value="negotiation">Negotiation</option>
+                                      <option value="won">Won</option>
+                                      <option value="lost">Lost</option>
+                                    </select>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] font-semibold text-slate-450 italic">
+                                        {lead.follow_up_date ? `Next: ${new Date(lead.follow_up_date).toLocaleDateString()}` : ""}
+                                      </span>
+                                      <button onClick={() => openEditLead(lead)} className="text-[9px] font-extrabold text-[#04a700] cursor-pointer bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">Edit</button>
+                                    </div>
                                   </div>
                                 </div>
                               ))

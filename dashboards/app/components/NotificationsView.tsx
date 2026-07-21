@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bell, CheckCheck, Trash2, Filter, AlertCircle, Clock, ShieldCheck, ArrowRight, Tag } from "lucide-react";
+import { Bell, CheckCheck, Trash2, Clock, ShieldCheck, Tag, Sparkles, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface NotificationsViewProps {
@@ -60,7 +60,7 @@ export default function NotificationsView({ role }: NotificationsViewProps) {
     setNotifications([]);
   };
 
-  const markSingleRead = (id: number, route: string) => {
+  const handleCardClick = (id: number, route: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     router.push(route);
   };
@@ -73,124 +73,131 @@ export default function NotificationsView({ role }: NotificationsViewProps) {
 
   return (
     <div className="space-y-6 text-left max-w-5xl mx-auto p-4 md:p-6">
-      {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      {/* Title Header Banner */}
+      <div className="bg-gradient-to-r from-[#044e35] via-[#056042] to-[#047752] p-6 rounded-3xl text-white shadow-xl shadow-emerald-950/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[#054E35]" />
-            <h2 className="text-xl font-bold text-[#054E35] tracking-wide">Notifications & Alerts Hub</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
+              <Bell className="h-5 w-5 text-emerald-300" />
+            </div>
+            <h2 className="text-xl font-extrabold tracking-wide">Notifications & Operational Alerts</h2>
             {unreadCount > 0 && (
-              <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+              <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
                 {unreadCount} UNREAD
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 font-semibold mt-1">
-            Real-time operational alerts, stock updates, and system notifications for your role.
+          <p className="text-xs text-emerald-100/80 font-medium mt-2 max-w-xl leading-relaxed">
+            Real-time activity feeds, system alerts, stock transfers, and workflow updates for {role.toUpperCase()} role.
           </p>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex items-center gap-2">
+        {/* Header Actions */}
+        <div className="flex items-center gap-2 self-start sm:self-center">
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-emerald-900 bg-emerald-300 hover:bg-emerald-200 rounded-xl transition-all cursor-pointer shadow-md"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-4 w-4" />
               Mark All Read
             </button>
           )}
           {notifications.length > 0 && (
             <button
               onClick={clearAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white/80 bg-white/10 hover:bg-white/20 rounded-xl transition-all cursor-pointer backdrop-blur-md"
             >
-              <Trash2 className="h-3.5 w-3.5 text-slate-500" />
-              Clear All
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
             </button>
           )}
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 bg-slate-100/70 p-1 rounded-2xl w-fit border border-slate-200/60">
+      <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/60 shadow-inner">
         <button
           onClick={() => setFilterTab("all")}
-          className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-            filterTab === "all" ? "bg-white text-[#054E35] shadow-sm" : "text-slate-500 hover:text-slate-800"
+          className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+            filterTab === "all" ? "bg-white text-[#044e35] shadow-md border border-slate-200/50" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          All ({notifications.length})
+          All Notifications ({notifications.length})
         </button>
         <button
           onClick={() => setFilterTab("unread")}
-          className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-            filterTab === "unread" ? "bg-white text-[#054E35] shadow-sm" : "text-slate-500 hover:text-slate-800"
+          className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+            filterTab === "unread" ? "bg-white text-[#044e35] shadow-md border border-slate-200/50" : "text-slate-500 hover:text-slate-800"
           }`}
         >
           Unread ({unreadCount})
         </button>
         <button
           onClick={() => setFilterTab("high")}
-          className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-            filterTab === "high" ? "bg-white text-rose-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+          className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+            filterTab === "high" ? "bg-white text-rose-700 shadow-md border border-rose-200/50" : "text-slate-500 hover:text-slate-800"
           }`}
         >
           High Priority ({notifications.filter(n => n.priority === "high").length})
         </button>
       </div>
 
-      {/* Notifications List Catalog */}
+      {/* Notifications Cards Feed */}
       <div className="space-y-3">
         {filtered.length > 0 ? (
           filtered.map((item) => (
             <div
               key={item.id}
-              className={`p-4.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+              onClick={() => handleCardClick(item.id, item.actionRoute)}
+              className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-md ${
                 item.read
-                  ? "bg-white border-slate-150 text-slate-700"
-                  : "bg-emerald-50/40 border-emerald-200 text-slate-900"
+                  ? "bg-white border-slate-200/70 text-slate-700 hover:border-emerald-300"
+                  : "bg-emerald-50/50 border-emerald-200 text-slate-900 shadow-sm hover:border-emerald-400"
               }`}
             >
-              <div className="space-y-1.5 min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                    item.priority === "high"
-                      ? "bg-rose-100 text-rose-700 border-rose-200"
-                      : "bg-emerald-100 text-emerald-800 border-emerald-200"
-                  }`}>
-                    {item.category}
-                  </span>
-                  <h4 className="text-sm font-bold text-slate-800">{item.title}</h4>
-                  {!item.read && (
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
+                      item.priority === "high"
+                        ? "bg-rose-100 text-rose-700 border-rose-200/80"
+                        : "bg-emerald-100 text-emerald-800 border-emerald-200/80"
+                    }`}>
+                      {item.category}
+                    </span>
+                    <h4 className="text-sm font-extrabold text-slate-800 group-hover:text-[#044e35] transition-colors">
+                      {item.title}
+                    </h4>
+                    {!item.read && (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    {item.details}
+                  </p>
+                  <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 pt-1">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      {item.time}
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 text-emerald-700">
+                      <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                      Verified System Alert
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0 pt-0.5">
+                  {item.read ? (
+                    <CheckCircle2 className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                  ) : (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded-lg">
+                      New
+                    </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {item.details}
-                </p>
-                <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-slate-400" />
-                    {item.time}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                    Verified System Event
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex items-center gap-2">
-                <button
-                  onClick={() => markSingleRead(item.id, item.actionRoute)}
-                  className="px-3.5 py-2 text-xs font-bold text-white bg-[#054E35] hover:bg-[#033B27] rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <span>Open Screen</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
               </div>
             </div>
           ))

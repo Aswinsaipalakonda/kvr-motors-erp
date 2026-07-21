@@ -22,7 +22,7 @@ import { getLeads, createLead, updateLead, deleteLead } from "../services/leads"
 import { getBookings, createBooking, updateBooking, deleteBooking } from "../services/bookings";
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
-import { getLedgerEntries } from "../services/ledger";
+import { getLedgerEntries, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry } from "../services/ledger";
 import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
 import { getActivityLogs, ActivityLog } from "../services/activityLogs";
 import { getUsers, createUser, updateUser, deleteUser } from "../services/users";
@@ -45,6 +45,8 @@ import {
   TrendingUp,
   Percent,
   Plus,
+  Filter,
+  Search,
   ArrowRight,
   TrendingDown,
   Building,
@@ -58,6 +60,7 @@ import {
   Download,
   Printer,
   Calendar,
+  Clock,
   XCircle,
   FileSpreadsheet,
   ShoppingBag,
@@ -278,6 +281,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [newModelColors, setNewModelColors] = useState("");
   const [newModelStatus, setNewModelStatus] = useState<"active" | "inactive">("active");
 
+  const [stockBranchFilter, setStockBranchFilter] = useState("All Branches");
+  const [stockSearchQuery, setStockSearchQuery] = useState("");
+
   // Stock Unit (VIN registry) form state — supports full add + edit
   const emptyStockUnit = {
     model: "", branch: "", showroom: "", location: "",
@@ -459,6 +465,19 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
+  const handleDeleteBrand = async (brandId: number, brandName: string) => {
+    if (!window.confirm(`Are you sure you want to delete brand "${brandName}"?`)) return;
+    try {
+      await api.delete(`/vehicle-brands/${brandId}/`);
+      showToast(`Brand "${brandName}" deleted successfully.`);
+      const brands = await getVehicleBrands();
+      setVehicleBrandsList(brands);
+    } catch (err: any) {
+      console.error("Failed to delete brand:", err);
+      showToast(err.response?.data?.detail || "Failed to delete brand.", "error");
+    }
+  };
+
   const loadLeads = async () => {
     try {
       setLeadsLoading(true);
@@ -526,6 +545,28 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       console.error("Failed to load ledger from Django REST API:", e);
     } finally {
       setLedgerEntriesLoading(false);
+    }
+  };
+
+  const formatPaymentMode = (val: any) => {
+    if (!val) return "Cash";
+    const str = String(val).trim();
+    if (str === "100" || str === "0" || str === "1") return "Cash";
+    if (str.toLowerCase() === "upi") return "UPI / GPay";
+    if (str.toLowerCase() === "bank" || str.toLowerCase() === "online") return "Bank Transfer";
+    if (str.toLowerCase() === "card") return "Credit/Debit Card";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const handleDeleteLedger = async (id: number, ref: string) => {
+    if (!window.confirm(`Are you sure you want to delete ledger entry "${ref}"?`)) return;
+    try {
+      await deleteLedgerEntry(id);
+      showToast(`Ledger transaction entry deleted successfully.`);
+      loadLedger();
+    } catch (err: any) {
+      console.error("Failed to delete ledger entry:", err);
+      showToast(err.response?.data?.detail || "Failed to delete ledger entry.", "error");
     }
   };
 
@@ -661,9 +702,21 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       setSelectedAttendanceIds([]);
       loadAttendance();
     } catch {
-      showToast("Failed to bulk verify attendance.", "error");
+      showToast("Failed to update selected records.", "error");
     }
   };
+
+  const handleDeleteAttendance = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this attendance log?")) return;
+    try {
+      await api.delete(`/attendance/${id}/`);
+      showToast("Attendance record deleted successfully.");
+      loadAttendance();
+    } catch {
+      showToast("Failed to delete attendance record.", "error");
+    }
+  };
+
   const [melaVehiclesList, setMelaVehiclesList] = useState<any[]>([]);
   const [melaBatteriesList, setMelaBatteriesList] = useState<any[]>([]);
   const [melaCompatibilitiesList, setMelaCompatibilitiesList] = useState<any[]>([]);
@@ -2291,16 +2344,24 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       showToast("Contact number must contain exactly 10 digits.", "error");
       return;
     }
-    const payload = {
+    const vId = parseInt(String(newLead.interested_vehicle), 10);
+    const execId = parseInt(String(newLead.assigned_executive), 10);
+
+    const payload: any = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
-      interested_vehicle: parseInt(newLead.interested_vehicle),
-      lead_source: newLead.lead_source,
-      status: newLead.status,
-      notes: newLead.notes.trim() || undefined,
+      lead_source: newLead.lead_source || "walk_in",
+      status: newLead.status || "new_lead",
+      notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
-      assigned_executive: newLead.assigned_executive ? parseInt(String(newLead.assigned_executive)) : null,
     };
+    if (!isNaN(vId) && vId > 0) {
+      payload.interested_vehicle = vId;
+    }
+    if (!isNaN(execId) && execId > 0) {
+      payload.assigned_executive = execId;
+    }
+
     try {
       if (editingLeadId) {
         await updateLead(editingLeadId, payload);
@@ -2313,7 +2374,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       setEditingLeadId(null);
       setIsAddLeadOpen(false);
       loadLeads();
-    } catch { showToast("Failed to save lead.", "error"); }
+    } catch (err: any) {
+      console.error("Save lead error:", err);
+      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to save lead.";
+      showToast(msg, "error");
+    }
   };
 
   // Move a lead to a new pipeline stage (drag-drop). Optimistic UI + API persist.
@@ -5572,9 +5637,50 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           )}
           {/* TAB 4: STOCK (IN & OUT) */}
-          {activeTab === "stock" && (
-            <div className="space-y-6 text-left">
-              {/* Summary metric strip */}
+          {activeTab === "stock" && (() => {
+            const filteredVehicleUnits = vehicleUnitsList.filter((unit) => {
+              const branchMatch = stockBranchFilter === "All Branches" || unit.branch_name === stockBranchFilter || unit.showroom_name === stockBranchFilter;
+              const q = stockSearchQuery.toLowerCase().trim();
+              const searchMatch = !q || (
+                (unit.vin_number || "").toLowerCase().includes(q) || 
+                (unit.motor_number || "").toLowerCase().includes(q) || 
+                (unit.model_name || "").toLowerCase().includes(q) ||
+                (unit.color || "").toLowerCase().includes(q)
+              );
+              return branchMatch && searchMatch;
+            });
+
+            return (
+              <div className="space-y-6 text-left">
+                {/* Branch & Search Filter Strip */}
+                <div className="bg-white border border-slate-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide shrink-0">Filter Outlet:</span>
+                    <select
+                      value={stockBranchFilter}
+                      onChange={(e) => setStockBranchFilter(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                    >
+                      <option value="All Branches">All Showrooms & Godowns</option>
+                      {branchesList.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Search VIN, Motor, Model, Color..."
+                      value={stockSearchQuery}
+                      onChange={(e) => setStockSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                    />
+                  </div>
+                </div>
+
+                {/* Summary metric strip */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Total Units Registered", value: vehiclesLoading ? "..." : String(filteredVehicleUnits.length), icon: ArrowDownLeft, tint: "emerald" },
@@ -5753,7 +5859,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 )}
               </Table>
             </div>
-          )}
+          );
+        })()}
           {/* TAB 5: PURCHASE MANAGEMENT */}
           {activeTab === "purchases" && (
             <div className="space-y-6">
@@ -6220,10 +6327,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   </span>
                 </div>
               </div>
-              <Table title="General Ledger Entries List" headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Entry Date"]}>
+              <Table title="General Ledger Entries List" headers={["Transaction ID", "Category Type", "Branch Outlet", "Details Memo", "Cash Inward", "Cash Outward", "Payment Mode", "Approved By", "Entry Date", "Actions"]}>
                 {ledgerEntriesLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-indigo-600" />
                         <span className="text-xs font-semibold text-slate-400">Loading ledger transaction records...</span>
@@ -6232,7 +6339,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   </tr>
                 ) : ledgerEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <EmptyState 
                         title="No Transactions Logged" 
                         description="Financial activities across branches will register on this ledger automatically." 
@@ -6248,9 +6355,18 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       <td className="py-3.5 px-5 text-slate-550 font-medium">{row.detail}</td>
                       <td className="py-3.5 px-5 font-bold text-emerald-600">{parseFloat(row.income) > 0 ? "₹ " + parseFloat(row.income).toLocaleString('en-IN') : "—"}</td>
                       <td className="py-3.5 px-5 font-bold text-rose-600">{parseFloat(row.expense) > 0 ? "₹ " + parseFloat(row.expense).toLocaleString('en-IN') : "—"}</td>
-                      <td className="py-3.5 px-5 text-slate-550 font-bold">{row.payment_mode}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{formatPaymentMode(row.payment_mode)}</td>
                       <td className="py-3.5 px-5 text-slate-500 font-bold">{row.approver_name || "System"}</td>
                       <td className="py-3.5 px-5 text-slate-450 font-medium">{row.created_at}</td>
+                      <td className="py-3.5 px-5">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLedger(row.id, row.transaction_id || `TXN-${row.id}`)}
+                          className="text-xs font-extrabold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/60 cursor-pointer transition-all"
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -6601,26 +6717,26 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           return (
                             <tr key={log.id} className={`hover:bg-slate-50 border-b border-slate-100 ${isSelected ? 'bg-emerald-50/20' : ''}`}>
                               <td className="py-3.5 px-5">
-                                {log.status === 'pending' ? (
-                                  <input 
-                                    type="checkbox" 
-                                    checked={isSelected} 
-                                    onChange={toggleSelect} 
-                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                  />
-                                ) : (
-                                  <span className="text-slate-350">—</span>
-                                )}
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected} 
+                                  onChange={toggleSelect} 
+                                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
                               </td>
                               <td className="py-3.5 px-5 font-bold text-slate-800">
-                                {new Date(log.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                                <div>{new Date(log.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                <div className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1 mt-0.5">
+                                  <Clock className="h-3 w-3 text-emerald-600 inline" />
+                                  {log.check_in || log.check_in_time || (log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "09:15 AM")}
+                                </div>
                               </td>
                               <td className="py-3.5 px-5">
                                 <div className="font-bold text-slate-800">{log.user_details?.full_name || log.user_details?.username}</div>
                                 <div className="text-[10px] text-slate-400 font-bold">@{log.user_details?.username}</div>
                               </td>
                               <td className="py-3.5 px-5">
-                                <div className="text-xs font-semibold text-slate-600 uppercase">{log.user_details?.role.replace("_", " ")}</div>
+                                <div className="text-xs font-semibold text-slate-600 uppercase">{log.user_details?.role?.replace("_", " ")}</div>
                                 <div className="text-[10px] text-slate-400 font-bold">{log.user_details?.branch || "Global"}</div>
                               </td>
                               <td className="py-3.5 px-5">
@@ -6640,7 +6756,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                   rel="noreferrer"
                                   className="text-[10px] font-extrabold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
                                 >
-                                  <MapPin className="h-3 w-3 inline" /> {Number(log.latitude).toFixed(4)}, {Number(log.longitude).toFixed(4)}
+                                  <MapPin className="h-3 w-3 inline" /> {Number(log.latitude || 0).toFixed(4)}, {Number(log.longitude || 0).toFixed(4)}
                                 </a>
                               </td>
                               <td className="py-3.5 px-5">
@@ -6652,7 +6768,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                       ? 'bg-rose-50 text-rose-700 border border-rose-200'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                                   }`}>
-                                    {log.status.toUpperCase()}
+                                    {log.status ? log.status.toUpperCase() : "PENDING"}
                                   </span>
                                   {log.status !== 'pending' && (
                                     <span className="text-[9px] text-slate-400 mt-1 font-semibold">
@@ -6662,24 +6778,34 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                 </div>
                               </td>
                               <td className="py-3.5 px-5 whitespace-nowrap">
-                                {log.status === "pending" ? (
-                                  <div className="flex items-center gap-2">
-                                    <button 
-                                      onClick={() => handleVerifyAttendance(log.id, "verified", "Approved by Owner")} 
-                                      className="text-xs text-emerald-600 hover:text-emerald-800 font-extrabold cursor-pointer"
-                                    >
-                                      Verify
-                                    </button>
-                                    <button 
-                                      onClick={() => handleVerifyAttendance(log.id, "rejected", "Rejected by Owner")} 
-                                      className="text-xs text-rose-600 hover:text-rose-800 font-extrabold cursor-pointer"
-                                    >
-                                      Reject
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-slate-400 font-bold">—</span>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => handleVerifyAttendance(log.id, "verified", "Approved by Owner")} 
+                                    className={`text-xs font-extrabold cursor-pointer transition-all ${
+                                      log.status === "verified" 
+                                        ? "text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200" 
+                                        : "text-emerald-600 hover:text-emerald-800"
+                                    }`}
+                                  >
+                                    {log.status === "verified" ? "✓ Verified" : "Verify"}
+                                  </button>
+                                  <button 
+                                    onClick={() => handleVerifyAttendance(log.id, "rejected", "Rejected by Owner")} 
+                                    className={`text-xs font-extrabold cursor-pointer transition-all ${
+                                      log.status === "rejected" 
+                                        ? "text-rose-700 bg-rose-50 px-2 py-1 rounded border border-rose-200" 
+                                        : "text-rose-600 hover:text-rose-800"
+                                    }`}
+                                  >
+                                    Reject
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteAttendance(log.id)} 
+                                    className="text-xs font-extrabold text-rose-500 hover:text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 cursor-pointer ml-1"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -7350,19 +7476,27 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           </form>
           <div className="border-t border-slate-100 pt-3">
-            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">Registered Brands</label>
-            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">Registered Brands ({vehicleBrandsList.length})</label>
+            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 slim-scrollbar">
               {vehicleBrandsList.map((brand) => (
-                <div key={brand.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
-                  <span>{brand.name}</span>
+                <div key={brand.id} className="flex items-center justify-between bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs font-bold text-slate-700 hover:border-emerald-200 transition-all">
+                  <span className="font-extrabold text-slate-800">{brand.name}</span>
                   <div className="flex items-center gap-2">
                     <button 
+                      type="button"
                       onClick={() => { setEditingBrandId(brand.id); setNewBrandName(brand.name); }}
-                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60 cursor-pointer transition-all"
                     >
                       Edit
                     </button>
-                    <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded border border-emerald-500/10">Active</span>
+                    <button 
+                      type="button"
+                      onClick={() => handleDeleteBrand(brand.id, brand.name)}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-800 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/60 cursor-pointer transition-all"
+                    >
+                      Delete
+                    </button>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-700 px-2 py-1 rounded-md border border-emerald-500/10">Active</span>
                   </div>
                 </div>
               ))}

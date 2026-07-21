@@ -4,6 +4,8 @@ export interface AttendanceRecord {
   id: number;
   date: string;
   check_in: string;
+  check_in_time?: string;
+  timestamp?: string;
   check_out: string | null;
   latitude: number;
   longitude: number;
