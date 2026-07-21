@@ -109,20 +109,24 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
   const totalExpenses = filteredExpenses.reduce((acc, item) => acc + Number(item.amount || 0), 0);
   const netBalance = totalDeposited - totalExpenses;
 
-  // Filter supervisors based on selected deposit branch
+  // Filter supervisors based on selected deposit branch (only show when a branch is selected)
   const selectedDepositBranch = branches.find(b => b.id === Number(depositForm.branch));
   const filteredSupervisors = depositForm.branch
     ? supervisors.filter(s => {
-        if (!selectedDepositBranch) return true;
+        if (!selectedDepositBranch) return false;
         const bName = selectedDepositBranch.name.toLowerCase();
         const sBranch = (s.branch || "").toLowerCase();
         const sShowroom = (s.showroom || "").toLowerCase();
+        const sBranchId = (s as any).branch_id;
+        const sShowroomId = (s as any).showroom_id;
         return (
           (sBranch && (sBranch.includes(bName) || bName.includes(sBranch))) ||
-          (sShowroom && (sShowroom.includes(bName) || bName.includes(sShowroom)))
+          (sShowroom && (sShowroom.includes(bName) || bName.includes(sShowroom))) ||
+          sBranchId === selectedDepositBranch.id ||
+          sShowroomId === selectedDepositBranch.id
         );
       })
-    : supervisors;
+    : [];
 
   const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
@@ -429,14 +433,15 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">
-              Recipient Supervisor {depositForm.branch && filteredSupervisors.length === 0 ? "(No Supervisor Found for Branch)" : ""}
+              Recipient Supervisor {!depositForm.branch ? "(Select a branch first)" : filteredSupervisors.length === 0 ? "(No Supervisor Found for Branch)" : ""}
             </label>
             <select
               value={depositForm.supervisor}
               onChange={(e) => setDepositForm({ ...depositForm, supervisor: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
+              disabled={!depositForm.branch}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             >
-              <option value="">Select Supervisor...</option>
+              <option value="">{!depositForm.branch ? "Select Branch First..." : "Select Supervisor..."}</option>
               {filteredSupervisors.map((s) => (
                 <option key={s.id} value={s.id}>{s.full_name} ({s.showroom || s.branch || "Supervisor"})</option>
               ))}
