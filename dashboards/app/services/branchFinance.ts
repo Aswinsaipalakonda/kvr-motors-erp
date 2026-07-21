@@ -92,3 +92,21 @@ export async function deleteBranchExpense(id: number): Promise<any> {
   const res = await api.delete(`/branch-expenses/${id}/`);
   return res.data;
 }
+export async function updateBranchCashDeposit(
+  id: number,
+  data: Partial<{
+    branch: number;
+    supervisor: number;
+    amount: number;
+    notes: string;
+    deposit_date: string;
+  }>
+): Promise<BranchCashDeposit> {
+  const res = await api.patch(`/branch-cash-deposits/${id}/`, data);
+  return res.data;
+}
+
+export async function deleteBranchCashDeposit(id: number): Promise<any> {
+  const res = await api.delete(`/branch-cash-deposits/${id}/`);
+  return res.data;
+}

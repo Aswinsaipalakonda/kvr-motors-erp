@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { 
   getBranchCashDeposits, 
   createBranchCashDeposit, 
+  updateBranchCashDeposit,
+  deleteBranchCashDeposit,
   getBranchExpenses, 
   createBranchExpense,
   updateBranchExpense,
@@ -48,6 +50,8 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
 
   // Modals
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isDepositEditModalOpen, setIsDepositEditModalOpen] = useState(false);
+  const [editingDeposit, setEditingDeposit] = useState<BranchCashDeposit | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
 
@@ -160,6 +164,49 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
       setToast({ msg: "Failed to delete expense record.", type: "error" });
     }
   };
+
+  const openEditDeposit = (d: BranchCashDeposit) => {
+    setEditingDeposit(d);
+    setDepositForm({
+      branch: String(d.branch || ""),
+      supervisor: String(d.supervisor || ""),
+      amount: String(d.amount || ""),
+      notes: d.notes || "",
+    });
+    setIsDepositEditModalOpen(true);
+  };
+
+  const handleDeleteDeposit = async (d: BranchCashDeposit) => {
+    if (!window.confirm(`Delete deposit ${d.deposit_id} of ₹${Number(d.amount).toLocaleString('en-IN')}?`)) return;
+    try {
+      await deleteBranchCashDeposit(d.id);
+      setToast({ msg: "Deposit deleted successfully.", type: "success" });
+      loadData();
+    } catch (err: any) {
+      setToast({ msg: err?.response?.data?.detail || "Failed to delete deposit.", type: "error" });
+    }
+  };
+
+  const handleDepositEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDeposit) return;
+    try {
+      await updateBranchCashDeposit(editingDeposit.id, {
+        branch: Number(depositForm.branch),
+        supervisor: depositForm.supervisor ? Number(depositForm.supervisor) : undefined,
+        amount: Number(depositForm.amount),
+        notes: depositForm.notes,
+      });
+      setToast({ msg: "Deposit updated successfully!", type: "success" });
+      setIsDepositEditModalOpen(false);
+      setEditingDeposit(null);
+      setDepositForm({ branch: "", supervisor: "", amount: "", notes: "" });
+      loadData();
+    } catch (err: any) {
+      setToast({ msg: err?.response?.data?.detail || "Failed to update deposit.", type: "error" });
+    }
+  };
+
 
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,21 +373,41 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
             </span>
           </div>
 
-          <Table headers={["Deposit ID", "Branch", "Amount", "Recipient Supervisor", "Date"]}>
+          <Table headers={role === "owner"
+            ? ["Deposit ID", "Branch", "Amount", "Recipient Supervisor", "Deposited By", "Date", "Actions"]
+            : ["Branch", "Amount", "Deposited By", "Date"]
+          }>
             {filteredDeposits.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                <td colSpan={role === "owner" ? 7 : 4} className="py-8 text-center text-xs text-slate-400 font-semibold">
                   No cash deposits logged yet.
                 </td>
               </tr>
             ) : (
               filteredDeposits.map((d) => (
                 <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-800 text-xs">{d.deposit_id}</td>
+                  {role === "owner" && <td className="py-3 px-4 font-mono font-bold text-slate-800 text-xs">{d.deposit_id}</td>}
                   <td className="py-3 px-4 font-bold text-slate-700 text-xs">{d.branch_name || "Branch"}</td>
                   <td className="py-3 px-4 font-extrabold text-[#04a700] text-xs">₹{Number(d.amount).toLocaleString('en-IN')}</td>
-                  <td className="py-3 px-4 font-semibold text-slate-600 text-xs">{d.supervisor_name || "Supervisor"}</td>
+                  {role === "owner" && <td className="py-3 px-4 font-semibold text-slate-600 text-xs">{d.supervisor_name || "—"}</td>}
+                  <td className="py-3 px-4 font-semibold text-blue-700 text-xs">{d.deposited_by_name || "Owner"}</td>
                   <td className="py-3 px-4 text-slate-500 text-xs">{d.deposit_date}</td>
+                  {role === "owner" && (
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <button
+                        onClick={() => openEditDeposit(d)}
+                        className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDeposit(d)}
+                        className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -559,7 +626,72 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
         </form>
       </Modal>
 
+
+      {/* Modal 3: Edit Deposit (Owner only) */}
+      <Modal isOpen={isDepositEditModalOpen} onClose={() => { setIsDepositEditModalOpen(false); setEditingDeposit(null); }} title={`Edit Deposit: ${editingDeposit?.deposit_id || ""}`}>
+        <form onSubmit={handleDepositEditSubmit} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Target Branch <span className="text-rose-500">*</span></label>
+            <select
+              value={depositForm.branch}
+              onChange={(e) => setDepositForm({ ...depositForm, branch: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
+              required
+            >
+              <option value="">Select Branch...</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Recipient Supervisor</label>
+            <select
+              value={depositForm.supervisor}
+              onChange={(e) => setDepositForm({ ...depositForm, supervisor: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
+            >
+              <option value="">Select Supervisor...</option>
+              {supervisors.map((s) => (
+                <option key={s.id} value={s.id}>{s.full_name} ({s.showroom || s.branch || "Supervisor"})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Deposit Amount (INR) <span className="text-rose-500">*</span></label>
+            <input
+              type="number"
+              placeholder="e.g. 25000"
+              value={depositForm.amount}
+              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-700 outline-none"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Notes / Allocation Purpose</label>
+            <textarea
+              placeholder="e.g. Weekly petty cash float..."
+              value={depositForm.notes}
+              onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-medium outline-none h-20"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4"
+          >
+            Save Changes
+          </button>
+        </form>
+      </Modal>
+
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+
     </div>
   );
 }
