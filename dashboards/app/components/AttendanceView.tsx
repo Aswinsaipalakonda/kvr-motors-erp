@@ -176,24 +176,15 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
   const resolveLocation = () => {
     setIsLocating(true);
 
-    const setFallbackLocation = (msg?: string) => {
-      const defaultLat = 17.6868;
-      const defaultLng = 83.2185;
-      setGeoCoords({ lat: defaultLat, lng: defaultLng });
-      setGeoAddress(`${userBranchName} Outlet (Lat: ${defaultLat}, Lng: ${defaultLng})`);
-      setIsLocating(false);
-      showToast(msg || `Location set to ${userBranchName} Premises`, "success");
-    };
-
     if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           setGeoCoords({ lat, lng });
-          setGeoAddress(`${userBranchName} Outlet (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+          setGeoAddress(`Captured GPS Position (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
           setIsLocating(false);
-          showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+          showToast(`Exact GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
         },
         (err) => {
           console.warn("High-accuracy GPS failed, trying standard accuracy:", err.message);
@@ -202,29 +193,31 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
               const lat = pos.coords.latitude;
               const lng = pos.coords.longitude;
               setGeoCoords({ lat, lng });
-              setGeoAddress(`${userBranchName} Outlet (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+              setGeoAddress(`Captured GPS Position (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
               setIsLocating(false);
               showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
             },
             (err2) => {
-              console.warn("Geolocation fallback executed:", err2.message);
-              setFallbackLocation(`GPS location set to ${userBranchName} Premises`);
+              console.warn("GPS resolution error:", err2.message);
+              setIsLocating(false);
+              showToast("Failed to fetch exact GPS location. Please allow browser location permission and click 'Capture GPS Location'.", "error");
             },
-            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
           );
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      setFallbackLocation(`Location set to ${userBranchName} Premises`);
+      setIsLocating(false);
+      showToast("Geolocation is not supported by your browser.", "error");
     }
   };
 
-  // Auto resolve location on component mount if check-in pending
+  // Require user to explicitly click 'Capture GPS Location'
   useEffect(() => {
-    if (!geoCoords && !myTodayCheckin) {
-      resolveLocation();
-    }
+    // Reset location coords on mount so exact GPS button must be clicked
+    setGeoCoords(null);
+    setGeoAddress("");
   }, [myTodayCheckin]);
 
   const submitCheckin = async () => {
@@ -374,21 +367,13 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
               ) : (
                 <div className="h-36 w-full max-w-sm mx-auto bg-slate-50 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-4 text-center space-y-3">
                   <Camera className="h-8 w-8 text-[#04a700]" />
-                  <span className="text-xs text-slate-500 font-medium">Capture identity photo for workplace verification</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={startCamera}
-                      className="px-4 py-2 rounded-xl bg-[#04a700] text-white text-xs font-bold hover:bg-[#038a00] transition-colors shadow-sm cursor-pointer"
-                    >
-                      Open Camera
-                    </button>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer border border-slate-200"
-                    >
-                      Upload Photo
-                    </button>
-                  </div>
+                  <span className="text-xs text-slate-500 font-medium">Take identity photo using live camera for workplace check-in</span>
+                  <button
+                    onClick={startCamera}
+                    className="px-5 py-2.5 rounded-xl bg-[#04a700] text-white text-xs font-bold hover:bg-[#038a00] transition-colors shadow-sm cursor-pointer"
+                  >
+                    Open Camera
+                  </button>
                 </div>
               )}
             </div>
@@ -401,11 +386,11 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                   <MapPin className="h-5 w-5 text-[#04a700] shrink-0" />
                   <div>
                     <span className="text-xs font-extrabold text-slate-900 block">
-                      {geoAddress || "Location Not Captured"}
+                      {geoAddress || "Location Not Captured - Click 'Capture GPS Location'"}
                     </span>
                     {geoCoords && (
-                      <span className="text-[10px] text-slate-500 font-mono font-medium">
-                        Lat: {geoCoords.lat.toFixed(5)}, Lng: {geoCoords.lng.toFixed(5)}
+                      <span className="text-[10px] text-[#04a700] font-mono font-bold block mt-0.5">
+                        ✓ Exact GPS Captured: Lat {geoCoords.lat.toFixed(5)}, Lng {geoCoords.lng.toFixed(5)}
                       </span>
                     )}
                   </div>
@@ -413,9 +398,9 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                 <button
                   onClick={resolveLocation}
                   disabled={isLocating}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-800 shrink-0 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[#04a700] hover:bg-[#038a00] text-xs font-bold text-white shrink-0 transition-colors shadow-sm cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed"
                 >
-                  {isLocating ? "Resolving..." : "Capture GPS Location"}
+                  {isLocating ? "Acquiring GPS Signal..." : "Capture GPS Location"}
                 </button>
               </div>
             </div>
@@ -423,15 +408,24 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
             {/* Submit Button */}
             <button
               onClick={submitCheckin}
-              disabled={isSubmittingCheckin || !geoCoords}
+              disabled={isSubmittingCheckin || !selfiePhoto || !geoCoords}
               className={`w-full py-3 rounded-xl font-bold text-xs text-white transition-all shadow-md ${
-                isSubmittingCheckin || !geoCoords
+                isSubmittingCheckin || !selfiePhoto || !geoCoords
                   ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                  : "bg-[#04a700] hover:bg-[#038a00] shadow-[#04a700]/25"
+                  : "bg-[#04a700] hover:bg-[#038a00] shadow-[#04a700]/25 cursor-pointer"
               }`}
             >
               {isSubmittingCheckin ? "Submitting Check-In..." : "SUBMIT DAILY ATTENDANCE CHECK-IN"}
             </button>
+            {(!selfiePhoto || !geoCoords) && (
+              <p className="text-[11px] font-bold text-amber-600 text-center">
+                {!selfiePhoto && !geoCoords
+                  ? "⚠️ Please take a camera photo (Step 1) and click 'Capture GPS Location' (Step 2)."
+                  : !selfiePhoto
+                  ? "⚠️ Please take a camera selfie photo (Step 1) to enable check-in."
+                  : "⚠️ Please click 'Capture GPS Location' (Step 2) to capture your exact position."}
+              </p>
+            )}
           </div>
         ) : (
           <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200/80 text-xs space-y-1">
