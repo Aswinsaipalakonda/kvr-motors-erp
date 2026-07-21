@@ -16,6 +16,7 @@ import OwnerReportsView from "../components/OwnerReportsView";
 import NotificationsView from "../components/NotificationsView";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
+import { getErrorMessage } from "../utils/error";
 import { getBranches, createBranch, updateBranch, getInventoryLocations, getShowrooms, deleteBranch, getStockTransfers } from "../services/branches";
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
 import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
@@ -1970,8 +1971,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       showToast("Branch outlet deleted successfully.");
       loadBranches();
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || err.message || "Failed to delete branch.";
-      showToast(errMsg, "error");
+      showToast(getErrorMessage(err, "Failed to delete branch."), "error");
     }
   };
 
@@ -1982,8 +1982,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       showToast("Vehicle model deleted from catalog.");
       loadVehicles();
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || err.message || "Failed to delete vehicle model.";
-      showToast(errMsg, "error");
+      showToast(getErrorMessage(err, "Failed to delete vehicle model."), "error");
     }
   };
 
@@ -1995,8 +1994,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       setIsAddLeadOpen(false);
       loadLeads();
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || err.message || "Failed to delete lead.";
-      showToast(errMsg, "error");
+      showToast(getErrorMessage(err, "Failed to delete lead."), "error");
     }
   };
 
@@ -2007,8 +2005,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       showToast("Booking record deleted.");
       loadBookings();
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || err.message || "Failed to delete booking.";
-      showToast(errMsg, "error");
+      showToast(getErrorMessage(err, "Failed to delete booking."), "error");
     }
   };
 
@@ -2019,8 +2016,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       showToast("User account deleted.");
       loadUsers();
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || err.message || "Failed to delete user.";
-      showToast(errMsg, "error");
+      showToast(getErrorMessage(err, "Failed to delete user."), "error");
     }
   };
 

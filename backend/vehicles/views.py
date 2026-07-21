@@ -9,9 +9,42 @@ class VehicleBrandViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = VehicleBrand.objects.all()
     serializer_class = VehicleBrandSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.models.exists():
+            return Response(
+                {"detail": f"Cannot delete brand '{instance.name}' because {instance.models.count()} vehicle model(s) belong to this brand. Please remove or reassign the models first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception:
+            return Response(
+                {"detail": f"Cannot delete brand '{instance.name}' due to linked records."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class VehicleModelViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     queryset = VehicleModel.objects.all()
     serializer_class = VehicleModelSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        unit_count = instance.units.count() if hasattr(instance, 'units') else 0
+        if unit_count > 0:
+            return Response(
+                {"detail": f"Cannot delete vehicle model '{instance.model_name}' because {unit_count} physical stock unit(s) are registered with this model. Please remove the physical stock units first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception:
+            return Response(
+                {"detail": f"Cannot delete vehicle model '{instance.model_name}' because it has linked bookings, leads, or purchase orders."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class VehicleUnitViewSet(CacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = VehicleUnitSerializer
@@ -26,6 +59,17 @@ class VehicleUnitViewSet(CacheResponseMixin, viewsets.ModelViewSet):
                     Q(branch__name=user.branch) | Q(stock_status='available')
                 )
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception:
+            return Response(
+                {"detail": f"Cannot delete vehicle unit '{instance.vin_number or instance.id}' due to linked sales invoices or bookings."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['get'], url_path='lookup')
     def lookup_unit(self, request):
