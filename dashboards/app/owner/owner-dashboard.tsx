@@ -1906,6 +1906,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isAddBatteryOpen, setIsAddBatteryOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [leadModelSearch, setLeadModelSearch] = useState("");
   const [userBranchFilter, setUserBranchFilter] = useState("All Branches");
   const [userRoleFilter, setUserRoleFilter] = useState("All Roles");
   const [userTypeFilter, setUserTypeFilter] = useState("All Types");
@@ -7917,7 +7918,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Date</label>
-              <input type="date" value={stockUnitForm.purchase_date} onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" />
+              <input type="date" max={new Date().toISOString().split("T")[0]} value={stockUnitForm.purchase_date} onChange={(e) => setStockUnitForm({ ...stockUnitForm, purchase_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]" />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -8033,9 +8034,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Estimated Delivery Date</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Estimated Delivery Date (Future Date Only)</label>
             <input 
               type="date" 
+              min={new Date().toISOString().split("T")[0]}
               value={newPOEstDelivery}
               onChange={(e) => setNewPOEstDelivery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-205 rounded-lg p-2 text-xs text-slate-705 font-bold outline-none focus:border-indigo-500" 
@@ -8076,18 +8078,54 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle</label>
-            <select
-              value={newLead.interested_vehicle}
-              onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              required
-            >
-              <option value="">Select a model...</option>
-              {vehicleModelsList.map((m) => (
-                <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle Model</label>
+              {leadModelSearch && (
+                <button 
+                  type="button" 
+                  onClick={() => setLeadModelSearch("")}
+                  className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer lowercase"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search EV models by name or brand..."
+                  value={leadModelSearch}
+                  onChange={(e) => setLeadModelSearch(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
+                />
+              </div>
+              <select
+                value={newLead.interested_vehicle}
+                onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                required
+              >
+                <option value="">
+                  {vehicleModelsList.filter((m) => {
+                    if (!leadModelSearch.trim()) return true;
+                    const q = leadModelSearch.toLowerCase();
+                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
+                  }).length === 0 ? "No matching models found" : "Select a model..."}
+                </option>
+                {vehicleModelsList
+                  .filter((m) => {
+                    if (!leadModelSearch.trim()) return true;
+                    const q = leadModelSearch.toLowerCase();
+                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
+                  })
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
+                  ))
+                }
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -8123,9 +8161,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Follow-up Date (optional)</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Follow-up Date (Future Date Only)</label>
             <input
               type="date"
+              min={new Date().toISOString().split("T")[0]}
               value={newLead.follow_up_date}
               onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
@@ -8234,9 +8273,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry Date</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Expiry Date (Future Date Only)</label>
               <input
                 type="date"
+                min={new Date().toISOString().split("T")[0]}
                 value={newBooking.expiry_date}
                 onChange={(e) => setNewBooking({ ...newBooking, expiry_date: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
@@ -8292,6 +8332,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Date</label>
               <input
                 type="date"
+                max={new Date().toISOString().split("T")[0]}
                 value={newBattery.purchase_date}
                 onChange={(e) => setNewBattery({ ...newBattery, purchase_date: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"

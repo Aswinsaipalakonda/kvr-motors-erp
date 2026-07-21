@@ -64,6 +64,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
 
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [leadModelSearch, setLeadModelSearch] = useState("");
 
   // Toast feedback
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
@@ -684,11 +685,49 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
             <input type="tel" placeholder="e.g. 9876543210" value={newLead.contact_number} onChange={(e) => setNewLead({ ...newLead, contact_number: e.target.value.replace(/\D/g, '').slice(0, 10) })} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
-            <select value={newLead.interested_vehicle} onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
-              <option value="">Select vehicle...</option>
-              {vehicleModelsList.map((m) => <option key={m.id} value={m.id}>{m.model_name}</option>)}
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
+              {leadModelSearch && (
+                <button 
+                  type="button" 
+                  onClick={() => setLeadModelSearch("")}
+                  className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer lowercase"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search EV models by name or brand..."
+                  value={leadModelSearch}
+                  onChange={(e) => setLeadModelSearch(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 font-semibold outline-none focus:border-[#04a700]"
+                />
+              </div>
+              <select value={newLead.interested_vehicle} onChange={(e) => setNewLead({ ...newLead, interested_vehicle: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
+                <option value="">
+                  {vehicleModelsList.filter((m) => {
+                    if (!leadModelSearch.trim()) return true;
+                    const q = leadModelSearch.toLowerCase();
+                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
+                  }).length === 0 ? "No matching models found" : "Select vehicle..."}
+                </option>
+                {vehicleModelsList
+                  .filter((m) => {
+                    if (!leadModelSearch.trim()) return true;
+                    const q = leadModelSearch.toLowerCase();
+                    return `${m.brand_name || ""} ${m.model_name}`.toLowerCase().includes(q);
+                  })
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ` : ""}{m.model_name}</option>
+                  ))
+                }
+              </select>
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Lead Inflow Source</label>
@@ -716,8 +755,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
             <textarea placeholder="e.g. Discussing battery finance packages..." value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-semibold outline-none h-20" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Next Follow-up Date</label>
-            <input type="date" value={newLead.follow_up_date} onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Next Follow-up Date (Future Date Only)</label>
+            <input type="date" min={new Date().toISOString().split("T")[0]} value={newLead.follow_up_date} onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
             Save Lead
@@ -766,9 +805,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Next Scheduled Call / Follow-up Date</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Next Scheduled Call / Follow-up Date (Future Date Only)</label>
               <input 
                 type="date" 
+                min={new Date().toISOString().split("T")[0]}
                 value={followupNextDate} 
                 onChange={(e) => setFollowupNextDate(e.target.value)} 
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-700 outline-none" 
