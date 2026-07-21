@@ -2437,10 +2437,15 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       customer_name: bk.customer_name || "",
       contact_number: bk.contact_number || "",
       vehicle_model: String(bk.vehicle_model || ""),
-      advance_amount: String(bk.advance_amount || ""),
+      advance_amount: bk.advance_amount ? String(Math.round(parseFloat(bk.advance_amount))) : "",
       expiry_date: bk.expiry_date || "",
       payment_mode: bk.payment_mode || "Cash",
-      payment_split_details: bk.payment_split_details || { cash: "", card: "", upi: "", bajaj_finance: "" }
+      payment_split_details: bk.payment_split_details ? {
+        cash: bk.payment_split_details.cash ? String(Math.round(parseFloat(bk.payment_split_details.cash))) : "",
+        card: bk.payment_split_details.card ? String(Math.round(parseFloat(bk.payment_split_details.card))) : "",
+        upi: bk.payment_split_details.upi ? String(Math.round(parseFloat(bk.payment_split_details.upi))) : "",
+        bajaj_finance: bk.payment_split_details.bajaj_finance ? String(Math.round(parseFloat(bk.payment_split_details.bajaj_finance))) : ""
+      } : { cash: "", card: "", upi: "", bajaj_finance: "" }
     });
     setIsAddBookingOpen(true);
   };
@@ -2508,6 +2513,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       setEditingBookingId(null);
       setIsAddBookingOpen(false);
       loadBookings();
+      loadLedger();
     } catch { showToast("Failed to save booking.", "error"); }
   };
   const handleCancelBooking = async (bk: any) => {
@@ -2515,6 +2521,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       await updateBooking(bk.id, { status: "cancelled" });
       showToast("Booking cancelled.");
       loadBookings();
+      loadLedger();
     } catch { showToast("Failed to cancel booking.", "error"); }
   };
 
@@ -8379,17 +8386,17 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Vehicle Model</label>
-            <select
-              value={newBooking.vehicle_model}
-              onChange={(e) => setNewBooking({ ...newBooking, vehicle_model: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500"
+            <SearchableSelect
+              options={vehicleModelsList.map((m) => ({
+                value: String(m.id),
+                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
+              }))}
+              value={String(newBooking.vehicle_model || "")}
+              onChange={(val) => setNewBooking({ ...newBooking, vehicle_model: val })}
+              placeholder="Select vehicle..."
+              searchPlaceholder="Search EV models by name or brand..."
               required
-            >
-              <option value="">Select a model...</option>
-              {vehicleModelsList.map((m) => (
-                <option key={m.id} value={m.id}>{m.model_name}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">

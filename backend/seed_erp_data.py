@@ -16,6 +16,25 @@ from sales.models import SalesInvoice
 from leads.models import Lead
 
 def seed_erp_data():
+    print("--- Truncating / Clearing stale transactional data ---")
+    from ledger.models import LedgerEntry
+    from purchases.models import PurchaseOrder
+    from branches.models import BranchExpense, BranchCashDeposit, IssueReport
+    from battery.models import Battery
+    from vehicles.models import VehicleUnit
+
+    LedgerEntry.objects.all().delete()
+    AdvanceBooking.objects.all().delete()
+    SalesInvoice.objects.all().delete()
+    PurchaseOrder.objects.all().delete()
+    BranchExpense.objects.all().delete()
+    BranchCashDeposit.objects.all().delete()
+    Lead.objects.all().delete()
+    StockTransfer.objects.all().delete()
+    IssueReport.objects.all().delete()
+    VehicleUnit.objects.all().delete()
+    Battery.objects.all().delete()
+
     print("--- Seeding Branches & Locations ---")
     branch, created = Branch.objects.get_or_create(
         name="KVR Motors - Visakhapatnam",

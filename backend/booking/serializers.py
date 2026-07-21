@@ -126,4 +126,38 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                     payment_split_details=instance.payment_split_details,
                     approved_by=instance.assigned_executive
                 )
+
+        # Synchronize/upsert ledger entries
+        from ledger.models import LedgerEntry
+        if new_status in ['cancelled', 'expired']:
+            LedgerEntry.objects.filter(detail__contains=instance.booking_id, ledger_type='booking_amount').delete()
+        else:
+            ledger_entry = LedgerEntry.objects.filter(detail__contains=instance.booking_id, ledger_type='booking_amount').first()
+            if ledger_entry:
+                ledger_entry.income = instance.advance_amount
+                ledger_entry.detail = f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})"
+                ledger_entry.payment_mode = instance.payment_mode or 'Cash'
+                ledger_entry.payment_split_details = instance.payment_split_details
+                ledger_entry.save()
+            else:
+                branch_obj = None
+                if instance.vehicle_unit:
+                    branch_obj = instance.vehicle_unit.branch
+                elif instance.assigned_executive and instance.assigned_executive.branch:
+                    branch_obj = Branch.objects.filter(name__iexact=instance.assigned_executive.branch).first()
+                if not branch_obj:
+                    branch_obj = Branch.objects.first()
+                
+                if branch_obj:
+                    LedgerEntry.objects.create(
+                        transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
+                        ledger_type='booking_amount',
+                        branch=branch_obj,
+                        detail=f"Automated entry for Advance Booking {instance.booking_id} (Customer: {instance.customer_name})",
+                        income=instance.advance_amount,
+                        expense=0.00,
+                        payment_mode=instance.payment_mode or 'Cash',
+                        payment_split_details=instance.payment_split_details,
+                        approved_by=instance.assigned_executive
+                    )
         return instance
