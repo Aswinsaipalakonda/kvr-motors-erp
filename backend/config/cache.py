@@ -92,11 +92,11 @@ class CacheResponseMixin:
         """
         Clears all cached responses for this model by finding and deleting keys matching prefix.
         Uses a broad wildcard to invalidate caches across ALL users (not just current user).
+        Falls back to cache.clear() on non-Redis backends (e.g. LocMemCache in local dev).
         """
         prefix = self.get_cache_key_prefix()
         try:
-            # For Django built-in RedisCache:
-            # We access the raw redis client under the backend connection to delete patterns
+            # For Django RedisCache backend: delete by key pattern
             if hasattr(cache, '_cache') and hasattr(cache._cache, 'get_client'):
                 client = cache._cache.get_client(None)
                 # Match all keys containing the model prefix regardless of user_id suffix
@@ -104,13 +104,20 @@ class CacheResponseMixin:
                 if keys:
                     client.delete(*keys)
             elif hasattr(cache, 'delete_pattern'):
+                # django-redis library
                 cache.delete_pattern(f"*{prefix}*")
             else:
-                # Fallback if another cache backend is configured — try cache.clear() as last resort
-                pass
+                # Fallback for LocMemCache / DummyCache / other backends:
+                # Clear the entire cache. Safe for small apps and local dev.
+                cache.clear()
         except Exception as e:
             # Log error internally and fall through (don't break API mutations if cache clear fails)
             print(f"Error clearing cache keys for prefix {prefix}: {e}")
+            try:
+                cache.clear()
+            except Exception:
+                pass
+
 
     # Hook into standard model mutations to invalidate cached data
     def perform_create(self, serializer):

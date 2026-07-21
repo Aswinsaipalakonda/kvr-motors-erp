@@ -136,7 +136,8 @@ class BranchExpenseViewSet(CacheResponseMixin, viewsets.ModelViewSet):
         serializer.save(submitted_by=user)
         self.clear_cache()
 
-class IssueReportViewSet(CacheResponseMixin, viewsets.ModelViewSet):
+class IssueReportViewSet(viewsets.ModelViewSet):
+    """No caching — issue reports are real-time critical data for owner notifications."""
     queryset = IssueReport.objects.all()
     serializer_class = IssueReportSerializer
     permission_classes = [permissions.IsAuthenticated]

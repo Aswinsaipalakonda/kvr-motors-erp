@@ -69,7 +69,11 @@ export default function IssueReportView({ role }: IssueReportViewProps) {
 
   useEffect(() => {
     loadData();
+    // Auto-refresh every 30 seconds so owner sees new supervisor reports in real-time
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
   }, []);
+
 
   // Backend already scopes issues per role (owner sees all; supervisors see their branch + own reports).
   // No need for client-side double-filtering which was hiding newly submitted reports.
