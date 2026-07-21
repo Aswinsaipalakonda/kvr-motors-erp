@@ -395,7 +395,28 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
           {teamPendingLogs.length === 0 ? (
             <EmptyState title="No Pending Approvals" description="All branch staff check-in logs have been verified." />
           ) : (
-            <Table headers={["Select", "Employee", "Role", "Date / Time", "Location", "Actions"]}>
+            <Table headers={[
+              <div key="select-all" className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={teamPendingLogs.length > 0 && selectedIds.length === teamPendingLogs.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedIds(teamPendingLogs.map(l => l.id));
+                    } else {
+                      setSelectedIds([]);
+                    }
+                  }}
+                  className="h-4 w-4 accent-[#04a700] rounded cursor-pointer"
+                />
+                <span className="text-[10px] uppercase font-bold text-slate-500">All</span>
+              </div>,
+              "Employee", 
+              "Role", 
+              "Date / Time", 
+              "Location", 
+              "Actions"
+            ]}>
               {teamPendingLogs.map((log: any) => {
                 const isSelected = selectedIds.includes(log.id);
                 return (
@@ -411,7 +432,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                             setSelectedIds(selectedIds.filter(id => id !== log.id));
                           }
                         }}
-                        className="h-4 w-4 accent-[#04a700] rounded"
+                        className="h-4 w-4 accent-[#04a700] rounded cursor-pointer"
                       />
                     </td>
                     <td className="py-3 px-4 font-black text-slate-900">{log.user_detail?.full_name || log.user_name || "Employee"}</td>
@@ -427,13 +448,13 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleSingleVerify(log.id, "verified")}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-extrabold border border-emerald-200"
+                          className="px-3 py-1 rounded-xl bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleSingleVerify(log.id, "rejected")}
-                          className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-extrabold border border-rose-200"
+                          className="px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
                         >
                           Reject
                         </button>

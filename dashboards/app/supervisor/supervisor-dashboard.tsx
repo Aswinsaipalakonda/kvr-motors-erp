@@ -840,30 +840,38 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
 
   const handleCreateBattery = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBattery.serial_number.trim() || !newBattery.capacity.trim() || !newBattery.purchase_date || !newBattery.location) return;
+    if (!newBattery.serial_number.trim() || !newBattery.capacity.trim() || !newBattery.purchase_date) {
+      showToast("Please fill all required battery details.", "error");
+      return;
+    }
     try {
-      const payload = {
+      const locId = newBattery.location ? parseInt(newBattery.location) : (locationsList[0]?.id || 3);
+      const payload: any = {
         serial_number: newBattery.serial_number.trim(),
         battery_code: newBattery.battery_code.trim() || undefined,
         capacity: newBattery.capacity.trim(),
         purchase_date: newBattery.purchase_date,
-        location: parseInt(newBattery.location),
-        supplier: newBattery.supplier.trim() || "Unknown",
+        location: locId,
+        supplier: newBattery.supplier.trim() || "KVR Motors Supplier",
         warranty_years: parseInt(newBattery.warranty_years) || 3,
-        status: newBattery.status,
+        status: newBattery.status || "available",
       };
       if (editingBatteryId) {
         await updateBattery(editingBatteryId, payload);
-        showToast("Battery details updated.");
+        showToast("Battery details updated successfully! ✓");
       } else {
         await createBattery(payload);
-        showToast("Battery logged to stock registry.");
+        showToast("Battery logged to stock registry. ✓");
       }
       setNewBattery({ ...emptyBattery });
       setEditingBatteryId(null);
       setIsAddBatteryOpen(false);
       loadBatteries();
-    } catch { showToast("Failed to save battery.", "error"); }
+    } catch (err: any) {
+      console.error("Failed to save battery:", err);
+      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message || "Failed to save battery.";
+      showToast(`Failed to save battery: ${errMsg}`, "error");
+    }
   };
 
   const handleDeleteBattery = async (batt: any) => {
@@ -1742,19 +1750,44 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               {/* Graphs Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Stock by Location (Bar) */}
-                <div className="lg:col-span-2 bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm flex flex-col h-80 hover:shadow-md transition-shadow duration-300">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-black text-slate-800 tracking-tight">Stock by Location</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution in Visakhapatnam cluster</p>
+                <div className="lg:col-span-2 bg-white border border-emerald-100/60 p-5 rounded-2xl shadow-sm flex flex-col h-80 hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
+                        <Boxes className="h-4 w-4 text-[#04a700]" /> Stock by Location
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Physical vehicle distribution in Visakhapatnam cluster</p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#04a700] border border-emerald-200">
+                      {stockByLocationData.reduce((acc, curr) => acc + curr.Available, 0)} Total Units
+                    </span>
                   </div>
                   <div className="h-[200px] w-full relative">
                     <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={stockByLocationData} barSize={26}>
+                      <BarChart data={stockByLocationData} barSize={28} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="availableGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#04a700" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity={0.8} />
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="location" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                        <Tooltip formatter={(value) => [`${value} Vehicles`, "Available Stock"]} />
-                        <Bar dataKey="Available" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <XAxis dataKey="location" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 9, fontWeight: 700 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 600 }} allowDecimals={false} />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-slate-900 text-white text-xs p-3 rounded-xl shadow-xl border border-slate-700 space-y-1">
+                                  <p className="font-extrabold text-emerald-400">{label}</p>
+                                  <p className="font-bold text-slate-200">{payload[0].value} Vehicles Available</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="Available" fill="url(#availableGrad)" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1838,21 +1871,48 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               {/* Lower Section Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Stock Movement */}
-                <div className="lg:col-span-2 bg-white border border-emerald-100/50 p-5 rounded-2xl shadow-sm flex flex-col h-80 hover:shadow-md transition-shadow duration-300">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-black text-slate-800 tracking-tight">Stock Movement (This Month)</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">Intake inflow vs sales outflow per warehouse</p>
+                <div className="lg:col-span-2 bg-white border border-emerald-100/60 p-5 rounded-2xl shadow-sm flex flex-col h-80 hover:shadow-md transition-shadow duration-300">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-indigo-600" /> Stock Movement (This Month)
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">Intake inflow vs sales outflow per warehouse</p>
+                    </div>
                   </div>
                   <div className="h-[200px] w-full relative">
                     <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={stockMovementData} barGap={4}>
+                      <BarChart data={stockMovementData} barGap={6} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="stockInGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#4f46e5" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8} />
+                          </linearGradient>
+                          <linearGradient id="stockOutGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#fb7185" stopOpacity={0.8} />
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9 }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="StockIn" fill="#4f46e5" name="Stock In" radius={[3, 3, 0, 0]} />
-                        <Bar dataKey="StockOut" fill="#f43f5e" name="Stock Out / Sold" radius={[3, 3, 0, 0]} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 9, fontWeight: 700 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 600 }} allowDecimals={false} />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-slate-900 text-white text-xs p-3 rounded-xl shadow-xl border border-slate-700 space-y-1">
+                                  <p className="font-extrabold text-indigo-400">{label}</p>
+                                  <p className="font-bold text-indigo-300">Stock In: {payload[0]?.value || 0} Units</p>
+                                  <p className="font-bold text-rose-300">Stock Out / Sold: {payload[1]?.value || 0} Units</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: "11px", fontWeight: 700, paddingTop: "10px" }} />
+                        <Bar dataKey="StockIn" name="Stock In" fill="url(#stockInGrad)" radius={[6, 6, 0, 0]} barSize={16} />
+                        <Bar dataKey="StockOut" name="Stock Out / Sold" fill="url(#stockOutGrad)" radius={[6, 6, 0, 0]} barSize={16} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2366,24 +2426,42 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
                                 
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                                  <select 
-                                    value={lead.assigned_executive || "Unassigned"}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
-                                    }}
-                                    className="text-[9px] bg-slate-50 border border-slate-150 rounded px-1.5 py-0.5 font-semibold text-slate-650 outline-none"
-                                  >
-                                    <option value="Unassigned">Unassigned</option>
-                                    {usersList
-                                      .filter(u => u.role === "telecaller")
-                                      .map(u => (
-                                        <option key={u.id} value={u.id}>{u.full_name} (Telecaller)</option>
-                                      ))
-                                    }
-                                  </select>
-                                  <button onClick={() => openEditLead(lead)} className="text-[9px] font-extrabold text-[#04a700] cursor-pointer">Edit</button>
+                                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <select 
+                                      value={lead.assigned_executive || "Unassigned"}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
+                                      }}
+                                      className="text-[9px] bg-slate-50 border border-slate-150 rounded px-1.5 py-0.5 font-semibold text-slate-650 outline-none max-w-[110px] truncate"
+                                    >
+                                      <option value="Unassigned">Unassigned</option>
+                                      {usersList
+                                        .filter(u => u.role === "telecaller")
+                                        .map(u => (
+                                          <option key={u.id} value={u.id}>{u.full_name}</option>
+                                        ))
+                                      }
+                                    </select>
+                                    <button onClick={() => openEditLead(lead)} className="text-[9px] font-extrabold text-[#04a700] cursor-pointer">Edit</button>
+                                  </div>
+
+                                  {/* Mobile Stage Selector Dropdown */}
+                                  <div className="block xl:hidden pt-1 border-t border-slate-100">
+                                    <label className="text-[8px] font-bold text-slate-400 block uppercase mb-0.5">Move Stage</label>
+                                    <select
+                                      value={col.key}
+                                      onChange={(e) => moveLeadToStage(lead.id, e.target.value)}
+                                      className="w-full text-[9px] bg-emerald-50/80 border border-emerald-200 text-emerald-800 font-extrabold rounded px-1.5 py-1 outline-none cursor-pointer"
+                                    >
+                                      <option value="enquiry">Stage: Enquiry</option>
+                                      <option value="new_lead">Stage: New Lead</option>
+                                      <option value="negotiation">Stage: Negotiation</option>
+                                      <option value="won">Stage: Won</option>
+                                      <option value="lost">Stage: Lost</option>
+                                    </select>
+                                  </div>
                                 </div>
                               </div>
                             ))
@@ -3054,9 +3132,10 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Warehouse Outlet location</label>
-            <select value={newBattery.location} onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" required>
-              <option value="">Select Outlet...</option>
+            <select value={newBattery.location} onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
+              <option value="">Select Outlet (Default Main Location)</option>
               {locationsList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              {locationsList.length === 0 && <option value="3">KVR Motors Main Showroom</option>}
             </select>
           </div>
           <div className="space-y-1.5">

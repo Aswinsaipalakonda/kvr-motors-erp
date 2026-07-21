@@ -6,6 +6,8 @@ import {
   createBranchCashDeposit, 
   getBranchExpenses, 
   createBranchExpense,
+  updateBranchExpense,
+  deleteBranchExpense,
   BranchCashDeposit,
   BranchExpense
 } from "../services/branchFinance";
@@ -26,7 +28,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowUpRight,
-  TrendingUp
+  TrendingUp,
+  Edit,
+  Trash2
 } from "lucide-react";
 
 interface BranchExpenseViewProps {
@@ -45,6 +49,7 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
   // Modals
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
 
   // Form States
   const [depositForm, setDepositForm] = useState({
@@ -122,6 +127,36 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
   const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
+  const openAddExpense = () => {
+    setEditingExpenseId(null);
+    setExpenseForm({ branch: "", category: "electricity", amount: "", description: "", receipt_number: "" });
+    setIsExpenseModalOpen(true);
+  };
+
+  const openEditExpense = (eItem: BranchExpense) => {
+    setEditingExpenseId(eItem.id);
+    setExpenseForm({
+      branch: String(eItem.branch || ""),
+      category: eItem.category || "electricity",
+      amount: String(eItem.amount || ""),
+      description: eItem.description || "",
+      receipt_number: eItem.receipt_number || "",
+    });
+    setIsExpenseModalOpen(true);
+  };
+
+  const handleDeleteExpenseItem = async (eItem: BranchExpense) => {
+    if (!window.confirm(`Are you sure you want to delete expense ${eItem.expense_id}?`)) return;
+    try {
+      await deleteBranchExpense(eItem.id);
+      setToast({ msg: "Branch expense deleted successfully.", type: "success" });
+      loadData();
+    } catch (err) {
+      console.error("Failed deleting expense:", err);
+      setToast({ msg: "Failed to delete expense record.", type: "error" });
+    }
+  };
+
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingDeposit) return;
@@ -172,15 +207,24 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
         setToast({ msg: "Select a branch for the expense.", type: "error" });
         return;
       }
-      await createBranchExpense({
+      const payload = {
         branch: targetBranchId,
         category: expenseForm.category,
         amount: Number(expenseForm.amount),
         description: expenseForm.description,
         receipt_number: expenseForm.receipt_number,
-      });
-      setToast({ msg: "Branch expense recorded successfully!", type: "success" });
+      };
+
+      if (editingExpenseId) {
+        await updateBranchExpense(editingExpenseId, payload);
+        setToast({ msg: "Branch expense updated successfully!", type: "success" });
+      } else {
+        await createBranchExpense(payload);
+        setToast({ msg: "Branch expense recorded successfully!", type: "success" });
+      }
+      
       setIsExpenseModalOpen(false);
+      setEditingExpenseId(null);
       setExpenseForm({ branch: "", category: "electricity", amount: "", description: "", receipt_number: "" });
       loadData();
     } catch (err: any) {
@@ -310,10 +354,10 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
             </span>
           </div>
 
-          <Table headers={["Expense ID", "Category", "Amount", "Description", "Submitted By"]}>
+          <Table headers={["Expense ID", "Category", "Amount", "Description", "Submitted By", "Actions"]}>
             {filteredExpenses.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
                   No expenses recorded yet.
                 </td>
               </tr>
@@ -329,6 +373,20 @@ export default function BranchExpenseView({ role }: BranchExpenseViewProps) {
                   <td className="py-3 px-4 font-extrabold text-rose-600 text-xs">₹{Number(e.amount).toLocaleString('en-IN')}</td>
                   <td className="py-3 px-4 font-medium text-slate-600 text-xs max-w-[150px] truncate">{e.description || "—"}</td>
                   <td className="py-3 px-4 text-slate-500 text-xs">{e.submitted_by_name || "Staff"}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <button 
+                      onClick={() => openEditExpense(e)}
+                      className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteExpenseItem(e)}
+                      className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

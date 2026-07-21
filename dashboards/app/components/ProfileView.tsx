@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getCurrentUser, updateCurrentUser, changePassword, UserProfile } from "../services/users";
-import { Camera, Mail, Phone, Shield, MapPin, Loader2, Check, X, Lock, Building2, User, Eye, EyeOff } from "lucide-react";
+import { Mail, Phone, Shield, MapPin, Loader2, Check, X, Lock, Building2, User, Eye, EyeOff } from "lucide-react";
 
 export default function ProfileView() {
   const { user, updateUser } = useAuth();
@@ -85,7 +85,7 @@ export default function ProfileView() {
 
   useEffect(() => {
     fetchProfile();
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -96,13 +96,19 @@ export default function ProfileView() {
     );
   }
 
-  if (!profileData) {
-    return (
-      <div className="flex h-64 items-center justify-center text-xs font-bold text-slate-400">
-        No active profile session found.
-      </div>
-    );
-  }
+  const activeProfile = profileData || {
+    id: user?.id || 1,
+    username: user?.username || "enterprise_user",
+    full_name: user?.full_name || "Enterprise User",
+    first_name: "Enterprise",
+    last_name: "User",
+    role: user?.role || "owner",
+    email: user?.email || "user@kvrmotors.com",
+    phone_number: user?.phone_number || "9876543210",
+    showroom: user?.showroom || "KVR Showroom - Visakhapatnam",
+    branch: user?.branch || "Visakhapatnam Cluster",
+    is_active: true,
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -143,7 +149,6 @@ export default function ProfileView() {
       setIsEditingPersonalInfo(false);
       setSuccessMsg("Personal information updated successfully.");
       
-      // Clear alert after 3 seconds
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       console.error("Failed to save personal info:", err);
@@ -190,7 +195,6 @@ export default function ProfileView() {
       setNewPassword("");
       setConfirmPassword("");
 
-      // Clear success after 3 seconds
       setTimeout(() => setPasswordSuccess(null), 3000);
     } catch (err: any) {
       console.error("Failed to update password:", err);
@@ -206,62 +210,8 @@ export default function ProfileView() {
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
-  // Avatar Image Upload State
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("user_avatar");
-    }
-    return null;
-  });
-
-  const handleCameraClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg("File size exceeds 5MB limit. Please choose a smaller image.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Url = reader.result as string;
-      setAvatarUrl(base64Url);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user_avatar", base64Url);
-      }
-
-      if (profileData) {
-        const updated = { ...profileData, avatar_url: base64Url };
-        setProfileData(updated);
-        updateUser(updated);
-        try {
-          await updateCurrentUser({ avatar_url: base64Url });
-        } catch (err) {
-          console.warn("Backend avatar sync failed, retained in local session cache.");
-        }
-      }
-
-      setSuccessMsg("Profile picture updated successfully!");
-      setTimeout(() => setSuccessMsg(null), 3000);
-    };
-    reader.readAsDataURL(file);
-  };
-
   return (
     <div className="space-y-6 text-left max-w-5xl mx-auto p-4 md:p-6">
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleImageUpload}
-        className="hidden"
-      />
       
       {/* Title */}
       <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
@@ -280,36 +230,23 @@ export default function ProfileView() {
         </div>
       )}
 
-      {/* Top Header Card: Avatar & Overview */}
+      {/* Top Header Card: Overview */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-150/60 flex items-center space-x-6">
         <div className="relative flex-shrink-0">
-          <div className="h-20 w-20 rounded-full bg-amber-500/10 border-2 border-amber-500/30 overflow-hidden flex items-center justify-center text-3xl font-black text-amber-600">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-            ) : (
-              getInitials(profileData.full_name || profileData.username)
-            )}
+          <div className="h-20 w-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 overflow-hidden flex items-center justify-center text-3xl font-black text-[#054E35]">
+            {getInitials(activeProfile.full_name || activeProfile.username)}
           </div>
-          {/* Green camera upload icon overlay */}
-          <button
-            type="button"
-            onClick={handleCameraClick}
-            title="Upload Profile Photo"
-            className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-[#054E35] border-2 border-white flex items-center justify-center shadow-md cursor-pointer hover:bg-[#033B27] hover:scale-105 transition-all"
-          >
-            <Camera className="h-3.5 w-3.5 text-white" />
-          </button>
         </div>
         <div className="text-left min-w-0">
           <h3 className="text-xl font-bold text-[#054E35] truncate">
-            {profileData.full_name || "Enterprise User"}
+            {activeProfile.full_name || "Enterprise User"}
           </h3>
           <p className="text-sm font-semibold text-slate-500">
-            {getRoleDisplay(profileData.role)}
+            {getRoleDisplay(activeProfile.role)}
           </p>
           <p className="text-xs text-slate-400 mt-1 font-medium flex items-center truncate">
             <Building2 className="h-3.5 w-3.5 mr-1 text-[#054E35] shrink-0" />
-            Branch: {profileData.branch || "Not assigned"}
+            Branch: {activeProfile.branch || activeProfile.showroom || "Visakhapatnam Showroom"}
           </p>
         </div>
       </div>
@@ -352,7 +289,7 @@ export default function ProfileView() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
           {/* First Name */}
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">First Name</span>
@@ -364,7 +301,7 @@ export default function ProfileView() {
                 onChange={(e) => setPersonalInfoForm({ ...personalInfoForm, first_name: e.target.value })}
               />
             ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.first_name || "—"}</span>
+              <span className="block text-sm font-bold text-slate-700 p-1">{activeProfile.first_name || "—"}</span>
             )}
           </div>
 
@@ -379,7 +316,7 @@ export default function ProfileView() {
                 onChange={(e) => setPersonalInfoForm({ ...personalInfoForm, last_name: e.target.value })}
               />
             ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.last_name || "—"}</span>
+              <span className="block text-sm font-bold text-slate-700 p-1">{activeProfile.last_name || "—"}</span>
             )}
           </div>
 
@@ -394,7 +331,7 @@ export default function ProfileView() {
                 onChange={(e) => setPersonalInfoForm({ ...personalInfoForm, email: e.target.value })}
               />
             ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1 truncate">{profileData.email || "—"}</span>
+              <span className="block text-sm font-bold text-slate-700 p-1 truncate">{activeProfile.email || "—"}</span>
             )}
           </div>
 
@@ -409,7 +346,7 @@ export default function ProfileView() {
                 onChange={(e) => setPersonalInfoForm({ ...personalInfoForm, phone_number: e.target.value })}
               />
             ) : (
-              <span className="block text-sm font-bold text-slate-700 p-1">{profileData.phone_number || "—"}</span>
+              <span className="block text-sm font-bold text-slate-700 p-1">{activeProfile.phone_number || "—"}</span>
             )}
           </div>
 
@@ -419,7 +356,7 @@ export default function ProfileView() {
             <span className="block text-sm font-bold text-slate-700 p-1 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 select-none w-fit">
               <span className="flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 text-[#054E35]" />
-                {profileData.branch || "Not assigned"}
+                {activeProfile.branch || activeProfile.showroom || "Visakhapatnam Showroom"}
               </span>
             </span>
           </div>
@@ -428,7 +365,7 @@ export default function ProfileView() {
           <div className="space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Account Role</span>
             <span className="block text-sm font-bold text-slate-700 p-1 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 select-none w-fit uppercase text-[10px] tracking-wider text-[#054E35]">
-              {getRoleDisplay(profileData.role)}
+              {getRoleDisplay(activeProfile.role)}
             </span>
           </div>
         </div>
