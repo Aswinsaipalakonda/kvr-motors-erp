@@ -71,6 +71,7 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                 income=instance.advance_amount,
                 expense=0.00,
                 payment_mode=instance.payment_mode or 'Cash',
+                payment_split_details=instance.payment_split_details,
                 approved_by=instance.assigned_executive
             )
         return instance
@@ -122,6 +123,7 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
                     income=0.00,
                     expense=instance.advance_amount,
                     payment_mode=instance.payment_mode or 'Cash',
+                    payment_split_details=instance.payment_split_details,
                     approved_by=instance.assigned_executive
                 )
         return instance

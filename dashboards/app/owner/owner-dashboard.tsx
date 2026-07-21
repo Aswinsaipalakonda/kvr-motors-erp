@@ -2421,7 +2421,15 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   };
 
   // --- Record Booking ---
-  const [newBooking, setNewBooking] = useState({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+  const [newBooking, setNewBooking] = useState({
+    customer_name: "",
+    contact_number: "",
+    vehicle_model: "",
+    advance_amount: "",
+    expiry_date: "",
+    payment_mode: "Cash",
+    payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" }
+  });
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
   const openEditBooking = (bk: any) => {
     setEditingBookingId(bk.id);
@@ -2431,6 +2439,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       vehicle_model: String(bk.vehicle_model || ""),
       advance_amount: String(bk.advance_amount || ""),
       expiry_date: bk.expiry_date || "",
+      payment_mode: bk.payment_mode || "Cash",
+      payment_split_details: bk.payment_split_details || { cash: "", card: "", upi: "", bajaj_finance: "" }
     });
     setIsAddBookingOpen(true);
   };
@@ -2444,29 +2454,57 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
         return;
       }
     }
+
+    // Split validation
+    if (newBooking.payment_mode === "split") {
+      const cashVal = parseFloat(newBooking.payment_split_details.cash || "0");
+      const cardVal = parseFloat(newBooking.payment_split_details.card || "0");
+      const upiVal = parseFloat(newBooking.payment_split_details.upi || "0");
+      const bajajVal = parseFloat(newBooking.payment_split_details.bajaj_finance || "0");
+      const totalSplit = cashVal + cardVal + upiVal + bajajVal;
+      const targetVal = parseFloat(newBooking.advance_amount || "0");
+      if (totalSplit !== targetVal) {
+        showToast(`Split total (₹${totalSplit.toLocaleString("en-IN")}) must equal Advance Amount (₹${targetVal.toLocaleString("en-IN")})`, "error");
+        return;
+      }
+    }
+
     try {
+      const payload: any = {
+        customer_name: newBooking.customer_name.trim(),
+        contact_number: newBooking.contact_number.trim(),
+        vehicle_model: parseInt(newBooking.vehicle_model),
+        advance_amount: parseFloat(newBooking.advance_amount),
+        expiry_date: newBooking.expiry_date,
+        payment_mode: newBooking.payment_mode,
+        payment_split_details: newBooking.payment_mode === "split" ? {
+          cash: parseFloat(newBooking.payment_split_details.cash || "0"),
+          card: parseFloat(newBooking.payment_split_details.card || "0"),
+          upi: parseFloat(newBooking.payment_split_details.upi || "0"),
+          bajaj_finance: parseFloat(newBooking.payment_split_details.bajaj_finance || "0")
+        } : null
+      };
+
       if (editingBookingId) {
-        await updateBooking(editingBookingId, {
-          customer_name: newBooking.customer_name.trim(),
-          contact_number: newBooking.contact_number.trim(),
-          vehicle_model: parseInt(newBooking.vehicle_model),
-          advance_amount: parseFloat(newBooking.advance_amount),
-          expiry_date: newBooking.expiry_date,
-        });
+        await updateBooking(editingBookingId, payload);
         showToast("Booking updated.");
       } else {
         await createBooking({
+          ...payload,
           booking_id: `BK-${Date.now().toString().slice(-6)}`,
-          customer_name: newBooking.customer_name.trim(),
-          contact_number: newBooking.contact_number.trim(),
-          vehicle_model: parseInt(newBooking.vehicle_model),
-          advance_amount: parseFloat(newBooking.advance_amount),
-          expiry_date: newBooking.expiry_date,
           status: "confirmed"
         });
         showToast("Booking recorded.");
       }
-      setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" });
+      setNewBooking({
+        customer_name: "",
+        contact_number: "",
+        vehicle_model: "",
+        advance_amount: "",
+        expiry_date: "",
+        payment_mode: "Cash",
+        payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" }
+      });
       setEditingBookingId(null);
       setIsAddBookingOpen(false);
       loadBookings();
@@ -8311,7 +8349,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       </Modal>
 
       {/* 6. Record Booking */}
-      <Modal isOpen={isAddBookingOpen} onClose={() => { setIsAddBookingOpen(false); setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "" }); }} title={editingBookingId ? "Edit Advance Booking" : "Record Advance Booking"}>
+      <Modal isOpen={isAddBookingOpen} onClose={() => { setIsAddBookingOpen(false); setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); }} title={editingBookingId ? "Edit Advance Booking" : "Record Advance Booking"}>
         <form onSubmit={handleCreateBooking} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -8379,6 +8417,91 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Method</label>
+            <select
+              value={newBooking.payment_mode}
+              onChange={(e) => setNewBooking({ ...newBooking, payment_mode: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="Cash">Cash Payment</option>
+              <option value="UPI">UPI / Online Transfer</option>
+              <option value="Card">Debit / Credit Card</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Bajaj Finance">Bajaj Finance EMI</option>
+              <option value="split">Split Payment (Multiple Modes)</option>
+            </select>
+          </div>
+
+          {newBooking.payment_mode === "split" && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Split Details (Target: ₹{parseFloat(newBooking.advance_amount || "0").toLocaleString("en-IN")})</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Cash Amount</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={newBooking.payment_split_details.cash}
+                    onChange={(e) => setNewBooking({
+                      ...newBooking,
+                      payment_split_details: { ...newBooking.payment_split_details, cash: e.target.value.replace(/\D/g, '') }
+                    })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Card Amount</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={newBooking.payment_split_details.card}
+                    onChange={(e) => setNewBooking({
+                      ...newBooking,
+                      payment_split_details: { ...newBooking.payment_split_details, card: e.target.value.replace(/\D/g, '') }
+                    })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">UPI Amount</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={newBooking.payment_split_details.upi}
+                    onChange={(e) => setNewBooking({
+                      ...newBooking,
+                      payment_split_details: { ...newBooking.payment_split_details, upi: e.target.value.replace(/\D/g, '') }
+                    })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Bajaj Finance</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={newBooking.payment_split_details.bajaj_finance}
+                    onChange={(e) => setNewBooking({
+                      ...newBooking,
+                      payment_split_details: { ...newBooking.payment_split_details, bajaj_finance: e.target.value.replace(/\D/g, '') }
+                    })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
             {editingBookingId ? "Save Changes" : "Record Booking"}
           </button>
