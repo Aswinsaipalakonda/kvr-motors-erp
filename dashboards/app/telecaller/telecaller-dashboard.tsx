@@ -299,7 +299,20 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
     <div className="flex h-screen bg-[#FAFDFB] font-sans antialiased overflow-hidden text-slate-800">
       <DashboardSidebar role="telecaller" activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFDFB]">
-        <Navbar role="telecaller" title={activeTab === "dashboard" ? "Telecaller Desk" : "Leads Management"} />
+        <Navbar 
+          role="telecaller" 
+          title={
+            activeTab === "dashboard"
+              ? "Telecaller Desk"
+              : activeTab === "notifications"
+              ? "Notifications"
+              : activeTab === "profile"
+              ? "Telecaller Profile"
+              : activeTab === "attendance"
+              ? "Daily Check-in"
+              : "Leads Management"
+          } 
+        />
         <DashboardSmoothScroll className="p-4 pb-28 lg:pb-6 space-y-6">
           
           {activeTab === "dashboard" && (
