@@ -288,8 +288,19 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     });
   }, [vehicleUnits, userBranchName, inventoryStatusFilter, searchQuery]);
 
+  const staffBranch = useMemo(() => {
+    return branches.find(b => b.name === userBranchName) || branches[0];
+  }, [branches, userBranchName]);
+
+  const staffLocations = useMemo(() => {
+    if (!staffBranch) return locations;
+    const filtered = locations.filter(l => l.branch === staffBranch.id || l.branch_name === staffBranch.name);
+    return filtered.length > 0 ? filtered : locations;
+  }, [locations, staffBranch]);
+
   const staffBatteries = useMemo(() => {
     return batteries.filter(b => {
+      if (b.branch_name && b.branch_name !== userBranchName) return false;
       if (batteryStatusFilter !== "all" && b.status !== batteryStatusFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -300,7 +311,7 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
       }
       return true;
     });
-  }, [batteries, batteryStatusFilter, searchQuery]);
+  }, [batteries, userBranchName, batteryStatusFilter, searchQuery]);
 
   const pendingPdiBookings = useMemo(() => {
     return bookings.filter(b => b.pdi_verified !== "yes" && (b.status === "pending" || b.status === "confirmed"));
@@ -1214,7 +1225,7 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                     onChange={(e) => setNewUnitForm({ ...newUnitForm, location: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
                   >
-                    {locations.map((l: any) => (
+                    {staffLocations.map((l: any) => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
                   </select>
@@ -1335,11 +1346,11 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                   onChange={(e) => setNewBatteryForm({ ...newBatteryForm, location: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
                 >
-                  <option value="">Select Location ({locations.length > 0 ? "Choose Godown Location" : "Default Main Godown"})</option>
-                  {locations.map((l: any) => (
+                  <option value="">Select Location ({staffLocations.length > 0 ? "Choose Godown Location" : "Default Main Godown"})</option>
+                  {staffLocations.map((l: any) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
-                  {locations.length === 0 && <option value="3">{userBranchName} Main Godown</option>}
+                  {staffLocations.length === 0 && <option value="3">{userBranchName} Main Godown</option>}
                 </select>
               </div>
 
