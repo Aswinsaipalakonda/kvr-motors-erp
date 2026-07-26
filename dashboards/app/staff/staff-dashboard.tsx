@@ -1335,11 +1335,11 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
                   onChange={(e) => setNewBatteryForm({ ...newBatteryForm, location: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-[#04a700]"
                 >
-                  <option value="">Select Location (Default Main Godown)</option>
+                  <option value="">Select Location ({locations.length > 0 ? "Choose Godown Location" : "Default Main Godown"})</option>
                   {locations.map((l: any) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
-                  {locations.length === 0 && <option value="3">KVR Motors Main Showroom</option>}
+                  {locations.length === 0 && <option value="3">{userBranchName} Main Godown</option>}
                 </select>
               </div>
 
