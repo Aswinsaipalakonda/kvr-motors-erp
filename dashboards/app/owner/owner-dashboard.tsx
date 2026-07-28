@@ -22,7 +22,7 @@ import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel
 import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
 import { getBookings, createBooking, updateBooking, deleteBooking } from "../services/bookings";
 import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
-import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus } from "../services/purchases";
+import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus, updatePurchaseOrder } from "../services/purchases";
 import { getLedgerEntries, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry } from "../services/ledger";
 import { getBranchExpenses, getBranchCashDeposits } from "../services/branchFinance";
 import { getBatteries, createBattery, updateBattery, deleteBattery } from "../services/batteries";
@@ -283,13 +283,15 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [newGroupMembers, setNewGroupMembers] = useState("");
   const [newGroupTarget, setNewGroupTarget] = useState("10");
 
-  // New PO form state
+  // New / Edit PO form state
+  const [editingPOId, setEditingPOId] = useState<number | null>(null);
   const [newPOSupplier, setNewPOSupplier] = useState("");
   const [newPOModel, setNewPOModel] = useState("");
   const [newPOQty, setNewPOQty] = useState("");
   const [newPOPrice, setNewPOPrice] = useState("");
   const [newPOPaymentTerms, setNewPOPaymentTerms] = useState("");
   const [newPOEstDelivery, setNewPOEstDelivery] = useState("");
+
 
   // New Vehicle Model form state
   const [newModelBrand, setNewModelBrand] = useState<string>("");
@@ -620,18 +622,43 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
+  const openEditPO = (po: any) => {
+    setEditingPOId(po.id);
+    setNewPOSupplier(po.supplier_name || "");
+    setNewPOModel(po.vehicle_model ? String(po.vehicle_model) : "");
+    setNewPOQty(po.quantity ? String(po.quantity) : "");
+    setNewPOPrice(po.unit_price ? String(po.unit_price) : "");
+    setNewPOPaymentTerms(po.payment_terms || "");
+    setNewPOEstDelivery(po.estimated_delivery || "");
+    setIsAddPOOpen(true);
+  };
+
   const handleCreatePOSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPOSupplier.trim() || !newPOModel || !newPOQty || !newPOPrice || !newPOPaymentTerms.trim()) return;
     try {
-      await createPurchaseOrder({
-        supplier_name: newPOSupplier.trim(),
-        vehicle_model: parseInt(newPOModel),
-        quantity: parseInt(newPOQty),
-        unit_price: parseFloat(newPOPrice),
-        payment_terms: newPOPaymentTerms.trim(),
-        estimated_delivery: newPOEstDelivery || undefined
-      });
+      if (editingPOId) {
+        await updatePurchaseOrder(editingPOId, {
+          supplier_name: newPOSupplier.trim(),
+          vehicle_model: parseInt(newPOModel),
+          quantity: parseInt(newPOQty),
+          unit_price: parseFloat(newPOPrice),
+          payment_terms: newPOPaymentTerms.trim(),
+          estimated_delivery: newPOEstDelivery || undefined
+        });
+        showToast("Purchase Order updated successfully.");
+      } else {
+        await createPurchaseOrder({
+          supplier_name: newPOSupplier.trim(),
+          vehicle_model: parseInt(newPOModel),
+          quantity: parseInt(newPOQty),
+          unit_price: parseFloat(newPOPrice),
+          payment_terms: newPOPaymentTerms.trim(),
+          estimated_delivery: newPOEstDelivery || undefined
+        });
+        showToast("Purchase Order created successfully.");
+      }
+      setEditingPOId(null);
       setNewPOSupplier("");
       setNewPOModel("");
       setNewPOQty("");
@@ -642,9 +669,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       loadPurchases();
       loadLedger();
     } catch (err) {
-      console.error("Failed to create purchase order:", err);
+      console.error("Failed to save purchase order:", err);
+      showToast("Failed to save purchase order.", "error");
     }
   };
+
 
   const loadBatteries = async () => {
     try {
@@ -6129,7 +6158,16 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 headers={["PO Reference", "Supplier Entity", "Items Specified", "Quantity Ordered", "Total Price", "Date Sent", "Payment Terms", "Est Delivery", "Status", "Actions"]}
                 actions={
                   <button 
-                    onClick={() => setIsAddPOOpen(true)}
+                    onClick={() => {
+                      setEditingPOId(null);
+                      setNewPOSupplier("");
+                      setNewPOModel("");
+                      setNewPOQty("");
+                      setNewPOPrice("");
+                      setNewPOPaymentTerms("");
+                      setNewPOEstDelivery("");
+                      setIsAddPOOpen(true);
+                    }}
                     className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Create Purchase Order
@@ -6179,6 +6217,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                         {po.status === "pending" && (
                           <>
                             <button 
+                              onClick={() => openEditPO(po)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button 
                               onClick={() => handleApprovePO(po.id)}
                               className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer"
                             >
@@ -6193,12 +6237,20 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           </>
                         )}
                         {po.status === "approved" && (
-                          <button 
-                            onClick={() => handlePOStatus(po.id, "received")}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
-                          >
-                            Mark Received
-                          </button>
+                          <>
+                            <button 
+                              onClick={() => openEditPO(po)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold mr-3 cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handlePOStatus(po.id, "received")}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
+                            >
+                              Mark Received
+                            </button>
+                          </>
                         )}
                         {(po.status === "received" || po.status === "cancelled") && (
                           <span className="text-[10px] font-bold text-slate-300">No actions</span>
@@ -8170,8 +8222,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           </button>
         </form>
       </Modal>
-      {/* 4. Create Purchase Order */}
-      <Modal isOpen={isAddPOOpen} onClose={() => setIsAddPOOpen(false)} title="Create Supplier Purchase Order">
+      {/* 4. Create / Edit Purchase Order */}
+      <Modal isOpen={isAddPOOpen} onClose={() => { setIsAddPOOpen(false); setEditingPOId(null); }} title={editingPOId ? "Edit Supplier Purchase Order" : "Create Supplier Purchase Order"}>
         <form onSubmit={handleCreatePOSubmit} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier Entity Name</label>
@@ -8250,10 +8302,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             />
           </div>
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer">
-            Create Purchase Order
+            {editingPOId ? "Update Purchase Order" : "Create Purchase Order"}
           </button>
         </form>
       </Modal>
+
 
       {/* 5. Add Lead */}
       <Modal isOpen={isAddLeadOpen} onClose={() => { setIsAddLeadOpen(false); setEditingLeadId(null); setNewLead({ ...emptyLead }); }} title={editingLeadId ? "Edit Lead" : "Add New Lead / Enquiry"}>

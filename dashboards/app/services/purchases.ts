@@ -25,3 +25,9 @@ export const updatePurchaseOrderStatus = async (id: number, status: string) => {
   const response = await api.patch(`/purchase-orders/${id}/`, { status });
   return response.data;
 };
+
+export const updatePurchaseOrder = async (id: number, data: Partial<PurchaseOrderInput>) => {
+  const response = await api.patch(`/purchase-orders/${id}/`, data);
+  return response.data;
+};
+
