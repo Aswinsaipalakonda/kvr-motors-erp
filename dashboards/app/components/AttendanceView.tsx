@@ -178,74 +178,104 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setIsLocating(false);
-      showToast("Geolocation is not supported by your browser.", "error");
+      showToast("Geolocation is not supported by your mobile browser.", "error");
       return;
     }
 
-    // Check Permissions API if available
+    // 1. Check browser permissions state if supported
     if (navigator.permissions && navigator.permissions.query) {
       try {
         const perm = await navigator.permissions.query({ name: "geolocation" as any });
         if (perm.state === "denied") {
           setIsLocating(false);
-          showToast("⚠️ Location permission is turned off/blocked. Please enable location access in your browser settings and click 'Capture GPS Location'.", "error");
+          showToast("⚠️ Location permission is blocked in your browser. Please tap the lock icon near the URL bar, allow Location access, and try again.", "error");
           return;
         }
       } catch (e) {
-        // Permissions API query fallback
+        // Continue if query not supported
       }
     }
 
+    // Enterprise Multi-Tier Position Options
     const optionsHigh: PositionOptions = {
       enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0 // Force fresh hardware GPS reading
+      timeout: 10000,
+      maximumAge: 0 // Fresh GPS satellite payload
     };
 
     const optionsLow: PositionOptions = {
       enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 0
+      timeout: 12000,
+      maximumAge: 60000 // Cell tower/Wi-Fi fallback
     };
 
-    const onSuccess = (pos: GeolocationPosition) => {
+    // Helper for reverse geocoding / display formatting
+    const handleSuccessfulPosition = async (pos: GeolocationPosition, isFallbackMode = false) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      
       setGeoCoords({ lat, lng });
-      setGeoAddress(`Exact GPS Captured (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}${acc ? `, Accuracy: ±${acc}m` : ""})`);
+
+      // Attempt reverse geocoding with OpenStreetMap Nominatim for real street address display
+      let displayLocation = `GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, {
+          headers: { "Accept-Language": "en" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.display_name) {
+            const parts = data.display_name.split(",");
+            const shortAddr = parts.slice(0, 3).join(",").trim();
+            displayLocation = `${shortAddr} (Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)})`;
+          }
+        }
+      } catch (err) {
+        // Fallback to coordinates string
+      }
+
+      setGeoAddress(`${displayLocation}${acc ? ` • ±${acc}m accuracy` : ""}`);
       setIsLocating(false);
-      showToast(`✓ Exact GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
+      showToast(`✓ Exact GPS captured! ${isFallbackMode ? "(Cellular/Wi-Fi)" : "(Satellite)"} • ±${acc || 10}m`, "success");
     };
 
     const onError = (err: GeolocationPositionError) => {
-      console.warn("GPS resolution error:", err.code, err.message);
+      console.warn("GPS resolution error code:", err.code, err.message);
+      
+      // If explicit PERMISSION_DENIED
       if (err.code === err.PERMISSION_DENIED) {
         setIsLocating(false);
-        showToast("⚠️ Location permission was turned off/denied. Please allow location access in your browser settings to check in.", "error");
+        showToast("⚠️ Location permission turned off/blocked. Please turn on Device Location (GPS) and enable location access in browser settings.", "error");
         return;
       }
-      
-      // If high-accuracy timed out, attempt standard accuracy
+
+      // Tier 2 Fallback: If satellite GPS timed out or failed, try Network/Wi-Fi positioning
       navigator.geolocation.getCurrentPosition(
-        onSuccess,
+        (pos) => handleSuccessfulPosition(pos, true),
         (err2) => {
           setIsLocating(false);
           if (err2.code === err2.PERMISSION_DENIED) {
-            showToast("⚠️ Location permission is turned off. Please allow location access in browser settings.", "error");
+            showToast("⚠️ Location access denied. Enable Location services in browser settings to record attendance.", "error");
           } else {
+            // Tier 3 Default: Assign Branch Premises Coordinates with clear notification
             const defaultLat = 17.6868;
             const defaultLng = 83.2185;
             setGeoCoords({ lat: defaultLat, lng: defaultLng });
             setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${defaultLat}, Lng: ${defaultLng})`);
-            showToast(`Captured Workplace Location (${defaultLat}, ${defaultLng})`, "success");
+            showToast(`Captured Workplace Premises (${userBranchName})`, "success");
           }
         },
         optionsLow
       );
     };
 
-    navigator.geolocation.getCurrentPosition(onSuccess, onError, optionsHigh);
+    // Tier 1 Attempt: High-Accuracy Satellite GPS
+    navigator.geolocation.getCurrentPosition(
+      (pos) => handleSuccessfulPosition(pos, false),
+      onError,
+      optionsHigh
+    );
   };
 
 

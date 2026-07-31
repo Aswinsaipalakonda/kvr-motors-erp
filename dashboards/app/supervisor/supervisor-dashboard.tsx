@@ -512,6 +512,19 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     }
   };
 
+  const handleToggleBrandActive = async (brand: any) => {
+    const newStatus = brand.is_active === false ? true : false;
+    try {
+      await api.patch(`/vehicle-brands/${brand.id}/`, { is_active: newStatus });
+      showToast(`Brand "${brand.name}" set to ${newStatus ? "ACTIVE" : "INACTIVE"}.`, "success");
+      const brands = await getVehicleBrands();
+      setVehicleBrandsList(brands);
+    } catch (err: any) {
+      console.error("Failed to update brand status:", err);
+      showToast("Failed to change brand status.", "error");
+    }
+  };
+
   // Physical Stock Units Handlers
   const resetStockUnitForm = () => {
     setStockUnitForm({ ...emptyStockUnit });
@@ -2836,13 +2849,18 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                     >
                       Edit
                     </button>
-                    <span className={`text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded border ${
-                      brand.is_active !== false 
-                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/10" 
-                        : "bg-slate-200 text-slate-600 border-slate-300"
-                    }`}>
-                      {brand.is_active !== false ? "Active" : "Inactive"}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBrandActive(brand)}
+                      title="Click to toggle active/inactive status"
+                      className={`text-[9px] font-extrabold uppercase tracking-wide px-2.5 py-0.5 rounded border cursor-pointer transition-all hover:scale-105 ${
+                        brand.is_active !== false 
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20" 
+                          : "bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300"
+                      }`}
+                    >
+                      {brand.is_active !== false ? "ACTIVE" : "INACTIVE"}
+                    </button>
                   </div>
                 </div>
               ))}

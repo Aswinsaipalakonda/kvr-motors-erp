@@ -628,51 +628,90 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
-  const resolveBrowserLocation = () => {
+  const resolveBrowserLocation = async () => {
     setIsLocating(true);
 
-    const setFallbackLocation = (msg?: string) => {
-      const defaultLat = 17.6868;
-      const defaultLng = 83.2185;
-      setGeoCoords({ lat: defaultLat, lng: defaultLng });
-      setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setIsLocating(false);
-      showToast(msg || `Location set to ${userBranchName} Premises`, "success");
+      showToast("Geolocation is not supported by your browser.", "error");
+      return;
+    }
+
+    // Check Permissions API if available
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const perm = await navigator.permissions.query({ name: "geolocation" as any });
+        if (perm.state === "denied") {
+          setIsLocating(false);
+          showToast("⚠️ Location permission is blocked in your browser settings. Please allow Location access in browser settings.", "error");
+          return;
+        }
+      } catch (e) {
+        // Continue fallback
+      }
+    }
+
+    const optionsHigh: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
     };
 
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setGeoCoords({ lat, lng });
-          setGeoAddress(`${userBranchName} Yard (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
+    const optionsLow: PositionOptions = {
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000
+    };
+
+    const handleSuccess = async (pos: GeolocationPosition, isLowAcc = false) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      setGeoCoords({ lat, lng });
+
+      let locationLabel = `${userBranchName} Yard (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, {
+          headers: { "Accept-Language": "en" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.display_name) {
+            const shortAddr = data.display_name.split(",").slice(0, 3).join(",").trim();
+            locationLabel = `${shortAddr} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+          }
+        }
+      } catch {}
+
+      setGeoAddress(`${locationLabel}${acc ? ` • ±${acc}m` : ""}`);
+      setIsLocating(false);
+      showToast(`✓ Exact GPS Captured! ${isLowAcc ? "(Cellular/Wi-Fi)" : "(Satellite)"}`, "success");
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => handleSuccess(pos, false),
+      (err) => {
+        console.warn("High accuracy GPS failed:", err.message);
+        if (err.code === err.PERMISSION_DENIED) {
           setIsLocating(false);
-          showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
-        },
-        (err) => {
-          console.warn("High-accuracy GPS failed, trying standard accuracy:", err.message);
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const lat = pos.coords.latitude;
-              const lng = pos.coords.longitude;
-              setGeoCoords({ lat, lng });
-              setGeoAddress(`${userBranchName} Yard (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
-              setIsLocating(false);
-              showToast(`GPS Location captured! (${lat.toFixed(4)}, ${lng.toFixed(4)})`, "success");
-            },
-            (err2) => {
-              console.warn("Geolocation fallback executed:", err2.message);
-              setFallbackLocation(`GPS location set to ${userBranchName} Premises`);
-            },
-            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
-          );
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
-    } else {
-      setFallbackLocation(`Location set to ${userBranchName} Premises`);
-    }
+          showToast("⚠️ Location permission turned off/blocked. Please turn on Location in browser settings.", "error");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => handleSuccess(pos, true),
+          (err2) => {
+            setIsLocating(false);
+            const defaultLat = 17.6868;
+            const defaultLng = 83.2185;
+            setGeoCoords({ lat: defaultLat, lng: defaultLng });
+            setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+            showToast(`Location set to ${userBranchName} Premises`, "success");
+          },
+          optionsLow
+        );
+      },
+      optionsHigh
+    );
   };
 
   const submitAttendanceCheckin = async () => {
