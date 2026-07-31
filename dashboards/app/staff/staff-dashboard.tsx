@@ -637,61 +637,63 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
       return;
     }
 
-    const optionsHigh: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    };
-
-    const optionsLow: PositionOptions = {
-      enableHighAccuracy: false,
-      timeout: 12000,
-      maximumAge: 60000
-    };
-
-    const handleSuccess = async (pos: GeolocationPosition, isLowAcc = false) => {
+    const handleSuccess = async (pos: GeolocationPosition, accuracyType: string) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
       setGeoCoords({ lat, lng });
 
-      let locationLabel = `${userBranchName} Yard (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      let locationLabel = `GPS Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
           headers: { "Accept-Language": "en" }
         });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.display_name) {
-            const shortAddr = data.display_name.split(",").slice(0, 3).join(",").trim();
-            locationLabel = `${shortAddr} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+          if (data) {
+            const addr = data.address || {};
+            const area = addr.suburb || addr.neighbourhood || addr.residential || addr.village || addr.town || addr.city_district || addr.county || "";
+            const city = addr.city || addr.town || addr.state_district || addr.state || "";
+            const road = addr.road || addr.pedestrian || "";
+
+            const title = [road, area, city].filter(Boolean).slice(0, 2).join(", ");
+            if (title) {
+              locationLabel = `${title} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            } else if (data.display_name) {
+              locationLabel = data.display_name.split(",").slice(0, 3).join(",").trim();
+            }
           }
         }
       } catch {}
 
       setGeoAddress(`${locationLabel}${acc ? ` • ±${acc}m` : ""}`);
       setIsLocating(false);
-      showToast(`✓ Exact GPS Captured! ${isLowAcc ? "(Cellular/Wi-Fi)" : "(Satellite)"}`, "success");
+      showToast(`✓ Exact GPS Captured via ${accuracyType}! (±${acc || 10}m)`, "success");
     };
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => handleSuccess(pos, false),
-      (err) => {
-        console.warn("High accuracy GPS failed:", err.message);
+      (pos) => handleSuccess(pos, "GPS Satellite"),
+      (err1) => {
+        console.warn("Satellite GPS failed, trying cellular positioning:", err1.message);
+        if (err1.code === err1.PERMISSION_DENIED) {
+          setIsLocating(false);
+          showToast("⚠️ Location permission denied in browser. Please allow location access in your browser settings.", "error");
+          return;
+        }
         navigator.geolocation.getCurrentPosition(
-          (pos) => handleSuccess(pos, true),
+          (pos) => handleSuccess(pos, "Cellular/Wi-Fi"),
           (err2) => {
             setIsLocating(false);
-            const defaultLat = 17.6868;
-            const defaultLng = 83.2185;
-            setGeoCoords({ lat: defaultLat, lng: defaultLng });
-            setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
-            showToast(`Location set to ${userBranchName} Premises`, "success");
+            if (err2.code === err2.PERMISSION_DENIED) {
+              showToast("⚠️ Location permission is blocked in browser settings.", "error");
+            } else {
+              showToast("⚠️ GPS signal weak. Please ensure Device Location (GPS) is turned ON and try again.", "error");
+            }
           },
-          optionsLow
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
         );
       },
-      optionsHigh
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
