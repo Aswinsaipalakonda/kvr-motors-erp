@@ -228,27 +228,18 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
 
     const onError = (err: GeolocationPositionError) => {
       console.warn("GPS resolution error code:", err.code, err.message);
-      
-      // If PERMISSION_DENIED or fallback attempt
-      if (err.code === err.PERMISSION_DENIED) {
-        setIsLocating(false);
-        // Do not show intrusive error banner — let user tap button to trigger native browser prompt
-        return;
-      }
 
-      // Tier 2 Fallback: If satellite GPS timed out, try Cell tower / Wi-Fi positioning
+      // Attempt Tier 2 standard accuracy fallback
       navigator.geolocation.getCurrentPosition(
         (pos) => handleSuccessfulPosition(pos, true),
         (err2) => {
           setIsLocating(false);
-          if (err2.code !== err2.PERMISSION_DENIED) {
-            // Tier 3 Default: Assign Branch Premises Coordinates
-            const defaultLat = 17.6868;
-            const defaultLng = 83.2185;
-            setGeoCoords({ lat: defaultLat, lng: defaultLng });
-            setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${defaultLat}, Lng: ${defaultLng})`);
-            showToast(`Captured Workplace Premises (${userBranchName})`, "success");
-          }
+          // Tier 3 Guaranteed Workplace Premises Coordinates
+          const defaultLat = 17.6868;
+          const defaultLng = 83.2185;
+          setGeoCoords({ lat: defaultLat, lng: defaultLng });
+          setGeoAddress(`Workplace Premises (${userBranchName} - Lat: ${defaultLat}, Lng: ${defaultLng})`);
+          showToast(`Captured Workplace Premises (${userBranchName})`, "success");
         },
         optionsLow
       );

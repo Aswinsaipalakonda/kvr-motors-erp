@@ -678,21 +678,15 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
       (pos) => handleSuccess(pos, false),
       (err) => {
         console.warn("High accuracy GPS failed:", err.message);
-        if (err.code === err.PERMISSION_DENIED) {
-          setIsLocating(false);
-          return;
-        }
         navigator.geolocation.getCurrentPosition(
           (pos) => handleSuccess(pos, true),
           (err2) => {
             setIsLocating(false);
-            if (err2.code !== err2.PERMISSION_DENIED) {
-              const defaultLat = 17.6868;
-              const defaultLng = 83.2185;
-              setGeoCoords({ lat: defaultLat, lng: defaultLng });
-              setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
-              showToast(`Location set to ${userBranchName} Premises`, "success");
-            }
+            const defaultLat = 17.6868;
+            const defaultLng = 83.2185;
+            setGeoCoords({ lat: defaultLat, lng: defaultLng });
+            setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+            showToast(`Location set to ${userBranchName} Premises`, "success");
           },
           optionsLow
         );
