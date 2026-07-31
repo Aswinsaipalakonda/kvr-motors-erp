@@ -229,22 +229,20 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     const onError = (err: GeolocationPositionError) => {
       console.warn("GPS resolution error code:", err.code, err.message);
       
-      // If explicit PERMISSION_DENIED
+      // If PERMISSION_DENIED or fallback attempt
       if (err.code === err.PERMISSION_DENIED) {
         setIsLocating(false);
-        showToast("⚠️ Location permission turned off/blocked. Please turn on Device Location (GPS) and enable location access in browser settings.", "error");
+        // Do not show intrusive error banner — let user tap button to trigger native browser prompt
         return;
       }
 
-      // Tier 2 Fallback: If satellite GPS timed out or failed, try Network/Wi-Fi positioning
+      // Tier 2 Fallback: If satellite GPS timed out, try Cell tower / Wi-Fi positioning
       navigator.geolocation.getCurrentPosition(
         (pos) => handleSuccessfulPosition(pos, true),
         (err2) => {
           setIsLocating(false);
-          if (err2.code === err2.PERMISSION_DENIED) {
-            showToast("⚠️ Location access denied. Enable Location services in browser settings to record attendance.", "error");
-          } else {
-            // Tier 3 Default: Assign Branch Premises Coordinates with clear notification
+          if (err2.code !== err2.PERMISSION_DENIED) {
+            // Tier 3 Default: Assign Branch Premises Coordinates
             const defaultLat = 17.6868;
             const defaultLng = 83.2185;
             setGeoCoords({ lat: defaultLat, lng: defaultLng });

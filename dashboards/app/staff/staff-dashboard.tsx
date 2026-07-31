@@ -680,18 +680,19 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
         console.warn("High accuracy GPS failed:", err.message);
         if (err.code === err.PERMISSION_DENIED) {
           setIsLocating(false);
-          showToast("⚠️ Location permission turned off/blocked. Please turn on Location in browser settings.", "error");
           return;
         }
         navigator.geolocation.getCurrentPosition(
           (pos) => handleSuccess(pos, true),
           (err2) => {
             setIsLocating(false);
-            const defaultLat = 17.6868;
-            const defaultLng = 83.2185;
-            setGeoCoords({ lat: defaultLat, lng: defaultLng });
-            setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
-            showToast(`Location set to ${userBranchName} Premises`, "success");
+            if (err2.code !== err2.PERMISSION_DENIED) {
+              const defaultLat = 17.6868;
+              const defaultLng = 83.2185;
+              setGeoCoords({ lat: defaultLat, lng: defaultLng });
+              setGeoAddress(`${userBranchName} Yard (Lat: ${defaultLat}, Lng: ${defaultLng})`);
+              showToast(`Location set to ${userBranchName} Premises`, "success");
+            }
           },
           optionsLow
         );
