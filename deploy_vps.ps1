@@ -69,9 +69,8 @@ ssh "root@$VPS_IP" "
     echo 'Waiting for services to initialize...'
     sleep 5
 
-    echo 'Running database migrations and resetting application data...'
+    echo 'Running database migrations...'
     docker compose exec -T backend python manage.py migrate --noinput
-    docker compose exec -T backend python reset_vps_data.py
     
     echo 'Pruning unused docker images to free space...'
     docker image prune -f
