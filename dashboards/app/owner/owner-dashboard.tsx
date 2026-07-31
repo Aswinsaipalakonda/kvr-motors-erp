@@ -2201,7 +2201,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     setEditingModelId(model.id);
     setNewModelBrand(String(model.brand || ""));
     setNewModelName(model.model_name || "");
-    setNewModelPrice(String(model.base_price || ""));
+    const parsedPrice = Math.round(parseFloat(model.base_price || 0));
+    setNewModelPrice(isNaN(parsedPrice) || parsedPrice === 0 ? "" : String(parsedPrice));
     setNewModelBattery(model.battery_compatibility || "");
     setNewModelColors(Array.isArray(model.color_variants) ? model.color_variants.join(", ") : (model.color_variants || ""));
     setNewModelStatus(model.status === "inactive" ? "inactive" : "active");
@@ -5945,6 +5946,14 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               return branchMatch && searchMatch;
             });
 
+            const filteredStockSalesInvoices = salesInvoices.filter((inv) => {
+              return stockBranchFilter === "All Branches" || (inv.branch_name && (inv.branch_name.toLowerCase().includes(stockBranchFilter.toLowerCase()) || stockBranchFilter.toLowerCase().includes(inv.branch_name.toLowerCase())));
+            });
+
+            const filteredStockPurchaseOrders = purchaseOrders.filter((po) => {
+              return (stockBranchFilter === "All Branches" || (po.branch_name && (po.branch_name.toLowerCase().includes(stockBranchFilter.toLowerCase()) || stockBranchFilter.toLowerCase().includes(po.branch_name.toLowerCase())))) && po.status === "pending";
+            });
+
             return (
               <div className="space-y-6 text-left">
                 {/* Branch & Search Filter Strip */}
@@ -5979,9 +5988,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Total Units Registered", value: vehiclesLoading ? "..." : String(filteredVehicleUnits.length), icon: ArrowDownLeft, tint: "emerald" },
-                  { label: "Units Sold (MTD)", value: salesInvoicesLoading ? "..." : String(filteredSalesInvoices.length), icon: ArrowUpRight, tint: "blue" },
+                  { label: "Units Sold (MTD)", value: salesInvoicesLoading ? "..." : String(filteredStockSalesInvoices.length), icon: ArrowUpRight, tint: "blue" },
                   { label: "Units Reserved / Transit", value: vehiclesLoading ? "..." : String(filteredVehicleUnits.filter(u => u.stock_status === "reserved" || u.stock_status === "in_transit").length), icon: Truck, tint: "amber" },
-                  { label: "Pending POs", value: purchaseOrdersLoading ? "..." : String(purchaseOrders.filter(po => po.status === "pending").length), icon: AlertTriangle, tint: "rose" },
+                  { label: "Pending POs", value: purchaseOrdersLoading ? "..." : String(filteredStockPurchaseOrders.length), icon: AlertTriangle, tint: "rose" },
                 ].map((s, i) => {
                   const SIcon = s.icon;
                   const tintMap: Record<string, string> = {
@@ -8109,7 +8118,13 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     >
                       Delete
                     </button>
-                    <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-700 px-2 py-1 rounded-md border border-emerald-500/10">Active</span>
+                    <span className={`text-[9px] font-extrabold uppercase tracking-wide px-2 py-1 rounded-md border ${
+                      brand.is_active !== false 
+                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/10" 
+                        : "bg-slate-200 text-slate-600 border-slate-300"
+                    }`}>
+                      {brand.is_active !== false ? "Active" : "Inactive"}
+                    </span>
                   </div>
                 </div>
               ))}

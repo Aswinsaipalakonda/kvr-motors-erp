@@ -444,7 +444,8 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     setEditingModelId(model.id);
     setNewModelBrand(String(model.brand || ""));
     setNewModelName(model.model_name || "");
-    setNewModelPrice(String(model.base_price || ""));
+    const parsedPrice = Math.round(parseFloat(model.base_price || 0));
+    setNewModelPrice(isNaN(parsedPrice) || parsedPrice === 0 ? "" : String(parsedPrice));
     setNewModelBattery(model.battery_compatibility || "");
     setNewModelColors(Array.isArray(model.color_variants) ? model.color_variants.join(", ") : (model.color_variants || ""));
     setNewModelStatus(model.status === "inactive" ? "inactive" : "active");
@@ -2835,7 +2836,13 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                     >
                       Edit
                     </button>
-                    <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded border border-emerald-500/10">Active</span>
+                    <span className={`text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded border ${
+                      brand.is_active !== false 
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/10" 
+                        : "bg-slate-200 text-slate-600 border-slate-300"
+                    }`}>
+                      {brand.is_active !== false ? "Active" : "Inactive"}
+                    </span>
                   </div>
                 </div>
               ))}
