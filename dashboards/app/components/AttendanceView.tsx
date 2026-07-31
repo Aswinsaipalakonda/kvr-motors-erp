@@ -182,20 +182,6 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
       return;
     }
 
-    // 1. Check browser permissions state if supported
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const perm = await navigator.permissions.query({ name: "geolocation" as any });
-        if (perm.state === "denied") {
-          setIsLocating(false);
-          showToast("⚠️ Location permission is blocked in your browser. Please tap the lock icon near the URL bar, allow Location access, and try again.", "error");
-          return;
-        }
-      } catch (e) {
-        // Continue if query not supported
-      }
-    }
-
     // Enterprise Multi-Tier Position Options
     const optionsHigh: PositionOptions = {
       enableHighAccuracy: true,

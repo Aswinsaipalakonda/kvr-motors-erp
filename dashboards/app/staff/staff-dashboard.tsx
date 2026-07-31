@@ -637,20 +637,6 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
       return;
     }
 
-    // Check Permissions API if available
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const perm = await navigator.permissions.query({ name: "geolocation" as any });
-        if (perm.state === "denied") {
-          setIsLocating(false);
-          showToast("⚠️ Location permission is blocked in your browser settings. Please allow Location access in browser settings.", "error");
-          return;
-        }
-      } catch (e) {
-        // Continue fallback
-      }
-    }
-
     const optionsHigh: PositionOptions = {
       enableHighAccuracy: true,
       timeout: 10000,
