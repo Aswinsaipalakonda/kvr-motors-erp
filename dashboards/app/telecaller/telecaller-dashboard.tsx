@@ -136,12 +136,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
 
   const loadStockAndInvoicesData = async () => {
     try {
-      const [units, invoices] = await Promise.all([
-        getVehicleUnits(),
-        getSalesInvoices()
-      ]);
-      setVehicleUnitsList(units);
-      setSalesInvoicesList(invoices);
+      const units = await getVehicleUnits().catch(() => []);
+      const invoices = await getSalesInvoices().catch(() => []);
+      if (units) setVehicleUnitsList(units);
+      if (invoices) setSalesInvoicesList(invoices);
     } catch (e) {
       console.error("Failed to load stock/invoices data:", e);
     }

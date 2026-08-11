@@ -181,10 +181,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   const loadLeadsData = async () => {
     try {
       setLeadsLoading(true);
-      const [leadsData, modelsData] = await Promise.all([
-        getLeads(),
-        getVehicleModels()
-      ]);
+      const leadsData = await getLeads().catch(() => []);
+      const modelsData = await getVehicleModels().catch(() => []);
       if (user) {
         const myBranch = (user.branch || user.showroom || "").toLowerCase();
         const filtered = leadsData.filter((lead: any) => {
