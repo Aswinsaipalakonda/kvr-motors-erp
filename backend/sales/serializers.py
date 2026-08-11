@@ -8,13 +8,15 @@ import random
 
 class SalesInvoiceSerializer(serializers.ModelSerializer):
     invoice_number = serializers.CharField(required=False, allow_blank=True)
-    vin_number = serializers.CharField(source='vehicle_unit.vin_number', read_only=True)
-    model_name = serializers.CharField(source='vehicle_unit.model.model_name', read_only=True)
-    vehicle_color = serializers.CharField(source='vehicle_unit.color', read_only=True)
-    battery_serial = serializers.CharField(source='assigned_battery.serial_number', read_only=True)
-    battery_type = serializers.CharField(source='assigned_battery.capacity', read_only=True)
-    executive_name = serializers.CharField(source='sales_executive.full_name', read_only=True)
-    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    vehicle_unit = serializers.PrimaryKeyRelatedField(queryset=VehicleUnit.objects.all(), required=False, allow_null=True)
+    assigned_battery = serializers.PrimaryKeyRelatedField(queryset=Battery.objects.all(), required=False, allow_null=True)
+    vin_number = serializers.CharField(source='vehicle_unit.vin_number', read_only=True, default='')
+    model_name = serializers.CharField(source='vehicle_unit.model.model_name', read_only=True, default='Kinetic Green EV')
+    vehicle_color = serializers.CharField(source='vehicle_unit.color', read_only=True, default='Standard')
+    battery_serial = serializers.CharField(source='assigned_battery.serial_number', read_only=True, default='')
+    battery_type = serializers.CharField(source='assigned_battery.capacity', read_only=True, default='')
+    executive_name = serializers.CharField(source='sales_executive.full_name', read_only=True, default='')
+    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
     delivery_status_display = serializers.CharField(source='get_delivery_status_display', read_only=True)
 
     class Meta:
@@ -29,8 +31,6 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Customer contact number must contain exactly 10 digits.")
             return cleaned
         return value
-
-
 
     def validate(self, data):
         assigned_battery = data.get('assigned_battery')
@@ -77,15 +77,30 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         if not validated_data.get('invoice_number'):
             validated_data['invoice_number'] = f"INV-{datetime.date.today().strftime('%Y')}-{random.randint(10000, 99999)}"
-            
+
+        if not validated_data.get('vehicle_unit'):
+            vu = VehicleUnit.objects.filter(stock_status__in=['available', 'booked', 'in_stock', 'in_transit']).first()
+            if not vu:
+                vu = VehicleUnit.objects.first()
+            validated_data['vehicle_unit'] = vu
+
         instance = super().create(validated_data)
-        
+        self._finalize_sale(instance)
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        self._finalize_sale(instance)
+        return instance
+
+    def _finalize_sale(self, instance):
         # 1. Update vehicle unit status to sold
         vu = instance.vehicle_unit
-        vu.stock_status = 'sold'
-        if instance.assigned_battery:
-            vu.assigned_battery = instance.assigned_battery.serial_number
-        vu.save()
+        if vu:
+            vu.stock_status = 'sold'
+            if instance.assigned_battery:
+                vu.assigned_battery = instance.assigned_battery.serial_number
+            vu.save()
         
         # 2. Update battery status to sold
         if instance.assigned_battery:
@@ -93,15 +108,15 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             bat.status = 'sold'
             bat.save()
             
-        # 3. Create automatic LedgerEntry
-        LedgerEntry.objects.create(
-            transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
-            ledger_type='sales_income',
-            branch=instance.branch,
-            detail=f"Automated entry for Sales Invoice {instance.invoice_number} (Customer: {instance.customer_name})",
-            income=instance.sale_price,
-            expense=0.00,
-            payment_mode=instance.payment_mode,
-            approved_by=instance.sales_executive
-        )
-        return instance
+        # 3. Create automatic LedgerEntry if not existing
+        if not LedgerEntry.objects.filter(detail__contains=instance.invoice_number).exists():
+            LedgerEntry.objects.create(
+                transaction_id=f"TXN-{datetime.date.today().strftime('%Y%m%d')}-{random.randint(10000, 99999)}",
+                ledger_type='sales_income',
+                branch=instance.branch,
+                detail=f"Automated entry for Sales Invoice {instance.invoice_number} (Customer: {instance.customer_name})",
+                income=instance.sale_price,
+                expense=0.00,
+                payment_mode=instance.payment_mode,
+                approved_by=instance.sales_executive
+            )

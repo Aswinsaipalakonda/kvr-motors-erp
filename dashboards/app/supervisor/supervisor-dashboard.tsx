@@ -2368,22 +2368,21 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                       <td className="py-3.5 px-5 font-bold text-emerald-600">₹ {parseFloat(inv.sale_price).toLocaleString("en-IN")}</td>
                       <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
                       <td className="py-3.5 px-5">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          inv.delivery_status === "ready" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                          "bg-amber-50 text-amber-700 border border-amber-200"
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                          inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                         }`}>
-                          {inv.delivery_status ? inv.delivery_status.charAt(0).toUpperCase() + inv.delivery_status.slice(1) : "Processing"}
+                          {inv.delivery_status === "delivered" ? "Verified & Sold" : "Pending Payment Verification"}
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        {inv.delivery_status === "processing" && (
-                          <button onClick={() => handleSalesDelivery(inv.id, "ready")} className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer mr-3">Mark Ready</button>
-                        )}
-                        {inv.delivery_status === "ready" && (
-                          <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer mr-3">Mark Delivered</button>
-                        )}
-                        {inv.delivery_status === "delivered" ? (
+                        {inv.delivery_status !== "delivered" ? (
+                          <button 
+                            onClick={() => handleSalesDelivery(inv.id, "delivered")} 
+                            className="bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
+                          >
+                            Verify Payment & Close Sale
+                          </button>
+                        ) : (
                           <div className="flex items-center gap-2 inline-flex">
                             <button
                               onClick={() => handlePrintSalesInvoice(inv)}
@@ -2405,7 +2404,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                                 `-----------------------------\n` +
                                 `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
                                 `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
-                                `*Status:* Delivered\n` +
+                                `*Status:* Verified & Sold\n` +
                                 `=============================\n` +
                                 `Thank you for purchasing with KVR Motors!`
                               )}`}
@@ -2416,8 +2415,6 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                               <MessageSquare className="h-3 w-3" /> WhatsApp
                             </a>
                           </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-semibold italic">Awaiting Delivery</span>
                         )}
                       </td>
                     </tr>
