@@ -2048,14 +2048,28 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                           {bk.status === "pending" ? "Pending Approval" : bk.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap space-x-2">
+                      <td className="py-3 px-4 whitespace-nowrap space-x-2 flex items-center gap-2">
                         {(bk.status === "confirmed" || bk.status === "pending") && (
-                          <button
-                            onClick={() => setSelectedBookingInvoicePreview(bk)}
-                            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
-                          >
-                            <FileCheck className="h-3 w-3" /> Invoice
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setCheckoutCustomerName(bk.customer_name);
+                                setCheckoutContactNumber(bk.contact_number);
+                                setVinQuery(bk.contact_number);
+                                handleVinSearch();
+                                setActiveTab("sales_checkout");
+                              }}
+                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
+                            >
+                              Convert to Sale
+                            </button>
+                            <button
+                              onClick={() => setSelectedBookingInvoicePreview(bk)}
+                              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
+                            >
+                              <FileCheck className="h-3 w-3" /> Invoice
+                            </button>
+                          </>
                         )}
                         {bk.status === "pending" && (
                           <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>

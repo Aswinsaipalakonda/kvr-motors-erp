@@ -35,7 +35,7 @@ import {
 
 
 interface SidebarProps {
-  role: "owner" | "supervisor" | "sales" | "telecaller" | "staff";
+  role: "owner" | "supervisor" | "sales" | "telecaller";
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
 }
@@ -132,23 +132,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },
       ]
-    },
-    staff: {
-      profile: {
-        name: "Gopal Rao",
-        roleName: "Operations Staff",
-        initials: "GR"
-      },
-      items: [
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "inventory", label: "Inventory & Shipments", icon: Boxes },
-        { id: "batteries", label: "Battery Registry", icon: Battery },
-        { id: "pdi", label: "PDI & Handovers", icon: FileText },
-        { id: "attendance", label: "Daily Check-in", icon: UsersRound },
-        { id: "profile", label: "My Profile", icon: User },
-      ]
     }
-
   };
 
   const currentConfig = menuConfig[role] || menuConfig.owner;
@@ -234,7 +218,7 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
                 KVR Motors
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest -mt-1 text-[#04a700] font-sans">
-                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : role === "staff" ? "Staff Terminal" : "Sales Terminal"}
+                {role === "owner" ? "Owner Portal" : role === "supervisor" ? "Supervisor Panel" : role === "telecaller" ? "Telecaller Desk" : "Sales Terminal"}
               </span>
             </div>
           </div>

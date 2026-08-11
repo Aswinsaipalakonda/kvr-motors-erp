@@ -19,7 +19,6 @@ class UsersConfig(AppConfig):
                     {'username': 'supervisor', 'password': 'super123', 'email': 'supervisor@kvrmotors.com', 'full_name': 'Supervisor User', 'role': 'supervisor'},
                     {'username': 'sales', 'password': 'sales123', 'email': 'sales@kvrmotors.com', 'full_name': 'Sales User', 'role': 'sales'},
                     {'username': 'telecaller', 'password': 'tele123', 'email': 'telecaller@kvrmotors.com', 'full_name': 'Telecaller User', 'role': 'telecaller'},
-                    {'username': 'staff', 'password': 'staff123', 'email': 'staff@kvrmotors.com', 'full_name': 'Staff User', 'role': 'staff'},
                 ]
 
                 for user_data in demo_users:

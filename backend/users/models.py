@@ -8,7 +8,6 @@ class User(AbstractUser):
         ('supervisor', 'Supervisor'),
         ('sales_executive', 'Sales Executive'),
         ('sales', 'Sales'),
-        ('staff', 'Operations Staff'),
         ('telecaller', 'Telecaller'),
     )
 

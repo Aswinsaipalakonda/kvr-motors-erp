@@ -17,6 +17,7 @@ import SearchableSelect from "../components/SearchableSelect";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getVehicleModels, getVehicleUnits } from "../services/vehicles";
 import { getSalesInvoices } from "../services/sales";
+import { createBooking } from "../services/bookings";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -267,7 +268,26 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       setFollowupLead(null);
       loadLeadsData();
     } catch {
-      showToast("Failed to record follow-up.", "error");
+      showToast("Failed to update follow-up logs.", "error");
+    }
+  };
+
+  const handleUpdateToBooking = async (lead: any) => {
+    try {
+      const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
+      await createBooking({
+        customer_name: lead.customer_name,
+        contact_number: lead.contact_number,
+        vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
+        advance_amount: 5000,
+        expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        status: "pending",
+      });
+      await updateLead(lead.id, { status: "won" });
+      showToast(`Lead updated to Booking! Visible under Sales Executive desk.`);
+      loadLeadsData();
+    } catch {
+      showToast("Failed to promote lead to booking.", "error");
     }
   };
 
@@ -591,7 +611,13 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                               {lead.status_display || lead.status}
                             </span>
                           </td>
-                          <td className="py-3.5 px-5 flex items-center gap-3">
+                          <td className="py-3.5 px-5 flex items-center gap-2">
+                            <button 
+                              onClick={() => handleUpdateToBooking(lead)} 
+                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
+                            >
+                              Update to Booking
+                            </button>
                             <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                             <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit</button>
                           </td>
