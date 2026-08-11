@@ -12,7 +12,6 @@ import {
   UsersRound,
   Clock,
   Camera,
-  MapPin,
   RefreshCw,
   CheckCircle2,
   XCircle,
@@ -47,9 +46,6 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
 
   // Check-in form states
   const [selfiePhoto, setSelfiePhoto] = useState<string | null>(null);
-  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoAddress, setGeoAddress] = useState<string>("");
-  const [isLocating, setIsLocating] = useState(false);
   const [isSubmittingCheckin, setIsSubmittingCheckin] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -174,114 +170,18 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     reader.readAsDataURL(file);
   };
 
-  const resolveLocation = async (): Promise<{ lat: number; lng: number } | null> => {
-    setIsLocating(true);
 
-    if (typeof window === "undefined" || !("geolocation" in navigator)) {
-      setIsLocating(false);
-      // Fallback to default branch coords if API missing
-      const fallback = { lat: 17.7231, lng: 83.3012 };
-      setGeoCoords(fallback);
-      setGeoAddress(`KVR Showroom Premises (17.7231, 83.3012)`);
-      showToast("Geolocation API not available. Set to Showroom Premises location.", "success");
-      return fallback;
-    }
-
-    const processPosition = async (pos: GeolocationPosition, accuracyType: string) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-      
-      const coordsObj = { lat, lng };
-      setGeoCoords(coordsObj);
-
-      let locationLabel = `KVR Showroom Premises (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
-          headers: { "Accept-Language": "en" }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data) {
-            const addr = data.address || {};
-            const area = addr.suburb || addr.neighbourhood || addr.residential || addr.village || addr.town || addr.city_district || addr.county || "";
-            const city = addr.city || addr.town || addr.state_district || addr.state || "";
-            const road = addr.road || addr.pedestrian || "";
-
-            const title = [road, area, city].filter(Boolean).slice(0, 2).join(", ");
-            if (title) {
-              locationLabel = `${title} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            } else if (data.display_name) {
-              locationLabel = data.display_name.split(",").slice(0, 3).join(",").trim();
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Reverse geocode failed, using coordinates:", err);
-      }
-
-      setGeoAddress(`${locationLabel}${acc ? ` • ±${acc}m` : ""}`);
-      setIsLocating(false);
-      showToast(`✓ Exact Workplace Location Captured (${accuracyType})!`, "success");
-      return coordsObj;
-    };
-
-    return new Promise((resolve) => {
-      // Step 1: Fast Low-Power Geolocation (works instantly on mobile/desktop)
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const res = await processPosition(pos, "Wi-Fi/Cellular GPS");
-          resolve(res);
-        },
-        (err1) => {
-          console.warn("Fast geolocation failed, attempting satellite GPS:", err1.message);
-          // Step 2: High Accuracy Satellite GPS
-          navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-              const res = await processPosition(pos, "Satellite GPS");
-              resolve(res);
-            },
-            (err2) => {
-              console.warn("High accuracy GPS failed:", err2.message);
-              setIsLocating(false);
-              // Fallback to branch coords if blocked/turned off
-              const fallback = { lat: 17.7231, lng: 83.3012 };
-              setGeoCoords(fallback);
-              setGeoAddress(`KVR Visakhapatnam Showroom Premises (17.7231, 83.3012)`);
-              if (err2.code === err2.PERMISSION_DENIED) {
-                showToast("⚠️ Location permission blocked. Set location to KVR Showroom Premises.", "error");
-              } else {
-                showToast("⚠️ Location signal weak. Captured KVR Showroom Premises location.", "error");
-              }
-              resolve(fallback);
-            },
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-          );
-        },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-      );
-    });
-  };
-
-  useEffect(() => {
-    // Auto-resolve location on mount
-    resolveLocation();
-  }, [myTodayCheckin]);
 
   const submitCheckin = async () => {
-    let currentCoords = geoCoords;
-    if (!currentCoords) {
-      currentCoords = await resolveLocation();
-    }
-    if (!currentCoords) {
-      showToast("Workplace location required for check-in.", "error");
+    if (!selfiePhoto) {
+      showToast("Please take or upload a selfie photo before submitting.", "error");
       return;
     }
     try {
       setIsSubmittingCheckin(true);
 
       const formData = new FormData();
-      if (selfiePhoto && selfiePhoto.startsWith("data:image")) {
+      if (selfiePhoto.startsWith("data:image")) {
         const byteString = atob(selfiePhoto.split(",")[1]);
         const mimeString = selfiePhoto.split(",")[0].split(":")[1].split(";")[0];
         const ab = new ArrayBuffer(byteString.length);
@@ -304,9 +204,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
         formData.append("photo", dummyBlob, "checkin_photo.jpg");
       }
 
-      formData.append("latitude", currentCoords.lat.toFixed(6));
-      formData.append("longitude", currentCoords.lng.toFixed(6));
-      formData.append("location_name", geoAddress || `${userBranchName} Premises`);
+      formData.append("location_name", `${userBranchName} Premises`);
 
       await api.post("/attendance/", formData, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -314,7 +212,6 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
 
       showToast("Daily Check-in submitted successfully!");
       setSelfiePhoto(null);
-      setGeoCoords(null);
       fetchLogs();
     } catch (err: any) {
       showToast(err.response?.data?.detail || "You have already checked in for today.", "error");
@@ -361,7 +258,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
               <UsersRound className="h-5 w-5 text-[#04a700]" /> Daily Workplace Attendance Check-In
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Geolocated selfie check-in for <span className="font-bold text-slate-700 capitalize">{role.replace("_", " ")}</span> terminal.
+              Selfie photo check-in for <span className="font-bold text-slate-700 capitalize">{role.replace("_", " ")}</span> terminal.
             </p>
           </div>
           {myTodayCheckin ? (
@@ -387,7 +284,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
                 onChange={handlePhotoFileUpload}
                 className="hidden"
               />
-              <label className="text-xs font-black text-slate-800 block">1. Take Check-In Selfie Snapshot</label>
+              <label className="text-xs font-black text-slate-800 block">Take Check-In Selfie Snapshot</label>
               {selfiePhoto ? (
                 <div className="relative h-48 w-64 mx-auto rounded-2xl overflow-hidden border border-emerald-500/40 shadow-sm">
                   <img src={selfiePhoto} alt="Selfie" className="w-full h-full object-cover" />
@@ -430,32 +327,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
               )}
             </div>
 
-            {/* Step 2: GPS Location */}
-            <div className="space-y-3">
-              <label className="text-xs font-black text-slate-800 block">2. Workplace Location GPS</label>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-5 w-5 text-[#04a700] shrink-0" />
-                  <div>
-                    <span className="text-xs font-extrabold text-slate-900 block">
-                      {geoAddress || "Location Not Captured - Click 'Capture GPS Location'"}
-                    </span>
-                    {geoCoords && (
-                      <span className="text-[10px] text-[#04a700] font-mono font-bold block mt-0.5">
-                        ✓ Exact GPS Captured: Lat {geoCoords.lat.toFixed(5)}, Lng {geoCoords.lng.toFixed(5)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={resolveLocation}
-                  disabled={isLocating}
-                  className="px-4 py-2 rounded-xl bg-[#04a700] hover:bg-[#038a00] text-xs font-bold text-white shrink-0 transition-colors shadow-sm cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed"
-                >
-                  {isLocating ? "Acquiring GPS Signal..." : "Capture GPS Location"}
-                </button>
-              </div>
-            </div>
+
 
             {/* Submit Button */}
             <button
@@ -469,13 +341,9 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
             >
               {isSubmittingCheckin ? "Submitting Check-In..." : "SUBMIT DAILY ATTENDANCE CHECK-IN"}
             </button>
-            {(!selfiePhoto || !geoCoords) && (
+            {!selfiePhoto && (
               <p className="text-[11px] font-bold text-amber-600 text-center">
-                {!selfiePhoto && !geoCoords
-                  ? "⚠️ Please take a camera photo (Step 1) and click 'Capture GPS Location' (Step 2)."
-                  : !selfiePhoto
-                  ? "⚠️ Please take a camera selfie photo (Step 1) to enable check-in."
-                  : "⚠️ Please click 'Capture GPS Location' (Step 2) to capture your exact position."}
+                ⚠️ Please take or upload a selfie photo to enable check-in.
               </p>
             )}
           </div>
@@ -483,7 +351,7 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
           <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200/80 text-xs space-y-1">
             <p className="font-extrabold text-slate-900">Attendance Logged for Today ({todayStr})</p>
             <p className="text-slate-600">Check-in Time: <span className="font-mono text-emerald-700 font-bold">{myTodayCheckin.check_in ? new Date(myTodayCheckin.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}</span></p>
-            <p className="text-slate-600">Location: <span className="font-bold text-slate-800">{myTodayCheckin.location_name || userBranchName}</span></p>
+            <p className="text-slate-600">Branch: <span className="font-bold text-slate-800">{myTodayCheckin.location_name || userBranchName}</span></p>
           </div>
         )}
       </div>

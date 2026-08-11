@@ -17,10 +17,10 @@ class Attendance(models.Model):
     check_in = models.DateTimeField(default=timezone.now)
     check_out = models.DateTimeField(null=True, blank=True)
     
-    # Geolocation fields
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
-    location_name = models.CharField(max_length=255, blank=True)
+    # Geolocation fields (Optional)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_name = models.CharField(max_length=255, blank=True, default="Workplace Premises")
     
     # Photographic verification
     photo = models.ImageField(upload_to='attendance_photos/')

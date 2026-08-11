@@ -23,6 +23,8 @@ def seed_erp_data():
     from battery.models import Battery
     from vehicles.models import VehicleUnit
 
+    from attendance.models import Attendance
+    Attendance.objects.all().delete()
     LedgerEntry.objects.all().delete()
     AdvanceBooking.objects.all().delete()
     SalesInvoice.objects.all().delete()

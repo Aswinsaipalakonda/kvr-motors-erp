@@ -72,7 +72,6 @@ import {
   KeyRound,
   PenLine,
   Camera,
-  MapPin,
   Clock,
   Navigation,
   RefreshCw,
@@ -193,9 +192,6 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
 
   // Attendance Check-in State
   const [selfiePhoto, setSelfiePhoto] = useState<string | null>(null);
-  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoAddress, setGeoAddress] = useState<string>("");
-  const [isLocating, setIsLocating] = useState(false);
   const [isSubmittingCheckin, setIsSubmittingCheckin] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -654,85 +650,16 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
-  const resolveBrowserLocation = async () => {
-    setIsLocating(true);
-
-    if (typeof window === "undefined" || !("geolocation" in navigator)) {
-      setIsLocating(false);
-      showToast("Geolocation is not supported by your browser.", "error");
-      return;
-    }
-
-    const handleSuccess = async (pos: GeolocationPosition, accuracyType: string) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-      setGeoCoords({ lat, lng });
-
-      let locationLabel = `GPS Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
-          headers: { "Accept-Language": "en" }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data) {
-            const addr = data.address || {};
-            const area = addr.suburb || addr.neighbourhood || addr.residential || addr.village || addr.town || addr.city_district || addr.county || "";
-            const city = addr.city || addr.town || addr.state_district || addr.state || "";
-            const road = addr.road || addr.pedestrian || "";
-
-            const title = [road, area, city].filter(Boolean).slice(0, 2).join(", ");
-            if (title) {
-              locationLabel = `${title} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            } else if (data.display_name) {
-              locationLabel = data.display_name.split(",").slice(0, 3).join(",").trim();
-            }
-          }
-        }
-      } catch {}
-
-      setGeoAddress(`${locationLabel}${acc ? ` • ±${acc}m` : ""}`);
-      setIsLocating(false);
-      showToast(`✓ Exact GPS Captured via ${accuracyType}! (±${acc || 10}m)`, "success");
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => handleSuccess(pos, "GPS Satellite"),
-      (err1) => {
-        console.warn("Satellite GPS failed, trying cellular positioning:", err1.message);
-        if (err1.code === err1.PERMISSION_DENIED) {
-          setIsLocating(false);
-          showToast("⚠️ Location permission denied in browser. Please allow location access in your browser settings.", "error");
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (pos) => handleSuccess(pos, "Cellular/Wi-Fi"),
-          (err2) => {
-            setIsLocating(false);
-            if (err2.code === err2.PERMISSION_DENIED) {
-              showToast("⚠️ Location permission is blocked in browser settings.", "error");
-            } else {
-              showToast("⚠️ GPS signal weak. Please ensure Device Location (GPS) is turned ON and try again.", "error");
-            }
-          },
-          { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
-  };
-
   const submitAttendanceCheckin = async () => {
-    if (!geoCoords) {
-      showToast("Please capture your workplace location before check-in.", "error");
+    if (!selfiePhoto) {
+      showToast("Please take or upload a selfie photo before check-in.", "error");
       return;
     }
     try {
       setIsSubmittingCheckin(true);
 
       const formData = new FormData();
-      if (selfiePhoto && selfiePhoto.startsWith("data:image")) {
+      if (selfiePhoto.startsWith("data:image")) {
         const byteString = atob(selfiePhoto.split(",")[1]);
         const mimeString = selfiePhoto.split(",")[0].split(":")[1].split(";")[0];
         const ab = new ArrayBuffer(byteString.length);
@@ -755,9 +682,7 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
         formData.append("photo", dummyBlob, "staff_checkin.jpg");
       }
 
-      formData.append("latitude", geoCoords.lat.toFixed(6));
-      formData.append("longitude", geoCoords.lng.toFixed(6));
-      formData.append("location_name", geoAddress || `${userBranchName} Premises`);
+      formData.append("location_name", `${userBranchName} Premises`);
 
       await api.post("/attendance/", formData, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -765,7 +690,6 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
 
       showToast("Daily Attendance Check-in Logged! Awaiting supervisor signoff.");
       setSelfiePhoto(null);
-      setGeoCoords(null);
       loadAllData();
     } catch (err: any) {
       showToast(err.response?.data?.detail || "Attendance check-in failed or already recorded for today.", "error");

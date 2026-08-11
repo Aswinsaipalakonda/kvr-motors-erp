@@ -5,6 +5,8 @@ from .models import Attendance
 class AttendanceSerializer(serializers.ModelSerializer):
     user_details = UserSerializer(source='user', read_only=True)
     verified_by_details = UserSerializer(source='verified_by', read_only=True)
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
 
     class Meta:
         model = Attendance
