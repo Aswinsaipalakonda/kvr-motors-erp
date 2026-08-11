@@ -236,6 +236,10 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const [editCustomerPhone, setEditCustomerPhone] = useState("");
   const [editPaymentMode, setEditPaymentMode] = useState("SBI Finance");
   const [paymentProofImage, setPaymentProofImage] = useState("");
+  const [editSplitCash, setEditSplitCash] = useState("");
+  const [editSplitUpi, setEditSplitUpi] = useState("");
+  const [editSplitCard, setEditSplitCard] = useState("");
+  const [editSplitFinance, setEditSplitFinance] = useState("");
 
   const openVerificationModal = (inv: any) => {
     setVerifyingInvoice(inv);
@@ -243,6 +247,11 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     setEditCustomerPhone(inv.customer_contact || "");
     setEditPaymentMode(inv.payment_mode || "SBI Finance");
     setPaymentProofImage(inv.payment_proof || "");
+    const splitObj = inv.payment_split_details || {};
+    setEditSplitCash(splitObj.cash ? String(splitObj.cash) : "");
+    setEditSplitUpi(splitObj.upi ? String(splitObj.upi) : "");
+    setEditSplitCard(splitObj.card ? String(splitObj.card) : "");
+    setEditSplitFinance(splitObj.finance || splitObj.bajaj_finance ? String(splitObj.finance || splitObj.bajaj_finance) : "");
     setIsPaymentVerificationOpen(true);
   };
 
@@ -275,11 +284,37 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       return;
     }
 
+    const isPureCash = editPaymentMode === "Self-Finance (Cash)" || editPaymentMode === "Cash";
+    if (!isPureCash && !paymentProofImage) {
+      showToast("Please upload payment receipt / screenshot proof before confirming sale.", "error");
+      return;
+    }
+
+    let splitDetails: any = null;
+    if (editPaymentMode === "Split Payment") {
+      const c = parseFloat(editSplitCash) || 0;
+      const u = parseFloat(editSplitUpi) || 0;
+      const cd = parseFloat(editSplitCard) || 0;
+      const f = parseFloat(editSplitFinance) || 0;
+      const totalSplit = c + u + cd + f;
+      const salePrice = parseFloat(verifyingInvoice.sale_price) || 0;
+      if (totalSplit <= 0) {
+        showToast("Please specify split payment amounts.", "error");
+        return;
+      }
+      if (salePrice > 0 && Math.abs(totalSplit - salePrice) > 1) {
+        showToast(`Split sum (₹${totalSplit.toLocaleString("en-IN")}) must equal sale price (₹${salePrice.toLocaleString("en-IN")}).`, "error");
+        return;
+      }
+      splitDetails = { cash: c, upi: u, card: cd, finance: f };
+    }
+
     try {
       await updateSalesInvoice(verifyingInvoice.id, {
         customer_name: editCustomerName.trim(),
         customer_contact: cleanPhone,
         payment_mode: editPaymentMode,
+        payment_split_details: splitDetails,
         payment_proof: paymentProofImage,
         delivery_status: "delivered"
       });
@@ -3418,15 +3453,71 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 <option value="HDFC Bank Loan">HDFC Bank Loan</option>
                 <option value="L&T Finance">L&T Finance</option>
                 <option value="UPI / Online QR">UPI / Online QR</option>
-                <option value="Self-Finance (Cash)">Self-Finance (Cash)</option>
+                <option value="Self-Finance (Cash)">Cash</option>
                 <option value="Split Payment">Split Payment</option>
               </select>
             </div>
 
+            {/* Split Payment Breakdown Fields */}
+            {editPaymentMode === "Split Payment" && (
+              <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">Split Payment Breakdown</span>
+                  <span className="text-xs font-bold text-slate-600">
+                    Total: <strong className="text-emerald-700">₹{((parseFloat(editSplitCash)||0) + (parseFloat(editSplitUpi)||0) + (parseFloat(editSplitCard)||0) + (parseFloat(editSplitFinance)||0)).toLocaleString("en-IN")}</strong> / ₹{parseFloat(verifyingInvoice.sale_price || "0").toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Cash (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="0" 
+                      value={editSplitCash} 
+                      onChange={(e) => setEditSplitCash(e.target.value)} 
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">UPI (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="0" 
+                      value={editSplitUpi} 
+                      onChange={(e) => setEditSplitUpi(e.target.value)} 
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Card (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="0" 
+                      value={editSplitCard} 
+                      onChange={(e) => setEditSplitCard(e.target.value)} 
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bank / Finance (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="0" 
+                      value={editSplitFinance} 
+                      onChange={(e) => setEditSplitFinance(e.target.value)} 
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Payment Proof Image Upload */}
             <div className="space-y-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Upload Payment Receipt / Transaction Screenshot (Optional for Cash)
+                {editPaymentMode === "Self-Finance (Cash)" || editPaymentMode === "Cash"
+                  ? "Upload Payment Receipt / Proof (Optional for Cash)"
+                  : "Upload Payment Receipt / Transaction Screenshot * Required"}
               </label>
               <input 
                 type="file" 
