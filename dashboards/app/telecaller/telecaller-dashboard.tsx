@@ -15,7 +15,8 @@ import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import SearchableSelect from "../components/SearchableSelect";
 import { getLeads, createLead, updateLead } from "../services/leads";
-import { getVehicleModels } from "../services/vehicles";
+import { getVehicleModels, getVehicleUnits } from "../services/vehicles";
+import { getSalesInvoices } from "../services/sales";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -81,10 +82,12 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
   // Live database states
   const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
+  const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
+  const [salesInvoicesList, setSalesInvoicesList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
 
   // Form states
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", lost_reason: "", notes: "", follow_up_date: "" };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -130,13 +133,28 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
     }
   };
 
+  const loadStockAndInvoicesData = async () => {
+    try {
+      const [units, invoices] = await Promise.all([
+        getVehicleUnits(),
+        getSalesInvoices()
+      ]);
+      setVehicleUnitsList(units);
+      setSalesInvoicesList(invoices);
+    } catch (e) {
+      console.error("Failed to load stock/invoices data:", e);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     loadLeadsData(false);
     loadVehicleModelsData();
+    loadStockAndInvoicesData();
 
     const interval = setInterval(() => {
       loadLeadsData(true);
+      loadStockAndInvoicesData();
     }, 5000);
     return () => clearInterval(interval);
   }, [user]);
@@ -156,6 +174,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       interested_vehicle: String(lead.interested_vehicle || ""),
       lead_source: lead.lead_source || "walk_in",
       status: lead.status || "new_lead",
+      lost_reason: lead.lost_reason || "",
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
     });
@@ -180,6 +199,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       contact_number: cleanPhone,
       lead_source: newLead.lead_source || "walk_in",
       status: newLead.status || "new_lead",
+      lost_reason: newLead.status === "lost" ? (newLead.lost_reason?.trim() || "Customer not interested / lost") : undefined,
       notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
     };
@@ -656,6 +676,95 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
 
             </div>
           )}
+          {activeTab === "stock" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-800 tracking-tight">Branch Stock Inventory</h3>
+                  <p className="text-xs font-semibold text-slate-500">Live available vs stock-out vehicles in your branch</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-emerald-50 text-[#04a700] border border-emerald-200 rounded-full text-xs font-extrabold">
+                    {vehicleUnitsList.filter(u => !u.stock_status || u.stock_status === "available" || u.stock_status === "IN_STOCK").length} Available Units
+                  </span>
+                  <span className="px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-xs font-extrabold">
+                    {vehicleUnitsList.filter(u => u.stock_status === "sold" || u.stock_status === "SOLD" || u.stock_status === "hold" || u.stock_status === "HOLD").length} Stock Out / Held
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Stock Status"]}>
+                  {vehicleUnitsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No vehicle stock units found in this branch.
+                      </td>
+                    </tr>
+                  ) : (
+                    vehicleUnitsList.map((unit) => (
+                      <tr key={unit.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">STK-{unit.id}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name || unit.brand_name ? `${unit.brand_name || ''} ${unit.model_name || ''}`.trim() : `Vehicle #${unit.model}`}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.vin_number || unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color || "Standard"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                            unit.stock_status === "sold" || unit.stock_status === "SOLD" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            unit.stock_status === "hold" || unit.stock_status === "HOLD" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          }`}>
+                            {unit.stock_status ? unit.stock_status.toUpperCase() : "AVAILABLE"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+            </div>
+          )}
+          {activeTab === "invoices" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-800 tracking-tight">Closed Sales Invoices</h3>
+                  <p className="text-xs font-semibold text-slate-500">Search and download official PDF sales invoices</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table headers={["Invoice No", "Customer Name", "Contact", "Vehicle Model", "Sale Amount", "Actions"]}>
+                  {salesInvoicesList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No closed sales invoices recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    salesInvoicesList.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">{inv.invoice_number || `INV-${inv.id}`}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{inv.customer_name}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-600">{inv.customer_contact}</td>
+                        <td className="py-3.5 px-5 text-slate-700 font-semibold">{inv.model_name || "EV Vehicle"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-900">₹{Number(inv.sale_price || 0).toLocaleString('en-IN')}</td>
+                        <td className="py-3.5 px-5">
+                          <button 
+                            onClick={() => window.open(`/api/v1/sales-invoices/${inv.id}/download/`, '_blank')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-colors"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5" /> Download PDF
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+            </div>
+          )}
           {activeTab === "attendance" && (
             <AttendanceView role="telecaller" />
           )}
@@ -720,6 +829,12 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               <option value="lost">Lost</option>
             </select>
           </div>
+          {newLead.status === "lost" && (
+            <div className="space-y-1.5 p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl">
+              <label className="text-[10px] font-bold text-rose-700 uppercase">Reason for Lost Classification</label>
+              <textarea placeholder="e.g. Price too high, Purchased competitor vehicle, Financing rejected..." value={newLead.lost_reason} onChange={(e) => setNewLead({ ...newLead, lost_reason: e.target.value })} className="w-full bg-white border border-rose-200 rounded-lg p-2 text-xs text-rose-900 font-semibold outline-none h-16" required />
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Notes / Requirements</label>
             <textarea placeholder="e.g. Discussing battery finance packages..." value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-semibold outline-none h-20" />

@@ -107,9 +107,11 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "mela_booking_form", label: "Mela Booking", icon: Sparkles },
         { id: "leads", label: "Leads / Enquiries", icon: Compass },
+        { id: "stock", label: "Stock Inventory", icon: Boxes },
         { id: "customers", label: "Customers", icon: Users },
         { id: "bookings", label: "Bookings", icon: CalendarDays },
         { id: "sales_checkout", label: "Sales Checkout", icon: CreditCard },
+        { id: "invoices", label: "Invoices", icon: FileText },
         { id: "followups", label: "Follow-ups", icon: UserCheck2 },
         { id: "reports", label: "Reports", icon: BarChart2 },
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
@@ -124,7 +126,9 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
       },
       items: [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "leads", label: "Leads", icon: Compass },
+        { id: "leads", label: "Leads & Enquiries", icon: Compass },
+        { id: "stock", label: "Stock Inventory", icon: Boxes },
+        { id: "invoices", label: "Invoices", icon: FileText },
         { id: "attendance", label: "Daily Check-in", icon: UsersRound },
         { id: "profile", label: "My Profile", icon: User },
       ]

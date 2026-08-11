@@ -14,6 +14,10 @@ class LeadSerializer(serializers.ModelSerializer):
             if not first_vm:
                 first_vm = VehicleModel.objects.create(model_name="KVR Standard EV", code="KVR-STD-EV", base_price=75000)
             attrs['interested_vehicle'] = first_vm
+        status = attrs.get('status') or (self.instance.status if self.instance else None)
+        lost_reason = attrs.get('lost_reason') or (self.instance.lost_reason if self.instance else None)
+        if status == 'lost' and not lost_reason:
+            attrs['lost_reason'] = "Customer not interested / lost (unspecified reason)"
         return super().validate(attrs)
 
     class Meta:
