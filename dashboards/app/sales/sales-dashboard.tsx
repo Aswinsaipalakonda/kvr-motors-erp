@@ -2057,28 +2057,36 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                         </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap space-x-2 flex items-center gap-2">
-                        {(bk.status === "confirmed" || bk.status === "pending") && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setCheckoutCustomerName(bk.customer_name);
-                                setCheckoutContactNumber(bk.contact_number);
-                                setVinQuery(bk.contact_number);
-                                handleVinSearch();
-                                setActiveTab("sales_checkout");
-                              }}
-                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
-                            >
-                              Convert to Sale
-                            </button>
-                            <button
-                              onClick={() => setSelectedBookingInvoicePreview(bk)}
-                              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
-                            >
-                              <FileCheck className="h-3 w-3" /> Invoice
-                            </button>
-                          </>
-                        )}
+                        {(() => {
+                          const isConverted = bk.status === "converted" || liveSalesList.some((s: any) => s.customer_contact === bk.contact_number || s.customer_name === bk.customer_name);
+                          if (isConverted) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-800 bg-emerald-100 border border-emerald-300 font-extrabold px-3 py-1 rounded-full cursor-not-allowed">
+                                Converted to Sale
+                              </span>
+                            );
+                          }
+                          return (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setCheckoutCustomerName(bk.customer_name);
+                                  setCheckoutContactNumber(bk.contact_number);
+                                  setActiveTab("sales_checkout");
+                                }}
+                                className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
+                              >
+                                Convert to Sale
+                              </button>
+                              <button
+                                onClick={() => setSelectedBookingInvoicePreview(bk)}
+                                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
+                              >
+                                <FileCheck className="h-3 w-3" /> Invoice
+                              </button>
+                            </>
+                          );
+                        })()}
                         {bk.status === "pending" && (
                           <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
                         )}
@@ -2241,7 +2249,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
-                        <input type="text" value={autoFillResult?.price || "₹ 5,000 Advance Paid"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult?.price ? `₹ ${Number(autoFillResult.price).toLocaleString("en-IN")}` : "₹ 74,999"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                     </div>
 
@@ -2466,10 +2474,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 </div>
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Stock Status"]}>
+                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Stock Status"]}>
                   {liveSalesList.length === 0 && liveBookingsList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
                         No vehicle stock units listed.
                       </td>
                     </tr>
@@ -2481,6 +2489,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                         <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{bk.vin_number || "RESERVED-HOLD"}</td>
                         <td className="py-3.5 px-5 font-mono text-xs text-slate-600">MOT-10293</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.color || "Standard"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
                         <td className="py-3.5 px-5">
                           <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             HOLD (BOOKED)

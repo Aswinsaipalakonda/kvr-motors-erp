@@ -281,8 +281,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         status: "pending",
       });
-      await updateLead(lead.id, { status: "won" });
-      showToast(`Lead updated to Booking! Visible under Sales Executive desk.`);
+      await updateLead(lead.id, { status: "booked" });
+      showToast(`Lead updated to Booking! Forwarded to Sales Executive desk.`);
       loadLeadsData();
     } catch {
       showToast("Failed to promote lead to booking.", "error");
@@ -602,23 +602,29 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                           <td className="py-3.5 px-5">
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
                               lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              lead.status === "booked" ? "bg-blue-50 text-blue-700 border border-blue-200" :
                               lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
                               lead.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                               "bg-slate-50 text-slate-650 border border-slate-200"
                             }`}>
-                              {lead.status_display || lead.status}
+                              {lead.status === "booked" ? "Forwarded to Sales Exec" :
+                               lead.status === "won" ? "Won (Sale Completed)" :
+                               lead.status === "lost" ? "Lost" :
+                               (lead.status_display || lead.status)}
                             </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-2">
                             {lead.status !== "lost" && lead.status !== "won" && lead.status !== "booked" && (
-                              <button 
-                                onClick={() => handleUpdateToBooking(lead)} 
-                                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
-                              >
-                                Update to Booking
-                              </button>
+                              <>
+                                <button 
+                                  onClick={() => handleUpdateToBooking(lead)} 
+                                  className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
+                                >
+                                  Update to Booking
+                                </button>
+                                <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
+                              </>
                             )}
-                            <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                             <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit</button>
                           </td>
                         </tr>
@@ -648,10 +654,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Stock Status"]}>
+                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Stock Status"]}>
                   {vehicleUnitsList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
                         No vehicle stock units found in this branch.
                       </td>
                     </tr>
@@ -663,6 +669,9 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                         <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.vin_number || unit.chassis_number || "—"}</td>
                         <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.motor_number || "—"}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color || "Standard"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
                         <td className="py-3.5 px-5">
                           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
                             unit.stock_status === "sold" || unit.stock_status === "SOLD" ? "bg-rose-50 text-rose-700 border border-rose-200" :

@@ -318,12 +318,25 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
         payment_proof: paymentProofImage,
         delivery_status: "delivered"
       });
+
+      // Update matching lead status to won (sale completed)
+      try {
+        const leads = await getLeads();
+        const matchingLead = leads.find((l: any) => l.contact_number === cleanPhone || l.customer_name?.toLowerCase() === editCustomerName.trim().toLowerCase());
+        if (matchingLead) {
+          await updateLead(matchingLead.id, { status: "won" });
+        }
+      } catch (leadErr) {
+        console.error("Auto lead won status sync error:", leadErr);
+      }
+
       showToast("Payment verified & sale closed! Stock marked SOLD. ✓");
       setIsPaymentVerificationOpen(false);
       setVerifyingInvoice(null);
       loadSales();
       loadVehicles();
       loadBatteries();
+      loadLeads();
     } catch (err: any) {
       console.error("Payment verification failure:", err);
       showToast("Failed to verify payment and close sale.", "error");
@@ -2313,7 +2326,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 {/* Physical Stock Units Registry (CRUD) */}
                 <Table 
                   title={`Physical Inventory Stock Units (${myShowroomName} Showroom)`} 
-                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Showroom", "Battery", "Days in Stock", "Status", "Actions"]}
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Quantity", "Showroom", "Battery", "Days in Stock", "Status", "Actions"]}
                   actions={
                     <button 
                       onClick={openAddStockUnit}
@@ -2325,7 +2338,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 >
                   {vehiclesLoading ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <td colSpan={11} className="py-8 text-center text-xs text-slate-400 font-semibold">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                           <span>Loading physical units registry...</span>
@@ -2334,7 +2347,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                     </tr>
                   ) : myBranchUnits.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center">
+                      <td colSpan={11} className="py-8 text-center">
                         <EmptyState title="No Local Stock Units Found" description="No physical units registered for this local showroom." />
                       </td>
                     </tr>
@@ -2346,6 +2359,9 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                         <td className="py-3.5 px-5 font-mono text-slate-550">{unit.chassis_number || "—"}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.showroom_name || "Visakhapatnam"}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-650">

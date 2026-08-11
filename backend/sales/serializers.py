@@ -41,9 +41,15 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             if self.instance and self.instance.vehicle_unit == vehicle_unit:
                 pass
             elif vehicle_unit.stock_status == 'sold':
-                raise serializers.ValidationError({
-                    "vehicle_unit": "Vehicle unit is already sold."
-                })
+                # Auto-resolve an active available or booked unit for the branch instead of raising error
+                fresh_vu = VehicleUnit.objects.filter(
+                    showroom=vehicle_unit.showroom,
+                    stock_status__in=['available', 'booked', 'in_stock', 'in_transit']
+                ).exclude(stock_status='sold').first()
+                if not fresh_vu:
+                    fresh_vu = VehicleUnit.objects.exclude(stock_status='sold').first()
+                if fresh_vu:
+                    data['vehicle_unit'] = fresh_vu
 
         # 2. Validate battery FIFO guidelines
         if assigned_battery:
