@@ -2179,207 +2179,109 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           {activeTab === "sales_checkout" && (
             <div className="space-y-6">
               
-              {/* Sales Checkout & Auto-fill blocks */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-                {/* Form panel Column */}
-                <div className="lg:col-span-2 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-5">
-                  <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-800">Generate Booking / Delivery Invoice</h3>
-                      <p className="text-[10px] font-semibold text-slate-450 mt-0.5">Use the auto-fill helper on the right to populate vehicle specs.</p>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setAutoFillResult(null);
-                        setVinQuery("");
-                        setSelectedBattery("");
-                        setFifoWarning(false);
-                        setOverrideRequested(false);
-                        setCheckoutCustomerName("");
-                        setCheckoutContactNumber("");
-                      }}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
-                    >
-                      Clear Form
-                    </button>
-                  </div>
-
-                  <form className="space-y-4 text-xs font-semibold text-slate-650" onSubmit={handleSalesCheckoutSubmit}>
-                    {/* Customer details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
-                        <input type="text" placeholder="e.g. Ramesh Naidu" value={checkoutCustomerName} onChange={(e) => setCheckoutCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
-                        <input type="tel" placeholder="e.g. 9876543210" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
-                      </div>
-                    </div>
-
-                    {/* Financier & Insurance Options */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Mode / Financier</label>
-                        <select value={checkoutPaymentMode} onChange={(e) => setCheckoutPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
-                          <option value="SBI Finance">SBI Finance</option>
-                          <option value="HDFC Bank Loan">HDFC Bank Loan</option>
-                          <option value="L&T Finance">L&T Finance</option>
-                          <option value="Self-Finance (Cash/Cheque)">Self-Finance (Cash/Cheque)</option>
-                          <option value="split">Split Payment (Multi-Mode: Cash, Card, UPI, Bajaj)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Insurance Partner Scheme</label>
-                        <select value={checkoutInsurancePartner} onChange={(e) => setCheckoutInsurancePartner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500">
-                          <option>Chola MS - Comprehensive 1+5 Yr</option>
-                          <option>ICICI Lombard - Zero Dep</option>
-                          <option>Digit Insurance - Third Party Only</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Split Payment Breakdown Inputs */}
-                    {checkoutPaymentMode === "split" && (
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Split Payment Breakdown</span>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Liquid Cash (₹)</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.cash} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, cash: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-450 uppercase">Card Amount</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.card} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, card: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-450 uppercase">UPI Amount</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.upi} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, upi: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-450 uppercase">Bajaj Finance</label>
-                            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={checkoutSplitDetails.bajaj_finance} onChange={(e) => setCheckoutSplitDetails({ ...checkoutSplitDetails, bajaj_finance: e.target.value.replace(/\D/g, '') })} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-extrabold pt-2 border-t border-slate-200">
-                          <span className="text-slate-500">Total Split Amount:</span>
-                          <span className="text-[#04a700]">
-                            ₹{(Number(checkoutSplitDetails.cash || 0) + Number(checkoutSplitDetails.card || 0) + Number(checkoutSplitDetails.upi || 0) + Number(checkoutSplitDetails.bajaj_finance || 0)).toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Vehicle details populated by Auto-fill */}
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Vehicle Unit Allocation Details</span>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
-                          <input type="text" value={autoFillResult?.model || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
-                          <input type="text" value={autoFillResult?.color || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
-                          <input type="text" value={autoFillResult?.price || ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Allocated Location</label>
-                          <input type="text" value={autoFillResult ? `${autoFillResult.branch}` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">VIN / Motor Number</label>
-                          <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : ""} placeholder="Awaiting Auto-fill..." className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" readOnly />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Battery Assignment & FIFO Validation Alerts */}
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Battery Serial Number</label>
-                      <select 
-                        value={selectedBattery}
-                        onChange={(e) => handleBatterySelect(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500"
-                        required
-                      >
-                        <option value="">-- Choose Battery pack --</option>
-                        {batteriesList.filter(b => b.status === "available" || b.status === "Available").map((b) => (
-                          <option key={b.id} value={b.serial_number}>
-                            {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date || "Earliest"})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button 
-                      type="submit" 
-                      className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
-                    >
-                      Confirm Sale & Dispatch
-                    </button>
-                  </form>
-                </div>
-
-                {/* Auto-fill Helper Column */}
-                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm h-fit space-y-4">
+              {/* Sales Checkout & Confirmation Block */}
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-5 text-left">
+                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-800">Vehicle Auto-fill Query</h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 leading-normal">
-                      Enter a physical vehicle code (VIN, Motor Code, or Chassis) below to automatically populate the sale entry form.
-                    </p>
+                    <h3 className="text-sm font-bold text-slate-800">Generate Booking / Delivery Invoice</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Review customer details, vehicle allocation, assign battery serial number, and click Confirm Sale.</p>
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                      <input 
-                        type="text" 
-                        placeholder="e.g. KVRVIN2026X101 or MTR-90812"
-                        value={vinQuery}
-                        onChange={(e) => setVinQuery(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold font-mono outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <button 
-                      onClick={handleVinSearch}
-                      disabled={vinSearchLoading}
-                      className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer disabled:bg-slate-405 flex items-center justify-center gap-1.5"
-                    >
-                      {vinSearchLoading ? "Fetching..." : "Fetch Vehicle Details"}
-                    </button>
-                  </div>
-
-                  {vinSearchError && (
-                    <p className="text-[10px] font-bold text-rose-600">{vinSearchError}</p>
-                  )}
-
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 leading-normal">
-                    <span className="text-[#04a700] block mb-1">MOCK DATABASE CODES TO TRY:</span>
-                    <div className="space-y-1 font-mono font-semibold">
-                      <div>• VIN: <span className="text-slate-600">KVRVIN2026X101</span> (Moped)</div>
-                      <div>• VIN: <span className="text-slate-600">KVRVIN2026X104</span> (Motorcycle)</div>
-                    </div>
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setAutoFillResult(null);
+                      setVinQuery("");
+                      setSelectedBattery("");
+                      setFifoWarning(false);
+                      setOverrideRequested(false);
+                      setCheckoutCustomerName("");
+                      setCheckoutContactNumber("");
+                    }}
+                    className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                  >
+                    Clear Form
+                  </button>
                 </div>
+
+                <form className="space-y-4 text-xs font-semibold text-slate-650" onSubmit={handleSalesCheckoutSubmit}>
+                  {/* Customer details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                      <input type="text" placeholder="e.g. Sita" value={checkoutCustomerName} onChange={(e) => setCheckoutCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Contact Number</label>
+                      <input type="tel" placeholder="e.g. 9874563214" value={checkoutContactNumber} onChange={(e) => setCheckoutContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10} inputMode="numeric" pattern="[0-9]*" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-emerald-500" required />
+                    </div>
+                  </div>
+
+                  {/* Vehicle details populated by Auto-fill */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Vehicle Unit Allocation Details</span>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
+                        <input type="text" value={autoFillResult?.model || "Kinetic Green E-Luna"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+                        <input type="text" value={autoFillResult?.color || "Standard"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
+                        <input type="text" value={autoFillResult?.price || "₹ 5,000 Advance Paid"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Allocated Location</label>
+                        <input type="text" value={autoFillResult ? `${autoFillResult.branch}` : "KVR Motors - Visakhapatnam"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">VIN / Motor Number</label>
+                        <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : "RESERVED-HOLD (MOT-63214)"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Battery Assignment */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Battery Serial Number</label>
+                    <select 
+                      value={selectedBattery}
+                      onChange={(e) => handleBatterySelect(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500"
+                      required
+                    >
+                      <option value="">-- Choose Battery pack --</option>
+                      {batteriesList.filter(b => b.status === "available" || b.status === "Available").map((b) => (
+                        <option key={b.id} value={b.serial_number}>
+                          {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date || "Earliest"})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="w-full py-3.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer"
+                  >
+                    Confirm Sale & Dispatch
+                  </button>
+                </form>
               </div>
 
               {/* Sales Billing Ledger */}
               <div className="grid grid-cols-1 gap-6">
 
                 {/* Sales Ledger table */}
-                <Table title="My Completed Sales Billing Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Sale Price", "Payment Mode", "Insurance Partner", "Delivery Status", "Actions"]}>
+                <Table title="My Completed Sales Billing Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Vehicle Model", "Sale Price", "Delivery Status", "Actions"]}>
                   {salesLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-405 font-semibold">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                           <span>Loading sales...</span>
@@ -2388,7 +2290,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     </tr>
                   ) : liveSalesList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center"><EmptyState title="No Sales Billing Records" description="No sales records checked out." /></td>
+                      <td colSpan={7} className="py-8 text-center"><EmptyState title="No Sales Billing Records" description="No sales records checked out." /></td>
                     </tr>
                   ) : (
                     liveSalesList.map((inv) => (
@@ -2396,9 +2298,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                         <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{inv.invoice_number || `INV-${inv.id}`}</td>
                         <td className="py-3 px-4 font-bold text-slate-805">{inv.customer_name}</td>
                         <td className="py-3 px-4 text-slate-600 font-semibold">{inv.customer_contact}</td>
+                        <td className="py-3 px-4 text-slate-800 font-bold">{inv.model_name || "Kinetic Green EV"}</td>
                         <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(inv.sale_price).toLocaleString("en-IN")}</td>
-                        <td className="py-3 px-4 text-slate-550 font-bold">{inv.payment_mode}</td>
-                        <td className="py-3 px-4 text-slate-500 font-semibold">{inv.insurance_partner || "—"}</td>
                         <td className="py-3 px-4">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                             inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
