@@ -77,8 +77,8 @@ class AdvanceBookingSerializer(serializers.ModelSerializer):
             vu.booking_status = True
             vu.save()
             
-        # 2. Only create ledger entry for confirmed bookings
-        if instance.status == 'confirmed':
+        # 2. Create ledger entry whenever advance payment is received
+        if (instance.status in ['confirmed', 'pending'] and instance.advance_amount > 0) or instance.status == 'confirmed':
             branch_obj = self._get_branch(instance)
             if branch_obj:
                 self._create_ledger_entry(instance, branch_obj)

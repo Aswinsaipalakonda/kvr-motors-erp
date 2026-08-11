@@ -327,14 +327,41 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     loadMelaData();
   }, []);
 
-  // VIN Search Auto-fill
+  // VIN / Mobile Search Auto-fill
   const handleVinSearch = async () => {
     setVinSearchError("");
     setAutoFillResult(null);
     const query = vinQuery.trim();
     if (!query) {
-      setVinSearchError("Please enter a VIN, Motor, or Chassis number.");
+      setVinSearchError("Please enter a Mobile Number, VIN, Motor, or Chassis number.");
       return;
+    }
+
+    const cleanDigits = query.replace(/\D/g, "");
+    if (cleanDigits.length === 10) {
+      // Search active bookings for this customer phone
+      const matchingBooking = liveBookingsList.find(
+        (b) => b.contact_number === cleanDigits || b.contact_number?.replace(/\D/g, "") === cleanDigits
+      );
+      if (matchingBooking) {
+        setCheckoutCustomerName(matchingBooking.customer_name || "");
+        setCheckoutContactNumber(matchingBooking.contact_number || cleanDigits);
+        setAutoFillResult({
+          id: matchingBooking.vehicle_unit || 1,
+          branchId: matchingBooking.branch || 1,
+          vin: matchingBooking.vin_number || "RESERVED-HOLD",
+          motor: "MOT-" + cleanDigits.slice(-5),
+          chassis: "CHS-" + cleanDigits.slice(-5),
+          model: matchingBooking.vehicle_model_name || "Kinetic Green EV",
+          color: matchingBooking.color || "Standard",
+          price: `₹ ${parseFloat(matchingBooking.advance_amount || 0).toLocaleString("en-IN")} Advance Paid`,
+          branch: user?.branch || "Current Branch",
+          status: "HOLD (Booked)",
+          battery: "BATT-COMPATIBLE-01"
+        });
+        showToast(`Found booking for ${matchingBooking.customer_name}! Auto-filled.`);
+        return;
+      }
     }
     
     try {
@@ -350,14 +377,14 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         color: data.color || "Green",
         price: data.base_price ? `₹ ${parseFloat(data.base_price).toLocaleString('en-IN')}` : "₹ 74,999",
         branch: data.branch_name || "Visakhapatnam Showroom",
-        status: data.stock_status.charAt(0).toUpperCase() + data.stock_status.slice(1),
+        status: data.stock_status ? data.stock_status.charAt(0).toUpperCase() + data.stock_status.slice(1) : "Available",
         battery: data.assigned_battery || "BATT-00874"
       });
       showToast("Vehicle details auto-filled.");
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || "No matching vehicle unit found.";
+      const errorMsg = err.response?.data?.error || "No matching vehicle unit or booking found for mobile number.";
       setVinSearchError(errorMsg);
-      showToast("No vehicle unit found.", "error");
+      showToast("No vehicle unit or booking found.", "error");
     } finally {
       setVinSearchLoading(false);
     }
@@ -2501,6 +2528,81 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+          {activeTab === "stock" && (
+            <div className="space-y-6 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-800 tracking-tight">Branch Stock Inventory</h3>
+                  <p className="text-xs font-semibold text-slate-500">Live vehicle stock inventory for your branch</p>
+                </div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Stock Status"]}>
+                  {liveSalesList.length === 0 && liveBookingsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No vehicle stock units listed.
+                      </td>
+                    </tr>
+                  ) : (
+                    liveBookingsList.map((bk, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">STK-{bk.vehicle_unit || bk.id}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{bk.vin_number || "RESERVED-HOLD"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">MOT-10293</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.color || "Standard"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            HOLD (BOOKED)
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+            </div>
+          )}
+          {activeTab === "invoices" && (
+            <div className="space-y-6 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-800 tracking-tight">Sales PDF Invoices</h3>
+                  <p className="text-xs font-semibold text-slate-500">View and download completed sales invoices</p>
+                </div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table headers={["Invoice No", "Customer Name", "Contact", "Vehicle Model", "Sale Amount", "Actions"]}>
+                  {liveSalesList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No closed sales invoices recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    liveSalesList.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">{inv.invoice_number || `INV-${inv.id}`}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{inv.customer_name}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-600">{inv.customer_contact}</td>
+                        <td className="py-3.5 px-5 text-slate-700 font-semibold">{inv.model_name || "EV Vehicle"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-900">₹{Number(inv.sale_price || 0).toLocaleString('en-IN')}</td>
+                        <td className="py-3.5 px-5">
+                          <button 
+                            onClick={() => window.open(`/api/v1/sales-invoices/${inv.id}/download/`, '_blank')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-colors"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5" /> Download PDF
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
               </div>
             </div>
           )}

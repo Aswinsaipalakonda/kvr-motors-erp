@@ -10,8 +10,8 @@ User = get_user_model()
 class BatteryViewSetBranchScopingTests(APITestCase):
     def setUp(self):
         # Create Branches & Locations
-        self.branch_vizag = Branch.objects.create(name="KVR Motors - Visakhapatnam", code="KVR-VSKP")
-        self.branch_kakinada = Branch.objects.create(name="KVR Motors - Kakinada", code="KVR-KKD")
+        self.branch_vizag = Branch.objects.create(name="KVR Motors - Visakhapatnam")
+        self.branch_kakinada = Branch.objects.create(name="KVR Motors - Kakinada")
 
         self.showroom_vizag = Showroom.objects.create(branch=self.branch_vizag, name="Vizag Main Showroom")
         self.showroom_kakinada = Showroom.objects.create(branch=self.branch_kakinada, name="Kakinada Main Showroom")
@@ -57,7 +57,7 @@ class BatteryViewSetBranchScopingTests(APITestCase):
         self.client.force_authenticate(user=self.staff_vizag)
         response = self.client.get(reverse('battery-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', response.data)
+        results = response.data.get('results') if isinstance(response.data, dict) else response.data
         serials = [b['serial_number'] for b in results]
         self.assertIn("BAT-VSKP-001", serials)
         self.assertNotIn("BAT-KKD-001", serials)
@@ -66,7 +66,7 @@ class BatteryViewSetBranchScopingTests(APITestCase):
         self.client.force_authenticate(user=self.owner)
         response = self.client.get(reverse('battery-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', response.data)
+        results = response.data.get('results') if isinstance(response.data, dict) else response.data
         serials = [b['serial_number'] for b in results]
         self.assertIn("BAT-VSKP-001", serials)
         self.assertIn("BAT-KKD-001", serials)
