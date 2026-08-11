@@ -610,12 +610,14 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                             </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-2">
-                            <button 
-                              onClick={() => handleUpdateToBooking(lead)} 
-                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
-                            >
-                              Update to Booking
-                            </button>
+                            {lead.status !== "lost" && lead.status !== "won" && lead.status !== "booked" && (
+                              <button 
+                                onClick={() => handleUpdateToBooking(lead)} 
+                                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
+                              >
+                                Update to Booking
+                              </button>
+                            )}
                             <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                             <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit</button>
                           </td>
