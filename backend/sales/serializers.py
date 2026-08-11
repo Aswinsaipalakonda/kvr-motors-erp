@@ -40,7 +40,7 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         if vehicle_unit:
             if self.instance and self.instance.vehicle_unit == vehicle_unit:
                 pass
-            elif vehicle_unit.stock_status not in ['available', 'reserved', 'booked']:
+            elif vehicle_unit.stock_status not in ['available', 'reserved', 'booked', 'in_stock']:
                 raise serializers.ValidationError({
                     "vehicle_unit": f"Vehicle unit is not available (current status: {vehicle_unit.get_stock_status_display()})."
                 })

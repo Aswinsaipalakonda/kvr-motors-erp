@@ -200,17 +200,26 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Local Storage Routine Checklist State
-  const [routineTasks, setRoutineTasks] = useState([
-    { id: 1, label: "Verify physical yard stock count against system inventory", done: true },
-    { id: 2, label: "Check incoming PO shipment dispatches & GRN notes", done: false },
-    { id: 3, label: "Conduct 5-step PDI inspection for scheduled customer bookings", done: false },
-    { id: 4, label: "Inspect battery FIFO sequence and log newly arrived units", done: true },
-    { id: 5, label: "Prepare keys, charger, & warranty docs for ready handovers", done: false },
-  ]);
+  // Dynamic Routine Checklist State Connected to Physical Vehicles
+  const todayDateKey = new Date().toISOString().slice(0, 10);
+  const [completedTaskIds, setCompletedTaskIds] = useState<number[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(`staff_yard_routine_${user?.id || 'staff'}_${todayDateKey}`);
+        return saved ? JSON.parse(saved) : [1];
+      } catch { return [1]; }
+    }
+    return [1];
+  });
 
   const toggleRoutineTask = (id: number) => {
-    setRoutineTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setCompletedTaskIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (typeof window !== "undefined") {
+        try { localStorage.setItem(`staff_yard_routine_${user?.id || 'staff'}_${todayDateKey}`, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
   };
 
   // Data Loader
@@ -320,6 +329,23 @@ export default function StaffDashboard({ initialTab: initialTabProp }: { initial
   const pendingHandovers = useMemo(() => {
     return salesInvoices.filter(i => i.delivery_status !== "delivered");
   }, [salesInvoices]);
+
+  const routineTasks = useMemo(() => {
+    const totalUnits = staffUnits.length;
+    const availCount = staffUnits.filter(u => u.stock_status === "available").length;
+    const pdiVin = pendingPdiBookings[0]?.vin_number || staffUnits[0]?.vin_number || "KVRVIN2026VSK01";
+    const batSerial = staffBatteries[0]?.serial_number || "BATT-00874";
+    const invoiceRef = pendingHandovers[0]?.invoice_number || "INV-2026-0806";
+    const modelName = staffUnits[0]?.model_name || "Kinetic Green E-Luna";
+
+    return [
+      { id: 1, label: `Verify physical yard stock count (${availCount} available of ${totalUnits} total) against database`, done: completedTaskIds.includes(1) },
+      { id: 2, label: `Conduct 5-step PDI inspection for vehicle unit (VIN: ${pdiVin})`, done: completedTaskIds.includes(2) },
+      { id: 3, label: `Inspect battery FIFO sequence and verify serial ${batSerial}`, done: completedTaskIds.includes(3) },
+      { id: 4, label: `Prepare keys, charger, and warranty docs for handover invoice ${invoiceRef}`, done: completedTaskIds.includes(4) },
+      { id: 5, label: `Inspect physical tire pressure and cleanliness for ${modelName}`, done: completedTaskIds.includes(5) },
+    ];
+  }, [staffUnits, staffBatteries, pendingPdiBookings, pendingHandovers, completedTaskIds]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const myTodayAttendance = useMemo(() => {

@@ -912,7 +912,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const handleCreateBattery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBattery.serial_number.trim()) {
-      showToast("Please enter serial number.", "error");
+      showToast("Please enter battery serial number.", "error");
       return;
     }
     try {
@@ -920,10 +920,10 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       const payload: any = {
         serial_number: newBattery.serial_number.trim(),
         battery_code: newBattery.battery_code.trim() || undefined,
-        capacity: newBattery.capacity.trim() || "60V 30Ah",
+        capacity: newBattery.capacity.trim() || "2.0 kWh",
         purchase_date: newBattery.purchase_date || new Date().toISOString().slice(0, 10),
         location: locId,
-        supplier: newBattery.supplier.trim() || "KVR Motors Supplier",
+        supplier: newBattery.supplier.trim() || "Tesla Tech Pack",
         warranty_years: parseInt(newBattery.warranty_years) || 3,
         status: newBattery.status || "available",
       };
@@ -932,7 +932,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
         showToast("Battery details updated successfully! ✓");
       } else {
         await createBattery(payload);
-        showToast("Battery logged to stock registry. ✓");
+        showToast("Battery logged to stock registry successfully! ✓");
       }
       setNewBattery({ ...emptyBattery });
       setEditingBatteryId(null);
@@ -940,8 +940,15 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       loadBatteries();
     } catch (err: any) {
       console.error("Failed to save battery:", err);
-      const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message || "Failed to save battery.";
-      showToast(`Failed to save battery: ${errMsg}`, "error");
+      const serverErr = err.response?.data;
+      let errMsg = "Failed to save battery.";
+      if (serverErr) {
+        if (typeof serverErr === "string") errMsg = serverErr;
+        else if (serverErr.serial_number) errMsg = `Serial number error: ${Array.isArray(serverErr.serial_number) ? serverErr.serial_number[0] : serverErr.serial_number}`;
+        else if (serverErr.location) errMsg = `Location error: ${Array.isArray(serverErr.location) ? serverErr.location[0] : serverErr.location}`;
+        else if (serverErr.detail) errMsg = String(serverErr.detail);
+      }
+      showToast(errMsg, "error");
     }
   };
 

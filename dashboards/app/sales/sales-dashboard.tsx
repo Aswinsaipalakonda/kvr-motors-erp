@@ -1112,6 +1112,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     const cleanCheckoutPhone = checkoutContactNumber.trim().replace(/\D/g, "");
     if (cleanCheckoutPhone.length !== 10) { showToast("Contact number must contain exactly 10 digits.", "error"); return; }
     const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
+    const targetBranchId = typeof autoFillResult.branchId === "number" 
+      ? autoFillResult.branchId 
+      : (typeof autoFillResult.branchId === "object" && autoFillResult.branchId?.id ? autoFillResult.branchId.id : 1);
+
     try {
       await createSalesInvoice({
         customer_name: checkoutCustomerName.trim(),
@@ -1122,18 +1126,27 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         payment_mode: checkoutPaymentMode,
         payment_split_details: checkoutPaymentMode === "split" ? checkoutSplitDetails : null,
         insurance_partner: checkoutInsurancePartner,
-        delivery_status: "processing",
-        branch: autoFillResult.branchId || 1
+        delivery_status: "delivered",
+        branch: targetBranchId
       });
-      showToast("Sale Invoice Created Successfully!");
+      showToast("Sale Invoice Created & Dispatched Successfully!");
       setCheckoutCustomerName(""); 
       setCheckoutContactNumber("");
       setAutoFillResult(null); 
       setVinQuery(""); 
       setSelectedBattery("");
       loadSales();
-    } catch (err) { 
-      showToast("Failed to create sale invoice.", "error"); 
+    } catch (err: any) { 
+      const serverErr = err.response?.data;
+      let msg = "Failed to create sale invoice.";
+      if (serverErr) {
+        if (typeof serverErr === "string") msg = serverErr;
+        else if (serverErr.assigned_battery) msg = Array.isArray(serverErr.assigned_battery) ? serverErr.assigned_battery[0] : String(serverErr.assigned_battery);
+        else if (serverErr.vehicle_unit) msg = Array.isArray(serverErr.vehicle_unit) ? serverErr.vehicle_unit[0] : String(serverErr.vehicle_unit);
+        else if (serverErr.non_field_errors) msg = Array.isArray(serverErr.non_field_errors) ? serverErr.non_field_errors[0] : String(serverErr.non_field_errors);
+        else if (serverErr.detail) msg = String(serverErr.detail);
+      }
+      showToast(msg, "error"); 
     }
   };
 

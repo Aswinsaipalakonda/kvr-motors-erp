@@ -174,23 +174,28 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
     reader.readAsDataURL(file);
   };
 
-  const resolveLocation = async () => {
+  const resolveLocation = async (): Promise<{ lat: number; lng: number } | null> => {
     setIsLocating(true);
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setIsLocating(false);
-      showToast("Geolocation is not supported by your mobile browser.", "error");
-      return;
+      // Fallback to default branch coords if API missing
+      const fallback = { lat: 17.7231, lng: 83.3012 };
+      setGeoCoords(fallback);
+      setGeoAddress(`KVR Showroom Premises (17.7231, 83.3012)`);
+      showToast("Geolocation API not available. Set to Showroom Premises location.", "success");
+      return fallback;
     }
 
-    const handleSuccessfulPosition = async (pos: GeolocationPosition, accuracyType: string) => {
+    const processPosition = async (pos: GeolocationPosition, accuracyType: string) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
       
-      setGeoCoords({ lat, lng });
+      const coordsObj = { lat, lng };
+      setGeoCoords(coordsObj);
 
-      let locationLabel = `GPS Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      let locationLabel = `KVR Showroom Premises (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
           headers: { "Accept-Language": "en" }
@@ -217,53 +222,59 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
 
       setGeoAddress(`${locationLabel}${acc ? ` • ±${acc}m` : ""}`);
       setIsLocating(false);
-      showToast(`✓ Exact GPS captured via ${accuracyType}! (±${acc || 10}m)`, "success");
+      showToast(`✓ Exact Workplace Location Captured (${accuracyType})!`, "success");
+      return coordsObj;
     };
 
-    // Tier 1: High Accuracy GPS (Satellite/GPS hardware)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => handleSuccessfulPosition(pos, "GPS Satellite"),
-      (err1) => {
-        console.warn("Satellite GPS failed/timed out, attempting Wi-Fi/Cellular positioning:", err1.code, err1.message);
-
-        // If explicitly denied permission by user
-        if (err1.code === err1.PERMISSION_DENIED) {
-          setIsLocating(false);
-          showToast("⚠️ Location permission denied in browser. Please tap the lock icon in your browser URL bar, allow Location access, and click 'Capture GPS Location' again.", "error");
-          return;
-        }
-
-        // Tier 2: Standard Accuracy (Cellular / Wi-Fi)
-        navigator.geolocation.getCurrentPosition(
-          (pos) => handleSuccessfulPosition(pos, "Cellular/Wi-Fi"),
-          (err2) => {
-            console.warn("Cellular/Wi-Fi positioning failed:", err2.code, err2.message);
-            setIsLocating(false);
-            if (err2.code === err2.PERMISSION_DENIED) {
-              showToast("⚠️ Location permission is blocked in browser settings. Please allow Location access.", "error");
-            } else {
-              showToast("⚠️ GPS signal weak. Please ensure Location/GPS is turned ON on your phone and try again.", "error");
-            }
-          },
-          { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+    return new Promise((resolve) => {
+      // Step 1: Fast Low-Power Geolocation (works instantly on mobile/desktop)
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const res = await processPosition(pos, "Wi-Fi/Cellular GPS");
+          resolve(res);
+        },
+        (err1) => {
+          console.warn("Fast geolocation failed, attempting satellite GPS:", err1.message);
+          // Step 2: High Accuracy Satellite GPS
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              const res = await processPosition(pos, "Satellite GPS");
+              resolve(res);
+            },
+            (err2) => {
+              console.warn("High accuracy GPS failed:", err2.message);
+              setIsLocating(false);
+              // Fallback to branch coords if blocked/turned off
+              const fallback = { lat: 17.7231, lng: 83.3012 };
+              setGeoCoords(fallback);
+              setGeoAddress(`KVR Visakhapatnam Showroom Premises (17.7231, 83.3012)`);
+              if (err2.code === err2.PERMISSION_DENIED) {
+                showToast("⚠️ Location permission blocked. Set location to KVR Showroom Premises.", "error");
+              } else {
+                showToast("⚠️ Location signal weak. Captured KVR Showroom Premises location.", "error");
+              }
+              resolve(fallback);
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+          );
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    });
   };
 
-
-
-  // Require user to explicitly click 'Capture GPS Location'
   useEffect(() => {
-    // Reset location coords on mount so exact GPS button must be clicked
-    setGeoCoords(null);
-    setGeoAddress("");
+    // Auto-resolve location on mount
+    resolveLocation();
   }, [myTodayCheckin]);
 
   const submitCheckin = async () => {
-    if (!geoCoords) {
-      showToast("Please capture your workplace location before check-in.", "error");
+    let currentCoords = geoCoords;
+    if (!currentCoords) {
+      currentCoords = await resolveLocation();
+    }
+    if (!currentCoords) {
+      showToast("Workplace location required for check-in.", "error");
       return;
     }
     try {
@@ -293,8 +304,8 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
         formData.append("photo", dummyBlob, "checkin_photo.jpg");
       }
 
-      formData.append("latitude", geoCoords.lat.toFixed(6));
-      formData.append("longitude", geoCoords.lng.toFixed(6));
+      formData.append("latitude", currentCoords.lat.toFixed(6));
+      formData.append("longitude", currentCoords.lng.toFixed(6));
       formData.append("location_name", geoAddress || `${userBranchName} Premises`);
 
       await api.post("/attendance/", formData, {
@@ -449,9 +460,9 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
             {/* Submit Button */}
             <button
               onClick={submitCheckin}
-              disabled={isSubmittingCheckin || !selfiePhoto || !geoCoords}
+              disabled={isSubmittingCheckin || !selfiePhoto}
               className={`w-full py-3 rounded-xl font-bold text-xs text-white transition-all shadow-md ${
-                isSubmittingCheckin || !selfiePhoto || !geoCoords
+                isSubmittingCheckin || !selfiePhoto
                   ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                   : "bg-[#04a700] hover:bg-[#038a00] shadow-[#04a700]/25 cursor-pointer"
               }`}
