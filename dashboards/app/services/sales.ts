@@ -14,6 +14,7 @@ export interface SalesInvoice {
   sale_price: string | number;
   payment_mode: string;
   payment_split_details?: any;
+  payment_proof?: string;
   insurance_partner?: string;
   sale_date?: string;
   delivery_status?: string;
@@ -30,6 +31,7 @@ export interface SalesInvoiceInput {
   sale_price: number;
   payment_mode: string;
   payment_split_details?: any;
+  payment_proof?: string;
   insurance_partner?: string;
   delivery_status?: string;
   branch: number; // Branch ID

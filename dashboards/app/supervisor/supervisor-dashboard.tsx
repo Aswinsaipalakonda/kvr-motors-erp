@@ -229,6 +229,72 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const [newBattery, setNewBattery] = useState({ ...emptyBattery });
   const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
 
+  // 6. Payment Verification & Order Closure Modal States
+  const [isPaymentVerificationOpen, setIsPaymentVerificationOpen] = useState(false);
+  const [verifyingInvoice, setVerifyingInvoice] = useState<any>(null);
+  const [editCustomerName, setEditCustomerName] = useState("");
+  const [editCustomerPhone, setEditCustomerPhone] = useState("");
+  const [editPaymentMode, setEditPaymentMode] = useState("SBI Finance");
+  const [paymentProofImage, setPaymentProofImage] = useState("");
+
+  const openVerificationModal = (inv: any) => {
+    setVerifyingInvoice(inv);
+    setEditCustomerName(inv.customer_name || "");
+    setEditCustomerPhone(inv.customer_contact || "");
+    setEditPaymentMode(inv.payment_mode || "SBI Finance");
+    setPaymentProofImage(inv.payment_proof || "");
+    setIsPaymentVerificationOpen(true);
+  };
+
+  const handlePaymentProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("Image size must be under 5MB.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPaymentProofImage(reader.result as string);
+        showToast("Payment receipt screenshot uploaded. ✓");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleConfirmPaymentAndCloseSaleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifyingInvoice?.id) return;
+    if (!editCustomerName.trim()) {
+      showToast("Please enter customer name.", "error");
+      return;
+    }
+    const cleanPhone = editCustomerPhone.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
+
+    try {
+      await updateSalesInvoice(verifyingInvoice.id, {
+        customer_name: editCustomerName.trim(),
+        customer_contact: cleanPhone,
+        payment_mode: editPaymentMode,
+        payment_proof: paymentProofImage,
+        delivery_status: "delivered"
+      });
+      showToast("Payment verified & sale closed! Stock marked SOLD. ✓");
+      setIsPaymentVerificationOpen(false);
+      setVerifyingInvoice(null);
+      loadSales();
+      loadVehicles();
+      loadBatteries();
+    } catch (err: any) {
+      console.error("Payment verification failure:", err);
+      showToast("Failed to verify payment and close sale.", "error");
+    }
+  };
+
   // Tab navigation
   const navigateTo = (tab: string) => {
     setActiveTab(tab);
@@ -2377,13 +2443,19 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                       <td className="py-3.5 px-5 whitespace-nowrap">
                         {inv.delivery_status !== "delivered" ? (
                           <button 
-                            onClick={() => handleSalesDelivery(inv.id, "delivered")} 
+                            onClick={() => openVerificationModal(inv)} 
                             className="bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
                           >
                             Verify Payment & Close Sale
                           </button>
                         ) : (
                           <div className="flex items-center gap-2 inline-flex">
+                            <button
+                              onClick={() => openVerificationModal(inv)}
+                              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            >
+                              Edit / Proof
+                            </button>
                             <button
                               onClick={() => handlePrintSalesInvoice(inv)}
                               className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
@@ -3283,6 +3355,111 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </button>
         </form>
       </Modal>
+
+      {/* Payment Verification & Proof Upload Modal */}
+      {isPaymentVerificationOpen && verifyingInvoice && (
+        <Modal 
+          isOpen={isPaymentVerificationOpen} 
+          onClose={() => { setIsPaymentVerificationOpen(false); setVerifyingInvoice(null); }}
+          title={`Sales Payment Verification (${verifyingInvoice.invoice_number || ('INV-' + verifyingInvoice.id)})`}
+        >
+          <form onSubmit={handleConfirmPaymentAndCloseSaleSubmit} className="space-y-4 text-left">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">Sale & Vehicle Specs Summary</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-semibold text-slate-700">
+                <div>
+                  <span className="text-slate-400 block text-[9px] font-bold uppercase">Vehicle Model</span>
+                  <span className="font-bold text-slate-900">{verifyingInvoice.model_name || "Kinetic Green EV"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] font-bold uppercase">Total Sale Price</span>
+                  <span className="font-bold text-emerald-600">₹ {parseFloat(verifyingInvoice.sale_price || "74999").toLocaleString("en-IN")}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] font-bold uppercase">Payment Mode</span>
+                  <span className="font-bold text-slate-800">{verifyingInvoice.payment_mode || "SBI Finance"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Editable Customer Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>
+                <input 
+                  type="text" 
+                  value={editCustomerName} 
+                  onChange={(e) => setEditCustomerName(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                  required 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">10-Digit Contact Phone</label>
+                <input 
+                  type="tel" 
+                  value={editCustomerPhone} 
+                  onChange={(e) => setEditCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  maxLength={10} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500" 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Verified Payment Method / Financier</label>
+              <select 
+                value={editPaymentMode} 
+                onChange={(e) => setEditPaymentMode(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500"
+              >
+                <option value="SBI Finance">SBI Finance</option>
+                <option value="HDFC Bank Loan">HDFC Bank Loan</option>
+                <option value="L&T Finance">L&T Finance</option>
+                <option value="UPI / Online QR">UPI / Online QR</option>
+                <option value="Self-Finance (Cash)">Self-Finance (Cash)</option>
+                <option value="Split Payment">Split Payment</option>
+              </select>
+            </div>
+
+            {/* Payment Proof Image Upload */}
+            <div className="space-y-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Upload Payment Receipt / Transaction Screenshot (Optional for Cash)
+              </label>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handlePaymentProofUpload} 
+                className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-extrabold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" 
+              />
+              {paymentProofImage && (
+                <div className="mt-3 relative w-32 h-32 rounded-xl overflow-hidden border border-slate-300 bg-white shadow-sm">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={paymentProofImage} alt="Payment Receipt Proof" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => { setIsPaymentVerificationOpen(false); setVerifyingInvoice(null); }} 
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-full transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="px-6 py-2 bg-[#04a700] hover:bg-[#038a00] text-white text-xs font-extrabold rounded-full shadow-md transition-colors cursor-pointer"
+              >
+                Confirm Payment & Close Sale Order
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>

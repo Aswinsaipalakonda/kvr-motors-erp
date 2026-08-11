@@ -19,6 +19,7 @@ class SalesInvoice(models.Model):
     sale_price = models.DecimalField(max_digits=12, decimal_places=2)
     payment_mode = models.CharField(max_length=50)  # SBI Finance, HDFC Loan, UPI, Cash, Split, etc.
     payment_split_details = models.JSONField(blank=True, null=True, help_text="Split payment breakdown: cash, card, upi, bajaj_finance")
+    payment_proof = models.TextField(null=True, blank=True, help_text="Base64 or URL payment receipt image proof")
     insurance_partner = models.CharField(max_length=100, blank=True, null=True)
     sale_date = models.DateField(auto_now_add=True)
     delivery_status = models.CharField(max_length=20, choices=DELIVERY_CHOICES, default='processing')
