@@ -72,6 +72,9 @@ ssh "root@$VPS_IP" "
     echo 'Running database migrations...'
     docker compose exec -T backend python manage.py migrate --noinput
     
+    echo 'Seeding demo data for client presentation...'
+    docker compose exec -T backend python seed_erp_data.py
+    
     echo 'Pruning unused docker images to free space...'
     docker image prune -f
 "

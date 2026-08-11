@@ -73,7 +73,6 @@ export default function DashboardSidebar({ role, activeTab, setActiveTab }: Side
         { id: "users", label: "Users & Roles", icon: Users },
         { id: "attendance", label: "Staff Attendance", icon: UsersRound },
         { id: "activity-logs", label: "Activity Logs", icon: ActivitySquare },
-        { id: "settings", label: "Settings", icon: Settings },
         { id: "profile", label: "My Profile", icon: User },
       ]
     },

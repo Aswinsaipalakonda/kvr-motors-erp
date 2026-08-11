@@ -13,6 +13,7 @@ import ProfileView from "../components/ProfileView";
 import BranchExpenseView from "../components/BranchExpenseView";
 import IssueReportView from "../components/IssueReportView";
 import OwnerReportsView from "../components/OwnerReportsView";
+import { PaginationControls } from "../components/PaginationControls";
 import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import SearchableSelect from "../components/SearchableSelect";
@@ -214,6 +215,12 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   const [salesSearchQuery, setSalesSearchQuery] = useState("");
   const [salesFilterBranch, setSalesFilterBranch] = useState("All Branches");
   const [salesFilterStatus, setSalesFilterStatus] = useState("All Statuses");
+  const [salesTablePage, setSalesTablePage] = useState(1);
+
+  const [poTablePage, setPoTablePage] = useState(1);
+  const [stockTablePage, setStockTablePage] = useState(1);
+  const [leadsTablePage, setLeadsTablePage] = useState(1);
+  const [bookingsTablePage, setBookingsTablePage] = useState(1);
 
   const [leadsSearchQuery, setLeadsSearchQuery] = useState("");
   const [leadsFilterBranch, setLeadsFilterBranch] = useState("All Branches");
@@ -3207,10 +3214,6 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
 
     currentPeriodStart.setDate(now.getDate() - daysCount);
 
-    if (filteredSalesInvoices.length === 0) {
-      return [];
-    }
-
     const dataPoints = [];
     for (let i = daysCount - 1; i >= 0; i--) {
       const d = new Date();
@@ -3225,7 +3228,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       let prevCount = 0;
 
       filteredSalesInvoices.forEach(inv => {
-        const invDate = new Date(inv.sale_date || inv.created_at);
+        const rawDate = inv.sale_date || inv.invoice_date || inv.created_at;
+        if (!rawDate) return;
+        const invDate = new Date(rawDate);
         invDate.setHours(0,0,0,0);
 
         if (invDate.getTime() === d.getTime()) {
@@ -6389,6 +6394,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               return matchesSearch && matchesBranch && matchesStatus;
             });
 
+            const salesPageSize = 10;
+            const totalSalesPages = Math.max(1, Math.ceil(filteredSales.length / salesPageSize));
+            const currentSalesPage = Math.min(salesTablePage, totalSalesPages);
+            const paginatedSales = filteredSales.slice((currentSalesPage - 1) * salesPageSize, currentSalesPage * salesPageSize);
+
             return (
               <div className="space-y-6">
                 {/* Search & Filter Bar */}
@@ -6398,7 +6408,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide shrink-0">Filter Sales:</span>
                     <select
                       value={salesFilterBranch}
-                      onChange={(e) => setSalesFilterBranch(e.target.value)}
+                      onChange={(e) => { setSalesFilterBranch(e.target.value); setSalesTablePage(1); }}
                       className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                     >
                       <option value="All Branches">All Showrooms & Godowns</option>
@@ -6408,7 +6418,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                     </select>
                     <select
                       value={salesFilterStatus}
-                      onChange={(e) => setSalesFilterStatus(e.target.value)}
+                      onChange={(e) => { setSalesFilterStatus(e.target.value); setSalesTablePage(1); }}
                       className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                     >
                       <option value="All Statuses">All Delivery Statuses</option>
@@ -6423,99 +6433,109 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       type="text"
                       placeholder="Search Invoice#, Customer, Model..."
                       value={salesSearchQuery}
-                      onChange={(e) => setSalesSearchQuery(e.target.value)}
+                      onChange={(e) => { setSalesSearchQuery(e.target.value); setSalesTablePage(1); }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                     />
                   </div>
                 </div>
 
-                <Table title={`Invoiced Sales Records (${filteredSales.length})`} headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status", "Actions"]}>
-                  {salesInvoicesLoading ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
-                          <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredSales.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center">
-                        <EmptyState 
-                          title="No Invoices Matching Filter" 
-                          description="Try adjusting your filter options or search query." 
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSales.map((inv, idx) => (
-                      <tr key={inv.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{inv.invoice_number}</td>
-                        <td className="py-3.5 px-5 text-slate-800 font-bold">{inv.customer_name}</td>
-                        <td className="py-3.5 px-5 text-slate-500 font-mono">{inv.customer_contact}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.model_name}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery_serial || "N/A"}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(inv.sale_price || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.sale_date}</td>
-                        <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
-                        <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurance_partner || "N/A"}</td>
-                        <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.executive_name || "Unassigned"}</td>
-                        <td className="py-3.5 px-5">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}>
-                            {inv.delivery_status_display || inv.delivery_status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-5 whitespace-nowrap">
-                          {inv.delivery_status === "processing" && (
-                            <button onClick={() => handleSalesDelivery(inv.id, "ready")} className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Mark Ready</button>
-                          )}
-                          {inv.delivery_status === "ready" && (
-                            <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Mark Delivered</button>
-                          )}
-                          {inv.delivery_status === "delivered" ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handlePrintSalesInvoice(inv)}
-                                className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                              >
-                                <Printer className="h-3 w-3" /> Print Invoice
-                              </button>
-                              <a
-                                href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(inv.customer_contact)}&text=${encodeURIComponent(
-                                  `*KVR MOTORS - SALES INVOICE RECEIPT*\n` +
-                                  `=============================\n` +
-                                  `*Invoice Ref:* ${inv.invoice_number || ('INV-' + inv.id)}\n` +
-                                  `*Customer:* ${inv.customer_name}\n` +
-                                  `*Phone:* ${inv.customer_contact}\n` +
-                                  `-----------------------------\n` +
-                                  `*Vehicle:* ${inv.model_name || ""}\n` +
-                                  `*Color:* ${inv.vehicle_color || "N/A"}\n` +
-                                  `*Battery:* ${inv.battery_type || inv.battery_serial || "N/A"}\n` +
-                                  `-----------------------------\n` +
-                                  `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
-                                  `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
-                                  `*Status:* Delivered\n` +
-                                  `=============================\n` +
-                                  `Thank you for purchasing with KVR Motors!`
-                                )}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-emerald-650 hover:text-emerald-800 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                              >
-                                <MessageSquare className="h-3 w-3" /> WhatsApp
-                              </a>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 font-semibold italic">Awaiting Delivery</span>
-                          )}
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                  <Table title={`Invoiced Sales Records (${filteredSales.length})`} headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status", "Actions"]}>
+                    {salesInvoicesLoading ? (
+                      <tr>
+                        <td colSpan={12} className="py-12 text-center">
+                          <div className="flex flex-col items-center justify-center gap-3">
+                            <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
+                            <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records...</span>
+                          </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </Table>
+                    ) : filteredSales.length === 0 ? (
+                      <tr>
+                        <td colSpan={12} className="py-12 text-center">
+                          <EmptyState 
+                            title="No Invoices Matching Filter" 
+                            description="Try adjusting your filter options or search query." 
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedSales.map((inv, idx) => (
+                        <tr key={inv.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3.5 px-5 font-mono font-bold text-slate-800">{inv.invoice_number}</td>
+                          <td className="py-3.5 px-5 text-slate-800 font-bold">{inv.customer_name}</td>
+                          <td className="py-3.5 px-5 text-slate-500 font-mono">{inv.customer_contact}</td>
+                          <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.model_name}</td>
+                          <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery_serial || "N/A"}</td>
+                          <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(inv.sale_price || 0).toLocaleString('en-IN')}</td>
+                          <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.sale_date}</td>
+                          <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
+                          <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurance_partner || "N/A"}</td>
+                          <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.executive_name || "Unassigned"}</td>
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}>
+                              {inv.delivery_status_display || inv.delivery_status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 whitespace-nowrap">
+                            {inv.delivery_status === "processing" && (
+                              <button onClick={() => handleSalesDelivery(inv.id, "ready")} className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Mark Ready</button>
+                            )}
+                            {inv.delivery_status === "ready" && (
+                              <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Mark Delivered</button>
+                            )}
+                            {inv.delivery_status === "delivered" ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handlePrintSalesInvoice(inv)}
+                                  className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                                >
+                                  <Printer className="h-3 w-3" /> Print Invoice
+                                </button>
+                                <a
+                                  href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(inv.customer_contact)}&text=${encodeURIComponent(
+                                    `*KVR MOTORS - SALES INVOICE RECEIPT*\n` +
+                                    `=============================\n` +
+                                    `*Invoice Ref:* ${inv.invoice_number || ('INV-' + inv.id)}\n` +
+                                    `*Customer:* ${inv.customer_name}\n` +
+                                    `*Phone:* ${inv.customer_contact}\n` +
+                                    `-----------------------------\n` +
+                                    `*Vehicle:* ${inv.model_name || ""}\n` +
+                                    `*Color:* ${inv.vehicle_color || "N/A"}\n` +
+                                    `*Battery:* ${inv.battery_type || inv.battery_serial || "N/A"}\n` +
+                                    `-----------------------------\n` +
+                                    `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
+                                    `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
+                                    `*Status:* Delivered\n` +
+                                    `=============================\n` +
+                                    `Thank you for purchasing with KVR Motors!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] text-emerald-650 hover:text-emerald-800 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                                >
+                                  <MessageSquare className="h-3 w-3" /> WhatsApp
+                                </a>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-semibold italic">Awaiting Delivery</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </Table>
+                  <PaginationControls
+                    currentPage={currentSalesPage}
+                    totalPages={totalSalesPages}
+                    totalItems={filteredSales.length}
+                    pageSize={salesPageSize}
+                    onPageChange={setSalesTablePage}
+                    itemLabel="sales invoices"
+                  />
+                </div>
               </div>
             );
           })()}
@@ -6625,7 +6645,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
                         </div>
 
-                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto slim-scrollbar max-h-[60vh]">
+                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y slim-scrollbar max-h-[72vh] min-h-[520px] pr-1.5">
                           {filteredLeads.length === 0 ? (
                             <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
                               {isDragTarget ? "Drop here" : "No leads in stage"}
@@ -6657,11 +6677,16 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                   </a>
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
-                                {lead.follow_up_date && (
-                                  <div className="flex items-center gap-1 text-[9px] font-bold text-amber-600">
-                                    <CalendarDays className="h-3 w-3" /> {lead.follow_up_date}
-                                  </div>
-                                )}
+                                <div className="flex items-center justify-between gap-1 text-[9px] font-bold text-slate-500">
+                                  <span className="flex items-center gap-1 text-slate-600 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase">
+                                    <Building className="h-2.5 w-2.5 text-[#04a700]" /> {lead.branch_name || lead.branch || "Global"}
+                                  </span>
+                                  {lead.follow_up_date && (
+                                    <span className="flex items-center gap-1 text-amber-600">
+                                      <CalendarDays className="h-2.5 w-2.5" /> {lead.follow_up_date}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                                   <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || "Unassigned"}</span>
                                   {/* Mobile Stage Selector Dropdown */}
@@ -7941,194 +7966,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </Modal>
             </div>
           )}
-          {/* TAB 13: SYSTEM SETTINGS */}
-          {activeTab === "settings" && (
-            <div className="space-y-6 text-left animate-fadeIn">
-              {/* Header Banner */}
-              <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="relative z-10 max-w-2xl space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold">
-                    <Building className="h-3.5 w-3.5" /> KVR Enterprise Administration
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">System & Portal Settings</h2>
-                  <p className="text-xs sm:text-sm text-slate-300 font-medium">
-                    Configure global organization parameters, tax structures, security rules, notification channels, and multi-tenant preferences.
-                  </p>
-                </div>
-                <div className="absolute right-0 bottom-0 top-0 w-1/3 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none" />
-              </div>
-
-              {/* Bento Grid Sections */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* 1. General Enterprise Configuration */}
-                <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-[#04a700] flex items-center justify-center border border-emerald-100">
-                        <Building className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800">Enterprise Identity & Billing</h3>
-                        <p className="text-[11px] text-slate-400 font-medium">Core company details and taxation parameters</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg">Global Scope</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Enterprise Name</label>
-                      <input 
-                        type="text" 
-                        value={enterpriseSettings.name} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, name: e.target.value })} 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-bold outline-none focus:border-[#04a700] transition-colors" 
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">System Code Ref</label>
-                      <input 
-                        type="text" 
-                        value={enterpriseSettings.code} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, code: e.target.value })} 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-mono font-bold outline-none focus:border-[#04a700] transition-colors" 
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Tax Rate Code (GST%)</label>
-                      <input 
-                        type="text" 
-                        value={enterpriseSettings.gst} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, gst: e.target.value })} 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-bold outline-none focus:border-[#04a700] transition-colors" 
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Primary Base Currency</label>
-                      <input 
-                        type="text" 
-                        value={enterpriseSettings.currency} 
-                        disabled 
-                        className="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-slate-500 font-bold outline-none cursor-not-allowed" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
-                    <button 
-                      onClick={handleResetSettings} 
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs px-5 py-2.5 rounded-full cursor-pointer transition-colors"
-                    >
-                      Reset Defaults
-                    </button>
-                    <button 
-                      onClick={handleSaveSettings} 
-                      className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-md shadow-[#04a700]/20 cursor-pointer transition-all"
-                    >
-                      Save Configuration
-                    </button>
-                  </div>
-                </div>
-
-                {/* 2. Quick System Status & Support Card */}
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-5 flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                      <div className="h-10 w-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                        <CheckCircle2 className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800">Server & Database Health</h3>
-                        <p className="text-[11px] text-slate-400 font-medium">Live connection status</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-xs">
-                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <span className="font-bold text-slate-600">Database Connection</span>
-                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active PostgreSQL
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <span className="font-bold text-slate-600">API Gateway VPS</span>
-                        <span className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Healthy 200 OK
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <span className="font-bold text-slate-600">Active Multi-Tenants</span>
-                        <span className="font-extrabold text-slate-800">{branchesList.length} Showrooms & Outlets</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 space-y-1">
-                    <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider">Help & Technical Support</span>
-                    <p className="text-xs font-semibold text-emerald-900">{enterpriseSettings.supportEmail} | {enterpriseSettings.supportPhone}</p>
-                  </div>
-                </div>
-
-                {/* 3. Automated System Toggles */}
-                <div className="lg:col-span-3 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-                        <Layers className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800">System Automation & Broadcast Preferences</h3>
-                        <p className="text-[11px] text-slate-400 font-medium">Manage alerts, automated triggers, and scheduled backups</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                      <div>
-                        <h4 className="text-xs font-extrabold text-slate-800">Daily Cloud Backup</h4>
-                        <p className="text-[10px] font-semibold text-slate-400">Automated midnight snapshot</p>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        checked={enterpriseSettings.autoBackup} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, autoBackup: e.target.checked })} 
-                        className="h-4 w-4 accent-[#04a700] rounded cursor-pointer" 
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                      <div>
-                        <h4 className="text-xs font-extrabold text-slate-800">WhatsApp Sales Receipts</h4>
-                        <p className="text-[10px] font-semibold text-slate-400">Instant customer messaging</p>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        checked={enterpriseSettings.whatsappAlerts} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, whatsappAlerts: e.target.checked })} 
-                        className="h-4 w-4 accent-[#04a700] rounded cursor-pointer" 
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                      <div>
-                        <h4 className="text-xs font-extrabold text-slate-800">Executive Email Digests</h4>
-                        <p className="text-[10px] font-semibold text-slate-400">Weekly revenue summary</p>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        checked={enterpriseSettings.emailAlerts} 
-                        onChange={(e) => setEnterpriseSettings({ ...enterpriseSettings, emailAlerts: e.target.checked })} 
-                        className="h-4 w-4 accent-[#04a700] rounded cursor-pointer" 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )}
+          {/* TAB 13: SYSTEM SETTINGS REMOVED */}
           {activeTab === "expenses" && (
             <BranchExpenseView role="owner" onRefreshLedger={loadLedger} />
           )}

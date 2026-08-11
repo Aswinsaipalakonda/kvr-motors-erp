@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import Modal from "./Modal";
 import Table from "./Table";
 import Toast from "./Toast";
+import { PaginationControls } from "./PaginationControls";
 import { 
   AlertTriangle, 
   Plus, 
@@ -34,6 +35,9 @@ export default function IssueReportView({ role }: IssueReportViewProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  const [issuePage, setIssuePage] = useState(1);
+  const pageSize = 10;
 
   // Modals
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -203,70 +207,88 @@ export default function IssueReportView({ role }: IssueReportViewProps) {
           </span>
         </div>
 
-        <Table headers={["Issue ID", "Branch", "Category", "Priority", "Title & Description", "Asset Ref", "Status", "Actions"]}>
-          {filteredIssues.length === 0 ? (
-            <tr>
-              <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                No operational issues logged. Everything is running smoothly!
-              </td>
-            </tr>
-          ) : (
-            filteredIssues.map((issue) => (
-              <tr key={issue.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="py-3 px-4 font-mono font-bold text-slate-800 text-xs">{issue.issue_id}</td>
-                <td className="py-3 px-4 font-bold text-slate-700 text-xs">{issue.branch_name || "Branch"}</td>
-                <td className="py-3 px-4 text-xs font-bold text-slate-700 capitalize">
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
-                    {issue.category_display || issue.category}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-xs font-bold">
-                  <span className={`px-2 py-0.5 rounded-full uppercase text-[10px] ${
-                    issue.priority === "urgent" ? "bg-rose-100 text-rose-800 border border-rose-200" :
-                    issue.priority === "high" ? "bg-amber-100 text-amber-800 border border-amber-200" :
-                    "bg-slate-100 text-slate-700 border border-slate-200"
-                  }`}>
-                    {issue.priority}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-xs max-w-xs">
-                  <span className="font-extrabold text-slate-900 block">{issue.title}</span>
-                  <span className="text-[11px] text-slate-500 block line-clamp-1">{issue.description}</span>
-                  {issue.resolution_notes && (
-                    <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
-                      Res: {issue.resolution_notes}
-                    </span>
-                  )}
-                </td>
-                <td className="py-3 px-4 font-mono text-xs text-slate-600 font-bold">{issue.asset_reference || "—"}</td>
-                <td className="py-3 px-4 text-xs">
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[10px] ${
-                    issue.status === "resolved" ? "bg-emerald-100 text-emerald-800" :
-                    issue.status === "in_progress" ? "bg-blue-100 text-blue-800" : "bg-rose-100 text-rose-800"
-                  }`}>
-                    {issue.status.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-xs">
-                  {role === "owner" || role === "admin" ? (
-                    <button
-                      onClick={() => {
-                        setSelectedIssue(issue);
-                        setResolutionStatus(issue.status === "resolved" ? "resolved" : "in_progress");
-                        setResolutionNotes(issue.resolution_notes || "");
-                      }}
-                      className="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer"
-                    >
-                      Update Status
-                    </button>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 font-semibold">{issue.reported_by_name || "Self"}</span>
-                  )}
-                </td>
-              </tr>
-            ))
-          )}
-        </Table>
+        {(() => {
+          const totalIssuePages = Math.max(1, Math.ceil(filteredIssues.length / pageSize));
+          const currentIssuePage = Math.min(issuePage, totalIssuePages);
+          const paginatedIssues = filteredIssues.slice((currentIssuePage - 1) * pageSize, currentIssuePage * pageSize);
+
+          return (
+            <>
+              <Table headers={["Issue ID", "Branch", "Category", "Priority", "Title & Description", "Asset Ref", "Status", "Actions"]}>
+                {filteredIssues.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      No operational issues logged. Everything is running smoothly!
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedIssues.map((issue) => (
+                    <tr key={issue.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800 text-xs">{issue.issue_id}</td>
+                      <td className="py-3 px-4 font-bold text-slate-700 text-xs">{issue.branch_name || "Branch"}</td>
+                      <td className="py-3 px-4 text-xs font-bold text-slate-700 capitalize">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
+                          {issue.category_display || issue.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs font-bold">
+                        <span className={`px-2 py-0.5 rounded-full uppercase text-[10px] ${
+                          issue.priority === "urgent" ? "bg-rose-100 text-rose-800 border border-rose-200" :
+                          issue.priority === "high" ? "bg-amber-100 text-amber-800 border border-amber-200" :
+                          "bg-slate-100 text-slate-700 border border-slate-200"
+                        }`}>
+                          {issue.priority}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs max-w-xs">
+                        <span className="font-extrabold text-slate-900 block">{issue.title}</span>
+                        <span className="text-[11px] text-slate-500 block line-clamp-1">{issue.description}</span>
+                        {issue.resolution_notes && (
+                          <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
+                            Res: {issue.resolution_notes}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-xs text-slate-600 font-bold">{issue.asset_reference || "—"}</td>
+                      <td className="py-3 px-4 text-xs">
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[10px] ${
+                          issue.status === "resolved" ? "bg-emerald-100 text-emerald-800" :
+                          issue.status === "in_progress" ? "bg-blue-100 text-blue-800" : "bg-rose-100 text-rose-800"
+                        }`}>
+                          {issue.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs">
+                        {role === "owner" || role === "admin" ? (
+                          <button
+                            onClick={() => {
+                              setSelectedIssue(issue);
+                              setResolutionStatus(issue.status === "resolved" ? "resolved" : "in_progress");
+                              setResolutionNotes(issue.resolution_notes || "");
+                            }}
+                            className="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] cursor-pointer"
+                          >
+                            Update Status
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 font-semibold">{issue.reported_by_name || "Self"}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </Table>
+              <PaginationControls
+                currentPage={currentIssuePage}
+                totalPages={totalIssuePages}
+                totalItems={filteredIssues.length}
+                pageSize={pageSize}
+                onPageChange={setIssuePage}
+                itemLabel="issue reports"
+              />
+            </>
+          );
+        })()}
       </div>
 
       {/* Modal 1: Report Operational Issue */}

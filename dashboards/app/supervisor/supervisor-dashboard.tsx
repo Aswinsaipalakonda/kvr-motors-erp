@@ -2473,7 +2473,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                           <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
                         </div>
 
-                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto slim-scrollbar max-h-[60vh]">
+                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y slim-scrollbar max-h-[72vh] min-h-[520px] pr-1.5">
                           {filteredLeads.length === 0 ? (
                             <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
                               {isDragTarget ? "Drop here" : "No leads in stage"}

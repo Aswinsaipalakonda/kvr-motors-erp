@@ -7,6 +7,7 @@ import api from "../services/api";
 import Toast from "./Toast";
 import Table from "./Table";
 import EmptyState from "./EmptyState";
+import { PaginationControls } from "./PaginationControls";
 import {
   UsersRound,
   Clock,
@@ -600,37 +601,54 @@ export default function AttendanceView({ role }: AttendanceViewProps) {
       )}
 
       {/* SECTION 3: MY ATTENDANCE HISTORY TABLE */}
-      <div className="bg-white border border-emerald-100/60 rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 className="font-black text-sm text-slate-800">My Attendance Check-In History</h3>
-        <Table headers={["Date", "Check-In Time", "Workplace Location", "Status"]}>
-          {myLogs.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="py-8 text-center text-slate-400 font-medium">
-                No attendance check-in records found.
-              </td>
-            </tr>
-          ) : (
-            myLogs.map((log: any) => (
-              <tr key={log.id} className="border-b border-emerald-50/80 hover:bg-slate-50/80 transition-colors">
-                <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
-                <td className="py-3 px-4 font-mono text-emerald-700 text-xs font-bold">
-                  {log.check_in ? new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}
-                </td>
-                <td className="py-3 px-4 text-xs font-semibold text-slate-700">{log.location_name || userBranchName}</td>
-                <td className="py-3 px-4">
-                  <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
-                    log.status === "verified" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
-                    log.status === "rejected" ? "bg-rose-100 text-rose-800 border border-rose-200" :
-                    "bg-amber-100 text-amber-800 border border-amber-200"
-                  }`}>
-                    {log.status}
-                  </span>
-                </td>
-              </tr>
-            ))
-          )}
-        </Table>
-      </div>
+      {(() => {
+        const [myAttendancePage, setMyAttendancePage] = useState(1);
+        const attPageSize = 10;
+        const totalAttPages = Math.max(1, Math.ceil(myLogs.length / attPageSize));
+        const paginatedMyLogs = myLogs.slice((myAttendancePage - 1) * attPageSize, myAttendancePage * attPageSize);
+
+        return (
+          <div className="bg-white border border-emerald-100/60 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 className="font-black text-sm text-slate-800">My Attendance Check-In History</h3>
+            <Table headers={["Date", "Check-In Time", "Workplace Location", "Status"]}>
+              {myLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-slate-400 font-medium">
+                    No attendance check-in records found.
+                  </td>
+                </tr>
+              ) : (
+                paginatedMyLogs.map((log: any) => (
+                  <tr key={log.id} className="border-b border-emerald-50/80 hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
+                    <td className="py-3 px-4 font-mono text-emerald-700 text-xs font-bold">
+                      {log.check_in ? new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}
+                    </td>
+                    <td className="py-3 px-4 text-xs font-semibold text-slate-700">{log.location_name || userBranchName}</td>
+                    <td className="py-3 px-4">
+                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
+                        log.status === "verified" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
+                        log.status === "rejected" ? "bg-rose-100 text-rose-800 border border-rose-200" :
+                        "bg-amber-100 text-amber-800 border border-amber-200"
+                      }`}>
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </Table>
+            <PaginationControls
+              currentPage={myAttendancePage}
+              totalPages={totalAttPages}
+              totalItems={myLogs.length}
+              pageSize={attPageSize}
+              onPageChange={setMyAttendancePage}
+              itemLabel="attendance logs"
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }

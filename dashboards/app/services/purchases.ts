@@ -1,5 +1,23 @@
 import api from "./api";
 
+export interface PurchaseOrder {
+  id: number;
+  po_number: string;
+  supplier_name: string;
+  vehicle_model?: number;
+  model_name?: string;
+  quantity: number;
+  unit_price?: number;
+  total_price?: number | string;
+  payment_terms?: string;
+  estimated_delivery_date?: string;
+  order_date?: string;
+  created_at?: string;
+  status: string;
+  branch?: number;
+  branch_name?: string;
+}
+
 export interface PurchaseOrderInput {
   po_number?: string;
   supplier_name: string;

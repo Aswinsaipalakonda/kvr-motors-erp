@@ -522,7 +522,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                             <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
                           </div>
 
-                          <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto slim-scrollbar max-h-[50vh]">
+                          <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y slim-scrollbar max-h-[72vh] min-h-[520px] pr-1.5">
                             {filteredLeads.length === 0 ? (
                               <div className={`text-[9px] font-semibold text-slate-450 text-center py-8 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
                                 {isDragTarget ? "Drop here" : "No leads in stage"}

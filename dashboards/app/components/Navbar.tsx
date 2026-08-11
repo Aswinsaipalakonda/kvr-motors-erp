@@ -45,7 +45,6 @@ const ROLE_MODULES: Record<NavbarProps["role"], SearchModule[]> = {
     { label: "Ledger Management", route: "/owner/ledger" },
     { label: "Reports & Analytics", route: "/owner/reports" },
     { label: "Users & Roles", route: "/owner/users" },
-    { label: "Settings", route: "/owner/settings" },
   ],
   supervisor: [
     { label: "Dashboard", route: "/supervisor" },

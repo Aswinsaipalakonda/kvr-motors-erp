@@ -532,104 +532,281 @@ def seed_erp_data():
         }
     )
 
-    # Seed sales invoices
-    SalesInvoice.objects.get_or_create(
-        invoice_number="INV-2026-0789",
-        defaults={
-            "customer_name": "M. Satish",
-            "customer_contact": "9876543212",
-            "vehicle_unit": unit_watts,
-            "assigned_battery": Battery.objects.get(serial_number="BATT-00890"),
-            "sale_price": 145000.00,
-            "payment_mode": "SBI Finance",
-            "insurance_partner": "ICICI Lombard",
-            "delivery_status": "ready",
-            "sales_executive": sales_user,
-            "branch": branch
+    # Seed sales invoices with explicit August 2026 dates (overriding auto_now_add via .update())
+    invoices_to_seed = [
+        {
+            "num": "INV-2026-0801",
+            "name": "M. Satish",
+            "contact": "9876543212",
+            "unit": unit_watts,
+            "battery": "BATT-00890",
+            "price": 145000.00,
+            "mode": "SBI Finance",
+            "insurance": "ICICI Lombard",
+            "status": "delivered",
+            "branch": branch,
+            "date": date(2026, 8, 1)
+        },
+        {
+            "num": "INV-2026-0802",
+            "name": "T. Apparao",
+            "contact": "9876543222",
+            "unit": unit_sri_luna,
+            "battery": "BATT-00801",
+            "price": 74999.00,
+            "mode": "HDFC Finance",
+            "insurance": "HDFC Ergo",
+            "status": "delivered",
+            "branch": branch_srikakulam,
+            "date": date(2026, 8, 3)
+        },
+        {
+            "num": "INV-2026-0803",
+            "name": "G. Vasu",
+            "contact": "9876543223",
+            "unit": unit_kak_dynamo,
+            "battery": "BATT-00802",
+            "price": 98500.00,
+            "mode": "Cash",
+            "insurance": "Reliance General",
+            "status": "delivered",
+            "branch": branch_kakinada,
+            "date": date(2026, 8, 5)
+        },
+        {
+            "num": "INV-2026-0804",
+            "name": "Y. Prakash",
+            "contact": "9876543224",
+            "unit": unit_viz_watts,
+            "battery": "BATT-00803",
+            "price": 145000.00,
+            "mode": "ICICI Finance",
+            "insurance": "ICICI Lombard",
+            "status": "ready",
+            "branch": branch_vizag,
+            "date": date(2026, 8, 7)
+        },
+        {
+            "num": "INV-2026-0805",
+            "name": "K. Venkatesh",
+            "contact": "9876543228",
+            "unit": unit_luna,
+            "battery": "BATT-00890",
+            "price": 74999.00,
+            "mode": "UPI",
+            "insurance": "Star Health Auto",
+            "status": "delivered",
+            "branch": branch,
+            "date": date(2026, 8, 8)
+        },
+        {
+            "num": "INV-2026-0806",
+            "name": "R. Hemalatha",
+            "contact": "9876543229",
+            "unit": unit_dynamo,
+            "battery": "BATT-00802",
+            "price": 98500.00,
+            "mode": "Bajaj Auto Finance",
+            "insurance": "Tata AIG",
+            "status": "ready",
+            "branch": branch,
+            "date": date(2026, 8, 10)
+        },
+        {
+            "num": "INV-2026-0807",
+            "name": "S. Rajesh",
+            "contact": "9876543230",
+            "unit": unit_luna,
+            "battery": "BATT-00801",
+            "price": 74999.00,
+            "mode": "Cash",
+            "insurance": "Bajaj Allianz",
+            "status": "delivered",
+            "branch": branch_srikakulam,
+            "date": date(2026, 8, 11)
         }
-    )
+    ]
 
-    SalesInvoice.objects.get_or_create(
-        invoice_number="INV-2026-0801",
-        defaults={
-            "customer_name": "T. Apparao",
-            "customer_contact": "9876543222",
-            "vehicle_unit": unit_sri_luna,
-            "assigned_battery": Battery.objects.get(serial_number="BATT-00801"),
-            "sale_price": 74999.00,
-            "payment_mode": "HDFC Finance",
-            "insurance_partner": "HDFC Ergo",
-            "delivery_status": "ready",
-            "sales_executive": sales_user,
-            "branch": branch_srikakulam
-        }
-    )
+    for inv_item in invoices_to_seed:
+        batt_obj = None
+        if inv_item["battery"]:
+            batt_obj = Battery.objects.filter(serial_number=inv_item["battery"]).first()
+        inv_obj, _ = SalesInvoice.objects.get_or_create(
+            invoice_number=inv_item["num"],
+            defaults={
+                "customer_name": inv_item["name"],
+                "customer_contact": inv_item["contact"],
+                "vehicle_unit": inv_item["unit"],
+                "assigned_battery": batt_obj,
+                "sale_price": inv_item["price"],
+                "payment_mode": inv_item["mode"],
+                "insurance_partner": inv_item["insurance"],
+                "delivery_status": inv_item["status"],
+                "sales_executive": sales_user,
+                "branch": inv_item["branch"]
+            }
+        )
+        # Force update sale_date to override auto_now_add
+        SalesInvoice.objects.filter(id=inv_obj.id).update(sale_date=inv_item["date"])
+        # Update vehicle stock status to sold
+        VehicleUnit.objects.filter(id=inv_item["unit"].id).update(stock_status="sold")
 
-    SalesInvoice.objects.get_or_create(
-        invoice_number="INV-2026-0802",
-        defaults={
-            "customer_name": "G. Vasu",
-            "customer_contact": "9876543223",
-            "vehicle_unit": unit_kak_dynamo,
-            "assigned_battery": Battery.objects.get(serial_number="BATT-00802"),
-            "sale_price": 98500.00,
-            "payment_mode": "Cash",
-            "insurance_partner": "Reliance General",
-            "delivery_status": "ready",
-            "sales_executive": sales_user,
-            "branch": branch_kakinada
-        }
-    )
+    # Seed 10+ AVAILABLE Vehicle Units for Visakhapatnam Branch
+    for i in range(1, 11):
+        v_model = model_luna if i % 3 == 1 else (model_dynamo if i % 3 == 2 else model_watts)
+        v_color = "Green" if i % 3 == 1 else ("Blue" if i % 3 == 2 else "Red")
+        VehicleUnit.objects.get_or_create(
+            vin_number=f"KVRVIN2026VSK{i:02d}",
+            defaults={
+                "model": v_model,
+                "branch": branch,
+                "showroom": showroom_visakhapatnam,
+                "location": location_visakhapatnam,
+                "motor_number": f"MTR-VSK-{100+i}",
+                "chassis_number": f"CHS-VSK-{200+i}",
+                "color": v_color,
+                "purchase_date": date(2026, 7, i),
+                "stock_status": "available",
+                "assigned_battery": f"BATT-VSK-{300+i}"
+            }
+        )
 
-    SalesInvoice.objects.get_or_create(
-        invoice_number="INV-2026-0803",
-        defaults={
-            "customer_name": "Y. Prakash",
-            "customer_contact": "9876543224",
-            "vehicle_unit": unit_viz_watts,
-            "assigned_battery": Battery.objects.get(serial_number="BATT-00803"),
-            "sale_price": 145000.00,
-            "payment_mode": "ICICI Finance",
-            "insurance_partner": "ICICI Lombard",
-            "delivery_status": "ready",
-            "sales_executive": sales_user,
-            "branch": branch_vizag
-        }
-    )
+    # Seed 8+ AVAILABLE Vehicle Units for Srikakulam Branch
+    for i in range(1, 9):
+        v_model = model_luna if i % 2 == 1 else model_dynamo
+        v_color = "Green" if i % 2 == 1 else "White"
+        VehicleUnit.objects.get_or_create(
+            vin_number=f"KVRVIN2026SRI{i:02d}",
+            defaults={
+                "model": v_model,
+                "branch": branch_srikakulam,
+                "showroom": showroom_srikakulam,
+                "location": location_srikakulam,
+                "motor_number": f"MTR-SRI-{100+i}",
+                "chassis_number": f"CHS-SRI-{200+i}",
+                "color": v_color,
+                "purchase_date": date(2026, 7, i),
+                "stock_status": "available",
+                "assigned_battery": f"BATT-SRI-{300+i}"
+            }
+        )
 
-    # Seed Leads for different branches
-    Lead.objects.get_or_create(
-        customer_name="Srikakulam Buyer",
-        contact_number="9876543225",
-        defaults={
-            "interested_vehicle": model_luna,
-            "status": "new_lead",
-            "lead_source": "walk_in",
-            "branch": "KVR Motors - Srikakulam"
-        }
-    )
+    # Seed 8+ AVAILABLE Vehicle Units for Kakinada Branch
+    for i in range(1, 9):
+        v_model = model_dynamo if i % 2 == 1 else model_watts
+        v_color = "Blue" if i % 2 == 1 else "Matte Black"
+        VehicleUnit.objects.get_or_create(
+            vin_number=f"KVRVIN2026KKD{i:02d}",
+            defaults={
+                "model": v_model,
+                "branch": branch_kakinada,
+                "showroom": showroom_kakinada,
+                "location": location_kakinada,
+                "motor_number": f"MTR-KKD-{100+i}",
+                "chassis_number": f"CHS-KKD-{200+i}",
+                "color": v_color,
+                "purchase_date": date(2026, 7, i),
+                "stock_status": "available",
+                "assigned_battery": f"BATT-KKD-{300+i}"
+            }
+        )
 
-    Lead.objects.get_or_create(
-        customer_name="Kakinada Buyer",
-        contact_number="9876543226",
-        defaults={
-            "interested_vehicle": model_dynamo,
-            "status": "negotiation",
-            "lead_source": "reference",
-            "branch": "KVR Motors - Kakinada"
-        }
-    )
+    # Seed 8+ AVAILABLE Vehicle Units for Vizag Branch
+    for i in range(1, 9):
+        v_model = model_watts if i % 2 == 1 else model_luna
+        v_color = "Red" if i % 2 == 1 else "Black"
+        VehicleUnit.objects.get_or_create(
+            vin_number=f"KVRVIN2026VZG{i:02d}",
+            defaults={
+                "model": v_model,
+                "branch": branch_vizag,
+                "showroom": showroom_vizag,
+                "location": location_vizag,
+                "motor_number": f"MTR-VZG-{100+i}",
+                "chassis_number": f"CHS-VZG-{200+i}",
+                "color": v_color,
+                "purchase_date": date(2026, 7, i),
+                "stock_status": "available",
+                "assigned_battery": f"BATT-VZG-{300+i}"
+            }
+        )
 
-    Lead.objects.get_or_create(
-        customer_name="Vizag Future Buyer",
-        contact_number="9876543227",
-        defaults={
-            "interested_vehicle": model_watts,
-            "status": "won",
-            "lead_source": "social_media",
-            "branch": "KVR Motors - Vizag"
-        }
-    )
+    # Seed Leads for Visakhapatnam Branch (10 leads)
+    vsk_lead_names = [
+        "K. V. Subbarao", "P. Sriman", "M. Jagadeesh", "B. Ramesh", "S. Teja",
+        "N. Madhavi", "V. Swathi", "G. Krishna", "K. Naidu", "D. Ravikumar"
+    ]
+    for idx, name in enumerate(vsk_lead_names, start=1):
+        l_status = "new_lead" if idx % 4 == 1 else ("contacted" if idx % 4 == 2 else ("follow_up" if idx % 4 == 3 else "negotiation"))
+        l_source = "walk_in" if idx % 3 == 1 else ("phone" if idx % 3 == 2 else "website")
+        l_model = model_luna if idx % 3 == 1 else (model_dynamo if idx % 3 == 2 else model_watts)
+        Lead.objects.get_or_create(
+            customer_name=name,
+            contact_number=f"9876543{100+idx}",
+            defaults={
+                "interested_vehicle": l_model,
+                "status": l_status,
+                "lead_source": l_source,
+                "assigned_executive": sales_user,
+                "follow_up_date": date(2026, 8, 15 + (idx % 10)),
+                "notes": f"Customer interested in EV for daily commute in Visakhapatnam.",
+                "branch": "KVR Motors - Visakhapatnam"
+            }
+        )
+
+    # Seed Leads for Srikakulam Branch (6 leads)
+    sri_lead_names = ["Srikakulam Buyer 1", "Appala Naidu", "B. Gurunadham", "M. Lakshman", "P. Saraswathi", "R. Mohan"]
+    for idx, name in enumerate(sri_lead_names, start=1):
+        l_status = "new_lead" if idx % 3 == 1 else ("contacted" if idx % 3 == 2 else "negotiation")
+        Lead.objects.get_or_create(
+            customer_name=name,
+            contact_number=f"9876543{200+idx}",
+            defaults={
+                "interested_vehicle": model_luna if idx % 2 == 1 else model_dynamo,
+                "status": l_status,
+                "lead_source": "walk_in",
+                "assigned_executive": sales_user,
+                "follow_up_date": date(2026, 8, 18),
+                "notes": "Enquired for business use in Srikakulam.",
+                "branch": "KVR Motors - Srikakulam"
+            }
+        )
+
+    # Seed Leads for Kakinada Branch (6 leads)
+    kkd_lead_names = ["Kakinada Buyer 1", "V. Raju", "Ch. Venkateshwarlu", "K. Bhavani", "T. Surya", "A. Veerraju"]
+    for idx, name in enumerate(kkd_lead_names, start=1):
+        l_status = "contacted" if idx % 3 == 1 else ("follow_up" if idx % 3 == 2 else "won")
+        Lead.objects.get_or_create(
+            customer_name=name,
+            contact_number=f"9876543{300+idx}",
+            defaults={
+                "interested_vehicle": model_dynamo if idx % 2 == 1 else model_watts,
+                "status": l_status,
+                "lead_source": "reference",
+                "assigned_executive": sales_user,
+                "follow_up_date": date(2026, 8, 20),
+                "notes": "Looking for high range EV in Kakinada.",
+                "branch": "KVR Motors - Kakinada"
+            }
+        )
+
+    # Seed Leads for Vizag Branch (6 leads)
+    vzg_lead_names = ["Vizag Future Buyer 1", "L. Mahesh", "K. Deepika", "P. Bhaskar", "G. Santosh", "M. Anuradha"]
+    for idx, name in enumerate(vzg_lead_names, start=1):
+        l_status = "new_lead" if idx % 3 == 1 else ("follow_up" if idx % 3 == 2 else "negotiation")
+        Lead.objects.get_or_create(
+            customer_name=name,
+            contact_number=f"9876543{400+idx}",
+            defaults={
+                "interested_vehicle": model_watts if idx % 2 == 1 else model_luna,
+                "status": l_status,
+                "lead_source": "social",
+                "assigned_executive": sales_user,
+                "follow_up_date": date(2026, 8, 22),
+                "notes": "Interested in finance options at Vizag branch.",
+                "branch": "KVR Motors - Vizag"
+            }
+        )
 
     # Seed Ledger entries for different branches
     from ledger.models import LedgerEntry
