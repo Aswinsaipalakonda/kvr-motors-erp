@@ -1851,106 +1851,108 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 </button>
               </div>
 
-              {leadsLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#04a700]" />
-                  <span className="text-xs font-semibold text-slate-500">Loading pipeline...</span>
+              {/* Normal List Type Lead Management */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 tracking-tight">Lead Management Catalog</h3>
+                    <p className="text-xs font-semibold text-slate-500">Filter, search, and manage leads for your branch</p>
+                  </div>
+                  
+                  {/* Search Bar */}
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search customer, vehicle, notes..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-full pl-9 pr-4 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                  {[
-                    { key: "enquiry", label: "Enquiry", statuses: ["enquiry"], accent: "#64748b", soft: "bg-slate-50", bar: "bg-slate-400" },
-                    { key: "new_lead", label: "New Lead", statuses: ["new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
-                    { key: "negotiation", label: "Negotiation", statuses: ["negotiation"], accent: "#ea580c", soft: "bg-amber-50/60", bar: "bg-amber-500" },
-                    { key: "won", label: "Won", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
-                    { key: "lost", label: "Lost", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
-                  ].map((col) => {
-                    const filteredLeads = liveLeadsList.filter((lead) => col.statuses.includes(lead.status));
-                    const isDragTarget = dragOverStage === col.key;
-                    return (
-                      <div
-                        key={col.key}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverStage(col.key); }}
-                        onDragLeave={() => setDragOverStage((s) => (s === col.key ? null : s))}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (draggedLeadId != null) moveLeadToStage(draggedLeadId, col.key);
-                          setDraggedLeadId(null);
-                          setDragOverStage(null);
-                        }}
-                        className={`rounded-2xl border flex flex-col min-h-[420px] transition-all duration-200 ${col.soft} ${isDragTarget ? "border-[#04a700] ring-2 ring-[#04a700]/30 scale-[1.01]" : "border-slate-200/70"}`}
-                      >
-                        <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200/70">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.accent }} />
-                            <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide">{col.label}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
-                        </div>
 
-                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y slim-scrollbar max-h-[72vh] min-h-[520px] pr-1.5">
-                          {filteredLeads.length === 0 ? (
-                            <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
-                              {isDragTarget ? "Drop here" : "No leads in stage"}
-                            </div>
-                          ) : (
-                            filteredLeads.map((lead) => (
-                              <div
-                                key={lead.id}
-                                draggable
-                                onDragStart={() => setDraggedLeadId(lead.id)}
-                                onDragEnd={() => { setDraggedLeadId(null); setDragOverStage(null); }}
-                                onClick={() => openEditLead(lead)}
-                                className={`bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all space-y-2 text-left cursor-grab active:cursor-grabbing group ${draggedLeadId === lead.id ? "opacity-40" : ""}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-[#04a700] font-mono">LD-{lead.id}</span>
-                                  <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.lead_source?.replace("_", " ")}</span>
-                                </div>
-                                <h4 className="text-xs font-bold text-slate-800 leading-tight">{lead.customer_name}</h4>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</span>
-                                  <a 
-                                    href={`tel:${lead.contact_number}`} 
-                                    onClick={(e) => e.stopPropagation()} 
-                                    className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" 
-                                    title="Call Customer"
-                                  >
-                                    <Phone className="h-2.5 w-2.5" />
-                                  </a>
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
-                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center gap-2">
-                                  <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || user?.full_name || "Me"}</span>
-                                  {/* Mobile Stage Selector Dropdown (Shown on mobile touch devices where drag-and-drop is awkward) */}
-                                  <select
-                                    value={lead.status}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      moveLeadToStage(lead.id, e.target.value);
-                                    }}
-                                    className="sm:hidden text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
-                                  >
-                                    <option value="enquiry">Enquiry</option>
-                                    <option value="new_lead">New Lead</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="follow_up">Follow Up</option>
-                                    <option value="negotiation">Negotiation</option>
-                                    <option value="won">Won</option>
-                                    <option value="lost">Lost</option>
-                                  </select>
-                                  <span className="hidden sm:inline-block text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
+                {/* Filter Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
+                  {[
+                    { id: "all", label: "All Leads" },
+                    { id: "new_lead", label: "New Lead" },
+                    { id: "enquiry", label: "Enquiry" },
+                    { id: "contacted", label: "Contacted" },
+                    { id: "follow_up", label: "Follow-up" },
+                    { id: "negotiation", label: "Negotiation" },
+                    { id: "won", label: "Won" },
+                    { id: "lost", label: "Lost" },
+                  ].map((filter) => {
+                    const count = filter.id === "all" ? liveLeadsList.length : liveLeadsList.filter(l => l.status === filter.id).length;
+                    return (
+                      <button
+                        key={filter.id}
+                        onClick={() => setSearchQuery(filter.id === "all" ? "" : filter.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                          (searchQuery === filter.id || (filter.id === "all" && !searchQuery))
+                            ? "bg-[#04a700] text-white shadow-sm"
+                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {filter.label} ({count})
+                      </button>
                     );
                   })}
                 </div>
-              )}
+
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                  <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Source", "Followup Date", "Stage State", "Actions"]}>
+                    {leadsLoading ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                            <span>Loading leads registry...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (liveLeadsList.filter(l => !searchQuery || l.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || l.contact_number.includes(searchQuery) || l.status === searchQuery)).length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center">
+                          <EmptyState title="No leads logged" description="Start registering or get assigned leads from supervisor." />
+                        </td>
+                      </tr>
+                    ) : (
+                      liveLeadsList.filter(l => !searchQuery || l.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || l.contact_number.includes(searchQuery) || l.status === searchQuery).map((lead: any) => (
+                        <tr key={lead.id} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">LD-{lead.id}</td>
+                          <td className="py-3.5 px-5 font-bold text-slate-800">{lead.customer_name}</td>
+                          <td className="py-3.5 px-5 font-semibold text-slate-600">
+                            <div className="flex items-center gap-2">
+                              <span>{lead.contact_number}</span>
+                              <a href={`tel:${lead.contact_number}`} className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" title="Call Customer">
+                                <Phone className="h-2.5 w-2.5" />
+                              </a>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-700 font-semibold">{lead.interested_vehicle_name || "—"}</td>
+                          <td className="py-3.5 px-5 text-[10px] font-bold text-slate-500 uppercase">{lead.lead_source?.replace("_", " ")}</td>
+                          <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
+                          <td className="py-3.5 px-5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                              lead.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                              "bg-slate-50 text-slate-650 border border-slate-200"
+                            }`}>
+                              {lead.status_display || lead.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 flex items-center gap-3">
+                            <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-[#04a700] hover:text-emerald-800 cursor-pointer">Edit Lead</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </Table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2002,7 +2004,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               {/* Bookings table */}
               <Table 
                 title="My Active Booking Commitments" 
-                headers={["Booking ID", "Customer Details", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
+                headers={["Booking ID", "Customer Details", "Vehicle Model", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
                 actions={
                   <button 
                     onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); setIsCreateBookingOpen(true); }}
@@ -2014,7 +2016,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               >
                 {bookingsLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                         <span>Loading bookings...</span>
@@ -2023,7 +2025,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   </tr>
                 ) : liveBookingsList.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center">
+                    <td colSpan={9} className="py-8 text-center">
                       <EmptyState title="No Bookings Recorded" description="Advance deposits will display here." />
                     </td>
                   </tr>
@@ -2031,7 +2033,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   liveBookingsList.map((bk) => (
                     <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
                       <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
-                      <td className="py-3 px-4 font-bold text-slate-805">{bk.customer_name}</td>
+                      <td className="py-3 px-4 font-bold text-slate-800">{bk.customer_name}</td>
+                      <td className="py-3 px-4 text-slate-800 font-bold">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
                       <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
                       <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
                       <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
