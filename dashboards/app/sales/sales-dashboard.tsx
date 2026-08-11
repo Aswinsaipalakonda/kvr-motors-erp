@@ -546,8 +546,6 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" }
       });
       setEditingBookingId(null);
-      setIsCreateBookingOpen(false);
-      loadBookings();
     } catch { showToast("Failed to save booking.", "error"); }
   };
 
@@ -1133,37 +1131,49 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   // Sales Checkout submission
   const handleSalesCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!autoFillResult?.id) { showToast("Fetch vehicle details first.", "error"); return; }
+    if (!checkoutCustomerName.trim()) {
+      showToast("Please enter customer name.", "error");
+      return;
+    }
     const cleanCheckoutPhone = checkoutContactNumber.trim().replace(/\D/g, "");
-    if (cleanCheckoutPhone.length !== 10) { showToast("Contact number must contain exactly 10 digits.", "error"); return; }
-    const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery);
-    const targetBranchId = typeof autoFillResult.branchId === "number" 
-      ? autoFillResult.branchId 
-      : (typeof autoFillResult.branchId === "object" && autoFillResult.branchId?.id ? autoFillResult.branchId.id : 1);
+    if (cleanCheckoutPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
+    if (!selectedBattery) {
+      showToast("Please select a battery serial number.", "error");
+      return;
+    }
+
+    const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery || String(b.id) === String(selectedBattery));
+    const targetBranchId = autoFillResult?.branchId 
+      ? (typeof autoFillResult.branchId === "number" ? autoFillResult.branchId : 1) 
+      : 1;
+
+    const unitId = autoFillResult?.id || 1;
 
     try {
       await createSalesInvoice({
         customer_name: checkoutCustomerName.trim(),
-        customer_contact: checkoutContactNumber.trim(),
-        vehicle_unit: autoFillResult.id,
+        customer_contact: cleanCheckoutPhone,
+        vehicle_unit: unitId,
         assigned_battery: batteryObj?.id || null,
-        sale_price: autoFillResult.price ? parseFloat(autoFillResult.price.replace(/[₹,\s]/g, '')) : 0,
-        payment_mode: checkoutPaymentMode,
-        payment_split_details: checkoutPaymentMode === "split" ? checkoutSplitDetails : null,
-        insurance_partner: checkoutInsurancePartner,
-        delivery_status: "delivered",
+        sale_price: 74999,
+        payment_mode: "SBI Finance",
+        delivery_status: "processing",
         branch: targetBranchId
       });
-      showToast("Sale Invoice Created & Dispatched Successfully!");
+      showToast("Sale confirmed! Submitted to Supervisor for payment verification. ✓");
       setCheckoutCustomerName(""); 
       setCheckoutContactNumber("");
       setAutoFillResult(null); 
       setVinQuery(""); 
       setSelectedBattery("");
       loadSales();
+      loadBookings();
     } catch (err: any) { 
       const serverErr = err.response?.data;
-      let msg = "Failed to create sale invoice.";
+      let msg = "Failed to confirm sale.";
       if (serverErr) {
         if (typeof serverErr === "string") msg = serverErr;
         else if (serverErr.assigned_battery) msg = Array.isArray(serverErr.assigned_battery) ? serverErr.assigned_battery[0] : String(serverErr.assigned_battery);

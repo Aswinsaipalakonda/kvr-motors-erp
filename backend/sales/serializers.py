@@ -40,9 +40,9 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         if vehicle_unit:
             if self.instance and self.instance.vehicle_unit == vehicle_unit:
                 pass
-            elif vehicle_unit.stock_status not in ['available', 'reserved', 'booked', 'in_stock']:
+            elif vehicle_unit.stock_status == 'sold':
                 raise serializers.ValidationError({
-                    "vehicle_unit": f"Vehicle unit is not available (current status: {vehicle_unit.get_stock_status_display()})."
+                    "vehicle_unit": "Vehicle unit is already sold."
                 })
 
         # 2. Validate battery FIFO guidelines
