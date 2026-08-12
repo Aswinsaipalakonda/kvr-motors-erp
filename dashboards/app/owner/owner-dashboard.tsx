@@ -8726,7 +8726,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle Model</label>
             <SearchableSelect
               options={(() => {
-                const optionsList: { value: string; label: string }[] = [];
+                const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
                   (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
                 );
@@ -8747,7 +8747,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   Object.values(groups).forEach((g) => {
                     optionsList.push({
                       value: String(m.id),
-                      label: `${mName} - ${g.color} - ${g.battery} (${g.count} Unit${g.count === 1 ? '' : 's'} Available)`,
+                      label: `${mName} (${g.color})`,
+                      sublabel: `Battery: ${g.battery} • ${g.count} Unit${g.count === 1 ? '' : 's'} in Stock`,
                     });
                   });
                 });

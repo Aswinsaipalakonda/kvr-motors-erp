@@ -85,9 +85,16 @@ export default function SearchableSelect({
           disabled ? "opacity-50 cursor-not-allowed bg-slate-100" : ""
         }`}
       >
-        <span className={selectedOption ? "text-slate-800 font-extrabold truncate" : "text-slate-400 font-medium truncate"}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div className="flex flex-col text-left py-0.5 pr-2 overflow-hidden">
+          <span className={selectedOption ? "text-slate-800 font-extrabold text-xs whitespace-normal break-words leading-tight" : "text-slate-400 font-medium text-xs whitespace-normal break-words leading-tight"}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          {selectedOption?.sublabel && (
+            <span className="text-[10px] text-emerald-700 font-extrabold whitespace-normal break-words leading-tight mt-0.5">
+              {selectedOption.sublabel}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 shrink-0 ml-2">
           {selectedOption && (
             <div className="h-4 w-4 rounded-full bg-emerald-100 text-[#04a700] flex items-center justify-center">
@@ -126,7 +133,7 @@ export default function SearchableSelect({
           </div>
 
           {/* Options List */}
-          <div className="max-h-56 overflow-y-auto py-1 divide-y divide-slate-50 scrollbar-thin scrollbar-thumb-slate-200">
+          <div className="max-h-64 overflow-y-auto py-1 divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-200">
             {filteredOptions.length === 0 ? (
               <div className="py-4 text-center text-xs text-slate-400 font-medium">
                 No matching EV models found
@@ -145,9 +152,13 @@ export default function SearchableSelect({
                         : "hover:bg-slate-50 text-slate-700 font-semibold"
                     }`}
                   >
-                    <div className="flex flex-col gap-0.5 truncate pr-2">
-                      <span className="truncate">{opt.label}</span>
-                      {opt.sublabel && <span className="text-[10px] text-slate-400 font-normal truncate">{opt.sublabel}</span>}
+                    <div className="flex flex-col gap-1 pr-2 text-left">
+                      <span className="whitespace-normal break-words leading-snug font-extrabold text-slate-800">{opt.label}</span>
+                      {opt.sublabel && (
+                        <span className="text-[10px] text-emerald-700 font-bold whitespace-normal break-words leading-snug">
+                          {opt.sublabel}
+                        </span>
+                      )}
                     </div>
                     {isSelected && (
                       <div className="h-4 w-4 rounded-full bg-[#04a700] text-white flex items-center justify-center shrink-0">
