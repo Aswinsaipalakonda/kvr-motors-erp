@@ -2646,6 +2646,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     } catch { showToast("Failed to update booking status.", "error"); }
   };
 
+  // --- Log / Edit Battery ---
+  const [locationsList, setLocationsList] = useState<any[]>([]);
+
   // Helper to generate sequential/timestamped battery serial: BATT-YYYY-XXXXX
   const generateAutoBatterySerial = (currentList: any[] = batteriesStock) => {
     const year = new Date().getFullYear();
