@@ -516,6 +516,90 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
+  // Confirm Booking Modal State
+  const [isConfirmBookingModalOpen, setIsConfirmBookingModalOpen] = useState(false);
+  const [confirmBookingItem, setConfirmBookingItem] = useState<any | null>(null);
+  const [confirmCustomerName, setConfirmCustomerName] = useState("");
+  const [confirmContactNumber, setConfirmContactNumber] = useState("");
+  const [confirmVehicleModel, setConfirmVehicleModel] = useState("");
+  const [confirmColorVariant, setConfirmColorVariant] = useState("");
+  const [confirmAdvanceAmount, setConfirmAdvanceAmount] = useState("5000");
+  const [confirmPaymentMode, setConfirmPaymentMode] = useState("Cash");
+  const [confirmSelectedBattery, setConfirmSelectedBattery] = useState("");
+
+  const openConfirmBookingModal = (bk: any) => {
+    setConfirmBookingItem(bk);
+    setConfirmCustomerName(bk.customer_name || "");
+    setConfirmContactNumber(bk.contact_number || "");
+    setConfirmVehicleModel(String(bk.vehicle_model || vehicleModelsList[0]?.id || 1));
+    const modelObj = vehicleModelsList.find((m: any) => String(m.id) === String(bk.vehicle_model));
+    const colors = modelObj?.color_variants || ["Red", "Blue", "White", "Black"];
+    setConfirmColorVariant(colors[0] || "Standard");
+    setConfirmAdvanceAmount(bk.advance_amount ? String(bk.advance_amount) : "5000");
+    setConfirmPaymentMode(bk.payment_mode || "Cash");
+    const availBats = batteriesList.filter((b: any) => b.status === "available" || b.status === "Available");
+    setConfirmSelectedBattery(availBats[0]?.serial_number || "");
+    setIsConfirmBookingModalOpen(true);
+  };
+
+  const handleConfirmBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmCustomerName.trim() || !confirmContactNumber.trim() || !confirmVehicleModel) {
+      showToast("Please fill all required customer and vehicle fields.", "error");
+      return;
+    }
+    const cleanPhone = confirmContactNumber.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
+
+    try {
+      const units = await getVehicleUnits();
+      const modelId = parseInt(confirmVehicleModel, 10);
+      const availUnit = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+
+      if (!availUnit) {
+        showToast("No available vehicle unit in stock inventory for the selected model. Please add stock unit first.", "error");
+        return;
+      }
+
+      const selBat = batteriesList.find((b: any) => b.serial_number === confirmSelectedBattery || String(b.id) === String(confirmSelectedBattery));
+      const advAmt = parseFloat(confirmAdvanceAmount || "0");
+
+      // 1. Create Sales Invoice (processing state for supervisor payment verification)
+      await createSalesInvoice({
+        customer_name: confirmCustomerName.trim(),
+        customer_contact: cleanPhone,
+        vehicle_unit: availUnit.id,
+        assigned_battery: selBat?.id || null,
+        sale_price: 74999,
+        payment_mode: confirmPaymentMode,
+        delivery_status: "processing",
+        branch: availUnit.branch || 1
+      });
+
+      // 2. Update booking status to converted
+      if (confirmBookingItem?.id) {
+        await updateBooking(confirmBookingItem.id, {
+          status: "converted",
+          is_advance_booking: advAmt > 0,
+          advance_amount: advAmt,
+          payment_mode: confirmPaymentMode
+        });
+      }
+
+      showToast("Booking confirmed! Converted to Sale and submitted to Supervisor for payment verification. ✓");
+      setIsConfirmBookingModalOpen(false);
+      setConfirmBookingItem(null);
+      loadSales();
+      loadBookings();
+    } catch (err: any) {
+      console.error("Confirm booking submit error:", err);
+      showToast("Failed to confirm booking and convert to sale.", "error");
+    }
+  };
+
   // Booking CRUD
   const openEditBooking = (bk: any) => {
     setEditingBookingId(bk.id);
@@ -2246,45 +2330,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                           return (
                             <>
                               <button
-                                onClick={async () => {
-                                  setCheckoutCustomerName(bk.customer_name);
-                                  setCheckoutContactNumber(bk.contact_number);
-                                  try {
-                                    const units = await getVehicleUnits();
-                                    const modelId = bk.vehicle_model;
-                                    const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
-                                    const advAmt = parseFloat(bk.advance_amount || 0);
-                                    const isAdvBooking = bk.is_advance_booking === true && advAmt > 0;
-                                    const totalPrice = 74999;
-                                    if (avail) {
-                                      setAutoFillResult({
-                                        id: avail.id,
-                                        modelId: avail.model,
-                                        branchId: avail.branch,
-                                        vin: avail.vin_number || `VIN-${avail.id}`,
-                                        motor: avail.motor_number || `MOT-${avail.id}`,
-                                        chassis: avail.chassis_number || `CHS-${avail.id}`,
-                                        model: avail.model_name || bk.vehicle_model_name || "Kinetic Green E-Luna",
-                                        color: avail.color || "Standard",
-                                        price: totalPrice,
-                                        branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
-                                        status: "Available Stock Unit",
-                                        battery_serial: avail.assigned_battery || "BATT-2026-0001",
-                                        is_advance_booking: isAdvBooking,
-                                        advance_amount: isAdvBooking ? advAmt : 0,
-                                        remaining_balance: isAdvBooking ? Math.max(0, totalPrice - advAmt) : totalPrice,
-                                        payment_mode: bk.payment_mode
-                                      });
-                                    }
-                                  } catch {}
-                                  setActiveTab("sales_checkout");
-                                  if (typeof window !== "undefined") {
-                                    window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
-                                  }
-                                }}
-                                className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
+                                onClick={() => openConfirmBookingModal(bk)}
+                                className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3.5 py-1 rounded-full shadow-sm transition-colors"
                               >
-                                Convert to Sale
+                                Confirm Booking
                               </button>
                               <button
                                 onClick={() => setSelectedBookingInvoicePreview(bk)}
@@ -2774,6 +2823,42 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   )}
                 </Table>
               </div>
+
+              {/* SECTION 3: AVAILABLE BATTERY STOCK INVENTORY */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table 
+                  title="Available Battery Packs Inventory Stock" 
+                  headers={["Battery Serial No", "Chemistry / Model Code", "Capacity", "Purchase Date", "Warranty", "Location", "Stock Status"]}
+                >
+                  {batteriesList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No battery stock items logged.
+                      </td>
+                    </tr>
+                  ) : (
+                    batteriesList.map((bat: any, idx: number) => (
+                      <tr key={bat.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-emerald-700">{bat.serial_number}</td>
+                        <td className="py-3.5 px-5 font-semibold text-slate-700">{bat.battery_code || "LFP-Lithium"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{bat.capacity || "2.0 kWh"}</td>
+                        <td className="py-3.5 px-5 text-slate-500 font-medium">{bat.purchase_date ? new Date(bat.purchase_date).toLocaleDateString() : "—"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-bold">{bat.warranty_years ? `${bat.warranty_years} Years` : "3 Years"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{bat.location_name || "Visakhapatnam Central Godown"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                            bat.status === "available" || bat.status === "Available" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            bat.status === "assigned" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}>
+                            {(bat.status || "Available").toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
             </div>
           )}
           {activeTab === "invoices" && (
@@ -2860,7 +2945,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               options={(() => {
                 const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
-                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK")
                 );
                 vehicleModelsList.forEach((m: any) => {
                   const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));
@@ -2971,7 +3056,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               options={(() => {
                 const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
-                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK")
                 );
                 vehicleModelsList.forEach((m: any) => {
                   const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));
@@ -3099,6 +3184,108 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
 
           <button type="submit" className="w-full py-2.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-4">
             Save Booking
+          </button>
+        </form>
+      </Modal>
+
+      {/* Confirm Booking & Convert to Sale Modal */}
+      <Modal isOpen={isConfirmBookingModalOpen} onClose={() => setIsConfirmBookingModalOpen(false)} title="Confirm Booking & Convert to Sale">
+        <form onSubmit={handleConfirmBookingSubmit} className="space-y-4 text-left">
+          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl space-y-1">
+            <h4 className="text-xs font-black text-emerald-900">Customer Details</h4>
+            <p className="text-xs font-bold text-slate-800">{confirmCustomerName} ({confirmContactNumber})</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Selected Vehicle Model</label>
+              <select
+                value={confirmVehicleModel}
+                onChange={(e) => {
+                  setConfirmVehicleModel(e.target.value);
+                  const m = vehicleModelsList.find((x: any) => String(x.id) === e.target.value);
+                  const cols = m?.color_variants || ["Red", "Blue", "White", "Black"];
+                  setConfirmColorVariant(cols[0] || "Standard");
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+                required
+              >
+                {vehicleModelsList.map((m: any) => (
+                  <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+              <select
+                value={confirmColorVariant}
+                onChange={(e) => setConfirmColorVariant(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+                required
+              >
+                {(() => {
+                  const m = vehicleModelsList.find((x: any) => String(x.id) === String(confirmVehicleModel));
+                  const cols = Array.isArray(m?.color_variants) ? m.color_variants : ["Red", "Blue", "White", "Black"];
+                  return cols.map((c: string) => <option key={c} value={c}>{c}</option>);
+                })()}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Amount Paid (₹)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 5000"
+                value={confirmAdvanceAmount}
+                onChange={(e) => setConfirmAdvanceAmount(e.target.value.replace(/\D/g, ''))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 font-bold outline-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Mode</label>
+              <select
+                value={confirmPaymentMode}
+                onChange={(e) => setConfirmPaymentMode(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+              >
+                <option value="Cash">Cash</option>
+                <option value="UPI / Online">UPI / Online</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="SBI Finance">SBI Finance</option>
+                <option value="HDFC Bank">HDFC Bank</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assign Battery Pack (Available Stock)</label>
+            <select
+              value={confirmSelectedBattery}
+              onChange={(e) => setConfirmSelectedBattery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-extrabold font-mono text-slate-800 outline-none"
+              required
+            >
+              <option value="">Select Available Battery...</option>
+              {batteriesList.filter((b: any) => b.status === "available" || b.status === "Available").map((b: any) => (
+                <option key={b.id || b.serial_number} value={b.serial_number}>
+                  {b.serial_number} ({b.capacity || "Li-ion Battery"})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-2"
+          >
+            ✓ Confirm Booking & Convert to Sale
           </button>
         </form>
       </Modal>

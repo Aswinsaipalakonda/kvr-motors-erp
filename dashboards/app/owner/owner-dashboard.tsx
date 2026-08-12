@@ -22,7 +22,7 @@ import { getBranches, createBranch, updateBranch, getInventoryLocations, getShow
 import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel, updateVehicleModel, createVehicleUnit, updateVehicleUnit, deleteVehicleUnit, lookupVehicleUnit, deleteVehicleModel } from "../services/vehicles";
 import { getLeads, createLead, updateLead, deleteLead } from "../services/leads";
 import { getBookings, createBooking, updateBooking, deleteBooking } from "../services/bookings";
-import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
+import { getSalesInvoices, createSalesInvoice, updateSalesInvoice } from "../services/sales";
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus, updatePurchaseOrder } from "../services/purchases";
 import { getLedgerEntries, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry } from "../services/ledger";
 import { getBranchExpenses, getBranchCashDeposits } from "../services/branchFinance";
@@ -2483,7 +2483,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
 
     // Check if paired vehicle stock is available in stockUnitsList
     const pairedStockAvailable = vehicleUnitsList.some(
-      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock")
     );
 
     const initialStatus = newLead.status && newLead.status !== "new_lead" 
@@ -8845,7 +8845,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               options={(() => {
                 const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
-                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK")
                 );
                 vehicleModelsList.forEach((m: any) => {
                   const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));

@@ -160,19 +160,16 @@ def seed_demo_data():
         print(f"      âœ“ Model: {vm}")
 
     # ------------------------------------------------------------------
-    # 4. Create 10 batteries (5 will be assigned, 5 available)
+    # 4. Create 10 standalone available batteries
     # ------------------------------------------------------------------
-    print("\n[4/5] Creating 10 batteries (5 assigned + 5 available) ...")
+    print("\n[4/5] Creating 10 available batteries in stock ...")
 
-    batteries_assigned_data = [
+    batteries_data = [
         {"serial_number": "BAT-LFP-A001", "battery_code": "LFP-60V20Ah", "capacity": "1.2 kWh"},
         {"serial_number": "BAT-LFP-A002", "battery_code": "LFP-72V24Ah", "capacity": "1.7 kWh"},
         {"serial_number": "BAT-LFP-A003", "battery_code": "LFP-72V30Ah", "capacity": "2.2 kWh"},
         {"serial_number": "BAT-LFP-A004", "battery_code": "LFP-48V20Ah", "capacity": "1.0 kWh"},
         {"serial_number": "BAT-LFP-A005", "battery_code": "LFP-72V36Ah", "capacity": "2.6 kWh"},
-    ]
-
-    batteries_available_data = [
         {"serial_number": "BAT-LFP-B001", "battery_code": "LFP-60V20Ah", "capacity": "1.2 kWh"},
         {"serial_number": "BAT-LFP-B002", "battery_code": "LFP-72V24Ah", "capacity": "1.7 kWh"},
         {"serial_number": "BAT-LFP-B003", "battery_code": "LFP-72V30Ah", "capacity": "2.2 kWh"},
@@ -180,124 +177,38 @@ def seed_demo_data():
         {"serial_number": "BAT-LFP-B005", "battery_code": "LFP-72V36Ah", "capacity": "2.6 kWh"},
     ]
 
-    assigned_batteries = []
-    for b in batteries_assigned_data:
+    for b in batteries_data:
         bat = Battery.objects.create(
             serial_number=b["serial_number"],
             battery_code=b["battery_code"],
             capacity=b["capacity"],
             purchase_date=date(2025, 6, 1),
-            status="assigned",   # will pair with vehicle
-            location=location,
-            supplier="LFP Power India Ltd.",
-            warranty_years=3,
-        )
-        assigned_batteries.append(bat)
-        print(f"      âœ“ Battery (assigned): {bat.serial_number}")
-
-    for b in batteries_available_data:
-        bat = Battery.objects.create(
-            serial_number=b["serial_number"],
-            battery_code=b["battery_code"],
-            capacity=b["capacity"],
-            purchase_date=date(2025, 7, 1),
             status="available",
             location=location,
             supplier="LFP Power India Ltd.",
             warranty_years=3,
         )
-        print(f"      âœ“ Battery (available): {bat.serial_number}")
+        print(f"      [OK] Battery (available): {bat.serial_number}")
 
     # ------------------------------------------------------------------
-    # 5. Create 10 vehicle units
-    #    Units 1-5  â†’ paired with assigned batteries  (stock_status=available)
-    #    Units 6-10 â†’ no battery assigned             (stock_status=available)
+    # 5. Create 10 standalone vehicle units (stock_status=available)
     # ------------------------------------------------------------------
-    print("\n[5/5] Creating 10 vehicle units (5 paired + 5 unpaired) ...")
+    print("\n[5/5] Creating 10 vehicle units in available stock ...")
 
-    paired_units_data = [
-        {
-            "model": vehicle_models[0],  # KVR Spark 60
-            "vin_number": "KVR-VIN-2025-001",
-            "chassis_number": "CHS-KVR-001",
-            "motor_number": "MOT-KVR-001",
-            "color": "Red",
-            "battery": assigned_batteries[0],  # BAT-LFP-A001
-        },
-        {
-            "model": vehicle_models[1],  # KVR Bolt 72
-            "vin_number": "KVR-VIN-2025-002",
-            "chassis_number": "CHS-KVR-002",
-            "motor_number": "MOT-KVR-002",
-            "color": "Black",
-            "battery": assigned_batteries[1],  # BAT-LFP-A002
-        },
-        {
-            "model": vehicle_models[2],  # KVR Thunder Pro
-            "vin_number": "KVR-VIN-2025-003",
-            "chassis_number": "CHS-KVR-003",
-            "motor_number": "MOT-KVR-003",
-            "color": "Matte Black",
-            "battery": assigned_batteries[2],  # BAT-LFP-A003
-        },
-        {
-            "model": vehicle_models[3],  # KVR Glide 48
-            "vin_number": "KVR-VIN-2025-004",
-            "chassis_number": "CHS-KVR-004",
-            "motor_number": "MOT-KVR-004",
-            "color": "Blue",
-            "battery": assigned_batteries[3],  # BAT-LFP-A004
-        },
-        {
-            "model": vehicle_models[4],  # KVR Storm X
-            "vin_number": "KVR-VIN-2025-005",
-            "chassis_number": "CHS-KVR-005",
-            "motor_number": "MOT-KVR-005",
-            "color": "Midnight Blue",
-            "battery": assigned_batteries[4],  # BAT-LFP-A005
-        },
+    all_units_data = [
+        {"model": vehicle_models[0], "vin_number": "KVR-VIN-2025-001", "chassis_number": "CHS-KVR-001", "motor_number": "MOT-KVR-001", "color": "Red"},
+        {"model": vehicle_models[1], "vin_number": "KVR-VIN-2025-002", "chassis_number": "CHS-KVR-002", "motor_number": "MOT-KVR-002", "color": "Black"},
+        {"model": vehicle_models[2], "vin_number": "KVR-VIN-2025-003", "chassis_number": "CHS-KVR-003", "motor_number": "MOT-KVR-003", "color": "Matte Black"},
+        {"model": vehicle_models[3], "vin_number": "KVR-VIN-2025-004", "chassis_number": "CHS-KVR-004", "motor_number": "MOT-KVR-004", "color": "Blue"},
+        {"model": vehicle_models[4], "vin_number": "KVR-VIN-2025-005", "chassis_number": "CHS-KVR-005", "motor_number": "MOT-KVR-005", "color": "Midnight Blue"},
+        {"model": vehicle_models[0], "vin_number": "KVR-VIN-2025-006", "chassis_number": "CHS-KVR-006", "motor_number": "MOT-KVR-006", "color": "Blue"},
+        {"model": vehicle_models[1], "vin_number": "KVR-VIN-2025-007", "chassis_number": "CHS-KVR-007", "motor_number": "MOT-KVR-007", "color": "Silver"},
+        {"model": vehicle_models[2], "vin_number": "KVR-VIN-2025-008", "chassis_number": "CHS-KVR-008", "motor_number": "MOT-KVR-008", "color": "Pearl White"},
+        {"model": vehicle_models[3], "vin_number": "KVR-VIN-2025-009", "chassis_number": "CHS-KVR-009", "motor_number": "MOT-KVR-009", "color": "Grey"},
+        {"model": vehicle_models[4], "vin_number": "KVR-VIN-2025-010", "chassis_number": "CHS-KVR-010", "motor_number": "MOT-KVR-010", "color": "Racing Red"},
     ]
 
-    unpaired_units_data = [
-        {
-            "model": vehicle_models[0],  # KVR Spark 60
-            "vin_number": "KVR-VIN-2025-006",
-            "chassis_number": "CHS-KVR-006",
-            "motor_number": "MOT-KVR-006",
-            "color": "Blue",
-        },
-        {
-            "model": vehicle_models[1],  # KVR Bolt 72
-            "vin_number": "KVR-VIN-2025-007",
-            "chassis_number": "CHS-KVR-007",
-            "motor_number": "MOT-KVR-007",
-            "color": "Silver",
-        },
-        {
-            "model": vehicle_models[2],  # KVR Thunder Pro
-            "vin_number": "KVR-VIN-2025-008",
-            "chassis_number": "CHS-KVR-008",
-            "motor_number": "MOT-KVR-008",
-            "color": "Pearl White",
-        },
-        {
-            "model": vehicle_models[3],  # KVR Glide 48
-            "vin_number": "KVR-VIN-2025-009",
-            "chassis_number": "CHS-KVR-009",
-            "motor_number": "MOT-KVR-009",
-            "color": "Grey",
-        },
-        {
-            "model": vehicle_models[4],  # KVR Storm X
-            "vin_number": "KVR-VIN-2025-010",
-            "chassis_number": "CHS-KVR-010",
-            "motor_number": "MOT-KVR-010",
-            "color": "Racing Red",
-        },
-    ]
-
-    for u in paired_units_data:
-        bat = u["battery"]
+    for u in all_units_data:
         unit = VehicleUnit.objects.create(
             model=u["model"],
             branch=branch,
@@ -311,30 +222,9 @@ def seed_demo_data():
             purchase_invoice_number=f"PO-2025-{u['vin_number'][-3:]}",
             payment_status="success",
             stock_status="available",
-            assigned_battery=bat.serial_number,
-        )
-        # Make sure battery status is 'assigned'
-        bat.status = "assigned"
-        bat.save(update_fields=["status"])
-        print(f"      âœ“ [PAIRED]   {unit.model.model_name} | VIN: {unit.vin_number} â†” Battery: {bat.serial_number}")
-
-    for u in unpaired_units_data:
-        unit = VehicleUnit.objects.create(
-            model=u["model"],
-            branch=branch,
-            showroom=showroom,
-            location=location,
-            vin_number=u["vin_number"],
-            chassis_number=u["chassis_number"],
-            motor_number=u["motor_number"],
-            color=u["color"],
-            purchase_date=date(2025, 8, 5),
-            purchase_invoice_number=f"PO-2025-{u['vin_number'][-3:]}",
-            payment_status="success",
-            stock_status="available",
             assigned_battery=None,
         )
-        print(f"      âœ“ [UNPAIRED] {unit.model.model_name} | VIN: {unit.vin_number}  (ready to pair)")
+        print(f"      [OK] [AVAILABLE] {unit.model.model_name} | VIN: {unit.vin_number} (Color: {unit.color})")
 
     # ------------------------------------------------------------------
     # Summary

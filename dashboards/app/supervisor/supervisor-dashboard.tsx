@@ -24,7 +24,7 @@ import { getVehicleBrands, getVehicleModels, getVehicleUnits, createVehicleModel
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { getUsers } from "../services/users";
 import { getBookings, createBooking, updateBooking } from "../services/bookings";
-import { getSalesInvoices, updateSalesInvoice } from "../services/sales";
+import { getSalesInvoices, createSalesInvoice, updateSalesInvoice } from "../services/sales";
 import { getBatteries, createBattery, updateBattery, deleteBattery, getFifoOverrides, updateFifoOverride } from "../services/batteries";
 import { getAttendanceLogs, verifyAttendance, AttendanceRecord } from "../services/attendance";
 
@@ -875,7 +875,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     const vId = parseInt(newLead.interested_vehicle);
     // Check if paired vehicle stock is available in stockUnitsList
     const pairedStockAvailable = vehicleUnitsList.some(
-      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock")
     );
 
     const initialStatus = newLead.status && newLead.status !== "new_lead" 
@@ -931,6 +931,88 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       loadLeads();
     } catch {
       showToast("Failed to assign lead.", "error");
+    }
+  };
+
+  // Confirm Booking Modal State
+  const [isConfirmBookingModalOpen, setIsConfirmBookingModalOpen] = useState(false);
+  const [confirmBookingItem, setConfirmBookingItem] = useState<any | null>(null);
+  const [confirmCustomerName, setConfirmCustomerName] = useState("");
+  const [confirmContactNumber, setConfirmContactNumber] = useState("");
+  const [confirmVehicleModel, setConfirmVehicleModel] = useState("");
+  const [confirmColorVariant, setConfirmColorVariant] = useState("");
+  const [confirmAdvanceAmount, setConfirmAdvanceAmount] = useState("5000");
+  const [confirmPaymentMode, setConfirmPaymentMode] = useState("Cash");
+  const [confirmSelectedBattery, setConfirmSelectedBattery] = useState("");
+
+  const openConfirmBookingModal = (bk: any) => {
+    setConfirmBookingItem(bk);
+    setConfirmCustomerName(bk.customer_name || "");
+    setConfirmContactNumber(bk.contact_number || "");
+    setConfirmVehicleModel(String(bk.vehicle_model || vehicleModelsList[0]?.id || 1));
+    const modelObj = vehicleModelsList.find((m: any) => String(m.id) === String(bk.vehicle_model));
+    const colors = modelObj?.color_variants || ["Red", "Blue", "White", "Black"];
+    setConfirmColorVariant(colors[0] || "Standard");
+    setConfirmAdvanceAmount(bk.advance_amount ? String(Math.round(parseFloat(bk.advance_amount))) : "5000");
+    setConfirmPaymentMode(bk.payment_mode || "Cash");
+    const availBats = batteriesStock.filter((b: any) => b.rawStatus === "available" || b.status === "Available" || b.status === "available");
+    setConfirmSelectedBattery(availBats[0]?.serial || "");
+    setIsConfirmBookingModalOpen(true);
+  };
+
+  const handleConfirmBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmCustomerName.trim() || !confirmContactNumber.trim() || !confirmVehicleModel) {
+      showToast("Please fill required customer and vehicle fields.", "error");
+      return;
+    }
+    const cleanPhone = confirmContactNumber.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
+
+    try {
+      const units = await getVehicleUnits();
+      const modelId = parseInt(confirmVehicleModel, 10);
+      const availUnit = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+
+      if (!availUnit) {
+        showToast("No available vehicle unit in stock inventory for selected model.", "error");
+        return;
+      }
+
+      const selBat = batteriesStock.find((b: any) => b.serial === confirmSelectedBattery || String(b.id) === String(confirmSelectedBattery));
+      const advAmt = parseFloat(confirmAdvanceAmount || "0");
+
+      await createSalesInvoice({
+        customer_name: confirmCustomerName.trim(),
+        customer_contact: cleanPhone,
+        vehicle_unit: availUnit.id,
+        assigned_battery: selBat?.id || null,
+        sale_price: 74999,
+        payment_mode: confirmPaymentMode,
+        delivery_status: "processing",
+        branch: availUnit.branch || 1
+      });
+
+      if (confirmBookingItem?.id) {
+        await updateBooking(confirmBookingItem.id, {
+          status: "converted",
+          is_advance_booking: advAmt > 0,
+          advance_amount: advAmt,
+          payment_mode: confirmPaymentMode
+        });
+      }
+
+      showToast("Booking confirmed! Converted to Sale and placed in Pending Sales queue. ✓");
+      setIsConfirmBookingModalOpen(false);
+      setConfirmBookingItem(null);
+      loadSales();
+      loadBookings();
+    } catch (err: any) {
+      console.error("Supervisor confirm booking error:", err);
+      showToast("Failed to confirm booking.", "error");
     }
   };
 
@@ -2591,24 +2673,25 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           {/* TAB 4: SALES MONITORING */}
           {activeTab === "sales" && (
             <div className="space-y-6">
-              <Table title="Showroom Daily Sales Monitoring Ledger" headers={["Invoice Ref", "Customer Name", "Contact", "Vehicle Model", "Sale Price", "Payment Mode", "Delivery Status", "Actions"]}>
+              {/* SECTION 1: PENDING SALES QUEUE */}
+              <Table title="⏳ Pending Sales Verification Queue" headers={["Invoice Ref", "Customer Name", "Contact", "Vehicle Model", "Sale Price", "Payment Mode", "Delivery Status", "Actions"]}>
                 {salesInvoicesLoading ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
-                        <span>Loading sales records...</span>
+                        <span>Loading pending sales...</span>
                       </div>
                     </td>
                   </tr>
-                ) : salesInvoices.length === 0 ? (
+                ) : salesInvoices.filter(inv => inv.delivery_status !== "delivered" && inv.delivery_status !== "completed").length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center">
-                      <EmptyState title="No Sales Invoices" description="No invoices registered yet." />
+                      <EmptyState title="No Pending Sales" description="All sales orders have been verified and delivered!" />
                     </td>
                   </tr>
                 ) : (
-                  salesInvoices.map((inv) => (
+                  salesInvoices.filter(inv => inv.delivery_status !== "delivered" && inv.delivery_status !== "completed").map((inv) => (
                     <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">{inv.invoice_number || `INV-${inv.id}`}</td>
                       <td className="py-3.5 px-5 font-bold text-slate-800">{inv.customer_name}</td>
@@ -2618,56 +2701,15 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                       <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
                       <td className="py-3.5 px-5">
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          inv.delivery_status === "delivered" || inv.delivery_status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                           inv.delivery_status === "ready" || inv.delivery_status === "sold" ? "bg-blue-50 text-blue-700 border border-blue-200" :
                           "bg-amber-50 text-amber-700 border border-amber-200"
                         }`}>
-                          {inv.delivery_status === "delivered" || inv.delivery_status === "completed" ? "Completed (Delivered)" :
-                           inv.delivery_status === "ready" || inv.delivery_status === "sold" ? "Sold (Awaiting Delivery)" :
+                          {inv.delivery_status === "ready" || inv.delivery_status === "sold" ? "Checked Out (Ready for Delivery)" :
                            "Pending Payment Verification"}
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        {inv.delivery_status === "delivered" ? (
-                          <div className="flex items-center gap-2 inline-flex">
-                            <button
-                              onClick={() => openVerificationModal(inv)}
-                              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                            >
-                              Edit / Proof
-                            </button>
-                            <button
-                              onClick={() => handlePrintSalesInvoice(inv)}
-                              className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                            >
-                              <Printer className="h-3 w-3" /> Print Invoice
-                            </button>
-                            <a
-                              href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(inv.customer_contact)}&text=${encodeURIComponent(
-                                `*KVR MOTORS - SALES INVOICE RECEIPT*\n` +
-                                `=============================\n` +
-                                `*Invoice Ref:* ${inv.invoice_number || ('INV-' + inv.id)}\n` +
-                                `*Customer:* ${inv.customer_name}\n` +
-                                `*Phone:* ${inv.customer_contact}\n` +
-                                `-----------------------------\n` +
-                                `*Vehicle:* ${inv.model_name || ""}\n` +
-                                `*Color:* ${inv.vehicle_color || "N/A"}\n` +
-                                `*Battery:* ${inv.battery_type || inv.battery_serial || "N/A"}\n` +
-                                `-----------------------------\n` +
-                                `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
-                                `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
-                                `*Status:* Verified & Sold\n` +
-                                `=============================\n` +
-                                `Thank you for purchasing with KVR Motors!`
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] text-emerald-650 hover:text-emerald-800 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                            >
-                              <MessageSquare className="h-3 w-3" /> WhatsApp
-                            </a>
-                          </div>
-                        ) : inv.delivery_status === "ready" || inv.delivery_status === "sold" ? (
+                        {inv.delivery_status === "ready" || inv.delivery_status === "sold" ? (
                           <div className="flex items-center gap-2 inline-flex">
                             <button
                               onClick={() => openVerificationModal(inv)}
@@ -2692,6 +2734,73 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                             </button>
                           </div>
                         )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </Table>
+
+              {/* SECTION 2: COMPLETED SALES */}
+              <Table title="✅ Completed Sales & Delivered Invoices" headers={["Invoice Ref", "Customer Name", "Contact", "Vehicle Model", "Sale Price", "Payment Mode", "Delivery Status", "Actions"]}>
+                {salesInvoices.filter(inv => inv.delivery_status === "delivered" || inv.delivery_status === "completed").length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      No completed sales recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  salesInvoices.filter(inv => inv.delivery_status === "delivered" || inv.delivery_status === "completed").map((inv) => (
+                    <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3.5 px-5 font-mono font-bold text-emerald-600">{inv.invoice_number || `INV-${inv.id}`}</td>
+                      <td className="py-3.5 px-5 font-bold text-slate-800">{inv.customer_name}</td>
+                      <td className="py-3.5 px-5 text-slate-600 font-semibold">{inv.customer_contact}</td>
+                      <td className="py-3.5 px-5 text-slate-700 font-semibold">{inv.model_name}</td>
+                      <td className="py-3.5 px-5 font-bold text-emerald-600">₹ {parseFloat(inv.sale_price).toLocaleString("en-IN")}</td>
+                      <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
+                      <td className="py-3.5 px-5">
+                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Sale Completed (Delivered)
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 whitespace-nowrap">
+                        <div className="flex items-center gap-2 inline-flex">
+                          <button
+                            onClick={() => openVerificationModal(inv)}
+                            className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                          >
+                            Edit / Proof
+                          </button>
+                          <button
+                            onClick={() => handlePrintSalesInvoice(inv)}
+                            className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                          >
+                            <Printer className="h-3 w-3" /> Print Invoice
+                          </button>
+                          <a
+                            href={`https://api.whatsapp.com/send?phone=${formatWhatsAppPhone(inv.customer_contact)}&text=${encodeURIComponent(
+                              `*KVR MOTORS - SALES INVOICE RECEIPT*\n` +
+                              `=============================\n` +
+                              `*Invoice Ref:* ${inv.invoice_number || ('INV-' + inv.id)}\n` +
+                              `*Customer:* ${inv.customer_name}\n` +
+                              `*Phone:* ${inv.customer_contact}\n` +
+                              `-----------------------------\n` +
+                              `*Vehicle:* ${inv.model_name || ""}\n` +
+                              `*Color:* ${inv.vehicle_color || "N/A"}\n` +
+                              `*Battery:* ${inv.battery_type || inv.battery_serial || "N/A"}\n` +
+                              `-----------------------------\n` +
+                              `*Total Paid:* ₹${parseFloat(inv.sale_price).toLocaleString("en-IN")}\n` +
+                              `*Payment Mode:* ${inv.payment_mode || "CASH"}\n` +
+                              `*Status:* Verified & Sold\n` +
+                              `=============================\n` +
+                              `Thank you for purchasing with KVR Motors!`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-emerald-650 hover:text-emerald-800 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                          >
+                            <MessageSquare className="h-3 w-3" /> WhatsApp
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -2882,27 +2991,21 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        {bk.status === "pending" && (
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => handleApproveBookingLive(bk.id, "confirmed")}
-                              className="bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-[10px] px-3 py-1 rounded-full cursor-pointer"
+                        <div className="flex items-center gap-2">
+                          {bk.status !== "converted" ? (
+                            <button
+                              onClick={() => openConfirmBookingModal(bk)}
+                              className="bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs px-3.5 py-1 rounded-full cursor-pointer shadow-sm transition-colors"
                             >
-                              Approve
+                              Confirm Booking
                             </button>
-                            <button 
-                              onClick={() => handleApproveBookingLive(bk.id, "cancelled")}
-                              className="text-xs text-rose-600 font-bold cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                        {bk.status !== "pending" && (
-                          <div className="flex items-center gap-3">
-                            <button onClick={() => openEditBooking(bk)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Edit</button>
-                          </div>
-                        )}
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-800 bg-emerald-100 border border-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full cursor-not-allowed">
+                              Converted to Sale
+                            </span>
+                          )}
+                          <button onClick={() => openEditBooking(bk)} className="text-xs text-slate-600 hover:text-slate-900 font-bold cursor-pointer">Edit</button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -3272,7 +3375,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               options={(() => {
                 const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
-                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK")
                 );
                 vehicleModelsList.forEach((m: any) => {
                   const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));
@@ -3803,6 +3906,108 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </div>
         </Modal>
       )}
+
+      {/* Confirm Booking Modal */}
+      <Modal isOpen={isConfirmBookingModalOpen} onClose={() => setIsConfirmBookingModalOpen(false)} title="Confirm Booking & Convert to Sale">
+        <form onSubmit={handleConfirmBookingSubmit} className="space-y-4 text-left">
+          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl space-y-1">
+            <h4 className="text-xs font-black text-emerald-900">Customer Details</h4>
+            <p className="text-xs font-bold text-slate-800">{confirmCustomerName} ({confirmContactNumber})</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Selected Vehicle Model</label>
+              <select
+                value={confirmVehicleModel}
+                onChange={(e) => {
+                  setConfirmVehicleModel(e.target.value);
+                  const m = vehicleModelsList.find((x: any) => String(x.id) === e.target.value);
+                  const cols = m?.color_variants || ["Red", "Blue", "White", "Black"];
+                  setConfirmColorVariant(cols[0] || "Standard");
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+                required
+              >
+                {vehicleModelsList.map((m: any) => (
+                  <option key={m.id} value={m.id}>{m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
+              <select
+                value={confirmColorVariant}
+                onChange={(e) => setConfirmColorVariant(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+                required
+              >
+                {(() => {
+                  const m = vehicleModelsList.find((x: any) => String(x.id) === String(confirmVehicleModel));
+                  const cols = Array.isArray(m?.color_variants) ? m.color_variants : ["Red", "Blue", "White", "Black"];
+                  return cols.map((c: string) => <option key={c} value={c}>{c}</option>);
+                })()}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Advance Amount Paid (₹)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 5000"
+                value={confirmAdvanceAmount}
+                onChange={(e) => setConfirmAdvanceAmount(e.target.value.replace(/\D/g, ''))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 font-bold outline-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Payment Mode</label>
+              <select
+                value={confirmPaymentMode}
+                onChange={(e) => setConfirmPaymentMode(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none"
+              >
+                <option value="Cash">Cash</option>
+                <option value="UPI / Online">UPI / Online</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="SBI Finance">SBI Finance</option>
+                <option value="HDFC Bank">HDFC Bank</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assign Battery Pack (Available Stock)</label>
+            <select
+              value={confirmSelectedBattery}
+              onChange={(e) => setConfirmSelectedBattery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-extrabold font-mono text-slate-800 outline-none"
+              required
+            >
+              <option value="">Select Available Battery...</option>
+              {batteriesStock.filter((b: any) => b.rawStatus === "available" || b.status === "Available" || b.status === "available").map((b: any) => (
+                <option key={b.id || b.serial} value={b.serial}>
+                  {b.serial} ({b.capacity || "Li-ion Battery"})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs rounded-full shadow-md transition-colors cursor-pointer mt-2"
+          >
+            ✓ Confirm Booking & Convert to Sale
+          </button>
+        </form>
+      </Modal>
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>

@@ -206,9 +206,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       is_advance_booking: !!newLead.is_advance_booking,
       advance_amount: newLead.is_advance_booking ? parseFloat(newLead.advance_amount || "5000") : 0,
     };
-    // Check if paired vehicle stock is available in stockUnitsList
     const pairedStockAvailable = vehicleUnitsList.some(
-      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock")
     );
 
     const initialStatus = newLead.status && newLead.status !== "new_lead" 
@@ -249,6 +248,21 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
     setLiveLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)));
     try {
       await updateLead(leadId, { status: newStatus });
+      if (newStatus === "interested" || newStatus === "negotiation" || newStatus === "booked") {
+        try {
+          const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
+          const cleanPhone = (lead.contact_number || "").replace(/\D/g, "");
+          await createBooking({
+            customer_name: lead.customer_name,
+            contact_number: cleanPhone.length === 10 ? cleanPhone : "9876543210",
+            vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
+            advance_amount: lead.advance_amount ? parseFloat(String(lead.advance_amount)) : 0,
+            is_advance_booking: !!lead.is_advance_booking,
+            payment_mode: "Cash",
+            status: "pending",
+          });
+        } catch (e) { console.log("Auto booking creation info:", e); }
+      }
       showToast(`Lead stage updated to ${newStatus.replace("_", " ")}.`);
     } catch {
       setLiveLeadsList((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: prevStatus } : l)));
@@ -852,7 +866,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               options={(() => {
                 const optionsList: { value: string; label: string; sublabel: string }[] = [];
                 const availableUnits = (vehicleUnitsList || []).filter(
-                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK")
                 );
                 vehicleModelsList.forEach((m: any) => {
                   const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));

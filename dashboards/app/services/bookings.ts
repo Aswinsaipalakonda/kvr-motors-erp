@@ -8,7 +8,9 @@ export interface BookingInput {
   vehicle_unit?: number | null; // VehicleUnit ID
   is_advance_booking?: boolean;
   advance_amount: number;
-  expiry_date: string; // YYYY-MM-DD
+  payment_mode?: string;
+  payment_split_details?: any;
+  expiry_date?: string; // YYYY-MM-DD
   status?: string;
   pdi_verified?: string;
 }
