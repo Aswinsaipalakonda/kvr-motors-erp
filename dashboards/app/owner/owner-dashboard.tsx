@@ -6103,12 +6103,20 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   title="Physical Inventory Stock Units (VIN Registry)" 
                   headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Days in Stock", "Status", "Actions"]}
                   actions={
-                    <button 
-                      onClick={openAddStockUnit}
-                      className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15"
-                    >
-                      <Plus className="h-4 w-4" /> Add Stock Unit
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setIsAddBatteryOpen(true)}
+                        className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-full cursor-pointer shadow-sm transition-colors"
+                      >
+                        <Plus className="h-4 w-4" /> Add Battery
+                      </button>
+                      <button 
+                        onClick={openAddStockUnit}
+                        className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15"
+                      >
+                        <Plus className="h-4 w-4" /> Add Stock Unit
+                      </button>
+                    </div>
                   }
                 >
                   {vehiclesLoading ? (
@@ -8554,14 +8562,32 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
               >
                 <option value="">-- Unassigned (Pair Battery via FIFO) --</option>
-                {batteriesStock
-                  .filter((b) => b.rawStatus === "available" || b.serial === stockUnitForm.assigned_battery)
-                  .sort((a, b) => new Date(a.purDate || 0).getTime() - new Date(b.purDate || 0).getTime())
-                  .map((b, idx) => (
+                {(() => {
+                  const selectedModelObj = vehicleModelsList.find((m) => String(m.id) === String(stockUnitForm.model));
+                  const modelCompat = selectedModelObj?.battery_compatibility ? selectedModelObj.battery_compatibility.toLowerCase().trim() : "";
+                  
+                  const filteredBatts = batteriesStock.filter((b) => {
+                    if (b.rawStatus !== "available" && b.serial !== stockUnitForm.assigned_battery) return false;
+                    if (!modelCompat) return true;
+                    const battCap = (b.capacity || "").toLowerCase().trim();
+                    const battCode = (b.batteryCode || "").toLowerCase().trim();
+                    return modelCompat.includes(battCap) || battCap.includes(modelCompat) || modelCompat.includes(battCode) || battCode.includes(modelCompat);
+                  }).sort((a, b) => new Date(a.purDate || 0).getTime() - new Date(b.purDate || 0).getTime());
+
+                  if (filteredBatts.length === 0) {
+                    return (
+                      <option value="" disabled>
+                        No compatible available batteries found {modelCompat ? `for spec "${selectedModelObj?.battery_compatibility}"` : ""}
+                      </option>
+                    );
+                  }
+
+                  return filteredBatts.map((b, idx) => (
                     <option key={b.id || idx} value={b.serial}>
                       {b.serial} ({b.capacity} | Pur: {b.purDate || "Oldest"}) {idx === 0 ? "★ OLDEST (FIFO Recommended)" : ""}
                     </option>
-                  ))}
+                  ));
+                })()}
               </select>
             </div>
           </div>
