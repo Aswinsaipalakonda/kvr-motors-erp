@@ -56,7 +56,7 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             if self.instance and self.instance.assigned_battery == assigned_battery:
                 pass
             else:
-                if assigned_battery.status not in ['available', 'assigned']:
+                if assigned_battery.status not in ['available', 'assigned', 'sold']:
                     raise serializers.ValidationError({
                         "assigned_battery": f"Selected battery '{assigned_battery.serial_number}' is not active (status: {assigned_battery.get_status_display()})."
                     })

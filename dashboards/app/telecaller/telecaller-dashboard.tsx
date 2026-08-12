@@ -686,16 +686,20 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                 </div>
               </div>
 
+              {/* SECTION 1: AVAILABLE PHYSICAL VEHICLE STOCK */}
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Stock Status"]}>
-                  {vehicleUnitsList.length === 0 ? (
+                <Table 
+                  title="Available Physical Inventory Stock Units" 
+                  headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Assigned Battery", "Stock Status"]}
+                >
+                  {vehicleUnitsList.filter(u => u.stock_status !== "sold" && u.stock_status !== "SOLD" && u.stock_status !== "delivered").length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                        No vehicle stock units found in this branch.
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No available vehicle stock units found in this branch.
                       </td>
                     </tr>
                   ) : (
-                    vehicleUnitsList.map((unit) => (
+                    vehicleUnitsList.filter(u => u.stock_status !== "sold" && u.stock_status !== "SOLD" && u.stock_status !== "delivered").map((unit) => (
                       <tr key={unit.id} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">STK-{unit.id}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name || unit.brand_name ? `${unit.brand_name || ''} ${unit.model_name || ''}`.trim() : `Vehicle #${unit.model}`}</td>
@@ -705,13 +709,48 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                         <td className="py-3.5 px-5 font-bold text-slate-800">
                           <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
                         </td>
+                        <td className="py-3.5 px-5 font-mono text-xs font-bold text-slate-700">{unit.assigned_battery || "—"}</td>
                         <td className="py-3.5 px-5">
                           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                            unit.stock_status === "sold" || unit.stock_status === "SOLD" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                            unit.stock_status === "hold" || unit.stock_status === "HOLD" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            unit.stock_status === "hold" || unit.stock_status === "HOLD" || unit.stock_status === "booked" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                             "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           }`}>
                             {unit.stock_status ? unit.stock_status.toUpperCase() : "AVAILABLE"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+
+              {/* SECTION 2: SOLD VEHICLES REGISTRY */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table 
+                  title="Sold & Delivered Vehicle Stock Registry" 
+                  headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Assigned Battery", "Sale Status"]}
+                >
+                  {vehicleUnitsList.filter(u => u.stock_status === "sold" || u.stock_status === "SOLD" || u.stock_status === "delivered").length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No sold vehicle units logged in this branch.
+                      </td>
+                    </tr>
+                  ) : (
+                    vehicleUnitsList.filter(u => u.stock_status === "sold" || u.stock_status === "SOLD" || u.stock_status === "delivered").map((unit) => (
+                      <tr key={unit.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">STK-{unit.id}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name || unit.brand_name ? `${unit.brand_name || ''} ${unit.model_name || ''}`.trim() : `Vehicle #${unit.model}`}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.vin_number || unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color || "Standard"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
+                        <td className="py-3.5 px-5 font-mono text-xs font-bold text-slate-700">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            {unit.stock_status === "delivered" ? "DELIVERED" : "SOLD"}
                           </span>
                         </td>
                       </tr>

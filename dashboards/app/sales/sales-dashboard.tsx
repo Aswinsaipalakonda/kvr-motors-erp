@@ -1225,10 +1225,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         delivery_status: "processing",
         branch: targetBranchId
       });
-      // Mark matching lead status as 'won' and booking as 'converted' upon final sale completion
+      // Mark matching lead status as 'booked' and booking as 'converted' upon checkout creation (won status is set only after payment verification)
       const matchingLead = liveLeadsList.find(l => l.contact_number === cleanCheckoutPhone || l.customer_name.toLowerCase() === checkoutCustomerName.trim().toLowerCase());
       if (matchingLead) {
-        try { await updateLead(matchingLead.id, { status: "won" }); } catch {}
+        try { await updateLead(matchingLead.id, { status: "booked" }); } catch {}
       }
       const matchingBk = liveBookingsList.find(b => b.contact_number === cleanCheckoutPhone || b.customer_name.toLowerCase() === checkoutCustomerName.trim().toLowerCase());
       if (matchingBk) {
@@ -2456,26 +2456,26 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Model</label>
-                        <input type="text" value={autoFillResult?.model || "Kinetic Green E-Luna"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult?.model || "—"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variant</label>
-                        <input type="text" value={autoFillResult?.color || "Standard"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult?.color || "—"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Base Price</label>
-                        <input type="text" value={autoFillResult?.price ? `₹ ${Number(autoFillResult.price).toLocaleString("en-IN")}` : "₹ 74,999"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult?.price ? `₹ ${Number(autoFillResult.price).toLocaleString("en-IN")}` : "—"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Allocated Location</label>
-                        <input type="text" value={autoFillResult ? `${autoFillResult.branch}` : "KVR Motors - Visakhapatnam"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult ? `${autoFillResult.branch}` : "—"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">VIN / Motor Number</label>
-                        <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : "RESERVED-HOLD (MOT-63214)"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
+                        <input type="text" value={autoFillResult ? `${autoFillResult.vin} (${autoFillResult.motor})` : "—"} className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none" readOnly />
                       </div>
                     </div>
                   </div>
@@ -2488,7 +2488,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     </div>
                     <input 
                       type="text" 
-                      value={autoFillResult?.battery_serial ? `${autoFillResult.battery_serial} (${autoFillResult.battery_type || "Lithium-Ion"})` : selectedBattery || "BAT-2026-0091 (60V 30Ah Lithium Pack - Inward Locked)"} 
+                      value={autoFillResult?.battery_serial ? `${autoFillResult.battery_serial} (${autoFillResult.battery_type || "Lithium-Ion"})` : selectedBattery || "—"} 
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 font-extrabold font-mono outline-none cursor-not-allowed" 
                       readOnly 
                     />
@@ -2680,32 +2680,76 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
             <div className="space-y-6 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-black text-slate-800 tracking-tight">Branch Stock Inventory</h3>
-                  <p className="text-xs font-semibold text-slate-500">Live vehicle stock inventory for your branch</p>
+                  <h3 className="text-base font-black text-slate-800 tracking-tight">Showroom Stock Inventory Management</h3>
+                  <p className="text-xs font-semibold text-slate-500">Live available inventory vs sold vehicles tracking</p>
                 </div>
               </div>
+
+              {/* SECTION 1: AVAILABLE VEHICLE UNITS */}
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <Table headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor No", "Color", "Quantity", "Stock Status"]}>
-                  {liveSalesList.length === 0 && liveBookingsList.length === 0 ? (
+                <Table 
+                  title="Available Physical Inventory Stock Units" 
+                  headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor Code", "Color Variant", "Quantity", "Assigned Battery", "Stock Status"]}
+                >
+                  {vehicleUnitsList.filter((u: any) => u.stock_status !== "sold" && u.stock_status !== "delivered").length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400 font-semibold">
-                        No vehicle stock units listed.
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No available vehicle stock units currently in showroom.
                       </td>
                     </tr>
                   ) : (
-                    liveBookingsList.map((bk, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">STK-{bk.vehicle_unit || bk.id}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-800">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
-                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{bk.vin_number || "RESERVED-HOLD"}</td>
-                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">MOT-10293</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{bk.color || "Standard"}</td>
+                    vehicleUnitsList.filter((u: any) => u.stock_status !== "sold" && u.stock_status !== "delivered").map((unit: any, idx: number) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">STK-{unit.id}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name ? `${unit.brand_name || ''} ${unit.model_name}`.trim() : "Kinetic Green EV"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.vin_number || unit.chassis_number || "RESERVED-HOLD"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.motor_number || "MOT-10293"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color || "Standard"}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-800">
                           <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
                         </td>
+                        <td className="py-3.5 px-5 font-mono text-xs font-bold text-slate-700">{unit.assigned_battery || "—"}</td>
                         <td className="py-3.5 px-5">
-                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            HOLD (BOOKED)
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                            unit.stock_status === "booked" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          }`}>
+                            {unit.stock_status ? unit.stock_status.toUpperCase() : "AVAILABLE"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+              </div>
+
+              {/* SECTION 2: SOLD VEHICLE UNITS */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <Table 
+                  title="Sold & Delivered Vehicle Units Registry" 
+                  headers={["Unit ID", "Model & Brand", "VIN / Chassis No", "Motor Code", "Color Variant", "Quantity", "Assigned Battery", "Sale Status"]}
+                >
+                  {vehicleUnitsList.filter((u: any) => u.stock_status === "sold" || u.stock_status === "delivered").length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No sold vehicle units logged yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    vehicleUnitsList.filter((u: any) => u.stock_status === "sold" || u.stock_status === "delivered").map((unit: any, idx: number) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">STK-{unit.id}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name ? `${unit.brand_name || ''} ${unit.model_name}`.trim() : "Kinetic Green EV"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.vin_number || unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-xs text-slate-600">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color || "Standard"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
+                        <td className="py-3.5 px-5 font-mono text-xs font-bold text-slate-700">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            {unit.stock_status === "delivered" ? "DELIVERED" : "SOLD"}
                           </span>
                         </td>
                       </tr>

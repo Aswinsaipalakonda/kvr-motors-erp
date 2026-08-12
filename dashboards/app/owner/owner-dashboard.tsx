@@ -6677,7 +6677,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   </div>
 
                   <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                    <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Showroom / Branch", "Assigned Exec", "Followup Date", "Stage State", "Actions"]}>
+                    <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Showroom / Branch", "Sales Executive", "Followup Date", "Stage State", "Actions"]}>
                       {leadsLoading ? (
                         <tr>
                           <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
@@ -6708,20 +6708,8 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             </td>
                             <td className="py-3.5 px-5 text-slate-700 font-semibold">{lead.interested_vehicle_name || "—"}</td>
                             <td className="py-3.5 px-5 text-slate-600 font-semibold">{lead.branch_name || lead.showroom_name || "Global"}</td>
-                            <td className="py-3.5 px-5">
-                              <select 
-                                value={lead.assigned_executive || "Unassigned"}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
-                                }}
-                                className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 outline-none cursor-pointer"
-                              >
-                                <option value="Unassigned">Unassigned</option>
-                                {usersList.filter((m: any) => m.role === "sales" || m.role === "telecaller").map((m: any) => (
-                                  <option key={m.id} value={m.id}>{m.full_name || m.username} ({m.role})</option>
-                                ))}
-                              </select>
+                            <td className="py-3.5 px-5 font-bold text-slate-800">
+                              {lead.assigned_executive_name || lead.created_by_name || salesInvoices.find((s: any) => s.customer_contact === lead.contact_number || s.customer_name?.toLowerCase() === lead.customer_name?.toLowerCase())?.executive_name || "Sales Executive"}
                             </td>
                             <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
                             <td className="py-3.5 px-5">
