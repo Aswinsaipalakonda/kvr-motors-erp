@@ -20,7 +20,7 @@ import SearchableSelect from "../components/SearchableSelect";
 import { lookupVehicleUnit, getVehicleModels, getVehicleUnits } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
 import { getLeads, createLead, updateLead } from "../services/leads";
-import { createBooking, getBookings, updateBooking } from "../services/bookings";
+import { createBooking, getBookings, updateBooking, deleteBooking } from "../services/bookings";
 import { createSalesInvoice, getSalesInvoices } from "../services/sales";
 import MelaSubSidebar from "../components/MelaSubSidebar";
 import {
@@ -554,11 +554,12 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   };
 
   const handleCancelBooking = async (bk: any) => {
+    if (!window.confirm(`Are you sure you want to remove booking ${bk.booking_id || bk.customer_name}?`)) return;
     try {
-      await updateBooking(bk.id, { status: "cancelled" });
-      showToast("Booking cancelled.");
+      await deleteBooking(bk.id);
+      showToast("Booking entry removed successfully.");
       loadBookings();
-    } catch { showToast("Failed to cancel booking.", "error"); }
+    } catch { showToast("Failed to remove booking entry.", "error"); }
   };
 
   const formatWhatsAppPhone = (phone: string) => {
@@ -2116,11 +2117,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                             </>
                           );
                         })()}
-                        {bk.status === "pending" && (
-                          <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Cancel</button>
-                        )}
-                        {bk.status === "cancelled" && (
-                          <span className="text-[10px] text-slate-450 font-bold">No actions</span>
+                        {bk.status !== "converted" && (
+                          <button onClick={() => handleCancelBooking(bk)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Remove</button>
                         )}
                       </td>
                     </tr>
