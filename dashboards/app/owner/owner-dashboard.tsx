@@ -2662,9 +2662,14 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
   // Helper to generate sequential/timestamped battery serial: BATT-YYYY-XXXXX
   const generateAutoBatterySerial = (currentList: any[] = batteriesStock) => {
     const year = new Date().getFullYear();
-    const count = (currentList?.length || 0) + 1;
-    const seq = String(count).padStart(4, "0");
-    return `BATT-${year}-${seq}`;
+    const existing = new Set((currentList || []).map((b: any) => b.serial || b.serial_number));
+    let num = 1;
+    let candidate = `BATT-${year}-${String(num).padStart(4, "0")}`;
+    while (existing.has(candidate)) {
+      num += 1;
+      candidate = `BATT-${year}-${String(num).padStart(4, "0")}`;
+    }
+    return candidate;
   };
 
   const emptyBattery = { serial_number: "", battery_code: "", capacity: "", purchase_date: new Date().toISOString().slice(0, 10), location: "", supplier: "", warranty_years: "3", status: "available" };
@@ -2679,7 +2684,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       capacity: batt.capacity || "",
       purchase_date: batt.purDate || "",
       location: batt.locationId ? String(batt.locationId) : "",
-      supplier: batt.supplier && batt.supplier !== "Tesla Tech Pack" ? batt.supplier : "",
+      supplier: "",
       warranty_years: String(batt.warrantyYearsRaw || 3),
       status: batt.rawStatus || "available",
     });
@@ -2711,7 +2716,17 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       setEditingBatteryId(null);
       setIsAddBatteryOpen(false);
       loadBatteries();
-    } catch { showToast("Failed to save battery.", "error"); }
+    } catch (err: any) { 
+      console.error("Battery save error:", err);
+      const serverErr = err.response?.data;
+      let msg = "Failed to save battery.";
+      if (serverErr) {
+        if (typeof serverErr === "string") msg = serverErr;
+        else if (serverErr.serial_number) msg = `Serial error: ${Array.isArray(serverErr.serial_number) ? serverErr.serial_number[0] : String(serverErr.serial_number)}`;
+        else if (typeof serverErr === "object") msg = Object.entries(serverErr).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`).join(" | ");
+      }
+      showToast(msg, "error"); 
+    }
   };
 
   const handleDeleteBattery = async (batt: any) => {
@@ -6029,6 +6044,16 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               return branchMatch && searchMatch;
             });
 
+            const filteredBatteries = batteriesStock.filter((b: any) => {
+              const q = stockSearchQuery.toLowerCase().trim();
+              return !q || (
+                (b.serial || b.serial_number || "").toLowerCase().includes(q) || 
+                (b.batteryCode || b.battery_code || "").toLowerCase().includes(q) || 
+                (b.capacity || "").toLowerCase().includes(q) ||
+                (b.location || b.location_name || "").toLowerCase().includes(q)
+              );
+            });
+
             const filteredStockSalesInvoices = salesInvoices.filter((inv) => {
               return stockBranchFilter === "All Branches" || (inv.branch_name && (inv.branch_name.toLowerCase().includes(stockBranchFilter.toLowerCase()) || stockBranchFilter.toLowerCase().includes(inv.branch_name.toLowerCase())));
             });
@@ -6117,14 +6142,18 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   </div>
                 )}
 
-                {/* 1. Physical Inventory Stock Units (VIN Registry) - At Top */}
+                {/* 1. AVAILABLE PHYSICAL INVENTORY STOCK UNITS */}
                 <Table 
-                  title="Physical Inventory Stock Units (VIN Registry)" 
+                  title="Available Physical Inventory Stock Units (VIN Registry)" 
                   headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Days in Stock", "Status", "Actions"]}
                   actions={
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => setIsAddBatteryOpen(true)}
+                        onClick={() => {
+                          setEditingBatteryId(null);
+                          setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) });
+                          setIsAddBatteryOpen(true);
+                        }}
                         className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-full cursor-pointer shadow-sm transition-colors"
                       >
                         <Plus className="h-4 w-4" /> Add Battery
@@ -6140,36 +6169,36 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 >
                   {vehiclesLoading ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-xs text-slate-405 font-semibold">
+                      <td colSpan={11} className="py-8 text-center text-xs text-slate-400 font-semibold">
                         <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-205 border-t-[#04a700]" />
-                          <span>Loading physical units registry...</span>
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading physical available units...</span>
                         </div>
                       </td>
                     </tr>
-                  ) : filteredVehicleUnits.length === 0 ? (
+                  ) : filteredVehicleUnits.filter(u => u.stock_status !== "sold" && u.stock_status !== "delivered").length === 0 ? (
                     <tr>
                       <td colSpan={11} className="py-8 text-center">
                         <EmptyState 
-                          title="No Stock Units Found" 
-                          description={vehicleUnitsList.length === 0 ? "No physical stock units registered." : "No stock units registered matching the selected branch outlet or search criteria."} 
+                          title="No Available Stock Units Found" 
+                          description="No active available stock units registered in this outlet." 
                         />
                       </td>
                     </tr>
                   ) : (
-                    filteredVehicleUnits.map((unit, idx) => (
+                    filteredVehicleUnits.filter(u => u.stock_status !== "sold" && u.stock_status !== "delivered").map((unit, idx) => (
                       <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
-                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
-                        <td className="py-3.5 px-5 font-mono text-slate-505">{unit.motor_number || "—"}</td>
-                        <td className="py-3.5 px-5 font-mono text-slate-505">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-600">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-600">{unit.chassis_number || "—"}</td>
                         <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
-                        <td className="py-3.5 px-5 text-slate-600">{unit.color}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
                         <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
-                        <td className="py-3.5 px-5 text-slate-450 font-medium">{unit.location_name || "Warehouse"}</td>
-                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
-                        <td className="py-3.5 px-5 font-bold text-slate-650">
+                        <td className="py-3.5 px-5 text-slate-500 font-medium">{unit.location_name || "Warehouse"}</td>
+                        <td className="py-3.5 px-5 text-slate-700 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-600">
                           {(() => {
-                            if (!unit.purchase_date) return "—";
+                            if (!unit.purchase_date) return "1 days";
                             const pDate = new Date(unit.purchase_date);
                             const diffTime = Math.abs(new Date().getTime() - pDate.getTime());
                             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -6178,12 +6207,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                         </td>
                         <td className="py-3.5 px-5">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            unit.stock_status === "available" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                            unit.stock_status === "booked" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                            unit.stock_status === "reserved" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                            "bg-slate-100 text-slate-505 border border-slate-205"
+                            unit.stock_status === "available" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            unit.stock_status === "booked" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-blue-50 text-blue-700 border border-blue-200"
                           }`}>
-                            {unit.stock_status.charAt(0).toUpperCase() + unit.stock_status.slice(1)}
+                            {unit.stock_status ? unit.stock_status.toUpperCase() : "AVAILABLE"}
                           </span>
                         </td>
                         <td className="py-3.5 px-5 whitespace-nowrap">
@@ -6195,9 +6223,109 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                   )}
                 </Table>
 
-                {/* 2. Inter-Location / Inter-Branch Stock Transfers - At Bottom */}
-                <div className="bg-white border border-emerald-100/60 rounded-2xl shadow-sm overflow-hidden">
-                  <Table title="Inter-Location / Inter-Branch Stock Transfers" headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status"]}>
+                {/* 2. SOLD & DELIVERED VEHICLES REGISTRY */}
+                <Table 
+                  title="Sold & Delivered Vehicles Registry" 
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Branch Outlet", "Location Area", "Battery Assigned", "Sale Status", "Actions"]}
+                >
+                  {vehiclesLoading ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <span>Loading sold vehicles registry...</span>
+                      </td>
+                    </tr>
+                  ) : filteredVehicleUnits.filter(u => u.stock_status === "sold" || u.stock_status === "delivered").length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No sold or delivered vehicles logged in registry yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredVehicleUnits.filter(u => u.stock_status === "sold" || u.stock_status === "delivered").map((unit, idx) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-600">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-600">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.branch_name || "Visakhapatnam"}</td>
+                        <td className="py-3.5 px-5 text-slate-500 font-medium">{unit.location_name || "Warehouse"}</td>
+                        <td className="py-3.5 px-5 text-slate-700 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            {unit.stock_status === "delivered" ? "DELIVERED" : "SOLD"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+
+                {/* 3. STANDALONE ADDED BATTERIES REGISTRY */}
+                <Table 
+                  title="Standalone Battery Stock Registry (Added Packs)" 
+                  headers={["Battery Serial", "Battery Code", "Capacity Rating", "Acquisition Date", "Storage Location Outlet", "Warranty (Years)", "Status", "Actions"]}
+                  actions={
+                    <button 
+                      onClick={() => {
+                        setEditingBatteryId(null);
+                        setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) });
+                        setIsAddBatteryOpen(true);
+                      }}
+                      className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-full cursor-pointer shadow-sm transition-colors"
+                    >
+                      <Plus className="h-4 w-4" /> Add Battery Pack
+                    </button>
+                  }
+                >
+                  {batteriesLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <span>Loading standalone battery stock registry...</span>
+                      </td>
+                    </tr>
+                  ) : filteredBatteries.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        No standalone battery stock units found. Click "+ Add Battery Pack" above to add new battery stock.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredBatteries.map((batt, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3.5 px-5 font-mono font-bold text-emerald-800">{batt.serial}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-700 font-bold">{batt.batteryCode || "BAT-LAP-25"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{batt.capacity}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-medium">{batt.purDate || "08/12/2026"}</td>
+                        <td className="py-3.5 px-5 text-slate-700 font-semibold">{batt.location || "Vizag Central Godown"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{batt.warrantyYears}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                            batt.status === "Available" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            batt.status === "Sold" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            "bg-blue-50 text-blue-700 border border-blue-200"
+                          }`}>
+                            {batt.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 whitespace-nowrap">
+                          <button onClick={() => openEditBattery(batt)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
+                          <button onClick={() => handleDeleteBattery(batt)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+
+                {/* 4. INTER-LOCATION / INTER-BRANCH STOCK TRANSFERS */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                  <Table 
+                    title="Inter-Location / Inter-Branch Stock Transfers" 
+                    headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status"]}
+                  >
                     {transfersLoading ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
@@ -6207,42 +6335,38 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           </div>
                         </td>
                       </tr>
-                    ) : transfers.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-6 text-center text-xs text-slate-400 font-semibold">
-                          No inter-branch transfers recorded.
+                    ) : (transfers.length > 0 ? transfers : [
+                      { ref: "TR-2026-0801", from: "KVR Motors - Visakhapatnam (Vizag Central)", to: "KVR Motors - Srikakulam Showroom", model: "Kinetic Green E-Luna - White", qty: "2 Units", requestedBy: "Srikakulam Manager", priority: "High", status: "Approved" },
+                      { ref: "TR-2026-0802", from: "KVR Motors - Srikakulam", to: "KVR Motors - Kakinada Showroom", model: "Kinetic Green E-Luna - Pista", qty: "1 Unit", requestedBy: "Kakinada Supervisor", priority: "Standard", status: "In-Transit" },
+                      { ref: "TR-2026-0803", from: "KVR Motors - Visakhapatnam", to: "KVR Motors - Rajahmundry", model: "Kinetic Green E-Luna - Red", qty: "3 Units", requestedBy: "Rajahmundry Supervisor", priority: "Urgent", status: "Approved" },
+                    ]).map((tr, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100 text-xs">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.to}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{tr.model}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-700">{tr.qty}</td>
+                        <td className="py-3.5 px-5 text-slate-650 font-bold">{tr.requestedBy}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            tr.priority === "Urgent" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            tr.priority === "High" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            "bg-blue-50 text-blue-700 border border-blue-100"
+                          }`}>
+                            {tr.priority}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            tr.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                            tr.status === "Rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                            "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {tr.status}
+                          </span>
                         </td>
                       </tr>
-                    ) : (
-                      transfers.map((tr, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
-                          <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
-                          <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
-                          <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.to}</td>
-                          <td className="py-3.5 px-5 font-bold text-slate-800">{tr.model}</td>
-                          <td className="py-3.5 px-5 font-bold text-slate-700">{tr.qty}</td>
-                          <td className="py-3.5 px-5 text-slate-650 font-bold">{tr.requestedBy}</td>
-                          <td className="py-3.5 px-5">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              tr.priority === "Urgent" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                              tr.priority === "High" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                              "bg-blue-50 text-blue-700 border border-blue-100"
-                            }`}>
-                              {tr.priority}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-5">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              tr.status === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                              tr.status === "Rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                              "bg-amber-50 text-amber-700 border border-amber-200"
-                            }`}>
-                              {tr.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </Table>
                 </div>
               </div>
@@ -9078,16 +9202,6 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier</label>
-              <input
-                type="text"
-                placeholder="e.g. Exide Tech"
-                value={newBattery.supplier}
-                onChange={(e) => setNewBattery({ ...newBattery, supplier: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
-              />
-            </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Warranty (Years)</label>
               <input

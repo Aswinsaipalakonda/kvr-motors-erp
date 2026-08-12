@@ -3519,10 +3519,6 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               {locationsList.length === 0 && <option value="3">Vizag Central Godown</option>}
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier Manufacturer</label>
-            <input type="text" placeholder="e.g. Tesla Tech Pack" value={newBattery.supplier} onChange={(e) => setNewBattery({ ...newBattery, supplier: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none" />
-          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Warranty Period (Years)</label>
