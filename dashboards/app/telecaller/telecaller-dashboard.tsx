@@ -566,13 +566,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
                   {[
                     { id: "all", label: "All Leads" },
-                    { id: "new_lead", label: "New Lead" },
                     { id: "enquiry", label: "Enquiry" },
-                    { id: "contacted", label: "Contacted" },
-                    { id: "follow_up", label: "Follow-up" },
-                    { id: "negotiation", label: "Negotiation" },
-                    { id: "won", label: "Won" },
-                    { id: "lost", label: "Lost" },
+                    { id: "negotiation", label: "Interested (Booking Created)" },
+                    { id: "won", label: "Won (Sale Completed)" },
+                    { id: "lost", label: "Not Interested" },
                   ].map((filter) => {
                     const count = filter.id === "all" ? liveLeadsList.length : liveLeadsList.filter(l => l.status === filter.id).length;
                     return (
@@ -863,22 +860,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Status / Pipeline Stage</label>
-              <select 
-                value={followupStatus} 
-                onChange={(e) => setFollowupStatus(e.target.value)} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none"
-              >
-                <option value="enquiry">Enquiry</option>
-                <option value="new_lead">New Lead</option>
-                <option value="contacted">Contacted</option>
-                <option value="follow_up">Follow-up</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
-              </select>
-            </div>
+
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Next Scheduled Call / Follow-up Date (Future Date Only)</label>

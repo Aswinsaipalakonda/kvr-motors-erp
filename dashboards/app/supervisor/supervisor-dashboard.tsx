@@ -2158,8 +2158,42 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           {/* TAB 2: STOCK (IN & OUT) */}
           {activeTab === "stock" && (
             <div className="space-y-6">
-              <Table title="Pending Internal Stock Transfers Approval" headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status", "Actions"]}>
-                {transfers.map((tr, idx) => (
+              <Table 
+                title="Pending Internal Stock Transfers Approval" 
+                headers={["Transfer Ref", "Source Location", "Target Showroom", "Vehicle Details", "Quantity", "Requested By", "Priority Level", "Approval Status", "Actions"]}
+                actions={
+                  <button
+                    onClick={() => {
+                      const availUnits = vehicleUnitsList.filter(u => u.stock_status === "available");
+                      if (availUnits.length > 0) {
+                        openRequestTransfer(availUnits[0]);
+                      } else {
+                        showToast("No available units to transfer.", "error");
+                      }
+                    }}
+                    className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
+                  >
+                    <Plus className="h-4 w-4" /> Create Transfer
+                  </button>
+                }
+              >
+                {transfersLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                        <span>Loading stock transfers...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : transfers.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center">
+                      <EmptyState title="No Stock Transfers" description="No pending or past stock transfer requests found." />
+                    </td>
+                  </tr>
+                ) : (
+                  transfers.map((tr, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
                     <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{tr.ref}</td>
                     <td className="py-3.5 px-5 text-slate-600 font-semibold">{tr.from}</td>
@@ -2211,7 +2245,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                       )}
                     </td>
                   </tr>
-                ))}
+                )))}
               </Table>
             </div>
           )}
@@ -2637,7 +2671,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                     { id: "won", label: "Won (Sale Completed)" },
                     { id: "lost", label: "Not Interested" },
                   ].map((filter) => {
-                    const count = filter.id === "all" ? leadsList.length : leadsList.filter(l => l.status === filter.id).length;
+                    const count = filter.id === "all" ? leadsList.length : (filter.id === "enquiry" ? leadsList.filter(l => ["enquiry", "new_lead", "contacted", "follow_up"].includes(l.status)).length : leadsList.filter(l => l.status === filter.id).length);
                     return (
                       <button
                         key={filter.id}
@@ -2695,23 +2729,24 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                               className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 outline-none cursor-pointer"
                             >
                               <option value="Unassigned">Unassigned</option>
-                              {usersList.map((m: any) => (
-                                <option key={m.id} value={m.id}>{m.full_name || m.username}</option>
+                              {usersList.filter((m: any) => m.role === "sales" || m.role === "telecaller").map((m: any) => (
+                                <option key={m.id} value={m.id}>{m.full_name || m.username} ({m.role})</option>
                               ))}
                             </select>
                           </td>
                           <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
                           <td className="py-3.5 px-5">
-                            <select
-                              value={lead.status}
-                              onChange={(e) => moveLeadToStage(lead.id, e.target.value)}
-                              className="text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 outline-none cursor-pointer"
-                            >
-                              <option value="enquiry">Enquiry Registered</option>
-                              <option value="negotiation">Interested (Booking Created)</option>
-                              <option value="won">Won (Sale Completed)</option>
-                              <option value="lost">Not Interested</option>
-                            </select>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              lead.status === "negotiation" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                              "bg-slate-50 text-slate-650 border border-slate-200"
+                            }`}>
+                              {lead.status === "won" ? "Sale Completed (Won)" :
+                               lead.status === "negotiation" ? "Interested (Booking Created)" :
+                               lead.status === "lost" ? "Not Interested" :
+                               "Enquiry Registered"}
+                            </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-3">
                             <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-[#04a700] hover:text-emerald-800 cursor-pointer">Edit</button>
@@ -3171,13 +3206,22 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => ({
-                value: String(m.id),
-                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
-              }))}
+              options={vehicleModelsList.map((m) => {
+                const availUnits = vehicleUnitsList.filter(
+                  (u: any) => u.model === m.id && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+                ).length;
+                const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                return {
+                  value: String(m.id),
+                  label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock)`,
+                };
+              }).filter((opt) => {
+                const mId = parseInt(opt.value);
+                return vehicleUnitsList.some((u: any) => u.model === mId && (u.stock_status === "available" || u.stock_status === "in_stock"));
+              })}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
-              placeholder="Select EV Model..."
+              placeholder="Select EV Model (In-Stock Only)..."
               searchPlaceholder="Search EV models by name or brand..."
               required
             />
@@ -3192,15 +3236,12 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage Stage</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
             <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
-              <option value="enquiry">Enquiry</option>
-              <option value="new_lead">New Lead</option>
-              <option value="contacted">Contacted</option>
-              <option value="follow_up">Follow-up</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
+              <option value="enquiry">Enquiry Registered</option>
+              <option value="negotiation">Interested (Booking Created)</option>
+              <option value="won">Won (Sale Completed)</option>
+              <option value="lost">Not Interested</option>
             </select>
           </div>
           <div className="space-y-1.5">
@@ -3212,7 +3253,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
             <input type="date" min={new Date().toISOString().split("T")[0]} value={newLead.follow_up_date} onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Executive / Telecaller</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Sales Executive</label>
             <select 
               value={newLead.assigned_executive || ""} 
               onChange={(e) => setNewLead({ ...newLead, assigned_executive: e.target.value || null })} 
@@ -3220,9 +3261,9 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
             >
               <option value="">Unassigned</option>
               {usersList
-                .filter(u => u.role === "telecaller")
+                .filter(u => u.role === "sales" || u.role === "telecaller")
                 .map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name} (Telecaller)</option>
+                  <option key={u.id} value={u.id}>{u.full_name || u.username} ({u.role === "sales" ? "Sales Executive" : "Telecaller"})</option>
                 ))
               }
             </select>

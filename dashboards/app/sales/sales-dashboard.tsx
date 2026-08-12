@@ -1152,13 +1152,22 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
 
     let unitId = autoFillResult?.id;
     let availableUnitObj: any = null;
+    const modelId = autoFillResult?.modelId;
+
     try {
       const units = await getVehicleUnits();
       if (unitId) {
         availableUnitObj = units.find((u: any) => u.id === unitId && (u.stock_status === "available" || u.stock_status === "in_stock"));
       }
       if (!availableUnitObj) {
-        availableUnitObj = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+        availableUnitObj = units.find((u: any) => 
+          (u.stock_status === "available" || u.stock_status === "in_stock") &&
+          (!modelId || u.model === modelId || String(u.model) === String(modelId))
+        );
+        if (!availableUnitObj) {
+          // Fallback to any available unit if model match is not specified
+          availableUnitObj = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+        }
         if (availableUnitObj) {
           unitId = availableUnitObj.id;
         }
@@ -2120,20 +2129,28 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                   setCheckoutContactNumber(bk.contact_number);
                                   try {
                                     const units = await getVehicleUnits();
-                                    const avail = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                    const modelId = bk.vehicle_model;
+                                    const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                    const advAmt = parseFloat(bk.advance_amount || 0);
+                                    const totalPrice = 74999;
                                     if (avail) {
                                       setAutoFillResult({
                                         id: avail.id,
+                                        modelId: avail.model,
                                         branchId: avail.branch,
                                         vin: avail.vin_number || `VIN-${avail.id}`,
                                         motor: avail.motor_number || `MOT-${avail.id}`,
                                         chassis: avail.chassis_number || `CHS-${avail.id}`,
-                                        model: avail.model_name || "Kinetic Green E-Luna",
+                                        model: avail.model_name || bk.vehicle_model_name || "Kinetic Green E-Luna",
                                         color: avail.color || "Standard",
-                                        price: 74999,
+                                        price: totalPrice,
                                         branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
                                         status: "Available Stock Unit",
-                                        battery_serial: avail.assigned_battery || "BATT-2026-0001"
+                                        battery_serial: avail.assigned_battery || "BATT-2026-0001",
+                                        is_advance_booking: advAmt > 0,
+                                        advance_amount: advAmt,
+                                        remaining_balance: Math.max(0, totalPrice - advAmt),
+                                        payment_mode: bk.payment_mode
                                       });
                                     }
                                   } catch {}
@@ -2299,7 +2316,33 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     </div>
                   </div>
 
-                  {/* Vehicle details populated by Auto-fill */}
+                  {/* Advance Booking Calculation Notice Banner */}
+                  {autoFillResult?.is_advance_booking && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wide flex items-center gap-1.5">
+                          ⭐ Advance Booking Converted
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                          {autoFillResult.payment_mode || "Advance Paid"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+                        <div>
+                          <span className="text-[10px] text-amber-600 block font-semibold">Total Price:</span>
+                          <span className="font-extrabold text-slate-800">₹ {Number(autoFillResult.price || 74999).toLocaleString("en-IN")}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-amber-600 block font-semibold">Advance Paid:</span>
+                          <span className="font-extrabold text-emerald-700">₹ {Number(autoFillResult.advance_amount).toLocaleString("en-IN")}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-amber-600 block font-semibold">Remaining Due:</span>
+                          <span className="font-extrabold text-rose-700">₹ {Number(autoFillResult.remaining_balance).toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
                     <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Vehicle Unit Allocation Details</span>
                     

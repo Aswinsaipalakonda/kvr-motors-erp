@@ -6725,12 +6725,9 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                                     className="sm:hidden text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
                                   >
                                     <option value="enquiry">Enquiry</option>
-                                    <option value="new_lead">New Lead</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="follow_up">Follow Up</option>
-                                    <option value="negotiation">Negotiation</option>
+                                    <option value="negotiation">Interested</option>
                                     <option value="won">Won</option>
-                                    <option value="lost">Lost</option>
+                                    <option value="lost">Not Interested</option>
                                   </select>
                                   <span className="hidden sm:inline-block text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </div>
@@ -8756,13 +8753,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 onChange={(e) => setNewLead({ ...newLead, status: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
               >
-                <option value="enquiry">Enquiry</option>
-                <option value="new_lead">New Lead</option>
-                <option value="contacted">Contacted</option>
-                <option value="follow_up">Follow-up</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
+                <option value="enquiry">Enquiry Registered</option>
+                <option value="negotiation">Interested (Booking Created)</option>
+                <option value="won">Won (Sale Completed)</option>
+                <option value="lost">Not Interested</option>
               </select>
             </div>
           </div>
