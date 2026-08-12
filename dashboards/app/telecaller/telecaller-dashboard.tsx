@@ -280,7 +280,18 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
     }
   };
 
-  const handleUpdateToBooking = async (lead: any) => {
+  const handleInterestChoice = async (lead: any, choice: "interested" | "not_interested") => {
+    if (choice === "not_interested") {
+      try {
+        await updateLead(lead.id, { status: "lost", lost_reason: "Customer not interested during telecall" });
+        showToast("Lead marked as Not Interested (Lost).");
+        loadLeadsData();
+      } catch (err: any) {
+        showToast("Failed to update lead status.", "error");
+      }
+      return;
+    }
+
     try {
       const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
       const cleanPhone = (lead.contact_number || "").replace(/\D/g, "");
@@ -292,13 +303,13 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         status: "pending",
       });
-      // Mark lead as won (or enquiry) to reflect successful conversion to advance booking
-      await updateLead(lead.id, { status: "won" });
-      showToast(`Lead updated to Booking! Forwarded to Sales Executive desk.`);
+      // Set lead status to negotiation/contacted so it remains active until sale completion
+      await updateLead(lead.id, { status: "negotiation" });
+      showToast(`Lead marked as Interested! Forwarded to Sales Executive & Supervisor desk.`);
       loadLeadsData();
     } catch (err: any) {
       console.error("Promote to booking error:", err);
-      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to promote lead to booking.";
+      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to convert lead to booking.";
       showToast(msg, "error");
     }
   };
@@ -629,12 +640,18 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                           <td className="py-3.5 px-5 flex items-center gap-2">
                             {lead.status !== "lost" && lead.status !== "won" && lead.status !== "booked" && (
                               <>
-                                <button 
-                                  onClick={() => handleUpdateToBooking(lead)} 
-                                  className="inline-flex items-center gap-1 text-[11px] font-extrabold text-white bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
+                                <select
+                                  defaultValue=""
+                                  onChange={(e) => {
+                                    const val = e.target.value as "interested" | "not_interested";
+                                    if (val) handleInterestChoice(lead, val);
+                                  }}
+                                  className="text-[11px] font-extrabold text-[#04a700] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full shadow-sm cursor-pointer outline-none transition-colors"
                                 >
-                                  Update to Booking
-                                </button>
+                                  <option value="" disabled>Select Interest...</option>
+                                  <option value="interested">⚡ Interested (Create Booking)</option>
+                                  <option value="not_interested">❌ Not Interested</option>
+                                </select>
                                 <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                               </>
                             )}

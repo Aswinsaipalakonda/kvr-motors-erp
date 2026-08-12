@@ -1119,8 +1119,15 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const handleSalesDelivery = async (id: number, status: string) => {
     try {
       await updateSalesInvoice(id, { delivery_status: status });
-      showToast(`Sales invoice marked ${status}.`);
+      const targetSale = salesInvoices.find(s => s.id === id);
+      if (targetSale?.vehicle_unit) {
+        try {
+          await updateVehicleUnit(targetSale.vehicle_unit, { stock_status: "sold" });
+        } catch {}
+      }
+      showToast(`Sales invoice marked as ${status === "delivered" ? "Delivered (Completed Sale)" : status}. Vehicle unit marked SOLD in inventory. ✓`);
       loadSales();
+      loadVehicles();
     } catch {
       showToast("Failed to update delivery status.", "error");
     }
@@ -2504,19 +2511,38 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                       <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
                       <td className="py-3.5 px-5">
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                          inv.delivery_status === "delivered" || inv.delivery_status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                          inv.delivery_status === "ready" || inv.delivery_status === "sold" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                          "bg-amber-50 text-amber-700 border border-amber-200"
                         }`}>
-                          {inv.delivery_status === "delivered" ? "Verified & Sold" : "Pending Payment Verification"}
+                          {inv.delivery_status === "delivered" || inv.delivery_status === "completed" ? "Completed (Delivered)" :
+                           inv.delivery_status === "ready" || inv.delivery_status === "sold" ? "Sold (Awaiting Delivery)" :
+                           "Pending Payment Verification"}
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        {inv.delivery_status !== "delivered" ? (
+                        {inv.delivery_status !== "delivered" && inv.delivery_status !== "completed" && inv.delivery_status !== "ready" && inv.delivery_status !== "sold" ? (
                           <button 
                             onClick={() => openVerificationModal(inv)} 
                             className="bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
                           >
                             Verify Payment & Close Sale
                           </button>
+                        ) : (inv.delivery_status === "ready" || inv.delivery_status === "sold") ? (
+                          <div className="flex items-center gap-2 inline-flex">
+                            <button
+                              onClick={() => handleSalesDelivery(inv.id, "delivered")}
+                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
+                            >
+                              <Truck className="h-3.5 w-3.5" /> Mark for Delivery (Complete Sale)
+                            </button>
+                            <button
+                              onClick={() => handlePrintSalesInvoice(inv)}
+                              className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            >
+                              <Printer className="h-3 w-3" /> Print Invoice
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2 inline-flex">
                             <button

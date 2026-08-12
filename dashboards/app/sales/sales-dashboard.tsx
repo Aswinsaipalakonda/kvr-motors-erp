@@ -2060,25 +2060,19 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                           const isApproved = bk.status === "confirmed";
                           return (
                             <>
-                              {isApproved ? (
-                                <button
-                                  onClick={() => {
-                                    setCheckoutCustomerName(bk.customer_name);
-                                    setCheckoutContactNumber(bk.contact_number);
-                                    setActiveTab("sales_checkout");
-                                    if (typeof window !== "undefined") {
-                                      window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
-                                    }
-                                  }}
-                                  className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
-                                >
-                                  Convert to Sale
-                                </button>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 font-bold px-2.5 py-1 rounded-full" title="Requires Supervisor/Owner Booking Approval before conversion">
-                                  Pending Approval
-                                </span>
-                              )}
+                              <button
+                                onClick={() => {
+                                  setCheckoutCustomerName(bk.customer_name);
+                                  setCheckoutContactNumber(bk.contact_number);
+                                  setActiveTab("sales_checkout");
+                                  if (typeof window !== "undefined") {
+                                    window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
+                              >
+                                Convert to Sale
+                              </button>
                               <button
                                 onClick={() => setSelectedBookingInvoicePreview(bk)}
                                 className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
