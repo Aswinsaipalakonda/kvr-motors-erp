@@ -3342,8 +3342,28 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial Number</label>
-              <input type="text" placeholder="e.g. BATT-00890" value={newBattery.serial_number} onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none" required />
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial Number</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const year = new Date().getFullYear();
+                    const seq = String((batteriesStock?.length || 0) + 1).padStart(4, "0");
+                    setNewBattery({ ...newBattery, serial_number: `BATT-${year}-${seq}` });
+                  }}
+                  className="text-[9px] font-bold text-[#04a700] hover:underline cursor-pointer"
+                >
+                  ⚡ Auto-Generate
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. BATT-2026-0001"
+                value={newBattery.serial_number || `BATT-${new Date().getFullYear()}-${String((batteriesStock?.length || 0) + 1).padStart(4, "0")}`}
+                onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Code</label>

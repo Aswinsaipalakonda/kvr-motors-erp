@@ -2646,10 +2646,16 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     } catch { showToast("Failed to update booking status.", "error"); }
   };
 
-  // --- Log / Edit Battery ---
-  const [locationsList, setLocationsList] = useState<any[]>([]);
-  const emptyBattery = { serial_number: "", battery_code: "", capacity: "", purchase_date: "", location: "", supplier: "", warranty_years: "3", status: "available" };
-  const [newBattery, setNewBattery] = useState({ ...emptyBattery });
+  // Helper to generate sequential/timestamped battery serial: BATT-YYYY-XXXXX
+  const generateAutoBatterySerial = (currentList: any[] = batteriesStock) => {
+    const year = new Date().getFullYear();
+    const count = (currentList?.length || 0) + 1;
+    const seq = String(count).padStart(4, "0");
+    return `BATT-${year}-${seq}`;
+  };
+
+  const emptyBattery = { serial_number: "", battery_code: "", capacity: "", purchase_date: new Date().toISOString().slice(0, 10), location: "", supplier: "", warranty_years: "3", status: "available" };
+  const [newBattery, setNewBattery] = useState({ ...emptyBattery, serial_number: generateAutoBatterySerial([]) });
   const [editingBatteryId, setEditingBatteryId] = useState<number | null>(null);
 
   const openEditBattery = (batt: any) => {
@@ -2688,7 +2694,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
         await createBattery(payload);
         showToast("Battery logged to stock registry.");
       }
-      setNewBattery({ ...emptyBattery });
+      setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) });
       setEditingBatteryId(null);
       setIsAddBatteryOpen(false);
       loadBatteries();
@@ -8974,17 +8980,26 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       </Modal>
 
       {/* 7. Log Battery Stock */}
-      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"}>
+      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Serial Number</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Serial Number</label>
+                <button
+                  type="button"
+                  onClick={() => setNewBattery({ ...newBattery, serial_number: generateAutoBatterySerial(batteriesStock) })}
+                  className="text-[9px] font-bold text-[#04a700] hover:underline cursor-pointer"
+                >
+                  ⚡ Auto-Generate
+                </button>
+              </div>
               <input
                 type="text"
-                placeholder="e.g. BAT-2026-0091"
-                value={newBattery.serial_number}
+                placeholder="e.g. BATT-2026-0001"
+                value={newBattery.serial_number || generateAutoBatterySerial(batteriesStock)}
                 onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
                 required
               />
             </div>
