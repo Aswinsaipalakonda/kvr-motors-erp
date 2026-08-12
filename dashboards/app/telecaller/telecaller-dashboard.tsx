@@ -202,9 +202,19 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
     };
+    // Check if paired vehicle stock is available in stockUnitsList
+    const pairedStockAvailable = vehicleUnitsList.some(
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+    );
+
+    const initialStatus = newLead.status && newLead.status !== "new_lead" 
+      ? newLead.status 
+      : (pairedStockAvailable ? "enquiry" : "new_lead");
+
     if (!isNaN(vId) && vId > 0) {
       payload.interested_vehicle = vId;
     }
+    payload.status = initialStatus;
     if (user?.id) {
       payload.assigned_executive = user.id;
     }

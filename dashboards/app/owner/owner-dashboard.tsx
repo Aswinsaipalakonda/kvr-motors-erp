@@ -2475,11 +2475,20 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     const vId = parseInt(String(newLead.interested_vehicle), 10);
     const execId = parseInt(String(newLead.assigned_executive), 10);
 
+    // Check if paired vehicle stock is available in stockUnitsList
+    const pairedStockAvailable = vehicleUnitsList.some(
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+    );
+
+    const initialStatus = newLead.status && newLead.status !== "new_lead" 
+      ? newLead.status 
+      : (pairedStockAvailable ? "enquiry" : "new_lead");
+
     const payload: any = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
       lead_source: newLead.lead_source || "walk_in",
-      status: newLead.status || "new_lead",
+      status: initialStatus,
       notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
     };

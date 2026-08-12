@@ -858,12 +858,22 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       showToast("Contact number must contain exactly 10 digits.", "error");
       return;
     }
+    const vId = parseInt(newLead.interested_vehicle);
+    // Check if paired vehicle stock is available in stockUnitsList
+    const pairedStockAvailable = vehicleUnitsList.some(
+      (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+    );
+
+    const initialStatus = newLead.status && newLead.status !== "new_lead" 
+      ? newLead.status 
+      : (pairedStockAvailable ? "enquiry" : "new_lead");
+
     const payload = {
       customer_name: newLead.customer_name.trim(),
       contact_number: newLead.contact_number.trim(),
-      interested_vehicle: parseInt(newLead.interested_vehicle),
+      interested_vehicle: vId,
       lead_source: newLead.lead_source,
-      status: newLead.status,
+      status: initialStatus,
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
       assigned_executive: newLead.assigned_executive ? parseInt(String(newLead.assigned_executive)) : null,
