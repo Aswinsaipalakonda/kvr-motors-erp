@@ -8,6 +8,7 @@ class SalesInvoice(models.Model):
     DELIVERY_CHOICES = (
         ('processing', 'Processing'),
         ('ready', 'Ready for Delivery'),
+        ('sold', 'Sold (Awaiting Delivery)'),
         ('delivered', 'Delivered'),
     )
 

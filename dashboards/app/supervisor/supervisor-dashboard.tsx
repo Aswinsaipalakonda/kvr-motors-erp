@@ -343,7 +343,17 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       loadLeads();
     } catch (err: any) {
       console.error("Payment verification failure:", err);
-      showToast("Failed to verify payment and close sale.", "error");
+      const serverErr = err.response?.data;
+      let msg = "Failed to verify payment and close sale.";
+      if (serverErr) {
+        if (typeof serverErr === "string") msg = serverErr;
+        else if (typeof serverErr === "object") {
+          msg = Object.entries(serverErr)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+            .join(" | ");
+        }
+      }
+      showToast(msg, "error");
     }
   };
 
