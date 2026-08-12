@@ -2632,13 +2632,10 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
                   {[
                     { id: "all", label: "All Leads" },
-                    { id: "new_lead", label: "New Lead" },
                     { id: "enquiry", label: "Enquiry" },
-                    { id: "contacted", label: "Contacted" },
-                    { id: "follow_up", label: "Follow-up" },
-                    { id: "negotiation", label: "Negotiation" },
-                    { id: "won", label: "Won" },
-                    { id: "lost", label: "Lost" },
+                    { id: "negotiation", label: "Interested (Booking Created)" },
+                    { id: "won", label: "Won (Sale Completed)" },
+                    { id: "lost", label: "Not Interested" },
                   ].map((filter) => {
                     const count = filter.id === "all" ? leadsList.length : leadsList.filter(l => l.status === filter.id).length;
                     return (
@@ -2710,13 +2707,10 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                               onChange={(e) => moveLeadToStage(lead.id, e.target.value)}
                               className="text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 outline-none cursor-pointer"
                             >
-                              <option value="enquiry">Enquiry</option>
-                              <option value="new_lead">New Lead</option>
-                              <option value="contacted">Contacted</option>
-                              <option value="follow_up">Follow Up</option>
-                              <option value="negotiation">Negotiation</option>
-                              <option value="won">Won</option>
-                              <option value="lost">Lost</option>
+                              <option value="enquiry">Enquiry Registered</option>
+                              <option value="negotiation">Interested (Booking Created)</option>
+                              <option value="won">Won (Sale Completed)</option>
+                              <option value="lost">Not Interested</option>
                             </select>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-3">

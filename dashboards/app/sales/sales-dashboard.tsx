@@ -1906,13 +1906,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
                   {[
                     { id: "all", label: "All Leads" },
-                    { id: "new_lead", label: "New Lead" },
                     { id: "enquiry", label: "Enquiry" },
-                    { id: "contacted", label: "Contacted" },
-                    { id: "follow_up", label: "Follow-up" },
-                    { id: "negotiation", label: "Negotiation" },
-                    { id: "won", label: "Won" },
-                    { id: "lost", label: "Lost" },
+                    { id: "negotiation", label: "Interested (Booking Created)" },
+                    { id: "won", label: "Won (Sale Completed)" },
+                    { id: "lost", label: "Not Interested" },
                   ].map((filter) => {
                     const count = filter.id === "all" ? liveLeadsList.length : liveLeadsList.filter(l => l.status === filter.id).length;
                     return (
@@ -1967,18 +1964,40 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                           <td className="py-3.5 px-5">
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
                               lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              lead.status === "negotiation" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                               lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                              lead.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                               "bg-slate-50 text-slate-650 border border-slate-200"
                             }`}>
-                              {lead.status_display || lead.status}
+                              {lead.status === "won" ? "Sale Completed (Won)" :
+                               lead.status === "negotiation" ? "Interested (Booking Created)" :
+                               lead.status === "lost" ? "Not Interested (Lost)" :
+                               (lead.status_display || lead.status)}
                             </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-3">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 setCheckoutCustomerName(lead.customer_name);
                                 setCheckoutContactNumber(lead.contact_number);
+                                try {
+                                  const units = await getVehicleUnits();
+                                  const avail = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                  if (avail) {
+                                    setAutoFillResult({
+                                      id: avail.id,
+                                      branchId: avail.branch,
+                                      vin: avail.vin_number || `VIN-${avail.id}`,
+                                      motor: avail.motor_number || `MOT-${avail.id}`,
+                                      chassis: avail.chassis_number || `CHS-${avail.id}`,
+                                      model: avail.model_name || "Kinetic Green E-Luna",
+                                      color: avail.color || "Standard",
+                                      price: 74999,
+                                      branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
+                                      status: "Available Stock Unit",
+                                      battery_serial: avail.assigned_battery || "BATT-2026-0001"
+                                    });
+                                  }
+                                } catch {}
                                 setActiveTab("sales_checkout");
                                 if (typeof window !== "undefined") {
                                   window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
@@ -2096,9 +2115,28 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                           return (
                             <>
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   setCheckoutCustomerName(bk.customer_name);
                                   setCheckoutContactNumber(bk.contact_number);
+                                  try {
+                                    const units = await getVehicleUnits();
+                                    const avail = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                    if (avail) {
+                                      setAutoFillResult({
+                                        id: avail.id,
+                                        branchId: avail.branch,
+                                        vin: avail.vin_number || `VIN-${avail.id}`,
+                                        motor: avail.motor_number || `MOT-${avail.id}`,
+                                        chassis: avail.chassis_number || `CHS-${avail.id}`,
+                                        model: avail.model_name || "Kinetic Green E-Luna",
+                                        color: avail.color || "Standard",
+                                        price: 74999,
+                                        branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
+                                        status: "Available Stock Unit",
+                                        battery_serial: avail.assigned_battery || "BATT-2026-0001"
+                                      });
+                                    }
+                                  } catch {}
                                   setActiveTab("sales_checkout");
                                   if (typeof window !== "undefined") {
                                     window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");

@@ -6642,11 +6642,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                     {[
-                      { key: "enquiry", label: "Enquiry", statuses: ["enquiry"], accent: "#64748b", soft: "bg-slate-50", bar: "bg-slate-400" },
-                      { key: "new_lead", label: "New Lead", statuses: ["new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
-                      { key: "negotiation", label: "Negotiation", statuses: ["negotiation"], accent: "#ea580c", soft: "bg-amber-50/60", bar: "bg-amber-500" },
-                      { key: "won", label: "Won", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
-                      { key: "lost", label: "Lost", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
+                      { key: "enquiry", label: "Enquiry Registered", statuses: ["enquiry", "new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
+                      { key: "negotiation", label: "Interested (Booking Created)", statuses: ["negotiation"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
+                      { key: "won", label: "Won (Sale Completed)", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
+                      { key: "lost", label: "Not Interested", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
                     ].map((col) => {
                       const filteredLeads = searchFilteredLeads.filter((lead) => col.statuses.includes(lead.status));
                     const isDragTarget = dragOverStage === col.key;
