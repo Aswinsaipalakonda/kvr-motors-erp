@@ -8983,7 +8983,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       </Modal>
 
       {/* 7. Log Battery Stock */}
-      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"}>
+      <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery, serial_number: generateAutoBatterySerial(batteriesStock) }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"} maxWidth="2xl">
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-1.5">
@@ -9041,17 +9041,27 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Storage Location</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Storage Location / Branch Outlet</label>
               <select
                 value={newBattery.location}
                 onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold outline-none focus:border-[#04a700]"
                 required
               >
-                <option value="">Select location...</option>
-                {locationsList.map((loc) => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
+                <option value="">Select location or branch godown...</option>
+                {locationsList && locationsList.length > 0 ? (
+                  locationsList.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name} {loc.branch_name ? `(${loc.branch_name})` : ""}
+                    </option>
+                  ))
+                ) : (
+                  branchesList.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} (Main Godown)
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
