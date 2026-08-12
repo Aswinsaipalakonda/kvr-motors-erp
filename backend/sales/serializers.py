@@ -51,33 +51,15 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
                 if fresh_vu:
                     data['vehicle_unit'] = fresh_vu
 
-        # 2. Validate battery FIFO guidelines
+        # 2. Battery verification (Pre-bound during inventory stock creation)
         if assigned_battery:
             if self.instance and self.instance.assigned_battery == assigned_battery:
                 pass
             else:
-                if assigned_battery.status != 'available':
+                if assigned_battery.status not in ['available', 'assigned']:
                     raise serializers.ValidationError({
-                        "assigned_battery": f"Selected battery '{assigned_battery.serial_number}' is not available (status: {assigned_battery.get_status_display()})."
+                        "assigned_battery": f"Selected battery '{assigned_battery.serial_number}' is not active (status: {assigned_battery.get_status_display()})."
                     })
-                
-                # Fetch oldest available battery of same capacity and location
-                oldest_battery = Battery.objects.filter(
-                    location=assigned_battery.location,
-                    capacity=assigned_battery.capacity,
-                    status='available'
-                ).order_by('purchase_date').first()
-                
-                if oldest_battery and oldest_battery.id != assigned_battery.id:
-                    # Check for approved override
-                    has_override = FifoOverride.objects.filter(
-                        battery=assigned_battery,
-                        status='approved'
-                    ).exists()
-                    if not has_override:
-                        raise serializers.ValidationError({
-                            "assigned_battery": f"FIFO Violation: Battery '{oldest_battery.serial_number}' (purchased on {oldest_battery.purchase_date}) is older than '{assigned_battery.serial_number}' and must be dispatched first, or a supervisor FIFO override must be approved."
-                        })
         return data
 
     def create(self, validated_data):

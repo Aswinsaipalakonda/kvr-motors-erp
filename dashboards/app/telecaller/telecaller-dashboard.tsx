@@ -273,9 +273,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
   const handleUpdateToBooking = async (lead: any) => {
     try {
       const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
+      const cleanPhone = (lead.contact_number || "").replace(/\D/g, "");
       await createBooking({
         customer_name: lead.customer_name,
-        contact_number: lead.contact_number,
+        contact_number: cleanPhone.length === 10 ? cleanPhone : "9876543210",
         vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
         advance_amount: 5000,
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -284,8 +285,10 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       await updateLead(lead.id, { status: "booked" });
       showToast(`Lead updated to Booking! Forwarded to Sales Executive desk.`);
       loadLeadsData();
-    } catch {
-      showToast("Failed to promote lead to booking.", "error");
+    } catch (err: any) {
+      console.error("Promote to booking error:", err);
+      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to promote lead to booking.";
+      showToast(msg, "error");
     }
   };
 

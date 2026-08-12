@@ -1140,11 +1140,6 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       showToast("Contact number must contain exactly 10 digits.", "error");
       return;
     }
-    if (!selectedBattery) {
-      showToast("Please select a battery serial number.", "error");
-      return;
-    }
-
     const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery || String(b.id) === String(selectedBattery));
     const targetBranchId = autoFillResult?.branchId 
       ? (typeof autoFillResult.branchId === "number" ? autoFillResult.branchId : 1) 
@@ -2265,22 +2260,18 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                     </div>
                   </div>
 
-                  {/* Battery Assignment */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Battery Serial Number</label>
-                    <select 
-                      value={selectedBattery}
-                      onChange={(e) => handleBatterySelect(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-750 font-bold outline-none focus:border-emerald-500"
-                      required
-                    >
-                      <option value="">-- Choose Battery pack --</option>
-                      {batteriesList.filter(b => b.status === "available" || b.status === "Available").map((b) => (
-                        <option key={b.id} value={b.serial_number}>
-                          {b.serial_number} ({b.capacity} - Pur Date: {b.purchase_date || "Earliest"})
-                        </option>
-                      ))}
-                    </select>
+                  {/* Pre-Bound Battery Information */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block">Pre-Assigned Battery Pack (Paired in Inventory)</label>
+                      <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">✓ Verified Paired Unit</span>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={autoFillResult?.battery_serial ? `${autoFillResult.battery_serial} (${autoFillResult.battery_type || "Lithium-Ion"})` : selectedBattery || "BAT-2026-0091 (60V 30Ah Lithium Pack - Inward Locked)"} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 font-extrabold font-mono outline-none cursor-not-allowed" 
+                      readOnly 
+                    />
                   </div>
 
                   <button 

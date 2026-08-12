@@ -8533,8 +8533,27 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Battery Serial (optional)</label>
-              <input type="text" placeholder="e.g. BAT-2026-0091" value={stockUnitForm.assigned_battery} onChange={(e) => setStockUnitForm({ ...stockUnitForm, assigned_battery: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]" />
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Assigned Battery (FIFO Paired)</label>
+                {batteriesStock && batteriesStock.length > 0 && (
+                  <span className="text-[9px] font-extrabold text-[#04a700]">⚡ FIFO Rule Active</span>
+                )}
+              </div>
+              <select
+                value={stockUnitForm.assigned_battery}
+                onChange={(e) => setStockUnitForm({ ...stockUnitForm, assigned_battery: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-bold font-mono outline-none focus:border-[#04a700]"
+              >
+                <option value="">-- Unassigned (Pair Battery via FIFO) --</option>
+                {batteriesStock
+                  .filter((b) => b.rawStatus === "available" || b.serial === stockUnitForm.assigned_battery)
+                  .sort((a, b) => new Date(a.purDate || 0).getTime() - new Date(b.purDate || 0).getTime())
+                  .map((b, idx) => (
+                    <option key={b.id || idx} value={b.serial}>
+                      {b.serial} ({b.capacity} | Pur: {b.purDate || "Oldest"}) {idx === 0 ? "★ OLDEST (FIFO Recommended)" : ""}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
 
