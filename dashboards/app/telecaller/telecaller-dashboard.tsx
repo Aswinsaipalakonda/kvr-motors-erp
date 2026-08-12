@@ -292,7 +292,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         status: "pending",
       });
-      await updateLead(lead.id, { status: "booked" });
+      // Mark lead as won (or enquiry) to reflect successful conversion to advance booking
+      await updateLead(lead.id, { status: "won" });
       showToast(`Lead updated to Booking! Forwarded to Sales Executive desk.`);
       loadLeadsData();
     } catch (err: any) {
@@ -620,8 +621,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                               lead.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                               "bg-slate-50 text-slate-650 border border-slate-200"
                             }`}>
-                              {lead.status === "booked" ? "Forwarded to Sales Exec" :
-                               lead.status === "won" ? "Won (Sale Completed)" :
+                              {lead.status === "won" ? "Converted to Booking" :
                                lead.status === "lost" ? "Lost" :
                                (lead.status_display || lead.status)}
                             </span>
