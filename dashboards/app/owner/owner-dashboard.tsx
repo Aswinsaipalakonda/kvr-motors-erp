@@ -2533,6 +2533,16 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     }
   };
 
+  const handleAssignLead = async (leadId: number, assignedId: number | null) => {
+    try {
+      await updateLead(leadId, { assigned_executive: assignedId });
+      showToast("Executive assigned successfully.");
+      loadLeads();
+    } catch {
+      showToast("Failed to assign executive.", "error");
+    }
+  };
+
   // --- Record Booking ---
   const [newBooking, setNewBooking] = useState({
     customer_name: "",
@@ -6565,6 +6575,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </div>
             );
           })()}
+          {/* TAB 5: LEADS MANAGEMENT CATALOG */}
           {activeTab === "leads" && (() => {
             const searchFilteredLeads = leadsList.filter((lead) => {
               const q = leadsSearchQuery.toLowerCase().trim();
@@ -6574,17 +6585,17 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 (lead.interested_vehicle_name || "").toLowerCase().includes(q) ||
                 (lead.executive_name || "").toLowerCase().includes(q)
               );
-              const matchesBranch = leadsFilterBranch === "All Branches" || (lead.branch_name && lead.branch_name === leadsFilterBranch);
+              const matchesBranch = leadsFilterBranch === "All Branches" || (lead.branch_name && lead.branch_name === leadsFilterBranch) || (lead.showroom_name && lead.showroom_name === leadsFilterBranch);
               const matchesSource = leadsFilterSource === "All Sources" || (lead.lead_source && lead.lead_source === leadsFilterSource);
               return matchesSearch && matchesBranch && matchesSource;
             });
 
             return (
-              <div className="space-y-5">
+              <div className="space-y-5 text-left">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">Leads Conversion Pipeline</h3>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Drag a card across stages to update its status — changes sync instantly to the database.</p>
+                    <h3 className="text-base font-bold text-slate-800">Leads Management Catalog</h3>
+                    <p className="text-[11px] text-slate-450 font-semibold mt-0.5">Filter, search, assign executives, and manage organization leads.</p>
                   </div>
                   <button 
                     onClick={openAddLead}
@@ -6595,154 +6606,149 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 </div>
 
                 {/* Search & Filter Bar */}
-                <div className="bg-white border border-slate-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                    <Filter className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide shrink-0">Filter Leads:</span>
-                    <select
-                      value={leadsFilterBranch}
-                      onChange={(e) => setLeadsFilterBranch(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
-                    >
-                      <option value="All Branches">All Showrooms & Godowns</option>
-                      {branchesList.map(b => (
-                        <option key={b.id} value={b.name}>{b.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={leadsFilterSource}
-                      onChange={(e) => setLeadsFilterSource(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
-                    >
-                      <option value="All Sources">All Lead Sources</option>
-                      <option value="walk_in">Walk-in</option>
-                      <option value="phone">Phone Enquiry</option>
-                      <option value="website">Website</option>
-                      <option value="referral">Referral</option>
-                      <option value="mela">Mela Campaign</option>
-                    </select>
-                  </div>
-                  <div className="relative w-full sm:w-72">
-                    <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Search Customer, Phone, Vehicle..."
-                      value={leadsSearchQuery}
-                      onChange={(e) => setLeadsSearchQuery(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
-                    />
-                  </div>
-                </div>
-
-                {leadsLoading ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#04a700]" />
-                    <span className="text-xs font-semibold text-slate-500">Loading leads conversion pipeline...</span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                    {[
-                      { key: "enquiry", label: "Enquiry Registered", statuses: ["enquiry", "new_lead", "contacted", "follow_up"], accent: "#2563eb", soft: "bg-blue-50/60", bar: "bg-blue-500" },
-                      { key: "negotiation", label: "Interested (Booking Created)", statuses: ["negotiation"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
-                      { key: "won", label: "Won (Sale Completed)", statuses: ["won"], accent: "#04a700", soft: "bg-emerald-50/60", bar: "bg-[#04a700]" },
-                      { key: "lost", label: "Not Interested", statuses: ["lost"], accent: "#dc2626", soft: "bg-rose-50/50", bar: "bg-rose-500" },
-                    ].map((col) => {
-                      const filteredLeads = searchFilteredLeads.filter((lead) => col.statuses.includes(lead.status));
-                    const isDragTarget = dragOverStage === col.key;
-                    return (
-                      <div
-                        key={col.key}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverStage(col.key); }}
-                        onDragLeave={() => setDragOverStage((s) => (s === col.key ? null : s))}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (draggedLeadId != null) moveLeadToStage(draggedLeadId, col.key);
-                          setDraggedLeadId(null);
-                          setDragOverStage(null);
-                        }}
-                        className={`rounded-2xl border flex flex-col min-h-[420px] transition-all duration-200 ${col.soft} ${isDragTarget ? "border-[#04a700] ring-2 ring-[#04a700]/30 scale-[1.01]" : "border-slate-200/70"}`}
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                      <Filter className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide shrink-0">Filter Leads:</span>
+                      <select
+                        value={leadsFilterBranch}
+                        onChange={(e) => setLeadsFilterBranch(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
                       >
-                        <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200/70">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.accent }} />
-                            <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide">{col.label}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-extrabold">{filteredLeads.length}</span>
-                        </div>
+                        <option value="All Branches">All Showrooms & Godowns</option>
+                        {branchesList.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={leadsFilterSource}
+                        onChange={(e) => setLeadsFilterSource(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#04a700]"
+                      >
+                        <option value="All Sources">All Lead Sources</option>
+                        <option value="walk_in">Walk-in</option>
+                        <option value="phone">Phone Enquiry</option>
+                        <option value="website">Website</option>
+                        <option value="referral">Referral</option>
+                        <option value="mela">Mela Campaign</option>
+                      </select>
+                    </div>
+                    <div className="relative w-full sm:w-72">
+                      <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Search customer, phone, vehicle..."
+                        value={leadsSearchQuery}
+                        onChange={(e) => setLeadsSearchQuery(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-full pl-9 pr-4 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                  </div>
 
-                        <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y slim-scrollbar max-h-[72vh] min-h-[520px] pr-1.5">
-                          {filteredLeads.length === 0 ? (
-                            <div className={`text-[10px] font-semibold text-slate-400 text-center py-10 rounded-xl border-2 border-dashed ${isDragTarget ? "border-[#04a700]/40 text-[#04a700]" : "border-slate-200/70"}`}>
-                              {isDragTarget ? "Drop here" : "No leads in stage"}
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
+                    {[
+                      { id: "all", label: "All Leads" },
+                      { id: "enquiry", label: "Enquiry" },
+                      { id: "negotiation", label: "Interested (Booking Created)" },
+                      { id: "won", label: "Won (Sale Completed)" },
+                      { id: "lost", label: "Not Interested" },
+                    ].map((filter) => {
+                      const count = filter.id === "all" 
+                        ? searchFilteredLeads.length 
+                        : filter.id === "enquiry"
+                          ? searchFilteredLeads.filter(l => ["enquiry", "new_lead", "contacted", "follow_up"].includes(l.status)).length
+                          : searchFilteredLeads.filter(l => l.status === filter.id).length;
+                      return (
+                        <button
+                          key={filter.id}
+                          onClick={() => setLeadsSearchQuery(filter.id === "all" ? "" : filter.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                            (leadsSearchQuery === filter.id || (filter.id === "all" && !leadsSearchQuery))
+                              ? "bg-[#04a700] text-white shadow-sm"
+                              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {filter.label} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Showroom / Branch", "Assigned Exec", "Followup Date", "Stage State", "Actions"]}>
+                      {leadsLoading ? (
+                        <tr>
+                          <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-emerald-600" />
+                              <span>Loading leads registry...</span>
                             </div>
-                          ) : (
-                            filteredLeads.map((lead) => (
-                              <div
-                                key={lead.id}
-                                draggable
-                                onDragStart={() => setDraggedLeadId(lead.id)}
-                                onDragEnd={() => { setDraggedLeadId(null); setDragOverStage(null); }}
-                                onClick={() => openEditLead(lead)}
-                                className={`bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-[#04a700]/40 transition-all space-y-2 text-left cursor-grab active:cursor-grabbing group ${draggedLeadId === lead.id ? "opacity-40" : ""}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-[#04a700] font-mono">LD-{lead.id}</span>
-                                  <span className="text-[8px] font-bold text-slate-400 uppercase bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5">{lead.source_display || lead.lead_source?.replace("_", " ")}</span>
-                                </div>
-                                <h4 className="text-xs font-bold text-slate-800 leading-tight">{lead.customer_name}</h4>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-500 font-semibold leading-snug">{lead.contact_number}</span>
-                                  <a 
-                                    href={`tel:${lead.contact_number}`} 
-                                    onClick={(e) => e.stopPropagation()} 
-                                    className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" 
-                                    title="Call Customer"
-                                  >
-                                    <Phone className="h-2.5 w-2.5" />
-                                  </a>
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-medium leading-snug truncate">{lead.interested_vehicle_name || "—"}</p>
-                                <div className="flex items-center justify-between gap-1 text-[9px] font-bold text-slate-500">
-                                  <span className="flex items-center gap-1 text-slate-600 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase">
-                                    <Building className="h-2.5 w-2.5 text-[#04a700]" /> {lead.branch_name || lead.branch || "Global"}
-                                  </span>
-                                  {lead.follow_up_date && (
-                                    <span className="flex items-center gap-1 text-amber-600">
-                                      <CalendarDays className="h-2.5 w-2.5" /> {lead.follow_up_date}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                                  <span className="text-[9px] text-slate-400 font-bold truncate">{lead.executive_name || "Unassigned"}</span>
-                                  {/* Mobile Stage Selector Dropdown */}
-                                  <select
-                                    value={lead.status}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      moveLeadToStage(lead.id, e.target.value);
-                                    }}
-                                    className="sm:hidden text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none cursor-pointer"
-                                  >
-                                    <option value="enquiry">Enquiry</option>
-                                    <option value="negotiation">Interested</option>
-                                    <option value="won">Won</option>
-                                    <option value="lost">Not Interested</option>
-                                  </select>
-                                  <span className="hidden sm:inline-block text-[9px] font-extrabold text-[#04a700] opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
-                                </div>
+                          </td>
+                        </tr>
+                      ) : (searchFilteredLeads.filter(l => !leadsSearchQuery || l.customer_name.toLowerCase().includes(leadsSearchQuery.toLowerCase()) || l.contact_number.includes(leadsSearchQuery) || l.status === leadsSearchQuery)).length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="py-8 text-center">
+                            <EmptyState title="No leads found" description="No leads logged matching your filter." />
+                          </td>
+                        </tr>
+                      ) : (
+                        searchFilteredLeads.filter(l => !leadsSearchQuery || l.customer_name.toLowerCase().includes(leadsSearchQuery.toLowerCase()) || l.contact_number.includes(leadsSearchQuery) || l.status === leadsSearchQuery).map((lead) => (
+                          <tr key={lead.id} className="hover:bg-slate-50 border-b border-slate-100">
+                            <td className="py-3.5 px-5 font-mono font-bold text-[#04a700]">LD-{lead.id}</td>
+                            <td className="py-3.5 px-5 font-bold text-slate-800">{lead.customer_name}</td>
+                            <td className="py-3.5 px-5 font-semibold text-slate-600">
+                              <div className="flex items-center gap-2">
+                                <span>{lead.contact_number}</span>
+                                <a href={`tel:${lead.contact_number}`} className="inline-flex items-center justify-center p-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#04a700] border border-emerald-100 cursor-pointer shadow-sm transition-colors" title="Call Customer">
+                                  <Phone className="h-2.5 w-2.5" />
+                                </a>
                               </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                            </td>
+                            <td className="py-3.5 px-5 text-slate-700 font-semibold">{lead.interested_vehicle_name || "—"}</td>
+                            <td className="py-3.5 px-5 text-slate-600 font-semibold">{lead.branch_name || lead.showroom_name || "Global"}</td>
+                            <td className="py-3.5 px-5">
+                              <select 
+                                value={lead.assigned_executive || "Unassigned"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
+                                }}
+                                className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 outline-none cursor-pointer"
+                              >
+                                <option value="Unassigned">Unassigned</option>
+                                {usersList.filter((m: any) => m.role === "sales" || m.role === "telecaller").map((m: any) => (
+                                  <option key={m.id} value={m.id}>{m.full_name || m.username} ({m.role})</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
+                            <td className="py-3.5 px-5">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                                lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                lead.status === "negotiation" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                                "bg-slate-50 text-slate-650 border border-slate-200"
+                              }`}>
+                                {lead.status === "won" ? "Sale Completed (Won)" :
+                                 lead.status === "negotiation" ? "Interested (Booking Created)" :
+                                 lead.status === "lost" ? "Not Interested" :
+                                 "Enquiry Registered"}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-5 flex items-center gap-3">
+                              <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-[#04a700] hover:text-emerald-800 cursor-pointer">Edit</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </Table>
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })()}
+              </div>
+            );
+          })()}
           {/* TAB 8: ADVANCE BOOKINGS */}
           {activeTab === "bookings" && (() => {
             const filteredBookings = advanceBookings.filter((bk) => {
