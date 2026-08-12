@@ -283,7 +283,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
   const handleInterestChoice = async (lead: any, choice: "interested" | "not_interested") => {
     if (choice === "not_interested") {
       try {
-        await updateLead(lead.id, { status: "lost", lost_reason: "Customer not interested during telecall" });
+        await updateLead(lead.id, { status: "lost" });
         showToast("Lead marked as Not Interested (Lost).");
         loadLeadsData();
       } catch (err: any) {
