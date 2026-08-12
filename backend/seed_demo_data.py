@@ -62,9 +62,17 @@ def seed_demo_data():
     print("      All cleared.")
 
     # ------------------------------------------------------------------
-    # 2. Ensure branch / showroom / location exist
+    # 2. Ensure branch / showroom / location exist & reset metrics
     # ------------------------------------------------------------------
     print("\n[2/5] Ensuring branch, showroom & location exist ...")
+    
+    # Reset all existing branches total_stock and sales_volume to zero first
+    for b in Branch.objects.all():
+        b.total_stock = 0
+        b.sales_volume = 0.00
+        b.target_achieved_pct = 0
+        b.save()
+
     branch, _ = Branch.objects.get_or_create(
         name="KVR Motors - Visakhapatnam",
         defaults={
@@ -72,12 +80,16 @@ def seed_demo_data():
             "phone_number": "9876543210",
             "is_active": True,
             "manager_name": "Suresh Babu",
-            "total_stock": 120,
-            "sales_volume": 11200000.00,
-            "monthly_target": 15000000.00,
-            "target_achieved_pct": 74,
+            "total_stock": 10,
+            "sales_volume": 0.00,
+            "monthly_target": 1000000.00,
+            "target_achieved_pct": 0,
         },
     )
+    branch.total_stock = 10
+    branch.sales_volume = 0.00
+    branch.target_achieved_pct = 0
+    branch.save()
     showroom, _ = Showroom.objects.get_or_create(
         branch=branch,
         name="KVR Showroom - Visakhapatnam",
