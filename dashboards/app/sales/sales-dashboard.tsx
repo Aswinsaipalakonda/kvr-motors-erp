@@ -1150,20 +1150,22 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       : 1;
 
     let unitId = autoFillResult?.id;
-    if (!unitId) {
-      try {
-        const units = await getVehicleUnits();
-        const availableUnit = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
-        if (availableUnit) {
-          unitId = availableUnit.id;
-        } else if (units.length > 0) {
-          unitId = units[0].id;
+    let availableUnitObj: any = null;
+    try {
+      const units = await getVehicleUnits();
+      if (unitId) {
+        availableUnitObj = units.find((u: any) => u.id === unitId && (u.stock_status === "available" || u.stock_status === "in_stock"));
+      }
+      if (!availableUnitObj) {
+        availableUnitObj = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+        if (availableUnitObj) {
+          unitId = availableUnitObj.id;
         }
-      } catch {}
-    }
+      }
+    } catch {}
 
-    if (!unitId) {
-      showToast("No valid vehicle unit found in stock inventory to allocate. Please add stock unit first.", "error");
+    if (!unitId || !availableUnitObj) {
+      showToast("No available vehicle unit found in stock inventory to allocate. Please add stock unit first.", "error");
       return;
     }
 
