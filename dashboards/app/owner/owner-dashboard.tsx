@@ -753,21 +753,27 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     try {
       setBatteriesLoading(true);
       const data = await getBatteries();
-      const mapped = data.map((b: any) => ({
-        id: b.id,
-        serial: b.serial_number,
-        batteryCode: b.battery_code,
-        capacity: b.capacity,
-        purDate: b.purchase_date,
-        rawStatus: b.status,
-        status: b.status === "available" ? "Available" : b.status === "sold" ? "Sold" : b.status === "assigned" ? "Assigned" : b.status === "damaged" ? "Damaged" : b.status === "returned" ? "Returned" : "Available",
-        vehicle: b.assigned_to_vin || "N/A",
-        location: b.location_name || "Visakhapatnam Showroom",
-        locationId: b.location,
-        supplier: b.supplier || b.supplier_name || "Tesla Tech Pack",
-        warrantyYears: `${b.warranty_years || 3} Years`,
-        warrantyYearsRaw: b.warranty_years || 3,
-      }));
+      const mapped = data.map((b: any) => {
+        const isAssigned = (vehicleUnitsList || []).some((u: any) => u.assigned_battery && String(u.assigned_battery).trim() === String(b.serial_number).trim());
+        const computedStatus = (b.status === "sold" || b.status === "SOLD") ? "Sold" :
+                               (b.status === "assigned" || b.status === "ASSIGNED" || isAssigned) ? "Assigned" :
+                               b.status === "damaged" ? "Damaged" : "Available";
+        return {
+          id: b.id,
+          serial: b.serial_number,
+          batteryCode: b.battery_code,
+          capacity: b.capacity,
+          purDate: b.purchase_date,
+          rawStatus: b.status,
+          status: computedStatus,
+          vehicle: b.assigned_to_vin || "N/A",
+          location: b.location_name || "Visakhapatnam Showroom",
+          locationId: b.location,
+          supplier: b.supplier || b.supplier_name || "Tesla Tech Pack",
+          warrantyYears: `${b.warranty_years || 3} Years`,
+          warrantyYearsRaw: b.warranty_years || 3,
+        };
+      });
       setBatteriesStock(mapped);
     } catch (e) {
       console.error("Failed to load batteries from Django REST API:", e);

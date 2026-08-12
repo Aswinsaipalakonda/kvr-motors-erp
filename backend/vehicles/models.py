@@ -90,6 +90,17 @@ class VehicleUnit(models.Model):
             if value is not None and value.strip() == "":
                 setattr(self, field, None)
         super().save(*args, **kwargs)
+        if self.assigned_battery:
+            try:
+                from battery.models import Battery
+                bat = Battery.objects.filter(serial_number=self.assigned_battery.strip()).first()
+                if bat and bat.status != 'sold':
+                    target_status = 'sold' if self.stock_status in ['sold', 'delivered'] else 'assigned'
+                    if bat.status != target_status:
+                        bat.status = target_status
+                        bat.save(update_fields=['status'])
+            except Exception as e:
+                pass
 
     def __str__(self):
         ident = self.vin_number or self.motor_number or self.chassis_number or f"Unit #{self.pk}"
