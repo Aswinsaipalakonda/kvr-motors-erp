@@ -1191,11 +1191,6 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       showToast("Contact number must contain exactly 10 digits.", "error");
       return;
     }
-    const batteryObj = batteriesList.find(b => b.serial_number === selectedBattery || String(b.id) === String(selectedBattery));
-    const targetBranchId = autoFillResult?.branchId 
-      ? (typeof autoFillResult.branchId === "number" ? autoFillResult.branchId : 1) 
-      : 1;
-
     let unitId = autoFillResult?.id;
     let availableUnitObj: any = null;
     const modelId = autoFillResult?.modelId;
@@ -1203,36 +1198,44 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     try {
       const units = await getVehicleUnits();
       if (unitId) {
-        availableUnitObj = units.find((u: any) => u.id === unitId && (u.stock_status === "available" || u.stock_status === "in_stock"));
+        availableUnitObj = units.find((u: any) => u.id === unitId && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "booked"));
       }
       if (!availableUnitObj) {
         availableUnitObj = units.find((u: any) => 
-          (u.stock_status === "available" || u.stock_status === "in_stock") &&
+          (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "booked") &&
           (!modelId || u.model === modelId || String(u.model) === String(modelId))
-        );
-        if (!availableUnitObj) {
-          // Fallback to any available unit if model match is not specified
-          availableUnitObj = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
-        }
-        if (availableUnitObj) {
-          unitId = availableUnitObj.id;
-        }
+        ) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "booked");
+      }
+      if (availableUnitObj) {
+        unitId = availableUnitObj.id;
       }
     } catch {}
 
-    if (!unitId || !availableUnitObj) {
+    if (!availableUnitObj || !unitId) {
       showToast("No available vehicle unit found in stock inventory to allocate. Please add stock unit first.", "error");
       return;
     }
+
+    let batteryId: number | null = null;
+    if (availableUnitObj.assigned_battery) {
+      const pairedBat = batteriesList.find(b => b.serial_number === availableUnitObj.assigned_battery);
+      if (pairedBat) batteryId = pairedBat.id;
+    }
+    if (!batteryId && selectedBattery) {
+      const selBat = batteriesList.find(b => b.serial_number === selectedBattery || String(b.id) === String(selectedBattery));
+      if (selBat) batteryId = selBat.id;
+    }
+
+    const targetBranchId = typeof availableUnitObj.branch === "number" ? availableUnitObj.branch : (availableUnitObj.branch?.id || autoFillResult?.branchId || 1);
 
     try {
       await createSalesInvoice({
         customer_name: checkoutCustomerName.trim(),
         customer_contact: cleanCheckoutPhone,
         vehicle_unit: unitId,
-        assigned_battery: batteryObj?.id || null,
-        sale_price: 74999,
-        payment_mode: "SBI Finance",
+        assigned_battery: batteryId,
+        sale_price: autoFillResult?.price || 74999,
+        payment_mode: autoFillResult?.payment_mode || "Cash",
         delivery_status: "processing",
         branch: targetBranchId
       });

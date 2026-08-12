@@ -23,6 +23,26 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         model = SalesInvoice
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        # Gracefully handle stale or invalid vehicle_unit PKs
+        if 'vehicle_unit' in data and data['vehicle_unit']:
+            vu_pk = data['vehicle_unit']
+            if not VehicleUnit.objects.filter(pk=vu_pk).exists():
+                fresh_vu = VehicleUnit.objects.filter(stock_status__in=['available', 'booked', 'in_stock']).first()
+                if not fresh_vu:
+                    fresh_vu = VehicleUnit.objects.first()
+                if fresh_vu:
+                    data['vehicle_unit'] = fresh_vu.pk
+                else:
+                    data['vehicle_unit'] = None
+
+        if 'assigned_battery' in data and data['assigned_battery']:
+            bat_pk = data['assigned_battery']
+            if not Battery.objects.filter(pk=bat_pk).exists():
+                data['assigned_battery'] = None
+
+        return super().to_internal_value(data)
+
     def validate_customer_contact(self, value):
         import re
         if value:
