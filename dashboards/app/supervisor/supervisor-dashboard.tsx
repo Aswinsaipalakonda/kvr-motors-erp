@@ -1018,6 +1018,18 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   };
 
   // Batteries CRUD
+  const openAddBattery = () => {
+    const year = new Date().getFullYear();
+    const seq = String((batteriesStock?.length || 0) + 1).padStart(4, "0");
+    setEditingBatteryId(null);
+    setNewBattery({
+      ...emptyBattery,
+      serial_number: `BATT-${year}-${seq}`,
+      purchase_date: new Date().toISOString().slice(0, 10),
+    });
+    setIsAddBatteryOpen(true);
+  };
+
   const openEditBattery = (batt: any) => {
     setEditingBatteryId(batt.id);
     setNewBattery({
@@ -1929,7 +1941,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Log Physical Unit", icon: Plus, onClick: openAddStockUnit },
-                  { label: "Add Battery Pack", icon: BatteryIcon, onClick: () => { setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); setIsAddBatteryOpen(true); } },
+                  { label: "Add Battery Pack", icon: BatteryIcon, onClick: openAddBattery },
                   { label: "Check Bookings", icon: Clock, onClick: () => navigateTo("bookings") },
                   { label: "Clear Alerts", icon: AlertTriangle, onClick: () => navigateTo("dashboard") },
                 ].map((qa, i) => {
@@ -2254,10 +2266,12 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           {activeTab === "vehicles" && (() => {
             const myShowroomName = user?.showroom || "KVR Showroom - Visakhapatnam";
             const myBranchUnits = vehicleUnitsList.filter(u => u.showroom_name === myShowroomName || u.branch_name === user?.branch || (!user?.showroom && !user?.branch));
+            const availableBranchUnits = myBranchUnits.filter(u => u.stock_status !== "sold" && u.stock_status !== "delivered");
+            const soldBranchUnits = myBranchUnits.filter(u => u.stock_status === "sold" || u.stock_status === "delivered");
             const otherBranchUnits = vehicleUnitsList.filter(u => u.showroom_name !== myShowroomName && u.branch_name !== user?.branch && (user?.showroom || user?.branch));
             const totalModels = vehicleModelsList.length;
-            const localAvailable = myBranchUnits.filter(u => u.stock_status === "available").length;
-            const otherAvailable = otherBranchUnits.filter(u => u.stock_status === "available").length;
+            const localAvailable = availableBranchUnits.length;
+            const otherAvailable = otherBranchUnits.filter(u => u.stock_status === "available" || u.stock_status === "in_stock").length;
             const activeRequests = transfers.filter(t => t.status === "Pending Approval").length;
 
             return (
@@ -2381,7 +2395,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                   actions={
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => setIsAddBatteryOpen(true)}
+                        onClick={openAddBattery}
                         className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-full cursor-pointer shadow-sm transition-colors"
                       >
                         <Plus className="h-4 w-4" /> Add Battery
@@ -2404,14 +2418,14 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                         </div>
                       </td>
                     </tr>
-                  ) : myBranchUnits.length === 0 ? (
+                  ) : availableBranchUnits.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="py-8 text-center">
-                        <EmptyState title="No Local Stock Units Found" description="No physical units registered for this local showroom." />
+                        <EmptyState title="No Available Stock Units Found" description="No available physical units registered for this local showroom." />
                       </td>
                     </tr>
                   ) : (
-                    myBranchUnits.map((unit, idx) => (
+                    availableBranchUnits.map((unit, idx) => (
                       <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
                         <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
                         <td className="py-3.5 px-5 font-mono text-slate-550">{unit.motor_number || "—"}</td>
@@ -2445,6 +2459,49 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                         <td className="py-3.5 px-5 whitespace-nowrap">
                           <button onClick={() => openEditStockUnit(unit)} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold mr-3 cursor-pointer">Edit</button>
                           <button onClick={() => handleDeleteStockUnit(unit)} className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer">Delete</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </Table>
+
+                {/* Sold Vehicles Inventory Ledger */}
+                <Table 
+                  title={`Sold Vehicles Registry (${myShowroomName} Showroom)`} 
+                  headers={["VIN Number", "Motor Code", "Chassis Code", "Model", "Color", "Quantity", "Showroom", "Battery", "Sale Status"]}
+                >
+                  {vehiclesLoading ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
+                          <span>Loading sold units registry...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : soldBranchUnits.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center">
+                        <EmptyState title="No Sold Vehicle Units" description="Vehicle units marked as Sold or Delivered will be listed here." />
+                      </td>
+                    </tr>
+                  ) : (
+                    soldBranchUnits.map((unit, idx) => (
+                      <tr key={unit.id || idx} className="hover:bg-slate-50 border-b border-slate-100">
+                        <td className="py-3.5 px-5 font-mono font-bold text-slate-700">{unit.vin_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.motor_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-mono text-slate-550">{unit.chassis_number || "—"}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">{unit.model_name}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.color}</td>
+                        <td className="py-3.5 px-5 font-bold text-slate-800">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">1 Unit</span>
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-600 font-semibold">{unit.showroom_name || "Visakhapatnam"}</td>
+                        <td className="py-3.5 px-5 text-slate-600 font-mono font-bold">{unit.assigned_battery || "—"}</td>
+                        <td className="py-3.5 px-5">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            {unit.stock_status === "delivered" ? "Delivered" : "Sold"}
+                          </span>
                         </td>
                       </tr>
                     ))
@@ -3420,7 +3477,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               <input
                 type="text"
                 placeholder="e.g. BATT-2026-0001"
-                value={newBattery.serial_number || `BATT-${new Date().getFullYear()}-${String((batteriesStock?.length || 0) + 1).padStart(4, "0")}`}
+                value={newBattery.serial_number}
                 onChange={(e) => setNewBattery({ ...newBattery, serial_number: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-700 outline-none"
                 required

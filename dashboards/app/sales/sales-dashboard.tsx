@@ -453,11 +453,42 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       loadLeadsData();
     } catch (err: any) {
       console.error("Save lead error:", err);
-      const msg = err.response?.data ? JSON.stringify(err.response.data) : "Failed to save customer lead.";
-      showToast(`Failed to register customer: ${msg}`, "error");
+      const msg = err.response?.data?.detail || (typeof err.response?.data === "object" ? Object.values(err.response.data).flat().join(" ") : null) || "Failed to save lead.";
+      showToast(msg, "error");
     }
   };
 
+  const handleInterestChoice = async (lead: any, choice: "interested" | "not_interested") => {
+    if (choice === "not_interested") {
+      try {
+        await updateLead(lead.id, { status: "lost" });
+        showToast("Lead marked as Not Interested (Lost).");
+        loadLeadsData();
+      } catch (err: any) {
+        showToast("Failed to update lead status.", "error");
+      }
+      return;
+    }
+
+    try {
+      const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
+      const cleanPhone = (lead.contact_number || "").replace(/\D/g, "");
+      await createBooking({
+        customer_name: lead.customer_name,
+        contact_number: cleanPhone.length === 10 ? cleanPhone : "9876543210",
+        vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
+        advance_amount: 5000,
+        expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        status: "pending",
+      });
+      await updateLead(lead.id, { status: "negotiation" });
+      showToast(`Lead marked as Interested! Booking created and forwarded for approval.`);
+      loadLeadsData();
+    } catch (err: any) {
+      console.error("Promote to booking error:", err);
+      showToast("Failed to update lead interest.", "error");
+    }
+  };
 
   const moveLeadToStage = async (leadId: number, newStatus: string) => {
     const lead = liveLeadsList.find((l) => l.id === leadId);
@@ -1888,6 +1919,12 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   <h3 className="text-base font-bold text-slate-800">Leads Pipeline Board</h3>
                   <p className="text-[11px] text-slate-450 font-semibold mt-0.5">View assigned leads for your showroom and follow up on customer enquiries.</p>
                 </div>
+                <button 
+                  onClick={openAddLead}
+                  className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 shrink-0"
+                >
+                  <Plus className="h-4 w-4" /> Add Lead
+                </button>
               </div>
 
               {/* Normal List Type Lead Management */}
@@ -1983,27 +2020,50 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                (lead.status_display || lead.status)}
                             </span>
                           </td>
-                          <td className="py-3.5 px-5 flex items-center gap-3">
+                          <td className="py-3.5 px-5 flex items-center gap-2">
+                            {lead.status === "negotiation" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                                ✓ Marked Interested
+                              </span>
+                            ) : (lead.status !== "lost" && lead.status !== "won") ? (
+                              <select
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const val = e.target.value as "interested" | "not_interested";
+                                  if (val) handleInterestChoice(lead, val);
+                                }}
+                                className="text-[10px] font-extrabold text-[#04a700] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-full shadow-sm cursor-pointer outline-none transition-colors"
+                              >
+                                <option value="" disabled>Update Status...</option>
+                                <option value="interested">⚡ Mark Interested</option>
+                                <option value="not_interested">❌ Not Interested</option>
+                              </select>
+                            ) : null}
                             <button
                               onClick={async () => {
                                 setCheckoutCustomerName(lead.customer_name);
                                 setCheckoutContactNumber(lead.contact_number);
                                 try {
                                   const units = await getVehicleUnits();
-                                  const avail = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                  const modelId = lead.interested_vehicle;
+                                  const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
                                   if (avail) {
                                     setAutoFillResult({
                                       id: avail.id,
+                                      modelId: avail.model,
                                       branchId: avail.branch,
                                       vin: avail.vin_number || `VIN-${avail.id}`,
                                       motor: avail.motor_number || `MOT-${avail.id}`,
                                       chassis: avail.chassis_number || `CHS-${avail.id}`,
-                                      model: avail.model_name || "Kinetic Green E-Luna",
+                                      model: avail.model_name || lead.interested_vehicle_name || "Kinetic Green E-Luna",
                                       color: avail.color || "Standard",
                                       price: 74999,
                                       branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
                                       status: "Available Stock Unit",
-                                      battery_serial: avail.assigned_battery || "BATT-2026-0001"
+                                      battery_serial: avail.assigned_battery || "BATT-2026-0001",
+                                      is_advance_booking: false,
+                                      advance_amount: 0,
+                                      remaining_balance: 74999
                                     });
                                   }
                                 } catch {}
@@ -2016,7 +2076,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                             >
                               Convert to Sale
                             </button>
-                            <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit Lead</button>
+                            <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit</button>
                           </td>
                         </tr>
                       ))
