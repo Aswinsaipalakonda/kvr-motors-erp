@@ -177,7 +177,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
       is_advance_booking: !!lead.is_advance_booking,
-      advance_amount: lead.advance_amount ? String(lead.advance_amount) : "5000",
+      advance_amount: lead.advance_amount && parseFloat(lead.advance_amount) > 0 ? String(Math.round(parseFloat(lead.advance_amount))) : "",
     });
     setIsAddLeadOpen(true);
   };
@@ -204,7 +204,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
       is_advance_booking: !!newLead.is_advance_booking,
-      advance_amount: newLead.is_advance_booking ? parseFloat(newLead.advance_amount || "5000") : 0,
+      advance_amount: newLead.is_advance_booking && newLead.advance_amount ? parseFloat(newLead.advance_amount) : 0,
     };
     const pairedStockAvailable = vehicleUnitsList.some(
       (u: any) => u.model === vId && (u.stock_status === "available" || u.stock_status === "in_stock")
@@ -317,7 +317,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
         customer_name: lead.customer_name,
         contact_number: cleanPhone.length === 10 ? cleanPhone : "9876543210",
         vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
-        advance_amount: 5000,
+        advance_amount: lead.advance_amount ? parseFloat(lead.advance_amount) : 0,
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         status: "pending",
       });

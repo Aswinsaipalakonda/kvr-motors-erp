@@ -955,7 +955,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     const modelObj = vehicleModelsList.find((m: any) => String(m.id) === String(bk.vehicle_model));
     const colors = modelObj?.color_variants || ["Red", "Blue", "White", "Black"];
     setConfirmColorVariant(colors[0] || "Standard");
-    setConfirmAdvanceAmount(bk.advance_amount && parseFloat(bk.advance_amount) > 0 ? String(Math.round(parseFloat(bk.advance_amount))) : "");
+    setConfirmAdvanceAmount("");
     setConfirmPaymentMode(bk.payment_mode || "Cash");
     setConfirmPaymentProof(null);
     setConfirmPaymentProofName("");

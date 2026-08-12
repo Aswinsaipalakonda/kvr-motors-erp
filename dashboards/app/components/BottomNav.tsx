@@ -48,7 +48,7 @@ const navConfig: Record<BottomNavProps["role"], NavItem[]> = {
     { id: "dashboard", label: "Home", icon: LayoutDashboard },
     { id: "leads", label: "Leads", icon: Compass },
     { id: "bookings", label: "Bookings", icon: CalendarDays },
-    { id: "sales_checkout", label: "Checkout", icon: CreditCard },
+    { id: "invoices", label: "Invoices", icon: FileText },
     { id: "attendance", label: "Check-in", icon: UsersRound },
   ],
   telecaller: [
