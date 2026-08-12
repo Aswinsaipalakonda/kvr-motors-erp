@@ -523,8 +523,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   const [confirmContactNumber, setConfirmContactNumber] = useState("");
   const [confirmVehicleModel, setConfirmVehicleModel] = useState("");
   const [confirmColorVariant, setConfirmColorVariant] = useState("");
-  const [confirmAdvanceAmount, setConfirmAdvanceAmount] = useState("5000");
+  const [confirmAdvanceAmount, setConfirmAdvanceAmount] = useState("");
   const [confirmPaymentMode, setConfirmPaymentMode] = useState("Cash");
+  const [confirmPaymentProof, setConfirmPaymentProof] = useState<string | null>(null);
+  const [confirmPaymentProofName, setConfirmPaymentProofName] = useState<string>("");
   const [confirmSelectedBattery, setConfirmSelectedBattery] = useState("");
 
   const openConfirmBookingModal = (bk: any) => {
@@ -535,8 +537,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     const modelObj = vehicleModelsList.find((m: any) => String(m.id) === String(bk.vehicle_model));
     const colors = modelObj?.color_variants || ["Red", "Blue", "White", "Black"];
     setConfirmColorVariant(colors[0] || "Standard");
-    setConfirmAdvanceAmount(bk.advance_amount ? String(bk.advance_amount) : "5000");
+    setConfirmAdvanceAmount(bk.advance_amount && parseFloat(bk.advance_amount) > 0 ? String(Math.round(parseFloat(bk.advance_amount))) : "");
     setConfirmPaymentMode(bk.payment_mode || "Cash");
+    setConfirmPaymentProof(null);
+    setConfirmPaymentProofName("");
     const availBats = batteriesList.filter((b: any) => b.status === "available" || b.status === "Available");
     setConfirmSelectedBattery(availBats[0]?.serial_number || "");
     setIsConfirmBookingModalOpen(true);
@@ -551,6 +555,11 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     const cleanPhone = confirmContactNumber.trim().replace(/\D/g, "");
     if (cleanPhone.length !== 10) {
       showToast("Contact number must contain exactly 10 digits.", "error");
+      return;
+    }
+
+    if (confirmPaymentMode !== "Cash" && !confirmPaymentProof) {
+      showToast("Please upload payment proof / transaction receipt for non-cash payment.", "error");
       return;
     }
 
@@ -575,6 +584,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         assigned_battery: selBat?.id || null,
         sale_price: 74999,
         payment_mode: confirmPaymentMode,
+        payment_proof: confirmPaymentProof || undefined,
         delivery_status: "processing",
         branch: availUnit.branch || 1
       });
@@ -589,7 +599,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         });
       }
 
-      showToast("Booking confirmed! Converted to Sale and submitted to Supervisor for payment verification. ✓");
+      const bkIdStr = confirmBookingItem?.booking_id ? ` (Booking ID: ${confirmBookingItem.booking_id})` : "";
+      showToast(`Booking confirmed${bkIdStr}! Converted to Sale and submitted to Supervisor/Owner for verification. ✓`);
       setIsConfirmBookingModalOpen(false);
       setConfirmBookingItem(null);
       loadSales();
@@ -3240,11 +3251,10 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="e.g. 5000"
+                placeholder="Leave blank or enter advance"
                 value={confirmAdvanceAmount}
                 onChange={(e) => setConfirmAdvanceAmount(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 font-bold outline-none"
-                required
               />
             </div>
 
@@ -3263,6 +3273,33 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               </select>
             </div>
           </div>
+
+          {confirmPaymentMode !== "Cash" && (
+            <div className="space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <label className="text-[10px] font-bold text-slate-500 uppercase block">
+                Upload Payment Proof / Transaction Receipt <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setConfirmPaymentProofName(file.name);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setConfirmPaymentProof(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+              />
+              {confirmPaymentProofName && (
+                <p className="text-[10px] text-emerald-700 font-bold truncate">Selected: {confirmPaymentProofName}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Assign Battery Pack (Available Stock)</label>
