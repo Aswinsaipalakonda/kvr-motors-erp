@@ -2628,29 +2628,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                         </span>
                       </td>
                       <td className="py-3.5 px-5 whitespace-nowrap">
-                        {inv.delivery_status !== "delivered" && inv.delivery_status !== "completed" && inv.delivery_status !== "ready" && inv.delivery_status !== "sold" ? (
-                          <button 
-                            onClick={() => openVerificationModal(inv)} 
-                            className="bg-[#04a700] hover:bg-[#038a00] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
-                          >
-                            Verify Payment & Close Sale
-                          </button>
-                        ) : (inv.delivery_status === "ready" || inv.delivery_status === "sold") ? (
-                          <div className="flex items-center gap-2 inline-flex">
-                            <button
-                              onClick={() => handleSalesDelivery(inv.id, "delivered")}
-                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm cursor-pointer transition-colors"
-                            >
-                              <Truck className="h-3.5 w-3.5" /> Mark for Delivery (Complete Sale)
-                            </button>
-                            <button
-                              onClick={() => handlePrintSalesInvoice(inv)}
-                              className="inline-flex items-center gap-1 text-[11px] text-indigo-650 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                            >
-                              <Printer className="h-3 w-3" /> Print Invoice
-                            </button>
-                          </div>
-                        ) : (
+                        {inv.delivery_status === "delivered" ? (
                           <div className="flex items-center gap-2 inline-flex">
                             <button
                               onClick={() => openVerificationModal(inv)}
@@ -2688,6 +2666,21 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                             >
                               <MessageSquare className="h-3 w-3" /> WhatsApp
                             </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 inline-flex">
+                            <button
+                              onClick={() => openVerificationModal(inv)}
+                              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                            >
+                              Edit / Proof
+                            </button>
+                            <button
+                              onClick={() => handleSalesDelivery(inv.id, "delivered")}
+                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold bg-[#04a700] hover:bg-[#038a00] px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
+                            >
+                              <Truck className="h-3.5 w-3.5" /> Mark Delivered
+                            </button>
                           </div>
                         )}
                       </td>

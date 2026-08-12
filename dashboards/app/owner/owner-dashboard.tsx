@@ -6606,10 +6606,10 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                  <Table title={`Invoiced Sales Records (${filteredSales.length})`} headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Insurance Partner", "Sales Person", "Delivery Status", "Actions"]}>
+                  <Table title={`Invoiced Sales Records (${filteredSales.length})`} headers={["Invoice Number", "Customer Name", "Contact", "Vehicle Model", "Battery Serial", "Sale Price", "Invoice Date", "Payment Mode", "Sales Person", "Delivery Status", "Actions"]}>
                     {salesInvoicesLoading ? (
                       <tr>
-                        <td colSpan={12} className="py-12 text-center">
+                        <td colSpan={11} className="py-12 text-center">
                           <div className="flex flex-col items-center justify-center gap-3">
                             <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-emerald-600" />
                             <span className="text-xs font-semibold text-slate-400">Loading invoiced sales records...</span>
@@ -6618,7 +6618,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                       </tr>
                     ) : filteredSales.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="py-12 text-center">
+                        <td colSpan={11} className="py-12 text-center">
                           <EmptyState 
                             title="No Invoices Matching Filter" 
                             description="Try adjusting your filter options or search query." 
@@ -6635,22 +6635,18 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery_serial || "N/A"}</td>
                           <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(inv.sale_price || 0).toLocaleString('en-IN')}</td>
                           <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.sale_date}</td>
-                          <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode}</td>
-                          <td className="py-3.5 px-5 text-slate-500 font-semibold">{inv.insurance_partner || "N/A"}</td>
+                          <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode === "Self-Finance (Cash)" ? "Cash" : (inv.payment_mode || "Cash")}</td>
                           <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.executive_name || "Unassigned"}</td>
                           <td className="py-3.5 px-5">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                               inv.delivery_status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                             }`}>
-                              {inv.delivery_status_display || inv.delivery_status}
+                              {inv.delivery_status === "delivered" ? "Delivered ✓" : "Processing"}
                             </span>
                           </td>
                           <td className="py-3.5 px-5 whitespace-nowrap">
-                            {inv.delivery_status === "processing" && (
-                              <button onClick={() => handleSalesDelivery(inv.id, "ready")} className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Mark Ready</button>
-                            )}
-                            {inv.delivery_status === "ready" && (
-                              <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="text-xs text-[#04a700] hover:text-[#038a00] font-bold cursor-pointer">Mark Delivered</button>
+                            {inv.delivery_status !== "delivered" && (
+                              <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="inline-flex items-center gap-1 text-[11px] text-white font-bold bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow transition-all cursor-pointer">Mark Delivered</button>
                             )}
                             {inv.delivery_status === "delivered" ? (
                               <div className="flex items-center gap-2">

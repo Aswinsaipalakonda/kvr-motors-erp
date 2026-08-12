@@ -88,7 +88,7 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
   const [leadsLoading, setLeadsLoading] = useState(true);
 
   // Form states
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", lost_reason: "", notes: "", follow_up_date: "" };
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", lost_reason: "", notes: "", follow_up_date: "", is_advance_booking: false, advance_amount: "5000" };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -176,6 +176,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       lost_reason: lead.lost_reason || "",
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
+      is_advance_booking: !!lead.is_advance_booking,
+      advance_amount: lead.advance_amount ? String(lead.advance_amount) : "5000",
     });
     setIsAddLeadOpen(true);
   };
@@ -201,6 +203,8 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
       lost_reason: newLead.status === "lost" ? (newLead.lost_reason?.trim() || "Customer not interested / lost") : undefined,
       notes: newLead.notes?.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
+      is_advance_booking: !!newLead.is_advance_booking,
+      advance_amount: newLead.is_advance_booking ? parseFloat(newLead.advance_amount || "5000") : 0,
     };
     // Check if paired vehicle stock is available in stockUnitsList
     const pairedStockAvailable = vehicleUnitsList.some(
@@ -889,6 +893,32 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               <option value="reference">Customer Reference</option>
               <option value="social">Social Media Ads</option>
             </select>
+          </div>
+
+          {/* Advance Booking Selection */}
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer font-extrabold text-xs text-amber-900">
+              <input
+                type="checkbox"
+                checked={!!newLead.is_advance_booking}
+                onChange={(e) => setNewLead({ ...newLead, is_advance_booking: e.target.checked })}
+                className="w-4 h-4 text-[#04a700] rounded focus:ring-emerald-500 cursor-pointer"
+              />
+              <span>Is Advance Paid Booking?</span>
+            </label>
+            {newLead.is_advance_booking && (
+              <div className="space-y-1 pt-1">
+                <label className="text-[10px] font-bold text-amber-800 uppercase">Advance Payment Token Amount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={newLead.advance_amount || "5000"}
+                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value })}
+                  className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none"
+                  required
+                />
+              </div>
+            )}
           </div>
           {newLead.status === "lost" && (
             <div className="space-y-1.5 p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl">

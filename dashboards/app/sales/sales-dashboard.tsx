@@ -136,7 +136,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   const [salesLoading, setSalesLoading] = useState(true);
 
   // Forms state bindings
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "" };
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "", is_advance_booking: false, advance_amount: "5000" };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -147,6 +147,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     customer_name: "",
     contact_number: "",
     vehicle_model: "",
+    is_advance_booking: false,
     advance_amount: "",
     expiry_date: "",
     payment_mode: "Cash",
@@ -413,6 +414,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       status: lead.status || "new_lead",
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
+      is_advance_booking: !!lead.is_advance_booking,
+      advance_amount: lead.advance_amount ? String(lead.advance_amount) : "5000",
     });
     setIsAddLeadOpen(true);
   };
@@ -441,6 +444,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       status: newLead.status || "new_lead",
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
+      is_advance_booking: !!newLead.is_advance_booking,
+      advance_amount: newLead.is_advance_booking ? parseFloat(newLead.advance_amount || "5000") : 0,
       assigned_executive: user?.id || undefined
     };
     try {
@@ -515,6 +520,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       customer_name: bk.customer_name || "",
       contact_number: bk.contact_number || "",
       vehicle_model: String(bk.vehicle_model || ""),
+      is_advance_booking: bk.is_advance_booking !== undefined ? !!bk.is_advance_booking : parseFloat(bk.advance_amount || 0) > 0,
       advance_amount: String(bk.advance_amount || ""),
       expiry_date: bk.expiry_date || "",
       payment_mode: bk.payment_mode || "Cash",
@@ -579,6 +585,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         customer_name: "",
         contact_number: "",
         vehicle_model: "",
+        is_advance_booking: false,
         advance_amount: "",
         expiry_date: "",
         payment_mode: "Cash",
@@ -2132,8 +2139,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
                 {[
                   { id: "all", label: "All Bookings", count: liveBookingsList.length },
-                  { id: "advance", label: "⭐ Advance Paid Bookings", count: liveBookingsList.filter(b => parseFloat(b.advance_amount || 0) > 0).length },
-                  { id: "normal", label: "📋 Standard Enquiry Bookings", count: liveBookingsList.filter(b => !parseFloat(b.advance_amount || 0)).length },
+                  { id: "advance", label: "⭐ Advance Paid Bookings", count: liveBookingsList.filter(b => b.is_advance_booking === true || (parseFloat(b.advance_amount || 0) > 0 && b.is_advance_booking !== false)).length },
+                  { id: "normal", label: "📋 Standard Enquiry Bookings", count: liveBookingsList.filter(b => b.is_advance_booking === false || (!parseFloat(b.advance_amount || 0) && !b.is_advance_booking)).length },
                 ].map((filter) => (
                   <button
                     key={filter.id}
@@ -2155,7 +2162,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 headers={["Booking ID", "Customer Details", "Vehicle Model", "Booking Type", "Contact", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
                 actions={
                   <button 
-                    onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); setIsCreateBookingOpen(true); }}
+                    onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", is_advance_booking: false, advance_amount: "5000", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); setIsCreateBookingOpen(true); }}
                     className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
                   >
                     <Plus className="h-4 w-4" /> Record Booking
@@ -2180,14 +2187,14 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 ) : (
                   liveBookingsList
                     .filter(bk => {
-                      const isAdv = parseFloat(bk.advance_amount || 0) > 0;
+                      const isAdv = bk.is_advance_booking === true || (parseFloat(bk.advance_amount || 0) > 0 && bk.is_advance_booking !== false);
                       if (bookingFilterType === "advance") return isAdv;
                       if (bookingFilterType === "normal") return !isAdv;
                       return true;
                     })
                     .map((bk, idx) => {
                       const advAmt = parseFloat(bk.advance_amount || 0);
-                      const isAdvance = advAmt > 0;
+                      const isAdvance = bk.is_advance_booking === true || (advAmt > 0 && bk.is_advance_booking !== false);
                       return (
                         <tr key={`${bk.id || 'bk'}-${bk.booking_id || ''}-${idx}`} className="hover:bg-slate-50 border-b border-slate-100">
                           <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
@@ -2897,6 +2904,32 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               <option value="lost">Lost</option>
             </select>
           </div>
+
+          {/* Advance Booking Selection */}
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer font-extrabold text-xs text-amber-900">
+              <input
+                type="checkbox"
+                checked={!!newLead.is_advance_booking}
+                onChange={(e) => setNewLead({ ...newLead, is_advance_booking: e.target.checked })}
+                className="w-4 h-4 text-[#04a700] rounded focus:ring-emerald-500 cursor-pointer"
+              />
+              <span>Is Advance Paid Booking?</span>
+            </label>
+            {newLead.is_advance_booking && (
+              <div className="space-y-1 pt-1">
+                <label className="text-[10px] font-bold text-amber-800 uppercase">Advance Payment Token Amount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={newLead.advance_amount || "5000"}
+                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value })}
+                  className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none"
+                  required
+                />
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Notes / Requirements</label>
             <textarea placeholder="e.g. Inquired about monthly battery financing options" value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-semibold outline-none h-20" />
@@ -2912,7 +2945,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       </Modal>
 
       {/* 2. Register / Edit Booking */}
-      <Modal isOpen={isCreateBookingOpen} onClose={() => { setIsCreateBookingOpen(false); setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); }} title={editingBookingId ? "Edit Booking Details" : "Record Advance Booking Commitment"}>
+      <Modal isOpen={isCreateBookingOpen} onClose={() => { setIsCreateBookingOpen(false); setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", is_advance_booking: false, advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); }} title={editingBookingId ? "Edit Booking Details" : "Record Advance Booking Commitment"}>
         <form onSubmit={handleCreateBooking} className="space-y-4 text-left">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Customer Name</label>

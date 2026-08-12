@@ -38,6 +38,8 @@ class Lead(models.Model):
     lost_reason = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     branch = models.CharField(max_length=100, blank=True, null=True)
+    is_advance_booking = models.BooleanField(default=False)
+    advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
