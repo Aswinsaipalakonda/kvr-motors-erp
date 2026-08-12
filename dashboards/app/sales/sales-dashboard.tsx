@@ -2061,7 +2061,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                 try {
                                   const units = await getVehicleUnits();
                                   const modelId = lead.interested_vehicle;
-                                  const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+                                  const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId)));
+                                  const isLeadAdv = lead.is_advance_booking === true && parseFloat(lead.advance_amount || 0) > 0;
+                                  const leadAdvAmt = isLeadAdv ? parseFloat(lead.advance_amount) : 0;
                                   if (avail) {
                                     setAutoFillResult({
                                       id: avail.id,
@@ -2249,6 +2251,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                     const modelId = bk.vehicle_model;
                                     const avail = units.find((u: any) => (u.stock_status === "available" || u.stock_status === "in_stock") && (!modelId || u.model === modelId || String(u.model) === String(modelId))) || units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
                                     const advAmt = parseFloat(bk.advance_amount || 0);
+                                    const isAdvBooking = bk.is_advance_booking === true && advAmt > 0;
                                     const totalPrice = 74999;
                                     if (avail) {
                                       setAutoFillResult({
@@ -2264,9 +2267,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                         branch: avail.branch_name || avail.showroom_name || "KVR Motors - Visakhapatnam",
                                         status: "Available Stock Unit",
                                         battery_serial: avail.assigned_battery || "BATT-2026-0001",
-                                        is_advance_booking: advAmt > 0,
-                                        advance_amount: advAmt,
-                                        remaining_balance: Math.max(0, totalPrice - advAmt),
+                                        is_advance_booking: isAdvBooking,
+                                        advance_amount: isAdvBooking ? advAmt : 0,
+                                        remaining_balance: isAdvBooking ? Math.max(0, totalPrice - advAmt) : totalPrice,
                                         payment_mode: bk.payment_mode
                                       });
                                     }
