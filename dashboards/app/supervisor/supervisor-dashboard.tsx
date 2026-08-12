@@ -1021,10 +1021,12 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const openAddBattery = () => {
     const year = new Date().getFullYear();
     const seq = String((batteriesStock?.length || 0) + 1).padStart(4, "0");
+    const defaultLocId = locationsList[0]?.id ? String(locationsList[0].id) : "3";
     setEditingBatteryId(null);
     setNewBattery({
       ...emptyBattery,
       serial_number: `BATT-${year}-${seq}`,
+      location: defaultLocId,
       purchase_date: new Date().toISOString().slice(0, 10),
     });
     setIsAddBatteryOpen(true);
@@ -3494,10 +3496,9 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Warehouse Outlet location</label>
-            <select value={newBattery.location} onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
-              <option value="">Select Outlet (Default Main Location)</option>
+            <select value={newBattery.location} onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none cursor-pointer">
               {locationsList.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              {locationsList.length === 0 && <option value="3">KVR Motors Main Showroom</option>}
+              {locationsList.length === 0 && <option value="3">Vizag Central Godown</option>}
             </select>
           </div>
           <div className="space-y-1.5">
