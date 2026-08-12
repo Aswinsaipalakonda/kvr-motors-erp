@@ -773,10 +773,16 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => ({
-                value: String(m.id),
-                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
-              }))}
+              options={vehicleModelsList.map((m) => {
+                const availUnits = vehicleUnitsList.filter(
+                  (u: any) => u.model === m.id && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
+                ).length;
+                const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                return {
+                  value: String(m.id),
+                  label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} Available)`,
+                };
+              })}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
               placeholder="Select EV Model..."
@@ -793,18 +799,20 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               <option value="social">Social Media Ads</option>
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
-            <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
-              <option value="enquiry">Enquiry</option>
-              <option value="new_lead">New Lead</option>
-              <option value="contacted">Contacted</option>
-              <option value="follow_up">Follow-up</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
-            </select>
-          </div>
+          {editingLeadId && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
+              <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
+                <option value="enquiry">Enquiry</option>
+                <option value="new_lead">New Lead</option>
+                <option value="contacted">Contacted</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+              </select>
+            </div>
+          )}
           {newLead.status === "lost" && (
             <div className="space-y-1.5 p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl">
               <label className="text-[10px] font-bold text-rose-700 uppercase">Reason for Lost Classification</label>

@@ -1158,6 +1158,15 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         delivery_status: "processing",
         branch: targetBranchId
       });
+      // Mark matching lead status as 'won' and booking as 'converted' upon final sale completion
+      const matchingLead = liveLeadsList.find(l => l.contact_number === cleanCheckoutPhone || l.customer_name.toLowerCase() === checkoutCustomerName.trim().toLowerCase());
+      if (matchingLead) {
+        try { await updateLead(matchingLead.id, { status: "won" }); } catch {}
+      }
+      const matchingBk = liveBookingsList.find(b => b.contact_number === cleanCheckoutPhone || b.customer_name.toLowerCase() === checkoutCustomerName.trim().toLowerCase());
+      if (matchingBk) {
+        try { await updateBooking(matchingBk.id, { status: "converted" }); } catch {}
+      }
       showToast("Sale confirmed! Submitted to Supervisor for payment verification. ✓");
       setCheckoutCustomerName(""); 
       setCheckoutContactNumber("");
@@ -1166,6 +1175,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       setSelectedBattery("");
       loadSales();
       loadBookings();
+      loadLeadsData();
     } catch (err: any) { 
       const serverErr = err.response?.data;
       let msg = "Failed to confirm sale.";
@@ -1844,14 +1854,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-800">Leads Pipeline Board</h3>
-                  <p className="text-[11px] text-slate-450 font-semibold mt-0.5">Drag cards to advance sales stages, or click edit details.</p>
+                  <p className="text-[11px] text-slate-450 font-semibold mt-0.5">View assigned leads for your showroom and follow up on customer enquiries.</p>
                 </div>
-                <button 
-                  onClick={openAddLead}
-                  className="flex items-center gap-1 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2.5 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20 shrink-0 animate-pulse"
-                >
-                  <Plus className="h-4 w-4" /> Add Lead
-                </button>
               </div>
 
               {/* Normal List Type Lead Management */}
@@ -1965,14 +1969,6 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               <Table 
                 title="Showroom Customer Profiles Directory" 
                 headers={["Customer Name", "Contact Mobile", "Purchased EV Model", "Invoice Date", "PDI Verified By", "Next Service Date", "Delivery Status", "Insurance"]}
-                actions={
-                  <button
-                    onClick={openAddLead}
-                    className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/20"
-                  >
-                    <Plus className="h-4 w-4" /> Add New Customer / Enquiry
-                  </button>
-                }
               >
                 {customersList.map((cust, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 border-b border-slate-100">
@@ -2070,6 +2066,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                                     setCheckoutCustomerName(bk.customer_name);
                                     setCheckoutContactNumber(bk.contact_number);
                                     setActiveTab("sales_checkout");
+                                    if (typeof window !== "undefined") {
+                                      window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
+                                    }
                                   }}
                                   className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
                                 >
