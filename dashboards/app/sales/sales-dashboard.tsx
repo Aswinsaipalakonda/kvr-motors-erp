@@ -2769,14 +2769,11 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
-            <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-705 outline-none focus:border-blue-500 font-bold">
-              <option value="enquiry">Enquiry</option>
-              <option value="new_lead">New Lead</option>
-              <option value="contacted">Contacted</option>
-              <option value="follow_up">Follow-up</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
+            <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
+              <option value="enquiry">Enquiry Registered</option>
+              <option value="negotiation">Interested (Booking Created)</option>
+              <option value="won">Won (Sale Completed)</option>
+              <option value="lost">Not Interested</option>
             </select>
           </div>
 
@@ -2797,10 +2794,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 <input
                   type="number"
                   placeholder="e.g. 5000"
-                  value={newLead.advance_amount || "5000"}
-                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value })}
+                  value={newLead.advance_amount || ""}
+                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value.replace(/\D/g, '') })}
                   className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none"
-                  required
                 />
               </div>
             )}

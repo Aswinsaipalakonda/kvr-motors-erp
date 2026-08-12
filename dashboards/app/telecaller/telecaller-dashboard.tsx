@@ -908,6 +908,15 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               <option value="social">Social Media Ads</option>
             </select>
           </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
+            <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
+              <option value="enquiry">Enquiry Registered</option>
+              <option value="negotiation">Interested (Booking Created)</option>
+              <option value="won">Won (Sale Completed)</option>
+              <option value="lost">Not Interested</option>
+            </select>
+          </div>
 
           {/* Advance Booking Selection */}
           <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
@@ -926,10 +935,9 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                 <input
                   type="number"
                   placeholder="e.g. 5000"
-                  value={newLead.advance_amount || "5000"}
-                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value })}
+                  value={newLead.advance_amount || ""}
+                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value.replace(/\D/g, '') })}
                   className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none"
-                  required
                 />
               </div>
             )}

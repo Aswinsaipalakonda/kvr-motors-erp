@@ -207,7 +207,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
 
   // 3. Lead CRUD & Kanban
   const [usersList, setUsersList] = useState<any[]>([]);
-  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "", assigned_executive: "" as string | number | null };
+  const emptyLead = { customer_name: "", contact_number: "", interested_vehicle: "", lead_source: "walk_in", status: "new_lead", notes: "", follow_up_date: "", assigned_executive: "" as string | number | null, is_advance_booking: false, advance_amount: "" };
   const [newLead, setNewLead] = useState({ ...emptyLead });
   const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -860,6 +860,8 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       notes: lead.notes || "",
       follow_up_date: lead.follow_up_date || "",
       assigned_executive: lead.assigned_executive || "",
+      is_advance_booking: !!lead.is_advance_booking,
+      advance_amount: lead.advance_amount && parseFloat(lead.advance_amount) > 0 ? String(Math.round(parseFloat(lead.advance_amount))) : "",
     });
     setIsAddLeadOpen(true);
   };
@@ -882,15 +884,17 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       ? newLead.status 
       : (pairedStockAvailable ? "enquiry" : "new_lead");
 
-    const payload = {
+    const payload: any = {
       customer_name: newLead.customer_name.trim(),
-      contact_number: newLead.contact_number.trim(),
+      contact_number: cleanPhone,
       interested_vehicle: vId,
       lead_source: newLead.lead_source,
       status: initialStatus,
       notes: newLead.notes.trim() || undefined,
       follow_up_date: newLead.follow_up_date || undefined,
       assigned_executive: newLead.assigned_executive ? parseInt(String(newLead.assigned_executive)) : null,
+      is_advance_booking: !!newLead.is_advance_booking,
+      advance_amount: newLead.is_advance_booking && newLead.advance_amount ? parseFloat(newLead.advance_amount) : 0,
     };
     try {
       if (editingLeadId) {
@@ -3436,6 +3440,31 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               <option value="won">Won (Sale Completed)</option>
               <option value="lost">Not Interested</option>
             </select>
+          </div>
+
+          {/* Advance Booking Selection */}
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer font-extrabold text-xs text-amber-900">
+              <input
+                type="checkbox"
+                checked={!!newLead.is_advance_booking}
+                onChange={(e) => setNewLead({ ...newLead, is_advance_booking: e.target.checked })}
+                className="w-4 h-4 text-[#04a700] rounded focus:ring-emerald-500 cursor-pointer"
+              />
+              <span>Is Advance Paid Booking?</span>
+            </label>
+            {newLead.is_advance_booking && (
+              <div className="space-y-1 pt-1">
+                <label className="text-[10px] font-bold text-amber-800 uppercase">Advance Payment Token Amount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={newLead.advance_amount || ""}
+                  onChange={(e) => setNewLead({ ...newLead, advance_amount: e.target.value.replace(/\D/g, '') })}
+                  className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none"
+                />
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Notes / Requirements</label>
