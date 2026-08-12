@@ -793,26 +793,38 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList
-                .map((m) => {
-                  const matchingUnits = vehicleUnitsList.filter(
-                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
-                  );
-                  const availUnits = matchingUnits.length;
-                  if (availUnits === 0) return null;
-                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
-                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+              options={(() => {
+                const optionsList: { value: string; label: string }[] = [];
+                const availableUnits = (vehicleUnitsList || []).filter(
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                );
+                vehicleModelsList.forEach((m: any) => {
+                  const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));
+                  if (matching.length === 0) return;
+                  const groups: Record<string, { color: string; battery: string; count: number }> = {};
+                  matching.forEach((u: any) => {
+                    const color = u.color || "Standard Color";
+                    const battery = u.assigned_battery_code || u.assigned_battery_capacity || u.assigned_battery_spec || u.assigned_battery || "2.0 kWh Battery";
+                    const key = `${color}___${battery}`;
+                    if (!groups[key]) {
+                      groups[key] = { color, battery, count: 0 };
+                    }
+                    groups[key].count += 1;
+                  });
                   const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
-                  return {
-                    value: String(m.id),
-                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
-                  };
-                })
-                .filter((item): item is { value: string; label: string } => item !== null)}
+                  Object.values(groups).forEach((g) => {
+                    optionsList.push({
+                      value: String(m.id),
+                      label: `${mName} - ${g.color} - ${g.battery} (${g.count} Unit${g.count === 1 ? '' : 's'} Available)`,
+                    });
+                  });
+                });
+                return optionsList;
+              })()}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
-              placeholder="Select EV Model..."
-              searchPlaceholder="Search EV models by name or brand..."
+              placeholder="Select EV Model (In-Stock Only)..."
+              searchPlaceholder="Search EV models by name, color, or brand..."
               required
             />
           </div>

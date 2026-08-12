@@ -311,14 +311,17 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     }
 
     try {
-      await updateSalesInvoice(verifyingInvoice.id, {
+      const payload: any = {
         customer_name: editCustomerName.trim(),
         customer_contact: cleanPhone,
         payment_mode: editPaymentMode,
         payment_split_details: splitDetails,
-        payment_proof: paymentProofImage,
         delivery_status: "sold"
-      });
+      };
+      if (paymentProofImage) {
+        payload.payment_proof = paymentProofImage;
+      }
+      await updateSalesInvoice(verifyingInvoice.id, payload);
 
       // Update matching lead status to won (sale completed)
       try {
@@ -2749,7 +2752,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                  <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Assigned Exec", "Followup Date", "Stage State", "Actions"]}>
+                  <Table headers={["Lead ID", "Customer Details", "Contact No", "Vehicle Model", "Sales Executive", "Followup Date", "Stage State", "Actions"]}>
                     {leadsLoading ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
@@ -2779,20 +2782,8 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                             </div>
                           </td>
                           <td className="py-3.5 px-5 text-slate-700 font-semibold">{lead.interested_vehicle_name || "—"}</td>
-                          <td className="py-3.5 px-5">
-                            <select 
-                              value={lead.assigned_executive || "Unassigned"}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                handleAssignLead(lead.id, val === "Unassigned" ? null : parseInt(val));
-                              }}
-                              className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 outline-none cursor-pointer"
-                            >
-                              <option value="Unassigned">Unassigned</option>
-                              {usersList.filter((m: any) => m.role === "sales" || m.role === "telecaller").map((m: any) => (
-                                <option key={m.id} value={m.id}>{m.full_name || m.username} ({m.role})</option>
-                              ))}
-                            </select>
+                          <td className="py-3.5 px-5 font-bold text-slate-800">
+                            {lead.assigned_executive_name || lead.created_by_name || salesInvoices.find(s => s.customer_contact === lead.contact_number || s.customer_name?.toLowerCase() === lead.customer_name?.toLowerCase())?.executive_name || "Sales Executive"}
                           </td>
                           <td className="py-3.5 px-5 text-slate-500 font-semibold">{lead.follow_up_date ? new Date(lead.follow_up_date).toLocaleDateString() : "—"}</td>
                           <td className="py-3.5 px-5">
@@ -3266,26 +3257,38 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList
-                .map((m) => {
-                  const matchingUnits = vehicleUnitsList.filter(
-                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
-                  );
-                  const availUnits = matchingUnits.length;
-                  if (availUnits === 0) return null;
-                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
-                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+              options={(() => {
+                const optionsList: { value: string; label: string }[] = [];
+                const availableUnits = (vehicleUnitsList || []).filter(
+                  (u: any) => (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                );
+                vehicleModelsList.forEach((m: any) => {
+                  const matching = availableUnits.filter((u: any) => u.model === m.id || String(u.model) === String(m.id));
+                  if (matching.length === 0) return;
+                  const groups: Record<string, { color: string; battery: string; count: number }> = {};
+                  matching.forEach((u: any) => {
+                    const color = u.color || "Standard Color";
+                    const battery = u.assigned_battery_code || u.assigned_battery_capacity || u.assigned_battery_spec || u.assigned_battery || "2.0 kWh Battery";
+                    const key = `${color}___${battery}`;
+                    if (!groups[key]) {
+                      groups[key] = { color, battery, count: 0 };
+                    }
+                    groups[key].count += 1;
+                  });
                   const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
-                  return {
-                    value: String(m.id),
-                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
-                  };
-                })
-                .filter((item): item is { value: string; label: string } => item !== null)}
+                  Object.values(groups).forEach((g) => {
+                    optionsList.push({
+                      value: String(m.id),
+                      label: `${mName} - ${g.color} - ${g.battery} (${g.count} Unit${g.count === 1 ? '' : 's'} Available)`,
+                    });
+                  });
+                });
+                return optionsList;
+              })()}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
               placeholder="Select EV Model (In-Stock Only)..."
-              searchPlaceholder="Search EV models by name or brand..."
+              searchPlaceholder="Search EV models by name, color, or brand..."
               required
             />
           </div>
