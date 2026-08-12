@@ -17,7 +17,7 @@ import DashboardSmoothScroll from "../components/DashboardSmoothScroll";
 import Toast from "../components/Toast";
 import SearchableSelect from "../components/SearchableSelect";
 
-import { lookupVehicleUnit, getVehicleModels } from "../services/vehicles";
+import { lookupVehicleUnit, getVehicleModels, getVehicleUnits } from "../services/vehicles";
 import { getBatteries, checkFifo, createFifoOverride, getFifoOverrides } from "../services/batteries";
 import { getLeads, createLead, updateLead } from "../services/leads";
 import { createBooking, getBookings, updateBooking } from "../services/bookings";
@@ -1149,7 +1149,23 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       ? (typeof autoFillResult.branchId === "number" ? autoFillResult.branchId : 1) 
       : 1;
 
-    const unitId = autoFillResult?.id || 1;
+    let unitId = autoFillResult?.id;
+    if (!unitId) {
+      try {
+        const units = await getVehicleUnits();
+        const availableUnit = units.find((u: any) => u.stock_status === "available" || u.stock_status === "in_stock");
+        if (availableUnit) {
+          unitId = availableUnit.id;
+        } else if (units.length > 0) {
+          unitId = units[0].id;
+        }
+      } catch {}
+    }
+
+    if (!unitId) {
+      showToast("No valid vehicle unit found in stock inventory to allocate. Please add stock unit first.", "error");
+      return;
+    }
 
     try {
       await createSalesInvoice({
