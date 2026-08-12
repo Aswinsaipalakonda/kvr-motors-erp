@@ -2388,11 +2388,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
     const motor = f.motor_number.trim();
     const chassis = f.chassis_number.trim();
 
-    // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
+    // Auto-resolve primary showroom and inventory location for the selected branch dynamically
     const branchId = parseInt(f.branch);
     const branchObj = branchesList.find((b) => b.id === branchId);
-    const showroomId = branchObj?.showrooms?.[0]?.id || 3; // Default to Main Showroom ID 3 (KVR MOTORS)
-    const locationId = branchObj?.inventory_locations?.[0]?.id || 3; // Default to Main Location ID 3 (KVR MOTORS)
+    const showroomId = branchObj?.showrooms?.[0]?.id || (branchObj?.showrooms?.length ? branchObj.showrooms[0].id : 1);
+    const locationId = branchObj?.inventory_locations?.[0]?.id || (branchObj?.inventory_locations?.length ? branchObj.inventory_locations[0].id : 1);
 
     const payload = {
       model: parseInt(f.model),
@@ -8950,7 +8950,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
       {/* 7. Log Battery Stock */}
       <Modal isOpen={isAddBatteryOpen} onClose={() => { setIsAddBatteryOpen(false); setEditingBatteryId(null); setNewBattery({ ...emptyBattery }); }} title={editingBatteryId ? "Edit Battery Stock" : "Log Battery Stock"}>
         <form onSubmit={handleCreateBattery} className="space-y-4 text-left">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Serial Number</label>
               <input
@@ -8984,7 +8984,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Purchase Date</label>
               <input
@@ -9011,7 +9011,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase">Supplier</label>
               <input

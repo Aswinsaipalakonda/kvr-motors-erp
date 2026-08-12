@@ -738,11 +738,11 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
     const motor = f.motor_number.trim();
     const chassis = f.chassis_number.trim();
 
-    // Auto-resolve primary showroom and inventory location for the branch since form selector is removed
+    // Auto-resolve primary showroom and inventory location for the selected branch dynamically
     const branchId = parseInt(f.branch);
     const branchObj = branchesList.find((b) => b.id === branchId);
-    const showroomId = branchObj?.showrooms?.[0]?.id || 3; // Default to Main Showroom ID 3 (KVR MOTORS)
-    const locationId = branchObj?.inventory_locations?.[0]?.id || 3; // Default to Main Location ID 3 (KVR MOTORS)
+    const showroomId = branchObj?.showrooms?.[0]?.id || (branchObj?.showrooms?.length ? branchObj.showrooms[0].id : 1);
+    const locationId = branchObj?.inventory_locations?.[0]?.id || (branchObj?.inventory_locations?.length ? branchObj.inventory_locations[0].id : 1);
 
     const payload = {
       model: parseInt(f.model),
