@@ -627,18 +627,22 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                           <td className="py-3.5 px-5">
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
                               lead.status === "won" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                              lead.status === "booked" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                              lead.status === "negotiation" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                               lead.status === "lost" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                              lead.status === "negotiation" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                               "bg-slate-50 text-slate-650 border border-slate-200"
                             }`}>
-                              {lead.status === "won" ? "Converted to Booking" :
-                               lead.status === "lost" ? "Lost" :
+                              {lead.status === "won" ? "Sale Completed (Won)" :
+                               lead.status === "negotiation" ? "Interested (Booking Created)" :
+                               lead.status === "lost" ? "Not Interested (Lost)" :
                                (lead.status_display || lead.status)}
                             </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-2">
-                            {lead.status !== "lost" && lead.status !== "won" && lead.status !== "booked" && (
+                            {lead.status === "negotiation" ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                                ✓ Marked Interested
+                              </span>
+                            ) : (lead.status !== "lost" && lead.status !== "won" && lead.status !== "booked") ? (
                               <>
                                 <select
                                   defaultValue=""
@@ -652,9 +656,9 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                                   <option value="interested">⚡ Interested (Create Booking)</option>
                                   <option value="not_interested">❌ Not Interested</option>
                                 </select>
-                                <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                               </>
-                            )}
+                            ) : null}
+                            <button onClick={() => openFollowupDialog(lead)} className="text-xs font-bold text-purple-600 hover:text-purple-800 cursor-pointer">Follow Up</button>
                             <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit</button>
                           </td>
                         </tr>
@@ -816,20 +820,6 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
               <option value="social">Social Media Ads</option>
             </select>
           </div>
-          {editingLeadId && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Pipeline Stage</label>
-              <select value={newLead.status} onChange={(e) => setNewLead({ ...newLead, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 font-bold outline-none">
-                <option value="enquiry">Enquiry</option>
-                <option value="new_lead">New Lead</option>
-                <option value="contacted">Contacted</option>
-                <option value="follow_up">Follow-up</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
-              </select>
-            </div>
-          )}
           {newLead.status === "lost" && (
             <div className="space-y-1.5 p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl">
               <label className="text-[10px] font-bold text-rose-700 uppercase">Reason for Lost Classification</label>
