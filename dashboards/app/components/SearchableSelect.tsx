@@ -139,11 +139,11 @@ export default function SearchableSelect({
                 No matching EV models found
               </div>
             ) : (
-              filteredOptions.map((opt) => {
+              filteredOptions.map((opt, idx) => {
                 const isSelected = String(opt.value) === String(value);
                 return (
                   <button
-                    key={opt.value}
+                    key={`${opt.value}-${opt.label}-${idx}`}
                     type="button"
                     onClick={() => handleSelect(opt.value)}
                     className={`w-full px-3.5 py-2.5 text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${

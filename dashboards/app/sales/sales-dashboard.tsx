@@ -2185,11 +2185,11 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                       if (bookingFilterType === "normal") return !isAdv;
                       return true;
                     })
-                    .map((bk) => {
+                    .map((bk, idx) => {
                       const advAmt = parseFloat(bk.advance_amount || 0);
                       const isAdvance = advAmt > 0;
                       return (
-                        <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
+                        <tr key={`${bk.id || 'bk'}-${bk.booking_id || ''}-${idx}`} className="hover:bg-slate-50 border-b border-slate-100">
                           <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
                           <td className="py-3 px-4 font-bold text-slate-800">{bk.customer_name}</td>
                           <td className="py-3 px-4 text-slate-800 font-bold">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
