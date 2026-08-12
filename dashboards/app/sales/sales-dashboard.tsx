@@ -216,7 +216,11 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     try {
       setBookingsLoading(true);
       const data = await getBookings();
-      setLiveBookingsList(data);
+      // Deduplicate bookings by booking_id / id
+      const uniqueBookings = Array.isArray(data) ? data.filter((item: any, index: number, self: any[]) =>
+        index === self.findIndex((b: any) => (b.booking_id && b.booking_id === item.booking_id) || b.id === item.id)
+      ) : [];
+      setLiveBookingsList(uniqueBookings);
     } catch (e) {
       console.error("Failed to load bookings:", e);
     } finally {
@@ -1952,7 +1956,20 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                             </span>
                           </td>
                           <td className="py-3.5 px-5 flex items-center gap-3">
-                            <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-[#04a700] hover:text-emerald-800 cursor-pointer">Edit Lead</button>
+                            <button
+                              onClick={() => {
+                                setCheckoutCustomerName(lead.customer_name);
+                                setCheckoutContactNumber(lead.contact_number);
+                                setActiveTab("sales_checkout");
+                                if (typeof window !== "undefined") {
+                                  window.history.pushState({ path: "/sales/sales_checkout" }, "", "/sales/sales_checkout");
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 text-xs text-white font-extrabold cursor-pointer bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow-sm transition-colors"
+                            >
+                              Convert to Sale
+                            </button>
+                            <button onClick={() => openEditLead(lead)} className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer">Edit Lead</button>
                           </td>
                         </tr>
                       ))
@@ -2003,7 +2020,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               {/* Bookings table */}
               <Table 
                 title="My Active Booking Commitments" 
-                headers={["Booking ID", "Customer Details", "Vehicle Model", "Contact", "Advance Payment", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
+                headers={["Booking ID", "Customer Details", "Vehicle Model", "Contact", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
                 actions={
                   <button 
                     onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); setIsCreateBookingOpen(true); }}
@@ -2015,7 +2032,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               >
                 {bookingsLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                         <span>Loading bookings...</span>
@@ -2024,8 +2041,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   </tr>
                 ) : liveBookingsList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center">
-                      <EmptyState title="No Bookings Recorded" description="Advance deposits will display here." />
+                    <td colSpan={8} className="py-8 text-center">
+                      <EmptyState title="No Bookings Recorded" description="Customer bookings will display here." />
                     </td>
                   </tr>
                 ) : (
@@ -2035,7 +2052,6 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                       <td className="py-3 px-4 font-bold text-slate-800">{bk.customer_name}</td>
                       <td className="py-3 px-4 text-slate-800 font-bold">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
                       <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-700">₹ {parseFloat(bk.advance_amount).toLocaleString("en-IN")}</td>
                       <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
                       <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
                       <td className="py-3 px-4">
