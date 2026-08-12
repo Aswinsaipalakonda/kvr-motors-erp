@@ -8725,13 +8725,25 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested Vehicle Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => ({
-                value: String(m.id),
-                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
-              }))}
+              options={vehicleModelsList
+                .map((m) => {
+                  const matchingUnits = (vehicleUnitsList || []).filter(
+                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  );
+                  const availUnits = matchingUnits.length;
+                  if (availUnits === 0) return null;
+                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
+                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+                  const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                  return {
+                    value: String(m.id),
+                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
+                  };
+                })
+                .filter((item): item is { value: string; label: string } => item !== null)}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
-              placeholder="Select EV Model..."
+              placeholder="Select EV Model (In-Stock Only)..."
               searchPlaceholder="Search EV models by name or brand..."
               required
             />

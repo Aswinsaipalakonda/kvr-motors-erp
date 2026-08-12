@@ -125,10 +125,12 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
   // Live database states
   const [liveLeadsList, setLiveLeadsList] = useState<any[]>([]);
   const [vehicleModelsList, setVehicleModelsList] = useState<any[]>([]);
+  const [vehicleUnitsList, setVehicleUnitsList] = useState<any[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(true);
 
   const [liveBookingsList, setLiveBookingsList] = useState<any[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingFilterType, setBookingFilterType] = useState<string>("all");
 
   const [liveSalesList, setLiveSalesList] = useState<any[]>([]);
   const [salesLoading, setSalesLoading] = useState(true);
@@ -183,6 +185,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
       setLeadsLoading(true);
       const leadsData = await getLeads().catch(() => []);
       const modelsData = await getVehicleModels().catch(() => []);
+      const unitsData = await getVehicleUnits().catch(() => []);
+      setVehicleUnitsList(unitsData);
       if (user) {
         const myBranch = (user.branch || user.showroom || "").toLowerCase();
         const filtered = leadsData.filter((lead: any) => {
@@ -2124,10 +2128,31 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           {/* TAB 4A: BOOKINGS */}
           {activeTab === "bookings" && (
             <div className="space-y-6">
+              {/* Filter Pills for Bookings */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 slim-scrollbar">
+                {[
+                  { id: "all", label: "All Bookings", count: liveBookingsList.length },
+                  { id: "advance", label: "⭐ Advance Paid Bookings", count: liveBookingsList.filter(b => parseFloat(b.advance_amount || 0) > 0).length },
+                  { id: "normal", label: "📋 Standard Enquiry Bookings", count: liveBookingsList.filter(b => !parseFloat(b.advance_amount || 0)).length },
+                ].map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => setBookingFilterType(filter.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      bookingFilterType === filter.id
+                        ? "bg-[#04a700] text-white shadow-sm"
+                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {filter.label} ({filter.count})
+                  </button>
+                ))}
+              </div>
+
               {/* Bookings table */}
               <Table 
                 title="My Active Booking Commitments" 
-                headers={["Booking ID", "Customer Details", "Vehicle Model", "Contact", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
+                headers={["Booking ID", "Customer Details", "Vehicle Model", "Booking Type", "Contact", "Booking Date", "Expiry Threshold", "Approval State", "Actions"]}
                 actions={
                   <button 
                     onClick={() => { setEditingBookingId(null); setNewBooking({ customer_name: "", contact_number: "", vehicle_model: "", advance_amount: "", expiry_date: "", payment_mode: "Cash", payment_split_details: { cash: "", card: "", upi: "", bajaj_finance: "" } }); setIsCreateBookingOpen(true); }}
@@ -2139,7 +2164,7 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
               >
                 {bookingsLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-8 text-center text-xs text-slate-400 font-semibold">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-2 border-slate-200 border-t-[#04a700]" />
                         <span>Loading bookings...</span>
@@ -2148,29 +2173,50 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                   </tr>
                 ) : liveBookingsList.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center">
+                    <td colSpan={9} className="py-8 text-center">
                       <EmptyState title="No Bookings Recorded" description="Customer bookings will display here." />
                     </td>
                   </tr>
                 ) : (
-                  liveBookingsList.map((bk) => (
-                    <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
-                      <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
-                      <td className="py-3 px-4 font-bold text-slate-800">{bk.customer_name}</td>
-                      <td className="py-3 px-4 text-slate-800 font-bold">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
-                      <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
-                      <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
-                      <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                          "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}>
-                          {bk.status === "pending" ? "Pending Approval" : bk.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap space-x-2 flex items-center gap-2">
+                  liveBookingsList
+                    .filter(bk => {
+                      const isAdv = parseFloat(bk.advance_amount || 0) > 0;
+                      if (bookingFilterType === "advance") return isAdv;
+                      if (bookingFilterType === "normal") return !isAdv;
+                      return true;
+                    })
+                    .map((bk) => {
+                      const advAmt = parseFloat(bk.advance_amount || 0);
+                      const isAdvance = advAmt > 0;
+                      return (
+                        <tr key={bk.id} className="hover:bg-slate-50 border-b border-slate-100">
+                          <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
+                          <td className="py-3 px-4 font-bold text-slate-800">{bk.customer_name}</td>
+                          <td className="py-3 px-4 text-slate-800 font-bold">{bk.vehicle_model_name || "Kinetic Green EV"}</td>
+                          <td className="py-3 px-4">
+                            {isAdvance ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ⭐ Advance Paid (₹{advAmt.toLocaleString("en-IN")})
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                Standard Enquiry Booking
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 font-semibold">{bk.contact_number}</td>
+                          <td className="py-3 px-4 text-slate-400">{bk.booking_date ? new Date(bk.booking_date).toLocaleDateString() : "—"}</td>
+                          <td className="py-3 px-4 font-mono text-slate-500">{bk.expiry_date ? new Date(bk.expiry_date).toLocaleDateString() : "—"}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              bk.status === "confirmed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              bk.status === "cancelled" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                              "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}>
+                              {bk.status === "pending" ? "Pending Approval" : bk.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap space-x-2 flex items-center gap-2">
                         {(() => {
                           const isConverted = bk.status === "converted" || liveSalesList.some((s: any) => s.customer_contact === bk.contact_number || s.customer_name === bk.customer_name);
                           if (isConverted) {
@@ -2237,8 +2283,9 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                         )}
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })
+              )}
               </Table>
 
               {/* Booking Invoice Preview Modal */}
@@ -2749,13 +2796,25 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => ({
-                value: String(m.id),
-                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
-              }))}
+              options={vehicleModelsList
+                .map((m) => {
+                  const matchingUnits = (vehicleUnitsList || []).filter(
+                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  );
+                  const availUnits = matchingUnits.length;
+                  if (availUnits === 0) return null;
+                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
+                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+                  const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                  return {
+                    value: String(m.id),
+                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
+                  };
+                })
+                .filter((item): item is { value: string; label: string } => item !== null)}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
-              placeholder="Select EV Model..."
+              placeholder="Select EV Model (In-Stock Only)..."
               searchPlaceholder="Search EV models by name or brand..."
               required
             />
@@ -2809,13 +2868,25 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => ({
-                value: String(m.id),
-                label: m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name,
-              }))}
+              options={vehicleModelsList
+                .map((m) => {
+                  const matchingUnits = (vehicleUnitsList || []).filter(
+                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  );
+                  const availUnits = matchingUnits.length;
+                  if (availUnits === 0) return null;
+                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
+                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+                  const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                  return {
+                    value: String(m.id),
+                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
+                  };
+                })
+                .filter((item): item is { value: string; label: string } => item !== null)}
               value={String(newBooking.vehicle_model || "")}
               onChange={(val) => setNewBooking({ ...newBooking, vehicle_model: val })}
-              placeholder="Select vehicle..."
+              placeholder="Select EV Model (In-Stock Only)..."
               searchPlaceholder="Search EV models by name or brand..."
               required
             />

@@ -157,6 +157,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
   const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [attendanceFilterStatus, setAttendanceFilterStatus] = useState("All Statuses");
   const [selectedAttendanceIds, setSelectedAttendanceIds] = useState<number[]>([]);
+  const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
 
   // Static Supervisor alerts
   const [staticAlerts, setStaticAlerts] = useState<any[]>([
@@ -316,7 +317,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
         payment_mode: editPaymentMode,
         payment_split_details: splitDetails,
         payment_proof: paymentProofImage,
-        delivery_status: "delivered"
+        delivery_status: "sold"
       });
 
       // Update matching lead status to won (sale completed)
@@ -3265,19 +3266,22 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase">Interested EV Model</label>
             <SearchableSelect
-              options={vehicleModelsList.map((m) => {
-                const availUnits = vehicleUnitsList.filter(
-                  (u: any) => u.model === m.id && (u.stock_status === "available" || u.stock_status === "in_stock") && u.assigned_battery
-                ).length;
-                const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
-                return {
-                  value: String(m.id),
-                  label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock)`,
-                };
-              }).filter((opt) => {
-                const mId = parseInt(opt.value);
-                return vehicleUnitsList.some((u: any) => u.model === mId && (u.stock_status === "available" || u.stock_status === "in_stock"));
-              })}
+              options={vehicleModelsList
+                .map((m) => {
+                  const matchingUnits = vehicleUnitsList.filter(
+                    (u: any) => (u.model === m.id || String(u.model) === String(m.id)) && (u.stock_status === "available" || u.stock_status === "in_stock" || u.stock_status === "AVAILABLE" || u.stock_status === "IN_STOCK") && u.assigned_battery
+                  );
+                  const availUnits = matchingUnits.length;
+                  if (availUnits === 0) return null;
+                  const colorsList = Array.from(new Set(matchingUnits.map((u: any) => u.color).filter(Boolean)));
+                  const colorsStr = colorsList.length > 0 ? colorsList.join(", ") : "Standard";
+                  const mName = m.brand_name ? `${m.brand_name} - ${m.model_name}` : m.model_name;
+                  return {
+                    value: String(m.id),
+                    label: `${mName} (${availUnits} Paired Unit${availUnits === 1 ? '' : 's'} in Stock | Colors: ${colorsStr})`,
+                  };
+                })
+                .filter((item): item is { value: string; label: string } => item !== null)}
               value={String(newLead.interested_vehicle || "")}
               onChange={(val) => setNewLead({ ...newLead, interested_vehicle: val })}
               placeholder="Select EV Model (In-Stock Only)..."
@@ -3727,9 +3731,18 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-extrabold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" 
               />
               {paymentProofImage && (
-                <div className="mt-3 relative w-32 h-32 rounded-xl overflow-hidden border border-slate-300 bg-white shadow-sm">
+                <div 
+                  onClick={() => setPreviewZoomImage(paymentProofImage)}
+                  className="mt-3 relative w-36 h-36 rounded-xl overflow-hidden border-2 border-emerald-500 bg-white shadow-sm cursor-pointer group hover:opacity-90 transition-all"
+                  title="Click to view full size preview"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={paymentProofImage} alt="Payment Receipt Proof" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded-full flex items-center gap-1">
+                      🔍 Tap to Zoom
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -3750,6 +3763,32 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Lightbox Preview Modal for Payment Receipt Proof */}
+      {previewZoomImage && (
+        <Modal 
+          isOpen={!!previewZoomImage} 
+          onClose={() => setPreviewZoomImage(null)} 
+          title="Payment Proof Receipt Image Preview"
+        >
+          <div className="flex flex-col items-center space-y-4 p-2">
+            <div className="w-full max-h-[70vh] overflow-auto border border-slate-200 rounded-xl bg-slate-900/5 p-2 flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={previewZoomImage} 
+                alt="Full Payment Proof Receipt" 
+                className="max-w-full h-auto max-h-[65vh] object-contain rounded-lg shadow-md" 
+              />
+            </div>
+            <button 
+              onClick={() => setPreviewZoomImage(null)} 
+              className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-full cursor-pointer transition-colors"
+            >
+              Close Preview
+            </button>
+          </div>
         </Modal>
       )}
 
