@@ -16,6 +16,18 @@ class BatterySerializer(serializers.ModelSerializer):
             attrs['location'] = first_loc
         return super().validate(attrs)
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.status == 'available':
+            from vehicles.models import VehicleUnit
+            if VehicleUnit.objects.filter(assigned_battery=instance.serial_number).exists():
+                ret['status'] = 'assigned'
+                ret['status_display'] = 'Assigned'
+                if instance.status != 'assigned':
+                    instance.status = 'assigned'
+                    instance.save(update_fields=['status'])
+        return ret
+
     class Meta:
         model = Battery
         fields = '__all__'

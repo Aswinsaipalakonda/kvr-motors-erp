@@ -549,16 +549,29 @@ export default function TelecallerDashboard({ initialTab: initialTabProp }: { in
                     <p className="text-xs font-semibold text-slate-500">Filter, search, and manage leads for your branch</p>
                   </div>
                   
-                  {/* Search Bar */}
-                  <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search customer, vehicle, notes..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-full pl-9 pr-4 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none"
-                    />
+                  {/* Action & Search Header */}
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => {
+                        setEditingLeadId(null);
+                        setNewLead({ ...emptyLead });
+                        setIsAddLeadOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 bg-[#04a700] hover:bg-[#038a00] text-white font-bold text-xs py-2 px-4 rounded-full cursor-pointer shadow-md shadow-[#04a700]/15 shrink-0 transition-all"
+                    >
+                      <Plus className="h-4 w-4" /> Add New Enquiry
+                    </button>
+                    
+                    <div className="relative w-full sm:w-72">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search customer, vehicle, notes..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-full pl-9 pr-4 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
 
