@@ -82,18 +82,26 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         return instance
 
     def _finalize_sale(self, instance):
-        # 1. Update vehicle unit status to sold
+        is_delivered = instance.delivery_status in ['delivered', 'completed']
+        
+        # 1. Update vehicle unit status (only sold if delivered, otherwise booked)
         vu = instance.vehicle_unit
         if vu:
-            vu.stock_status = 'sold'
+            if is_delivered:
+                vu.stock_status = 'sold'
+            elif vu.stock_status != 'sold':
+                vu.stock_status = 'booked'
             if instance.assigned_battery:
                 vu.assigned_battery = instance.assigned_battery.serial_number
             vu.save()
         
-        # 2. Update battery status to sold
+        # 2. Update battery status (only sold if delivered, otherwise assigned)
         if instance.assigned_battery:
             bat = instance.assigned_battery
-            bat.status = 'sold'
+            if is_delivered:
+                bat.status = 'sold'
+            elif bat.status != 'sold':
+                bat.status = 'assigned'
             bat.save()
             
         # 3. Create automatic LedgerEntry if not existing

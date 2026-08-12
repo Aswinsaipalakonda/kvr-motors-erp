@@ -29,6 +29,7 @@ class AdvanceBooking(models.Model):
         related_name="bookings"
     )
     advance_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_advance_booking = models.BooleanField(default=False)
     booking_date = models.DateField(auto_now_add=True)
     expiry_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

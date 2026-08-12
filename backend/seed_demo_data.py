@@ -1,4 +1,4 @@
-﻿"""
+"""
 seed_demo_data.py
 -----------------
 Clears all bookings, leads, sales invoices and seeds:
@@ -26,21 +26,40 @@ from sales.models import SalesInvoice
 from leads.models import Lead
 
 
+from seed_users import seed_users
+
+
 def seed_demo_data():
     print("=" * 55)
-    print("  KVR Motors â€“ Demo Data Seeder")
+    print("  KVR Motors Demo Data Seeder")
     print("=" * 55)
 
-    # ------------------------------------------------------------------
-    # 1. Clear transactional data (keep branches / vehicle models intact)
-    # ------------------------------------------------------------------
-    print("\n[1/5] Clearing bookings, leads, sales invoices & stock ...")
-    Lead.objects.all().delete()
+    print("\n[0/5] Seeding login credentials...")
+    try:
+        seed_users()
+    except Exception as e:
+        print(f"User seed note: {e}")
+
+    print("\n[1/5] Clearing all old database records...")
+    from ledger.models import LedgerEntry
+    from purchases.models import PurchaseOrder
+    from branches.models import BranchExpense, BranchCashDeposit, IssueReport
+    from attendance.models import Attendance
+    from activity_logs.models import ActivityLog
+
+    ActivityLog.objects.all().delete()
+    Attendance.objects.all().delete()
+    LedgerEntry.objects.all().delete()
     AdvanceBooking.objects.all().delete()
     SalesInvoice.objects.all().delete()
+    PurchaseOrder.objects.all().delete()
+    BranchExpense.objects.all().delete()
+    BranchCashDeposit.objects.all().delete()
+    Lead.objects.all().delete()
+    IssueReport.objects.all().delete()
     VehicleUnit.objects.all().delete()
     Battery.objects.all().delete()
-    print("      âœ“ All cleared.")
+    print("      All cleared.")
 
     # ------------------------------------------------------------------
     # 2. Ensure branch / showroom / location exist

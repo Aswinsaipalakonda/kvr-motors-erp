@@ -6,6 +6,7 @@ export interface BookingInput {
   contact_number: string;
   vehicle_model: number; // VehicleModel ID
   vehicle_unit?: number | null; // VehicleUnit ID
+  is_advance_booking?: boolean;
   advance_amount: number;
   expiry_date: string; // YYYY-MM-DD
   status?: string;

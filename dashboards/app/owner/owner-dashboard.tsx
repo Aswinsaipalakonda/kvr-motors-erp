@@ -6635,7 +6635,7 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                           <td className="py-3.5 px-5 text-slate-600 font-mono">{inv.battery_serial || "N/A"}</td>
                           <td className="py-3.5 px-5 font-bold text-slate-800">₹ {parseFloat(inv.sale_price || 0).toLocaleString('en-IN')}</td>
                           <td className="py-3.5 px-5 text-slate-400 font-medium">{inv.sale_date}</td>
-                          <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode === "Self-Finance (Cash)" ? "Cash" : (inv.payment_mode || "Cash")}</td>
+                          <td className="py-3.5 px-5 text-slate-550 font-bold">{inv.payment_mode || "Cash"}</td>
                           <td className="py-3.5 px-5 text-slate-650 font-semibold">{inv.executive_name || "Unassigned"}</td>
                           <td className="py-3.5 px-5">
                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -6645,8 +6645,11 @@ export default function OwnerDashboard({ initialTab: initialTabProp }: { initial
                             </span>
                           </td>
                           <td className="py-3.5 px-5 whitespace-nowrap">
-                            {inv.delivery_status !== "delivered" && (
+                            {inv.delivery_status !== "delivered" && (inv.delivery_status === "ready" || inv.delivery_status === "sold") && (
                               <button onClick={() => handleSalesDelivery(inv.id, "delivered")} className="inline-flex items-center gap-1 text-[11px] text-white font-bold bg-[#04a700] hover:bg-[#038a00] px-3 py-1 rounded-full shadow transition-all cursor-pointer">Mark Delivered</button>
+                            )}
+                            {inv.delivery_status !== "delivered" && inv.delivery_status !== "ready" && inv.delivery_status !== "sold" && (
+                              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">Awaiting Verification</span>
                             )}
                             {inv.delivery_status === "delivered" ? (
                               <div className="flex items-center gap-2">

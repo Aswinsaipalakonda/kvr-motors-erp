@@ -285,7 +285,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
       return;
     }
 
-    const isPureCash = editPaymentMode === "Self-Finance (Cash)" || editPaymentMode === "Cash";
+    const isPureCash = editPaymentMode === "Cash";
     if (!isPureCash && !paymentProofImage) {
       showToast("Please upload payment receipt / screenshot proof before confirming sale.", "error");
       return;
@@ -316,7 +316,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
         customer_contact: cleanPhone,
         payment_mode: editPaymentMode,
         payment_split_details: splitDetails,
-        delivery_status: "sold"
+        delivery_status: "ready"
       };
       if (paymentProofImage) {
         payload.payment_proof = paymentProofImage;
@@ -2667,19 +2667,28 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                               <MessageSquare className="h-3 w-3" /> WhatsApp
                             </a>
                           </div>
-                        ) : (
+                        ) : inv.delivery_status === "ready" || inv.delivery_status === "sold" ? (
                           <div className="flex items-center gap-2 inline-flex">
                             <button
                               onClick={() => openVerificationModal(inv)}
-                              className="inline-flex items-center gap-1 text-[11px] text-amber-700 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-slate-800 font-bold bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
                             >
-                              Edit / Proof
+                              Edit Payment
                             </button>
                             <button
                               onClick={() => handleSalesDelivery(inv.id, "delivered")}
                               className="inline-flex items-center gap-1 text-xs text-white font-extrabold bg-[#04a700] hover:bg-[#038a00] px-3.5 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
                             >
                               <Truck className="h-3.5 w-3.5" /> Mark Delivered
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 inline-flex">
+                            <button
+                              onClick={() => openVerificationModal(inv)}
+                              className="inline-flex items-center gap-1 text-[11px] text-amber-800 hover:text-amber-900 font-bold bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-full transition-colors cursor-pointer shadow-sm"
+                            >
+                              Confirm Payment / Proof
                             </button>
                           </div>
                         )}
@@ -3661,7 +3670,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
                 <option value="HDFC Bank Loan">HDFC Bank Loan</option>
                 <option value="L&T Finance">L&T Finance</option>
                 <option value="UPI / Online QR">UPI / Online QR</option>
-                <option value="Self-Finance (Cash)">Cash</option>
+                <option value="Cash">Cash</option>
                 <option value="Split Payment">Split Payment</option>
               </select>
             </div>
@@ -3723,7 +3732,7 @@ export default function SupervisorDashboard({ initialTab: initialTabProp }: { in
             {/* Payment Proof Image Upload */}
             <div className="space-y-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                {editPaymentMode === "Self-Finance (Cash)" || editPaymentMode === "Cash"
+                {editPaymentMode === "Cash"
                   ? "Upload Payment Receipt / Proof (Optional for Cash)"
                   : "Upload Payment Receipt / Transaction Screenshot * Required"}
               </label>

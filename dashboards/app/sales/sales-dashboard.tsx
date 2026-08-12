@@ -482,11 +482,14 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
     try {
       const vId = lead.interested_vehicle ? parseInt(String(lead.interested_vehicle)) : 1;
       const cleanPhone = (lead.contact_number || "").replace(/\D/g, "");
+      const isAdv = !!lead.is_advance_booking;
+      const advAmt = isAdv ? (parseFloat(lead.advance_amount) || 5000) : 0;
       await createBooking({
         customer_name: lead.customer_name,
         contact_number: cleanPhone.length === 10 ? cleanPhone : "9876543210",
         vehicle_model: !isNaN(vId) && vId > 0 ? vId : 1,
-        advance_amount: 5000,
+        is_advance_booking: isAdv,
+        advance_amount: advAmt,
         expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         status: "pending",
       });
@@ -559,7 +562,8 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
         customer_name: newBooking.customer_name.trim(),
         contact_number: newBooking.contact_number.trim(),
         vehicle_model: parseInt(newBooking.vehicle_model),
-        advance_amount: parseFloat(newBooking.advance_amount),
+        is_advance_booking: !!newBooking.is_advance_booking,
+        advance_amount: newBooking.is_advance_booking ? (parseFloat(newBooking.advance_amount || "0") || 0) : 0,
         expiry_date: newBooking.expiry_date,
         payment_mode: newBooking.payment_mode,
         payment_split_details: newBooking.payment_mode === "split" ? {
@@ -2187,14 +2191,14 @@ export default function SalesDashboard({ initialTab: initialTabProp }: { initial
                 ) : (
                   liveBookingsList
                     .filter(bk => {
-                      const isAdv = bk.is_advance_booking === true || (parseFloat(bk.advance_amount || 0) > 0 && bk.is_advance_booking !== false);
+                      const isAdv = bk.is_advance_booking === true && parseFloat(bk.advance_amount || 0) > 0;
                       if (bookingFilterType === "advance") return isAdv;
                       if (bookingFilterType === "normal") return !isAdv;
                       return true;
                     })
                     .map((bk, idx) => {
                       const advAmt = parseFloat(bk.advance_amount || 0);
-                      const isAdvance = bk.is_advance_booking === true || (advAmt > 0 && bk.is_advance_booking !== false);
+                      const isAdvance = bk.is_advance_booking === true && advAmt > 0;
                       return (
                         <tr key={`${bk.id || 'bk'}-${bk.booking_id || ''}-${idx}`} className="hover:bg-slate-50 border-b border-slate-100">
                           <td className="py-3 px-4 font-mono font-bold text-[#04a700]">{bk.booking_id}</td>
